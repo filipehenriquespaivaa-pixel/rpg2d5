@@ -2967,7 +2967,20 @@
               isEarthMineFloor: !0,
               dungeonRole: "earth_mine_floor",
               dungeonRoomName: bCell.roomName,
-              prop: null,
+              prop: bCell.hasTorch
+                ? {
+                    kind: "corridor_torch",
+                    subType: 0,
+                    lit: !0,
+                    offsetX: 0,
+                    offsetY: -2,
+                    scale: 1.05,
+                    interactive: !1,
+                    namePt: "Tocha Acesa da Mina",
+                    descriptionPt:
+                      "Tocha acesa fincada na parede de terra escavada, iluminando os longos túneis da mina.",
+                  }
+                : null,
               detailHash: u,
             };
           } else if (bCell.role === "prison_mine_exit") {

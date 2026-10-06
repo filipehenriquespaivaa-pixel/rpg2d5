@@ -1993,8 +1993,36 @@ window.Game = window.Game || {};
       }
 
       if (inEntryChamber || inMainSpine || inRibTunnel || inSubBranch) {
+        // Verifica se este ponto do túnel tem uma tocha acesa presa na parede de terra:
+        // 1. No vestíbulo de entrada (mx === -3 ou +3, my === -2 ou +2)
+        // 2. Ao longo do túnel central da espinha (nas bordas laterais a cada 7 blocos, fora do cruzamento das costelas)
+        // 3. Ao longo dos túneis laterais das costelas (na borda norte do túnel a cada 7 blocos)
+        let hasTorch = false;
+        if (inEntryChamber && (mx === -3 || mx === 3) && (my === -2 || my === 2)) {
+          hasTorch = true;
+        } else if (
+          inMainSpine &&
+          !inRibTunnel &&
+          Math.abs(mx - spineShift) === 2 &&
+          my >= 6 &&
+          my <= 148 &&
+          my % 7 === 0
+        ) {
+          hasTorch = true;
+        } else if (inRibTunnel && !inMainSpine && Math.abs(mx) >= 6 && Math.abs(mx) % 7 === 0) {
+          for (let i = 0; i < ribCenters.length; i++) {
+            const ry = ribCenters[i];
+            const ribYOffset = Math.abs(mx) <= 4 ? 0 : Math.round(Math.sin(mx * 0.11 + i) * 0.8);
+            if (my === ry + ribYOffset - 1) {
+              hasTorch = true;
+              break;
+            }
+          }
+        }
+
         return {
           role: "earth_mine_floor",
+          hasTorch,
           roomName: "Túnel de Terra da Mina Profunda",
         };
       }
