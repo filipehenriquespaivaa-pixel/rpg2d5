@@ -565,22 +565,22 @@ window.Game = window.Game || {};
       };
     }
 
-    // 2.2 Malha de Ruas e Avenidas de Paralelepípedo conectando todas as casas
+    // 2.2 Malha de Ruas e Avenidas de Paralelepípedo conectando todas as casas (largura reduzida pela metade)
     const isHorizStreet =
-      Math.abs(relY - -37) <= 1 ||
-      Math.abs(relY - -22) <= 1 ||
-      Math.abs(relY - 0) <= 2 ||
-      Math.abs(relY - 22) <= 1 ||
-      Math.abs(relY - 37) <= 1;
+      relY === -37 ||
+      relY === -22 ||
+      Math.abs(relY - 0) <= 1 ||
+      relY === 22 ||
+      relY === 37;
 
     const isVertStreet =
-      Math.abs(relX - -45) <= 1 ||
-      Math.abs(relX - -30) <= 1 ||
-      Math.abs(relX - -15) <= 1 ||
-      Math.abs(relX - 0) <= 1 ||
-      Math.abs(relX - 15) <= 1 ||
-      Math.abs(relX - 30) <= 1 ||
-      Math.abs(relX - 45) <= 1;
+      relX === -45 ||
+      relX === -30 ||
+      relX === -15 ||
+      relX === 0 ||
+      relX === 15 ||
+      relX === 30 ||
+      relX === 45;
 
     if (isHorizStreet || isVertStreet) {
       // Postes de iluminação em cruzamentos selecionados
@@ -588,7 +588,7 @@ window.Game = window.Game || {};
       const isLampIntersection =
         isIntersection &&
         (Math.abs(relX) === 15 || Math.abs(relX) === 30 || Math.abs(relX) === 45) &&
-        (Math.abs(relY) === 22 || Math.abs(relY) === 37 || Math.abs(relY) === -22 || Math.abs(relY) === -37);
+        (Math.abs(relY) === 22 || Math.abs(relY) === 37);
 
       if (isLampIntersection) {
         return {
@@ -611,15 +611,25 @@ window.Game = window.Game || {};
       };
     }
 
-    // Acessos e calçadas conectando as casas às ruas
+    // Acessos e calçadas estreitas conectando as casas às ruas (largura reduzida pela metade)
     let minDistToHouse = 999;
+    let isDoorAccessPath = false;
     for (let i = 0; i < HOUSES.length; i++) {
       const h = HOUSES[i];
-      const dist = Math.max(Math.abs(tx - h.cx) - h.halfW, Math.abs(ty - h.cy) - h.halfH);
+      const dxH = Math.abs(tx - h.cx) - h.halfW;
+      const dyH = Math.abs(ty - h.cy) - h.halfH;
+      const dist = Math.max(dxH, dyH);
       if (dist < minDistToHouse) minDistToHouse = dist;
+
+      // Trilha estreita de 1 bloco ligando a porta frontal da casa até a rua horizontal
+      const doorDirY = h.doorOnSouth ? 1 : -1;
+      const relDoorY = (ty - h.cy) * doorDirY;
+      if (tx === h.cx && relDoorY > h.halfH && relDoorY <= h.halfH + 2) {
+        isDoorAccessPath = true;
+      }
     }
 
-    if (minDistToHouse <= 2) {
+    if (minDistToHouse <= 1 || isDoorAccessPath) {
       return {
         isSnowCity: true,
         role: "road",
