@@ -144,6 +144,28 @@ window.Game = window.Game || {};
     return null;
   }
 
+  // Retorna o ID da casa se o jogador estiver dentro dela (ou atravessando a soleira da porta)
+  function getActiveHouseForPlayer(px, py, tileSize) {
+    const ts = tileSize || 36;
+    const ptx = px / ts - 0.5;
+    const pty = py / ts - 0.5;
+    for (let i = 0; i < HOUSES.length; i++) {
+      const h = HOUSES[i];
+      const dx = Math.abs(ptx - h.cx);
+      const dy = Math.abs(pty - h.cy);
+      // Considera o interior da casa (incluindo a linha da porta quando o jogador pisa nela)
+      if (dx <= h.halfW - 0.15 && dy <= h.halfH - 0.15) {
+        return h.id;
+      }
+      // Se estiver exatamente no vão da porta entrando/saindo
+      const doorY = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
+      if (Math.abs(ptx - h.cx) <= 0.65 && Math.abs(pty - doorY) <= 0.55) {
+        return h.id;
+      }
+    }
+    return null;
+  }
+
   // Retorna os dados arquitetônicos completos do bloco
   function getCellAt(tx, ty, interactedProps) {
     if (!isCityTerritory(tx, ty)) return null;
@@ -771,6 +793,7 @@ window.Game = window.Game || {};
     isCityTerritory,
     isCityBiomeArea,
     getHouseAt,
+    getActiveHouseForPlayer,
     getCellAt,
   };
 

@@ -337,6 +337,9 @@
         }
         Ee.sort((ne, ke) => ne.y - ke.y);
         for (const ne of Ee) ne.draw();
+        if (!this.engine.isUnderground && typeof drawSnowCityHouseRoofs === "function") {
+          drawSnowCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
+        }
         (u.combatManager && u.combatManager.renderEffects(c),
           window.__showColliders &&
             this.renderColliderDebug(c, t, u.combatManager),

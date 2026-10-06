@@ -6221,3 +6221,317 @@
 
     e.restore();
   }
+
+  // 12. Telhados Alpinos Inclinados (Típicos de Neve) para cada Casa da Vila Glacial:
+  // - Cada casa tem o seu próprio telhado individual de duas águas íngremes (chalé alpino).
+  // - Possui grossa camada de neve branca acumulada no topo, cumeeira de madeira, ripas e pingentes de gelo.
+  // - NUNCA cobre a porta da casa (recuo frontal e pórtico em V sobre a porta deixando a entrada 100% visível).
+  // - Sistema clássico de RPG: quando o jogador entra na casa, o telhado daquela casa fica invisível;
+  //   ao sair da casa, o telhado volta imediatamente!
+  function drawSnowCityHouseRoofs(ctx, tileSize, playerX, playerY, viewLeft, viewRight, viewTop, viewBottom, animTimer = 0) {
+    if (typeof window === "undefined" || !window.SnowPeakCity || !window.SnowPeakCity.houses) return;
+
+    const city = window.SnowPeakCity;
+    const houses = city.houses;
+    const activeHouseId = city.getActiveHouseForPlayer
+      ? city.getActiveHouseForPlayer(playerX, playerY, tileSize)
+      : null;
+
+    // Inicializa mapa de opacidade suave por casa para transição fluida ao entrar/sair
+    if (!window.__snowRoofAlphaMap) {
+      window.__snowRoofAlphaMap = {};
+    }
+    const alphaMap = window.__snowRoofAlphaMap;
+
+    for (let i = 0; i < houses.length; i++) {
+      const h = houses[i];
+
+      // Coordenadas em pixels do retângulo das paredes da casa
+      const minTileX = h.cx - h.halfW;
+      const maxTileX = h.cx + h.halfW;
+      const minTileY = h.cy - h.halfH;
+      const maxTileY = h.cy + h.halfH;
+
+      const houseLeftPx = minTileX * tileSize;
+      const houseRightPx = (maxTileX + 1) * tileSize;
+      const houseTopPx = minTileY * tileSize;
+      const houseBottomPx = (maxTileY + 1) * tileSize;
+
+      // Descarte rápido (frustum culling) se a casa estiver fora da câmera
+      if (
+        houseRightPx + tileSize < viewLeft ||
+        houseLeftPx - tileSize > viewRight ||
+        houseBottomPx + tileSize < viewTop ||
+        houseTopPx - tileSize > viewBottom
+      ) {
+        continue;
+      }
+
+      // Atualiza opacidade (0 quando o jogador está dentro desta casa, 1 quando está fora)
+      const isPlayerInsideThisHouse = activeHouseId === h.id;
+      const targetAlpha = isPlayerInsideThisHouse ? 0 : 1;
+      const prevAlpha = alphaMap[h.id] !== undefined ? alphaMap[h.id] : targetAlpha;
+      const nextAlpha =
+        Math.abs(prevAlpha - targetAlpha) < 0.08
+          ? targetAlpha
+          : prevAlpha + (targetAlpha - prevAlpha) * 0.28;
+      alphaMap[h.id] = nextAlpha;
+
+      // Se totalmente invisível (jogador dentro da casa), não desenha o telhado
+      if (nextAlpha <= 0.02) continue;
+
+      ctx.save();
+      ctx.globalAlpha = nextAlpha;
+
+      // =====================================================================
+      // GEOMETRIA DO TELHADO ALPINO (SEM COBRIR A PORTA DA CASA!)
+      // - As paredes 2.5D sobem ~26px acima da base de cada tile.
+      // - Para NUNCA cobrir a fachada/porta da casa:
+      //   * Nas casas com porta no SUL (doorOnSouth = true): a borda sul do telhado
+      //     termina na linha do topo da parede sul (houseBottomPx - tileSize * 0.72),
+      //     e ainda tem um recorte/frontão alto sobre o tile da porta (h.cx), deixando
+      //     a porta de carvalho e o batente de pedra 100% visíveis!
+      //   * Nas casas com porta no NORTE (doorOnSouth = false): a borda norte do telhado
+      //     começa após a porta norte (houseTopPx + tileSize * 0.42) com recorte trapezoidal
+      //     ao redor da porta norte, deixando a porta norte 100% livre e visível!
+      // =====================================================================
+      const overhangX = 4; // Pequeno beiral lateral (sem invadir becos)
+      const roofLeft = houseLeftPx - overhangX;
+      const roofRight = houseRightPx + overhangX;
+      const roofW = roofRight - roofLeft;
+
+      const roofTop = h.doorOnSouth
+        ? houseTopPx - tileSize * 0.68
+        : houseTopPx + tileSize * 0.36;
+      const roofBottom = h.doorOnSouth
+        ? houseBottomPx - tileSize * 0.78
+        : houseBottomPx - tileSize * 0.22;
+      const roofH = roofBottom - roofTop;
+      const ridgeY = roofTop + roofH * 0.46; // Cumeeira central horizontal Leste-Oeste
+
+      // Coordenadas da porta para abrir o frontão/recorte sem cobrir a porta
+      const doorCenterX = (h.cx + 0.5) * tileSize;
+      const doorCutHalfW = tileSize * 0.68;
+      const doorNotchDepth = tileSize * 0.42;
+
+      // 1. Sombra projetada pelo beiral do telhado sobre as paredes
+      ctx.fillStyle = "rgba(15, 23, 42, 0.42)";
+      ctx.beginPath();
+      if (h.doorOnSouth) {
+        ctx.moveTo(roofLeft + 2, roofTop + 5);
+        ctx.lineTo(roofRight + 2, roofTop + 5);
+        ctx.lineTo(roofRight + 2, roofBottom + 6);
+        ctx.lineTo(doorCenterX + doorCutHalfW, roofBottom + 6);
+        ctx.lineTo(doorCenterX, roofBottom - doorNotchDepth + 6);
+        ctx.lineTo(doorCenterX - doorCutHalfW, roofBottom + 6);
+        ctx.lineTo(roofLeft + 2, roofBottom + 6);
+      } else {
+        ctx.moveTo(roofLeft + 2, roofTop + 4);
+        ctx.lineTo(doorCenterX - doorCutHalfW, roofTop + 4);
+        ctx.lineTo(doorCenterX, roofTop + doorNotchDepth + 4);
+        ctx.lineTo(doorCenterX + doorCutHalfW, roofTop + 4);
+        ctx.lineTo(roofRight + 2, roofTop + 4);
+        ctx.lineTo(roofRight + 2, roofBottom + 6);
+        ctx.lineTo(roofLeft + 2, roofBottom + 6);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Paleta de telhado alpino por casa (madeira de pinheiro escuro, ardósia azulada ou cedro)
+      const roofStyle = h.id % 3;
+      const northSlopeTopCol = roofStyle === 0 ? "#1e293b" : roofStyle === 1 ? "#3b1d0a" : "#1e3a5f";
+      const northSlopeBotCol = roofStyle === 0 ? "#334155" : roofStyle === 1 ? "#5c2d12" : "#254edb";
+      const southSlopeTopCol = roofStyle === 0 ? "#475569" : roofStyle === 1 ? "#78350f" : "#3b5998";
+      const southSlopeBotCol = roofStyle === 0 ? "#1e293b" : roofStyle === 1 ? "#451a03" : "#1e293b";
+
+      // 2. ÁGUA NORTE DO TELHADO (inclinada da cumeeira para o norte)
+      const northGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+      northGrad.addColorStop(0, northSlopeTopCol);
+      northGrad.addColorStop(1, northSlopeBotCol);
+      ctx.fillStyle = northGrad;
+      ctx.beginPath();
+      if (!h.doorOnSouth) {
+        // Recorte em V invertido na borda norte para NÃO cobrir a porta norte!
+        ctx.moveTo(roofLeft, roofTop);
+        ctx.lineTo(doorCenterX - doorCutHalfW, roofTop);
+        ctx.lineTo(doorCenterX, roofTop + doorNotchDepth);
+        ctx.lineTo(doorCenterX + doorCutHalfW, roofTop);
+        ctx.lineTo(roofRight, roofTop);
+      } else {
+        ctx.moveTo(roofLeft, roofTop);
+        ctx.lineTo(roofRight, roofTop);
+      }
+      ctx.lineTo(roofRight, ridgeY);
+      ctx.lineTo(roofLeft, ridgeY);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. ÁGUA SUL DO TELHADO (inclinada da cumeeira para o sul)
+      const southGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+      southGrad.addColorStop(0, southSlopeTopCol);
+      southGrad.addColorStop(1, southSlopeBotCol);
+      ctx.fillStyle = southGrad;
+      ctx.beginPath();
+      ctx.moveTo(roofLeft, ridgeY);
+      ctx.lineTo(roofRight, ridgeY);
+      if (h.doorOnSouth) {
+        // Frontão alpino em V sobre a porta sul para NUNCA cobrir a porta!
+        ctx.lineTo(roofRight, roofBottom);
+        ctx.lineTo(doorCenterX + doorCutHalfW, roofBottom);
+        ctx.lineTo(doorCenterX, roofBottom - doorNotchDepth);
+        ctx.lineTo(doorCenterX - doorCutHalfW, roofBottom);
+        ctx.lineTo(roofLeft, roofBottom);
+      } else {
+        ctx.lineTo(roofRight, roofBottom);
+        ctx.lineTo(roofLeft, roofBottom);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // 4. Ripas e Telhas Escalonadas (textura de chalé alpino)
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.36)";
+      ctx.lineWidth = 1;
+      const shingleStepX = 14;
+      ctx.beginPath();
+      for (let sx = roofLeft + shingleStepX; sx < roofRight - 4; sx += shingleStepX) {
+        // Evita desenhar linha dentro do recorte da porta
+        const inDoorCut = Math.abs(sx - doorCenterX) < doorCutHalfW * 0.85;
+        const topYAtX = !h.doorOnSouth && inDoorCut ? roofTop + doorNotchDepth : roofTop;
+        const botYAtX = h.doorOnSouth && inDoorCut ? roofBottom - doorNotchDepth : roofBottom;
+        ctx.moveTo(sx, topYAtX + 2);
+        ctx.lineTo(sx, botYAtX - 2);
+      }
+      // Linhas horizontais das telhas
+      for (let sy = roofTop + 12; sy < roofBottom - 8; sy += 12) {
+        ctx.moveTo(roofLeft + 3, sy);
+        ctx.lineTo(roofRight - 3, sy);
+      }
+      ctx.stroke();
+
+      // 5. CAMADA ESPESSA DE NEVE ACUMULADA EM CIMA DO TELHADO
+      // - Mais espessa perto da cumeeira e nas duas águas, com bordas onduladas orgânicas
+      const snowPad = 5;
+      // Neve na água norte
+      const snowNorthGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+      snowNorthGrad.addColorStop(0, "#e2e8f0");
+      snowNorthGrad.addColorStop(0.45, "#f8fafc");
+      snowNorthGrad.addColorStop(1, "#ffffff");
+      ctx.fillStyle = snowNorthGrad;
+      ctx.beginPath();
+      if (!h.doorOnSouth) {
+        ctx.moveTo(roofLeft + snowPad, roofTop + 3);
+        ctx.lineTo(doorCenterX - doorCutHalfW - 2, roofTop + 3);
+        ctx.lineTo(doorCenterX, roofTop + doorNotchDepth + 4);
+        ctx.lineTo(doorCenterX + doorCutHalfW + 2, roofTop + 3);
+        ctx.lineTo(roofRight - snowPad, roofTop + 3);
+      } else {
+        ctx.moveTo(roofLeft + snowPad, roofTop + 3);
+        ctx.lineTo(roofRight - snowPad, roofTop + 3);
+      }
+      ctx.lineTo(roofRight - snowPad, ridgeY - 2);
+      ctx.lineTo(roofLeft + snowPad, ridgeY - 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Neve na água sul (com ondas de neve acumulada no beiral)
+      const snowSouthGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+      snowSouthGrad.addColorStop(0, "#ffffff");
+      snowSouthGrad.addColorStop(0.65, "#f1f5f9");
+      snowSouthGrad.addColorStop(1, "#cbd5e1");
+      ctx.fillStyle = snowSouthGrad;
+      ctx.beginPath();
+      ctx.moveTo(roofLeft + snowPad, ridgeY + 2);
+      ctx.lineTo(roofRight - snowPad, ridgeY + 2);
+      if (h.doorOnSouth) {
+        ctx.lineTo(roofRight - snowPad, roofBottom - 4);
+        ctx.lineTo(doorCenterX + doorCutHalfW + 2, roofBottom - 4);
+        ctx.lineTo(doorCenterX, roofBottom - doorNotchDepth - 4);
+        ctx.lineTo(doorCenterX - doorCutHalfW - 2, roofBottom - 4);
+        ctx.lineTo(roofLeft + snowPad, roofBottom - 4);
+      } else {
+        ctx.lineTo(roofRight - snowPad, roofBottom - 4);
+        ctx.lineTo(roofLeft + snowPad, roofBottom - 4);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Brilho de gelo cristalino sobre a neve do telhado
+      ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+      ctx.beginPath();
+      ctx.ellipse(
+        roofLeft + roofW * 0.32,
+        ridgeY - roofH * 0.18,
+        roofW * 0.18,
+        Math.max(4, roofH * 0.08),
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.ellipse(
+        roofLeft + roofW * 0.68,
+        ridgeY + roofH * 0.16,
+        roofW * 0.16,
+        Math.max(4, roofH * 0.07),
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      // 6. VIGA DE CUMEEIRA CENTRAL DE CARVALHO E MOLDURA DAS EMPENAS (BORDAS DO TELHADO)
+      ctx.fillStyle = "#451a03";
+      ctx.fillRect(roofLeft - 1, ridgeY - 3.5, roofW + 2, 7);
+      // Neve sobre a viga da cumeeira
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillRect(roofLeft + 4, ridgeY - 2, roofW - 8, 3);
+
+      // Moldura de madeira pesada ao redor do telhado e do frontão da porta
+      ctx.strokeStyle = "#451a03";
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      if (h.doorOnSouth) {
+        ctx.moveTo(roofLeft, roofTop);
+        ctx.lineTo(roofRight, roofTop);
+        ctx.lineTo(roofRight, roofBottom);
+        ctx.lineTo(doorCenterX + doorCutHalfW, roofBottom);
+        ctx.lineTo(doorCenterX, roofBottom - doorNotchDepth);
+        ctx.lineTo(doorCenterX - doorCutHalfW, roofBottom);
+        ctx.lineTo(roofLeft, roofBottom);
+      } else {
+        ctx.moveTo(roofLeft, roofTop);
+        ctx.lineTo(doorCenterX - doorCutHalfW, roofTop);
+        ctx.lineTo(doorCenterX, roofTop + doorNotchDepth);
+        ctx.lineTo(doorCenterX + doorCutHalfW, roofTop);
+        ctx.lineTo(roofRight, roofTop);
+        ctx.lineTo(roofRight, roofBottom);
+        ctx.lineTo(roofLeft, roofBottom);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // 7. PINGENTES DE GELO (Icicles) pendurados no beiral sul do telhado
+      ctx.fillStyle = "rgba(186, 230, 253, 0.88)";
+      for (let ix = roofLeft + 8; ix < roofRight - 8; ix += 11) {
+        if (h.doorOnSouth && Math.abs(ix - doorCenterX) < doorCutHalfW + 4) continue;
+        const icicleLen = 4 + ((Math.abs(ix * 7 + h.id * 13) % 5));
+        ctx.beginPath();
+        ctx.moveTo(ix - 2, roofBottom);
+        ctx.lineTo(ix, roofBottom + icicleLen);
+        ctx.lineTo(ix + 2, roofBottom);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 8. CHAMINÉ FUMEGANTE ACIMA DO TELHADO (para continuar visível sobre a neve do telhado!)
+      const chimTileX = h.cx + 3;
+      const chimTileY = h.cy + (h.doorOnSouth ? -h.halfH : h.halfH);
+      const chimPxX = chimTileX * tileSize + tileSize * 0.5;
+      const chimPxY = chimTileY * tileSize + tileSize * 0.5;
+      ctx.save();
+      ctx.translate(chimPxX, chimPxY);
+      drawSnowCityChimney(ctx, tileSize / 36, animTimer);
+      ctx.restore();
+
+      ctx.restore();
+    }
+  }
