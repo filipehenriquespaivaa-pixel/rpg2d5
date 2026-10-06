@@ -5949,142 +5949,142 @@
     e.restore();
   }
 
-  // 10. Monumento / Grande Fogueira Colossal da Praça dos Picos Gelados (ocupa 3x3 blocos!)
+  // 10. Monumento / Fogueira da Praça dos Picos Gelados (metade do tamanho colossal anterior, com colisor)
   function drawSnowCityMonument(e, t, animTimer = 0) {
     e.save();
-    // Como prop.scale é ~2.35 ou 1, ajustamos para ocupar uma grande pira circular de ~3x3 tiles (~100px de diâmetro)
-    const s = t * 1.15;
+    // Metade do tamanho anterior: raio de base ~18*s (cabe perfeitamente no tile central sem cobrir os bancos)
+    const s = t * 0.65;
     const baseY = 6 * s;
 
     // Halo de calor alaranjado pulsante no chão de pedra ao redor da pira
     const pulse = (Math.sin(animTimer * 5) + 1) * 0.5;
-    const glowGrad = e.createRadialGradient(0, 0, 6 * s, 0, 0, 52 * s);
+    const glowGrad = e.createRadialGradient(0, 0, 5 * s, 0, 0, 36 * s);
     glowGrad.addColorStop(0, `rgba(251, 146, 60, ${0.42 + pulse * 0.12})`);
     glowGrad.addColorStop(0.55, `rgba(234, 88, 12, ${0.18 + pulse * 0.08})`);
     glowGrad.addColorStop(1, "rgba(234, 88, 12, 0)");
     e.fillStyle = glowGrad;
     e.beginPath();
-    e.ellipse(0, 2 * s, 50 * s, 38 * s, 0, 0, Math.PI * 2);
+    e.ellipse(0, 2 * s, 36 * s, 28 * s, 0, 0, Math.PI * 2);
     e.fill();
 
-    // Base escalonada circular/octogonal de granito da montanha (cobrindo a área 3x3 do colisor)
+    // Base escalonada circular de granito da montanha
     e.fillStyle = "#1e293b";
     e.beginPath();
-    e.ellipse(0, baseY + 4 * s, 38 * s, 26 * s, 0, 0, Math.PI * 2);
+    e.ellipse(0, baseY + 3 * s, 26 * s, 19 * s, 0, 0, Math.PI * 2);
     e.fill();
     e.strokeStyle = "#0f172a";
-    e.lineWidth = 1.6 * s;
+    e.lineWidth = 1.5 * s;
     e.stroke();
 
-    // Segundo degrau de blocos de pedra com borda de neve derretendo
+    // Segundo degrau de blocos de pedra
     e.fillStyle = "#334155";
     e.beginPath();
-    e.ellipse(0, baseY, 32 * s, 21 * s, 0, 0, Math.PI * 2);
+    e.ellipse(0, baseY, 22 * s, 15 * s, 0, 0, Math.PI * 2);
     e.fill();
     e.strokeStyle = "#475569";
-    e.lineWidth = 1.4 * s;
+    e.lineWidth = 1.3 * s;
     e.stroke();
 
-    // Anel de pedras brutas maciças ao redor da fogueira
-    const stoneCount = 12;
+    // Anel de pedras brutas ao redor da fogueira
+    const stoneCount = 10;
     for (let i = 0; i < stoneCount; i++) {
       const ang = (i / stoneCount) * Math.PI * 2;
-      const rx = Math.cos(ang) * 26 * s;
-      const ry = baseY - 2 * s + Math.sin(ang) * 16 * s;
+      const rx = Math.cos(ang) * 18 * s;
+      const ry = baseY - 1.5 * s + Math.sin(ang) * 11.5 * s;
       e.fillStyle = i % 2 === 0 ? "#475569" : "#334155";
       e.beginPath();
-      e.ellipse(rx, ry, 6.5 * s, 4.8 * s, ang * 0.3, 0, Math.PI * 2);
+      e.ellipse(rx, ry, 5 * s, 3.8 * s, ang * 0.3, 0, Math.PI * 2);
       e.fill();
       e.strokeStyle = "#0f172a";
-      e.lineWidth = 1 * s;
+      e.lineWidth = 0.9 * s;
       e.stroke();
     }
 
-    // Leito profundo de brasas ardentes e carvão incandescente
+    // Leito de brasas ardentes e carvão incandescente
     e.fillStyle = "#451a03";
     e.beginPath();
-    e.ellipse(0, baseY - 3 * s, 22 * s, 13 * s, 0, 0, Math.PI * 2);
+    e.ellipse(0, baseY - 2 * s, 15 * s, 9.5 * s, 0, 0, Math.PI * 2);
     e.fill();
 
     e.fillStyle = `rgba(234, 88, 12, ${0.82 + pulse * 0.18})`;
     e.beginPath();
-    e.ellipse(0, baseY - 3.5 * s, 18 * s, 10.5 * s, 0, 0, Math.PI * 2);
+    e.ellipse(0, baseY - 2.5 * s, 12.5 * s, 7.5 * s, 0, 0, Math.PI * 2);
     e.fill();
 
-    // Grandes toras de pinheiro empilhadas em pirâmide na fogueira
+    // Toras de pinheiro empilhadas na fogueira
     const logs = [
-      { ang: -0.35, len: 34, w: 5.2, col: "#451a03" },
-      { ang: 0.35, len: 34, w: 5.2, col: "#78350f" },
-      { ang: 1.15, len: 28, w: 4.8, col: "#5c2808" },
-      { ang: -1.15, len: 28, w: 4.8, col: "#78350f" },
-      { ang: 0.05, len: 30, w: 4.5, col: "#92400e" },
+      { ang: -0.35, len: 24, w: 4.2, col: "#451a03" },
+      { ang: 0.35, len: 24, w: 4.2, col: "#78350f" },
+      { ang: 1.15, len: 20, w: 3.8, col: "#5c2808" },
+      { ang: -1.15, len: 20, w: 3.8, col: "#78350f" },
+      { ang: 0.05, len: 21, w: 3.6, col: "#92400e" },
     ];
     for (const lg of logs) {
       e.save();
-      e.translate(0, baseY - 5 * s);
+      e.translate(0, baseY - 4 * s);
       e.rotate(lg.ang);
       e.fillStyle = lg.col;
       e.fillRect((-lg.len * 0.5) * s, (-lg.w * 0.5) * s, lg.len * s, lg.w * s);
       e.strokeStyle = "#271206";
-      e.lineWidth = 0.9 * s;
+      e.lineWidth = 0.8 * s;
       e.strokeRect((-lg.len * 0.5) * s, (-lg.w * 0.5) * s, lg.len * s, lg.w * s);
       e.restore();
     }
 
-    // Grandes Chamas Colossais da Fogueira da Praça
-    const f1 = Math.sin(animTimer * 10) * 4.5 * s;
-    const f2 = Math.cos(animTimer * 14) * 5 * s;
-    const f3 = Math.sin(animTimer * 8 + 1.4) * 3.5 * s;
+    // Chamas da Fogueira da Praça
+    const f1 = Math.sin(animTimer * 10) * 3.5 * s;
+    const f2 = Math.cos(animTimer * 14) * 4 * s;
+    const f3 = Math.sin(animTimer * 8 + 1.4) * 2.5 * s;
 
     e.save();
     e.shadowColor = "#ea580c";
-    e.shadowBlur = 22;
+    e.shadowBlur = 16;
 
     // Língua de fogo externa vermelha/laranja escura
     e.fillStyle = "rgba(220, 38, 38, 0.92)";
     e.beginPath();
-    e.moveTo(-18 * s, baseY - 4 * s);
-    e.quadraticCurveTo(-16 * s + f1, baseY - 26 * s, -6 * s + f3, baseY - 38 * s);
-    e.quadraticCurveTo(0, baseY - 52 * s + f2, 6 * s - f3, baseY - 38 * s);
-    e.quadraticCurveTo(16 * s - f1, baseY - 26 * s, 18 * s, baseY - 4 * s);
+    e.moveTo(-13 * s, baseY - 3 * s);
+    e.quadraticCurveTo(-11 * s + f1, baseY - 19 * s, -4 * s + f3, baseY - 28 * s);
+    e.quadraticCurveTo(0, baseY - 38 * s + f2, 4 * s - f3, baseY - 28 * s);
+    e.quadraticCurveTo(11 * s - f1, baseY - 19 * s, 13 * s, baseY - 3 * s);
     e.closePath();
     e.fill();
 
     // Língua de fogo intermediária laranja-ouro
     e.fillStyle = "rgba(249, 115, 22, 0.96)";
     e.beginPath();
-    e.moveTo(-13 * s, baseY - 4 * s);
-    e.quadraticCurveTo(-9 * s + f2, baseY - 24 * s, f1 * 0.6, baseY - 42 * s + f1);
-    e.quadraticCurveTo(9 * s - f2, baseY - 24 * s, 13 * s, baseY - 4 * s);
+    e.moveTo(-9.5 * s, baseY - 3 * s);
+    e.quadraticCurveTo(-6.5 * s + f2, baseY - 18 * s, f1 * 0.6, baseY - 31 * s + f1);
+    e.quadraticCurveTo(6.5 * s - f2, baseY - 18 * s, 9.5 * s, baseY - 3 * s);
     e.closePath();
     e.fill();
 
     // Chama interna amarela brilhante
     e.fillStyle = "rgba(250, 204, 21, 0.98)";
     e.beginPath();
-    e.moveTo(-8 * s, baseY - 4 * s);
-    e.quadraticCurveTo(-4 * s - f3, baseY - 18 * s, f2 * 0.4, baseY - 30 * s + f2 * 0.5);
-    e.quadraticCurveTo(4 * s + f3, baseY - 18 * s, 8 * s, baseY - 4 * s);
+    e.moveTo(-6 * s, baseY - 3 * s);
+    e.quadraticCurveTo(-3 * s - f3, baseY - 14 * s, f2 * 0.4, baseY - 22 * s + f2 * 0.5);
+    e.quadraticCurveTo(3 * s + f3, baseY - 14 * s, 6 * s, baseY - 3 * s);
     e.closePath();
     e.fill();
 
     // Núcleo branco-amarelado incandescente
     e.fillStyle = "#fef9c3";
     e.beginPath();
-    e.ellipse(0, baseY - 9 * s, 5.5 * s, 7.5 * s, 0, 0, Math.PI * 2);
+    e.ellipse(0, baseY - 7 * s, 4 * s, 5.5 * s, 0, 0, Math.PI * 2);
     e.fill();
     e.restore();
 
     // Fagulhas subindo ao céu gelado
-    for (let sp = 0; sp < 8; sp++) {
+    for (let sp = 0; sp < 6; sp++) {
       const cyc = (animTimer * 2.4 + sp * 0.45) % 2.2;
       const prog = cyc / 2.2;
-      const sx = Math.sin(animTimer * 4 + sp * 1.9) * (12 * s) * (1 - prog * 0.3);
-      const sy = baseY - 14 * s - prog * 46 * s;
+      const sx = Math.sin(animTimer * 4 + sp * 1.9) * (9 * s) * (1 - prog * 0.3);
+      const sy = baseY - 10 * s - prog * 34 * s;
       const alpha = Math.max(0, 1 - prog);
       e.fillStyle = `rgba(254, 240, 138, ${alpha * 0.9})`;
       e.beginPath();
-      e.arc(sx, sy, (1.8 - prog * 0.9) * s, 0, Math.PI * 2);
+      e.arc(sx, sy, (1.5 - prog * 0.7) * s, 0, Math.PI * 2);
       e.fill();
     }
 

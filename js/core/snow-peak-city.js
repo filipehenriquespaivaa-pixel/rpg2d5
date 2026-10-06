@@ -22,37 +22,101 @@ window.Game = window.Game || {};
   // Centro e raio territorial da Cidade dos Picos Gelados (no coração do Bioma Gelado e Taiga Nevada)
   const CITY_CX = -380;
   const CITY_CY = -1220;
-  const CITY_RADIUS = 76;
+  const CITY_RADIUS = 64;
 
-  // Grade de 24 casas organizadas ao longo das ruas de paralelepípedo
-  // 6 colunas x 4 linhas = 24 casas (halfW: 5, halfH: 5 -> 11x11 blocos por casa)
-  const COLS = [-38, -23, -8, 8, 23, 38];
-  const ROWS = [-30, -15, 15, 30];
+  // =========================================================================
+  // URBANISMO ORGÂNICO E ASSIMÉTRICO DA VILA GLACIAL (24 CASAS):
+  // - Mistura casas geminadas (coladas umas nas outras) com casas separadas por
+  //   BECOS ESTREITOS (alguns com saída para o norte/sul, outros becos sem saída!).
+  // - As casas NÃO são todas alinhadas nem do mesmo tamanho:
+  //   * Tamanhos variados: Chalés Compactos (halfW: 5, halfH: 5), Chalés Largos (halfW: 6, halfH: 5),
+  //     Chalés Compridos (halfW: 5, halfH: 6) e Casarões Familiares de 2 Quartos (halfW: 7, halfH: 5 ou 6).
+  //   * Alinhamento orgânico: recuos e avanços variados em Y, mas todas conectadas às
+  //     Ruas Norte (relY = -12..-11) e Sul (relY = +11..+12) e à Praça Central!
+  //   * Algumas casas possuem DOIS QUARTOS mobiliados (Quarto Principal + 2º Quarto de Hóspedes/Filhos).
+  // =========================================================================
+  const HOUSE_SPECS = [
+    // --- QUARTEIRÃO NOROESTE (Lado Norte da Rua Norte, portas para o Sul) ---
+    // Casa #1 (Casarão de 2 Quartos) -> Beco sem saída em X = -31..-30 -> Casas #2 e #3 geminadas -> Beco com saída em X = -8 -> Casa #4 (recuada)
+    { relX: -39, relY: -18, halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true  }, // [-46..-32], sul em -13
+    { relX: -24, relY: -19, halfW: 5, halfH: 6, doorOnSouth: true,  twoBedrooms: false, openConcept: false }, // [-29..-19], sul em -13 (mais comprida!)
+    { relX: -14, relY: -18, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [-19..-9],  sul em -13 (geminada na #2)
+    // Beco com saída em X = -8
+    { relX: -2,  relY: -19, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: false }, // [-7..+3],   sul em -14 (recuada 1 bloco!)
 
-  const HOUSES = [];
-  let counter = 1;
-  for (let rIdx = 0; rIdx < ROWS.length; rIdx++) {
-    const rowY = CITY_CY + ROWS[rIdx];
-    for (let cIdx = 0; cIdx < COLS.length; cIdx++) {
-      const colX = CITY_CX + COLS[cIdx];
-      const id = counter++;
-      // Metade das casas (ímpares) tem Sala e Cozinha juntas (conceito aberto);
-      // a outra metade (pares) tem divisória com passagem separando Sala e Cozinha!
-      const openConcept = (id % 2 === 1);
-      const doorOnSouth = rIdx < 2; // As duas primeiras fileiras têm porta voltada ao Sul (para a praça)
+    // --- QUARTEIRÃO NORDESTE (Lado Norte da Rua Norte, portas para o Sul) ---
+    // Passagem Norte da Praça em X = +4..+5 -> Casas #5 e #6 geminadas -> Beco sem saída em X = +28..+29 -> Casa #7 (2 Quartos)
+    { relX: 11,  relY: -18, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [+6..+16],  sul em -13
+    { relX: 21,  relY: -19, halfW: 6, halfH: 6, doorOnSouth: true,  twoBedrooms: true,  openConcept: false }, // [+15..+27 -> ajustado +16..+28: relX: 22, halfW: 6], geminada na #5!
+    { relX: 37,  relY: -18, halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true  }, // [+30..+44], sul em -13 (separada por beco sem saída em +29!)
 
-      HOUSES.push({
-        id,
-        name: `Casa Glacial #${id} (${openConcept ? "Sala e Cozinha Integradas" : "Cômodos Separados"})`,
-        cx: colX,
-        cy: rowY,
-        halfW: 5,
-        halfH: 5,
-        openConcept,
-        doorOnSouth,
-      });
-    }
-  }
+    // --- QUARTEIRÃO CENTRO-OESTE (Lado Sul da Rua Norte, portas para o Norte + Coladas na Praça) ---
+    // Casa #8 -> Beco com saída em X = -33..-32 -> Casas #9 (2 Quartos) e #10 geminadas coladas na Praça!
+    { relX: -39, relY: -5,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [-44..-34], norte em -10
+    // Beco em X = -33..-32
+    { relX: -24, relY: -4,  halfW: 7, halfH: 6, doorOnSouth: false, twoBedrooms: true,  openConcept: true  }, // [-31..-17], norte em -10 (Casarão 2 Quartos!)
+    { relX: -11, relY: -5,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [-17..-5],  norte em -10 (geminada na #9 e colada na Praça em X = -5!)
+
+    // --- QUARTEIRÃO CENTRO-LESTE (Lado Sul da Rua Norte, portas para o Norte + Coladas na Praça) ---
+    // Casa #11 colada na Praça -> Beco sem saída em X = +16..+17 -> Casas #12 e #13 (2 Quartos) geminadas!
+    { relX: 10,  relY: -5,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true  }, // [+5..+15],  norte em -10 (colada na Praça em X = +5!)
+    // Beco sem saída em X = +16..+17
+    { relX: 23,  relY: -4,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [+18..+28], norte em -9 (recuada 1 bloco!)
+    { relX: 35,  relY: -5,  halfW: 7, halfH: 5, doorOnSouth: false, twoBedrooms: true,  openConcept: true  }, // [+28..+42], norte em -10 (geminada na #12, 2 Quartos!)
+
+    // --- QUARTEIRÃO CENTRO-SUL OESTE (Lado Norte da Rua Sul, portas para o Sul + Coladas na Praça) ---
+    // Casas #14 e #15 geminadas -> Beco sem saída em X = -18..-17 -> Casa #16 (2 Quartos) colada na Praça!
+    { relX: -38, relY: 5,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [-43..-33], sul em +10
+    { relX: -26, relY: 4,   halfW: 7, halfH: 6, doorOnSouth: true,  twoBedrooms: true,  openConcept: false }, // [-33..-19], sul em +10 (geminada na #14, 2 Quartos!)
+    // Beco sem saída em X = -18..-17
+    { relX: -11, relY: 5,   halfW: 6, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true  }, // [-17..-5],  sul em +10 (colada na Praça em X = -5!)
+
+    // --- QUARTEIRÃO CENTRO-SUL LESTE (Lado Norte da Rua Sul, portas para o Sul + Coladas na Praça) ---
+    // Casas #17 e #18 geminadas coladas na Praça -> Beco com saída em X = +27..+28 -> Casa #19
+    { relX: 10,  relY: 5,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: false }, // [+5..+15],  sul em +10 (colada na Praça em X = +5!)
+    { relX: 21,  relY: 6,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [+16..+26], sul em +11 (avançada 1 bloco na rua, geminada na #17!)
+    // Beco em X = +27..+28
+    { relX: 36,  relY: 5,   halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: false }, // [+29..+43], sul em +10 (Casarão 2 Quartos!)
+
+    // --- QUARTEIRÃO SUDOESTE (Lado Sul da Rua Sul, portas para o Norte) ---
+    // Casa #20 -> Beco sem saída em X = -29..-28 -> Casas #21 (2 Quartos) e #22 geminadas!
+    { relX: -36, relY: 18,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true  }, // [-42..-30], norte em +13
+    // Beco sem saída em X = -29..-28
+    { relX: -20, relY: 19,  halfW: 7, halfH: 6, doorOnSouth: false, twoBedrooms: true,  openConcept: false }, // [-27..-13], norte em +13 (2 Quartos, mais funda!)
+    { relX: -7,  relY: 18,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true  }, // [-12..-2],  norte em +13 (geminada na #21!)
+
+    // --- QUARTEIRÃO SUDESTE (Lado Sul da Rua Sul, portas para o Norte) ---
+    // Passagem Sul da Praça em X = -1..+2 -> Casa #23 (recuada) -> Beco com saída em X = +16..+17 -> Casas #24 (2 Quartos) e #25 geminadas!
+    { relX: 9,   relY: 19,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [+3..+15],  norte em +14 (recuada 1 bloco!)
+    // Beco com saída em X = +16..+17
+    { relX: 25,  relY: 18,  halfW: 7, halfH: 5, doorOnSouth: false, twoBedrooms: true,  openConcept: true  }, // [+18..+32], norte em +13 (Casarão 2 Quartos!)
+    { relX: 38,  relY: 19,  halfW: 5, halfH: 6, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [+33..+43], norte em +13 (geminada na #24!)
+  ];
+
+  // Corrige sobreposição exata da Casa #6 para compartilhar parede em X = +16 com a Casa #5
+  HOUSE_SPECS[5].relX = 22;
+
+  const HOUSES = HOUSE_SPECS.map((spec, idx) => {
+    const id = idx + 1;
+    const layoutDesc = spec.twoBedrooms
+      ? `2 Quartos • ${spec.openConcept ? "Sala/Cozinha Integradas" : "Cômodos Separados"}`
+      : spec.openConcept
+        ? "Sala e Cozinha Integradas"
+        : "Cômodos Separados";
+    return {
+      id,
+      name: `Casa Glacial #${id} (${layoutDesc})`,
+      cx: CITY_CX + spec.relX,
+      cy: CITY_CY + spec.relY,
+      relX: spec.relX,
+      relY: spec.relY,
+      halfW: spec.halfW,
+      halfH: spec.halfH,
+      openConcept: spec.openConcept,
+      twoBedrooms: !!spec.twoBedrooms,
+      doorOnSouth: spec.doorOnSouth,
+    };
+  });
 
   // Verifica se o tile está dentro do território da cidade
   function isCityTerritory(tx, ty) {
@@ -512,48 +576,42 @@ window.Game = window.Game || {};
     }
 
     // =====================================================================
-    // 2. FORA DAS CASAS: PRAÇA CENTRAL COMPACTA E RUAS DE PARALELEPÍPEDO
+    // 2. FORA DAS CASAS: PRAÇA CENTRAL COMPACTA E REDE DE RUAS CONECTADAS
     // =====================================================================
     const relX = tx - CITY_CX;
     const relY = ty - CITY_CY;
+    const absX = Math.abs(relX);
+    const absY = Math.abs(relY);
 
-    // 2.1 Praça Central compacta da Cidade dos Picos Gelados (bem menor: 9x9 blocos, |relX| <= 4 e |relY| <= 4)
-    const inCentralPlaza = Math.abs(relX) <= 4 && Math.abs(relY) <= 4;
+    // 2.1 Praça Central da Cidade dos Picos Gelados (9x9 blocos: |relX| <= 4 e |relY| <= 4,
+    //     com as casas internas coladas exatamente ao lado da praça em |relX| = 5!)
+    const inCentralPlaza = absX <= 4 && absY <= 4;
     if (inCentralPlaza) {
-      // Grande Fogueira / Pira Monumental dos Picos Gelados (ocupa 3x3 blocos no centro com colisor!)
-      if (Math.abs(relX) <= 1 && Math.abs(relY) <= 1) {
-        const isCenterTile = relX === 0 && relY === 0;
+      // Fogueira da Praça (no centro exato, metade do tamanho colossal anterior, com colisor!)
+      if (relX === 0 && relY === 0) {
         return {
           isSnowCity: true,
           role: "plaza",
-          roomName: "Grande Fogueira da Praça dos Picos Gelados",
+          roomName: "Fogueira da Praça dos Picos Gelados",
           isMonument: true,
           isCollider: true,
           isWall: false,
-          prop: isCenterTile
-            ? {
-                kind: "snow_city_monument",
-                scale: 2.35,
-                interactive: true,
-                namePt: "Grande Fogueira Monumental da Praça",
-                descriptionPt:
-                  "Pira colossal esculpida em granito da montanha e aros de ferro forjado, queimando toras inteiras de pinheiro com chamas altas que aquecem toda a praça.",
-              }
-            : {
-                kind: "snow_city_monument_collider",
-                interactive: true,
-                namePt: "Borda de Pedra da Grande Fogueira",
-                descriptionPt:
-                  "Mureta circular de granito e brasas ardentes da grande fogueira central da praça.",
-              },
+          prop: {
+            kind: "snow_city_monument",
+            scale: 1.2,
+            interactive: true,
+            namePt: "Fogueira da Praça dos Picos Gelados",
+            descriptionPt:
+              "Fogueira central de pedras da montanha e toras de pinheiro ardendo no coração da praça, aquecendo os bancos ao redor.",
+          },
         };
       }
 
-      // Bancos de madeira e ferro ao redor da Grande Fogueira (Norte, Sul, Leste, Oeste)
-      const isNorthBench = relY === -3 && Math.abs(relX) <= 1;
-      const isSouthBench = relY === 3 && Math.abs(relX) <= 1;
-      const isWestBench = relX === -3 && Math.abs(relY) <= 1;
-      const isEastBench = relX === 3 && Math.abs(relY) <= 1;
+      // Bancos de madeira e ferro ao redor da Fogueira (Norte, Sul, Leste, Oeste em distância 2)
+      const isNorthBench = relY === -2 && absX <= 1;
+      const isSouthBench = relY === 2 && absX <= 1;
+      const isWestBench = relX === -2 && absY <= 1;
+      const isEastBench = relX === 2 && absY <= 1;
 
       if (isNorthBench || isSouthBench || isWestBench || isEastBench) {
         const isVerticalBench = isWestBench || isEastBench;
@@ -576,14 +634,13 @@ window.Game = window.Game || {};
             interactive: true,
             namePt: "Banco da Praça Aquecido pela Fogueira",
             descriptionPt:
-              "Banco robusto de tábuas de carvalho e braços de ferro forjado, posicionado de frente para a grande fogueira da praça. Pressione [F] para sentar e descansar!",
+              "Banco robusto de tábuas de carvalho e braços de ferro forjado, posicionado de frente para a fogueira da praça. Pressione [F] para sentar e descansar!",
           },
         };
       }
 
-      // Postes de lampião nos quatro cantos da praça compacta
-      const isPlazaCorner = Math.abs(relX) === 4 && Math.abs(relY) === 4;
-      if (isPlazaCorner) {
+      // Postes de lampião nos quatro cantos da praça (|relX| === 3 e |relY| === 3)
+      if (absX === 3 && absY === 3) {
         return {
           isSnowCity: true,
           role: "plaza",
@@ -606,75 +663,99 @@ window.Game = window.Game || {};
       };
     }
 
-    // 2.2 Malha de Ruas e Avenidas de Paralelepípedo conectando todas as casas (1 bloco de largura)
-    const isHorizStreet =
-      relY === -37 ||
-      relY === -22 ||
-      relY === 0 ||
-      relY === 22 ||
-      relY === 37;
+    // 2.2 RUAS COM CASAS DOS DOIS LADOS, BECOS COM SAÍDA E BECOS SEM SAÍDA:
+    // - Rua Norte (relY = -12 e -11) e Rua Sul (relY = +11 e +12), percorrendo toda a vila (X = -45 até +44)
+    const isMainDualSidedStreet = (absY === 11 || absY === 12) && relX >= -45 && relX <= 44;
 
-    const isVertStreet =
-      relX === -45 ||
-      relX === -30 ||
-      relX === -15 ||
-      relX === 0 ||
-      relX === 15 ||
-      relX === 30 ||
-      relX === 45;
+    // - Passagens da Praça para as Ruas Norte e Sul:
+    //   * Ao Norte da Praça: passagem deslocada em X = 4..5 (entre a Casa #4 em X = -7..+3 e a Casa #5 em X = +6..+16)
+    //     e também acesso direto pelo vão central da Praça (X = -4..+4, Y = -10..-5)!
+    const isNorthPlazaConnector =
+      (relY >= -12 && relY <= -5 && relX >= -4 && relX <= 4) ||
+      (relY >= -24 && relY <= -11 && (relX === 4 || relX === 5));
 
-    if (isHorizStreet || isVertStreet) {
-      // Postes de iluminação em cruzamentos selecionados
-      const isIntersection = isHorizStreet && isVertStreet;
-      const isLampIntersection =
-        isIntersection &&
-        (Math.abs(relX) === 15 || Math.abs(relX) === 30 || Math.abs(relX) === 45) &&
-        (Math.abs(relY) === 22 || Math.abs(relY) === 37);
+    //   * Ao Sul da Praça: passagem em X = -1..+2 que atravessa desde a Praça até o final Sul (Y = +5..+24)!
+    const isSouthPlazaConnector =
+      (relY >= 5 && relY <= 12 && relX >= -4 && relX <= 4) ||
+      (relY >= 11 && relY <= 24 && relX >= -1 && relX <= 2);
 
-      if (isLampIntersection) {
+    // - BECOS COM SAÍDA (vielas estreitas que atravessam o quarteirão de um lado ao outro):
+    //   1. Beco do Norte-Oeste (X = -8, Y de -24 até -12): passa entre a Casa #3 e a Casa #4 até a borda norte!
+    //   2. Beco Central-Oeste (X = -33..-32, Y de -12 até +4): liga a Rua Norte ao pátio lateral entre as Casas #8 e #9!
+    //   3. Beco Centro-Leste (X = 27..28, Y de +4 até +12): atravessa entre as Casas #18 e #19 até a Rua Sul!
+    //   4. Beco Sul-Leste (X = 16..17, Y de +12 até +24): atravessa entre as Casas #23 e #24 até a saída sul!
+    const isThroughAlley =
+      (relX === -8 && relY >= -24 && relY <= -11) ||
+      ((relX === -33 || relX === -32) && relY >= -12 && relY <= -1) ||
+      ((relX === 27 || relX === 28) && relY >= 0 && relY <= 12) ||
+      ((relX === 16 || relX === 17) && relY >= 11 && relY <= 24);
+
+    // - BECOS SEM SAÍDA (vielas estreitas fechadas no fundo entre duas casas!):
+    //   1. Beco sem saída Noroeste (X = -31..-30, Y de -19 até -12, fechado ao norte em Y = -20): entre Casa #1 e Casa #2!
+    //   2. Beco sem saída Nordeste (X = 29, Y de -19 até -12, fechado ao norte): entre Casa #6 e Casa #7!
+    //   3. Beco sem saída Centro-Leste (X = 16..17, Y de -12 até -5, fechado ao sul pela parede/fundo): entre Casa #11 e Casa #12!
+    //   4. Beco sem saída Centro-Oeste (X = -18, Y de +5 até +12, fechado ao norte): entre Casa #15 e Casa #16!
+    //   5. Beco sem saída Sudoeste (X = -29..-28, Y de +12 até +20, fechado ao sul): entre Casa #20 e Casa #21!
+    const isDeadEndAlley =
+      ((relX === -31 || relX === -30) && relY >= -19 && relY <= -11) ||
+      (relX === 29 && relY >= -19 && relY <= -11) ||
+      ((relX === 16 || relX === 17) && relY >= -12 && relY <= -5) ||
+      (relX === -18 && relY >= 5 && relY <= 12) ||
+      ((relX === -29 || relX === -28) && relY >= 11 && relY <= 20);
+
+    // - Entradas de calçada automáticas ligando a porta de cada casa (mesmo as recuadas/desalinhadas) até a rua principal!
+    let isHouseDoorStep = false;
+    for (let i = 0; i < HOUSES.length; i++) {
+      const h = HOUSES[i];
+      const doorY = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
+      const dirY = h.doorOnSouth ? 1 : -1;
+      const stepDist = (ty - doorY) * dirY;
+      if (Math.abs(tx - h.cx) <= 1 && stepDist >= 1 && stepDist <= 4) {
+        isHouseDoorStep = true;
+        break;
+      }
+    }
+
+    if (
+      isMainDualSidedStreet ||
+      isNorthPlazaConnector ||
+      isSouthPlazaConnector ||
+      isThroughAlley ||
+      isDeadEndAlley ||
+      isHouseDoorStep
+    ) {
+      // No fundo dos becos sem saída, adiciona pequenos detalhes ou mantém o piso de paralelepípedo
+      const isCornerLamp =
+        (relX === -4 && relY === -10) ||
+        (relX === 4 && relY === -10) ||
+        (relX === -4 && relY === 10) ||
+        (relX === 4 && relY === 10) ||
+        (relX === -32 && relY === -12) ||
+        (relX === 28 && relY === 12);
+
+      if (isCornerLamp) {
         return {
           isSnowCity: true,
           role: "road",
           roomName: "Esquina da Rua de Paralelepípedos",
+          isCollider: true,
           prop: {
             kind: "snow_city_lamppost",
             interactive: true,
             namePt: "Lampião de Esquina em Paralelepípedo",
-            descriptionPt: "Lanterna de ferro fundido iluminando os paralelepípedos e guiando os transeuntes no frio.",
+            descriptionPt: "Lanterna de ferro fundido iluminando as ruas e entradas de becos da vila.",
           },
         };
       }
 
       return {
         isSnowCity: true,
-        role: "road",
-        roomName: "Rua de Paralelepípedos da Cidade Glacial",
-      };
-    }
-
-    // Acessos e calçadas estreitas conectando as casas às ruas (largura reduzida pela metade)
-    let minDistToHouse = 999;
-    let isDoorAccessPath = false;
-    for (let i = 0; i < HOUSES.length; i++) {
-      const h = HOUSES[i];
-      const dxH = Math.abs(tx - h.cx) - h.halfW;
-      const dyH = Math.abs(ty - h.cy) - h.halfH;
-      const dist = Math.max(dxH, dyH);
-      if (dist < minDistToHouse) minDistToHouse = dist;
-
-      // Trilha estreita de 1 bloco ligando a porta frontal da casa até a rua horizontal
-      const doorDirY = h.doorOnSouth ? 1 : -1;
-      const relDoorY = (ty - h.cy) * doorDirY;
-      if (tx === h.cx && relDoorY > h.halfH && relDoorY <= h.halfH + 2) {
-        isDoorAccessPath = true;
-      }
-    }
-
-    if (minDistToHouse <= 1 || isDoorAccessPath) {
-      return {
-        isSnowCity: true,
-        role: "road",
-        roomName: "Calçada de Paralelepípedos da Casa",
+        role: (isNorthPlazaConnector || isSouthPlazaConnector) && absX <= 2 && absY <= 10 ? "plaza" : "road",
+        roomName: isDeadEndAlley
+          ? "Beco Sem Saída de Paralelepípedos"
+          : isThroughAlley
+            ? "Beco Estreito de Passagem"
+            : "Rua de Paralelepípedos da Vila Glacial",
       };
     }
 
