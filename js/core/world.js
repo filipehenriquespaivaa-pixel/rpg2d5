@@ -1215,11 +1215,13 @@
       return this.getSurfaceTile(t, l);
     }
     _computeSurfaceBaseBiome(t, l) {
-      const m = this.detailNoise.noise2D(t * 0.00125, l * 0.00125) * 48,
-        c = this.detailNoise.noise2D(t * 0.00125 + 77, l * 0.00125 + 77) * 48,
+      // Escala continental ampliada (6x maior): garante que NENHUM bioma tenha menos de 2.000 blocos!
+      const S_BIOME = 0.16;
+      const m = this.detailNoise.noise2D(t * 0.00125 * S_BIOME, l * 0.00125 * S_BIOME) * 180,
+        c = this.detailNoise.noise2D(t * 0.00125 * S_BIOME + 77, l * 0.00125 * S_BIOME + 77) * 180,
         f = t + m,
         g = l + c,
-        y = this.elevNoise.fbm2D(f * 0.000275, g * 0.000275, 2, 2, 0.4),
+        y = this.elevNoise.fbm2D(f * 0.000275 * S_BIOME, g * 0.000275 * S_BIOME, 2, 2, 0.4),
         w = Math.hypot(t, l),
         v = w < 144 ? (1 - w / 144) * 0.28 : 0;
       let T = Math.max(0, Math.min(1, y + v)),
@@ -1228,8 +1230,8 @@
         j = !1;
       if (y < 0.24) {
         const ue = this.islandNoise.fbm2D(
-          t * 0.00055 + 400,
-          l * 0.00055 + 400,
+          t * 0.00055 * S_BIOME + 400,
+          l * 0.00055 * S_BIOME + 400,
           2,
           2,
           0.45,
@@ -1239,8 +1241,8 @@
           const N = (ue - 0.56) / 0.44;
           T = 0.32 + N * 0.56;
           const Ee = this.featureNoise.fbm2D(
-            t * 0.000625 + 200,
-            l * 0.000625 + 200,
+            t * 0.000625 * S_BIOME + 200,
+            l * 0.000625 * S_BIOME + 200,
             2,
             2,
             0.5,
@@ -1249,31 +1251,31 @@
             ((p = !0), (N > 0.4 || (Ee > 0.58 && T > 0.55)) && (j = !0));
         }
       }
-      const P = this.tempNoise.fbm2D(f * 0.000225 + 150, g * 0.000225 + 150, 2, 2, 0.4),
+      const P = this.tempNoise.fbm2D(f * 0.000225 * S_BIOME + 150, g * 0.000225 * S_BIOME + 150, 2, 2, 0.4),
         A = this.moistNoise.fbm2D(
-          f * 0.0003 + 280,
-          g * 0.0003 + 280,
+          f * 0.0003 * S_BIOME + 280,
+          g * 0.0003 * S_BIOME + 280,
           2,
           2,
           0.4,
         ),
         x = this.featureNoise.fbm2D(
-          t * 0.00075 + 320,
-          l * 0.00075 + 320,
+          t * 0.00075 * S_BIOME + 320,
+          l * 0.00075 * S_BIOME + 320,
           2,
           2,
           0.5,
         ),
         M = this.featureNoise.fbm2D(
-          t * 0.0007 + 560,
-          l * 0.0007 + 560,
+          t * 0.0007 * S_BIOME + 560,
+          l * 0.0007 * S_BIOME + 560,
           2,
           2,
           0.5,
         ),
         $ = this.canyonNoise.fbm2D(
-          t * 0.0007 + 780,
-          l * 0.0007 + 780,
+          t * 0.0007 * S_BIOME + 780,
+          l * 0.0007 * S_BIOME + 780,
           2,
           2,
           0.5,
@@ -1282,8 +1284,8 @@
           w < 96
             ? 0
             : this.lakeNoise.fbm2D(
-                f * 0.00195 + 920,
-                g * 0.00195 + 920,
+                f * 0.00195 * S_BIOME + 920,
+                g * 0.00195 * S_BIOME + 920,
                 2,
                 2,
                 0.45,
@@ -2002,11 +2004,13 @@
       const o = this._tk(t, l, !1),
         cached = this.tileCache.get(o);
       if (cached) return cached;
-      const m = this.detailNoise.noise2D(t * 0.00125, l * 0.00125) * 48,
-        c = this.detailNoise.noise2D(t * 0.00125 + 77, l * 0.00125 + 77) * 48,
+      // Escala continental ampliada (6x maior): garante que NENHUM bioma tenha menos de 2.000 blocos!
+      const S_BIOME = 0.16;
+      const m = this.detailNoise.noise2D(t * 0.00125 * S_BIOME, l * 0.00125 * S_BIOME) * 180,
+        c = this.detailNoise.noise2D(t * 0.00125 * S_BIOME + 77, l * 0.00125 * S_BIOME + 77) * 180,
         f = t + m,
         g = l + c,
-        y = this.elevNoise.fbm2D(f * 0.000275, g * 0.000275, 2, 2, 0.4),
+        y = this.elevNoise.fbm2D(f * 0.000275 * S_BIOME, g * 0.000275 * S_BIOME, 2, 2, 0.4),
         w = Math.hypot(t, l),
         v = w < 144 ? (1 - w / 144) * 0.28 : 0;
       let T = Math.max(0, Math.min(1, y + v)),
@@ -2015,8 +2019,8 @@
         j = !1;
       if (y < 0.24) {
         const ue = this.islandNoise.fbm2D(
-          t * 0.00055 + 400,
-          l * 0.00055 + 400,
+          t * 0.00055 * S_BIOME + 400,
+          l * 0.00055 * S_BIOME + 400,
           2,
           2,
           0.45,
@@ -2026,8 +2030,8 @@
           const N = (ue - 0.56) / 0.44;
           T = 0.32 + N * 0.56;
           const Ee = this.featureNoise.fbm2D(
-            t * 0.000625 + 200,
-            l * 0.000625 + 200,
+            t * 0.000625 * S_BIOME + 200,
+            l * 0.000625 * S_BIOME + 200,
             2,
             2,
             0.5,
@@ -2036,31 +2040,31 @@
             ((p = !0), (N > 0.4 || (Ee > 0.58 && T > 0.55)) && (j = !0));
         }
       }
-      const P = this.tempNoise.fbm2D(f * 0.000225 + 150, g * 0.000225 + 150, 2, 2, 0.4),
+      const P = this.tempNoise.fbm2D(f * 0.000225 * S_BIOME + 150, g * 0.000225 * S_BIOME + 150, 2, 2, 0.4),
         A = this.moistNoise.fbm2D(
-          f * 0.0003 + 280,
-          g * 0.0003 + 280,
+          f * 0.0003 * S_BIOME + 280,
+          g * 0.0003 * S_BIOME + 280,
           2,
           2,
           0.4,
         ),
         x = this.featureNoise.fbm2D(
-          t * 0.00075 + 320,
-          l * 0.00075 + 320,
+          t * 0.00075 * S_BIOME + 320,
+          l * 0.00075 * S_BIOME + 320,
           2,
           2,
           0.5,
         ),
         M = this.featureNoise.fbm2D(
-          t * 0.0007 + 560,
-          l * 0.0007 + 560,
+          t * 0.0007 * S_BIOME + 560,
+          l * 0.0007 * S_BIOME + 560,
           2,
           2,
           0.5,
         ),
         $ = this.canyonNoise.fbm2D(
-          t * 0.0007 + 780,
-          l * 0.0007 + 780,
+          t * 0.0007 * S_BIOME + 780,
+          l * 0.0007 * S_BIOME + 780,
           2,
           2,
           0.5,
@@ -2069,8 +2073,8 @@
           w < 96
             ? 0
             : this.lakeNoise.fbm2D(
-                f * 0.00195 + 920,
-                g * 0.00195 + 920,
+                f * 0.00195 * S_BIOME + 920,
+                g * 0.00195 * S_BIOME + 920,
                 2,
                 2,
                 0.45,

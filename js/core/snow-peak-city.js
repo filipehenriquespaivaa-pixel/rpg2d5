@@ -125,11 +125,12 @@ window.Game = window.Game || {};
     return dx * dx + dy * dy <= CITY_RADIUS * CITY_RADIUS;
   }
 
-  // Zona alpina ao redor da cidade (garante neve pura em todo o entorno visual)
+  // Zona alpina ao redor da cidade: garante que o bioma de Picos Glaciais tenha no mínimo 2.100 blocos de diâmetro
+  // (raio de 1.050 blocos ao redor do centro da cidade, totalizando 2.100 x 2.100 blocos contínuos!)
   function isCityBiomeArea(tx, ty) {
     const dx = tx - CITY_CX;
     const dy = ty - CITY_CY;
-    const bufferRadius = CITY_RADIUS + 35;
+    const bufferRadius = 1050;
     return dx * dx + dy * dy <= bufferRadius * bufferRadius;
   }
 
