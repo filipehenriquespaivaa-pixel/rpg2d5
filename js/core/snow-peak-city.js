@@ -512,42 +512,83 @@ window.Game = window.Game || {};
     }
 
     // =====================================================================
-    // 2. FORA DAS CASAS: PRAÇA CENTRAL E RUAS DE PARALELEPÍPEDO
+    // 2. FORA DAS CASAS: PRAÇA CENTRAL COMPACTA E RUAS DE PARALELEPÍPEDO
     // =====================================================================
     const relX = tx - CITY_CX;
     const relY = ty - CITY_CY;
 
-    // 2.1 Praça Central da Cidade dos Picos Gelados (entre as casas do norte e sul)
-    const inCentralPlaza = Math.abs(relX) <= 14 && Math.abs(relY) <= 6;
+    // 2.1 Praça Central compacta da Cidade dos Picos Gelados (bem menor: 9x9 blocos, |relX| <= 4 e |relY| <= 4)
+    const inCentralPlaza = Math.abs(relX) <= 4 && Math.abs(relY) <= 4;
     if (inCentralPlaza) {
-      // Centro exato da praça: Grande Fogueira / Monumento Comunal dos Picos Gelados
-      if (tx === CITY_CX && ty === CITY_CY) {
+      // Grande Fogueira / Pira Monumental dos Picos Gelados (ocupa 3x3 blocos no centro com colisor!)
+      if (Math.abs(relX) <= 1 && Math.abs(relY) <= 1) {
+        const isCenterTile = relX === 0 && relY === 0;
         return {
           isSnowCity: true,
           role: "plaza",
-          roomName: "Marco Zero da Praça dos Picos Gelados",
+          roomName: "Grande Fogueira da Praça dos Picos Gelados",
           isMonument: true,
+          isCollider: true,
+          isWall: false,
+          prop: isCenterTile
+            ? {
+                kind: "snow_city_monument",
+                scale: 2.35,
+                interactive: true,
+                namePt: "Grande Fogueira Monumental da Praça",
+                descriptionPt:
+                  "Pira colossal esculpida em granito da montanha e aros de ferro forjado, queimando toras inteiras de pinheiro com chamas altas que aquecem toda a praça.",
+              }
+            : {
+                kind: "snow_city_monument_collider",
+                interactive: true,
+                namePt: "Borda de Pedra da Grande Fogueira",
+                descriptionPt:
+                  "Mureta circular de granito e brasas ardentes da grande fogueira central da praça.",
+              },
+        };
+      }
+
+      // Bancos de madeira e ferro ao redor da Grande Fogueira (Norte, Sul, Leste, Oeste)
+      const isNorthBench = relY === -3 && Math.abs(relX) <= 1;
+      const isSouthBench = relY === 3 && Math.abs(relX) <= 1;
+      const isWestBench = relX === -3 && Math.abs(relY) <= 1;
+      const isEastBench = relX === 3 && Math.abs(relY) <= 1;
+
+      if (isNorthBench || isSouthBench || isWestBench || isEastBench) {
+        const isVerticalBench = isWestBench || isEastBench;
+        return {
+          isSnowCity: true,
+          role: "plaza",
+          roomName: "Banco da Praça dos Picos Gelados",
+          isCollider: true,
           isWall: false,
           prop: {
-            kind: "snow_city_monument",
+            kind: "snow_city_bench",
+            subType: isVerticalBench ? 1 : 0,
+            benchFacing: isNorthBench
+              ? "south"
+              : isSouthBench
+                ? "north"
+                : isWestBench
+                  ? "east"
+                  : "west",
             interactive: true,
-            namePt: "Grande Fogueira da Praça dos Picos Gelados",
+            namePt: "Banco da Praça Aquecido pela Fogueira",
             descriptionPt:
-              "Monumento esculpido em granito azul da montanha com uma grande chama eterna que ilumina e aquece a praça pública dia e noite.",
+              "Banco robusto de tábuas de carvalho e braços de ferro forjado, posicionado de frente para a grande fogueira da praça. Pressione [F] para sentar e descansar!",
           },
         };
       }
 
-      // Postes de lampião nos quatro cantos da praça
-      const isPlazaCorner =
-        (Math.abs(relX) === 12 || Math.abs(relX) === 8) &&
-        (Math.abs(relY) === 5 || Math.abs(relY) === 3);
-
+      // Postes de lampião nos quatro cantos da praça compacta
+      const isPlazaCorner = Math.abs(relX) === 4 && Math.abs(relY) === 4;
       if (isPlazaCorner) {
         return {
           isSnowCity: true,
           role: "plaza",
           roomName: "Lampião da Praça Central",
+          isCollider: true,
           isWall: false,
           prop: {
             kind: "snow_city_lamppost",
@@ -565,11 +606,11 @@ window.Game = window.Game || {};
       };
     }
 
-    // 2.2 Malha de Ruas e Avenidas de Paralelepípedo conectando todas as casas (largura reduzida pela metade)
+    // 2.2 Malha de Ruas e Avenidas de Paralelepípedo conectando todas as casas (1 bloco de largura)
     const isHorizStreet =
       relY === -37 ||
       relY === -22 ||
-      Math.abs(relY - 0) <= 1 ||
+      relY === 0 ||
       relY === 22 ||
       relY === 37;
 

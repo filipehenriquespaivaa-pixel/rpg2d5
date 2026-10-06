@@ -138,6 +138,24 @@
                   color: "rgba(56, 189, 248, 0.8)",
                   intensity: 0.85,
                 });
+              else if (G.prop.kind === "snow_city_monument")
+                K.push({
+                  x: ke * f + f / 2,
+                  y: ne * f + f / 2,
+                  radius: 320 + Math.sin(this.animTimer * 5) * 12,
+                  color: "rgba(251, 146, 60, 0.42)",
+                  intensity: 1,
+                  isCampfire: !0,
+                });
+              else if (G.prop.kind === "snow_city_lamppost" || G.prop.kind === "snow_city_fireplace")
+                K.push({
+                  x: ke * f + f / 2,
+                  y: ne * f + f / 2,
+                  radius: 150 + Math.sin(this.animTimer * 4 + ke) * 5,
+                  color: "rgba(251, 191, 36, 0.34)",
+                  intensity: 0.9,
+                  isCampfire: !0,
+                });
               else if (G.prop.kind === "cave_entrance")
                 K.push({
                   x: ke * f + f / 2,
@@ -1744,6 +1762,12 @@
             break;
           case "snow_city_monument":
             drawSnowCityMonument(c, f, this.animTimer);
+            break;
+          case "snow_city_monument_collider":
+            // Os 8 tiles ao redor do centro da pira usam o desenho monumental central (scale 2.35) e possuem colisor
+            break;
+          case "snow_city_bench":
+            drawSnowCityBench(c, f, t.subType || 0, t.benchFacing || "south");
             break;
           case "snow_city_lamppost":
             drawSnowCityLamppost(c, f, this.animTimer);

@@ -2445,6 +2445,7 @@
             se.snowCityHouseIndex = scCell.houseIndex;
             se.snowCityOpenConcept = !!scCell.openConcept;
             if (scCell.isWall) se.isSnowCityWall = !0;
+            if (scCell.isCollider) se.isSnowCityCollider = !0;
             if (scCell.isDoor) {
               se.isSnowCityDoor = !0;
               se.isSnowCityDoorOpen = !!scCell.isDoorOpen;
@@ -4750,11 +4751,20 @@
           reward: "",
         };
       }
-      if (o.prop.kind === "snow_city_monument") {
+      if (o.prop.kind === "snow_city_monument" || o.prop.kind === "snow_city_monument_collider") {
         return {
           success: !0,
-          message: "🏔️ Marco Zero da Praça dos Picos Gelados: o fogo eterno acolhe os viajantes da cordilheira.",
-          reward: "Bênção da Cordilheira (+50 HP / Vigor)",
+          action: "rest_campfire",
+          message: "🔥 Você se aqueceu junto à Grande Fogueira Monumental da Praça dos Picos Gelados! Saúde e vigor restaurados.",
+          reward: "Calor da Grande Fogueira (+HP / Vigor)",
+        };
+      }
+      if (o.prop.kind === "snow_city_bench") {
+        return {
+          success: !0,
+          action: "rest_campfire",
+          message: "🪑 Você sentou no banco da praça de frente para a grande fogueira e descansou ao calor das chamas!",
+          reward: "Descanso na Praça (+HP / Vigor)",
         };
       }
       if (o.prop.kind === "greek_statue") {
@@ -4973,6 +4983,7 @@
       if (o && o.isGreekWall) return !1;
       if (o && o.isGreekDoor && !o.isGreekDoorOpen) return !1;
       if (o && o.isSnowCityWall) return !1;
+      if (o && o.isSnowCityCollider) return !1;
       if (o && o.isSnowCityDoor && !o.isSnowCityDoorOpen) return !1;
       if (
         o &&
@@ -4983,6 +4994,8 @@
           o.prop.kind === "snow_city_bed" ||
           o.prop.kind === "snow_city_stove" ||
           o.prop.kind === "snow_city_monument" ||
+          o.prop.kind === "snow_city_monument_collider" ||
+          o.prop.kind === "snow_city_bench" ||
           o.prop.kind === "snow_city_lamppost")
       )
         return !1;

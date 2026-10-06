@@ -5949,59 +5949,226 @@
     e.restore();
   }
 
-  // 10. Monumento / Grande Fogueira da Praça dos Picos Gelados
+  // 10. Monumento / Grande Fogueira Colossal da Praça dos Picos Gelados (ocupa 3x3 blocos!)
   function drawSnowCityMonument(e, t, animTimer = 0) {
     e.save();
-    const baseY = 18 * t;
+    // Como prop.scale é ~2.35 ou 1, ajustamos para ocupar uma grande pira circular de ~3x3 tiles (~100px de diâmetro)
+    const s = t * 1.15;
+    const baseY = 6 * s;
 
-    // Degraus octogonais de granito azul com neve
-    e.fillStyle = "#334155";
+    // Halo de calor alaranjado pulsante no chão de pedra ao redor da pira
+    const pulse = (Math.sin(animTimer * 5) + 1) * 0.5;
+    const glowGrad = e.createRadialGradient(0, 0, 6 * s, 0, 0, 52 * s);
+    glowGrad.addColorStop(0, `rgba(251, 146, 60, ${0.42 + pulse * 0.12})`);
+    glowGrad.addColorStop(0.55, `rgba(234, 88, 12, ${0.18 + pulse * 0.08})`);
+    glowGrad.addColorStop(1, "rgba(234, 88, 12, 0)");
+    e.fillStyle = glowGrad;
     e.beginPath();
-    e.moveTo(-16 * t, baseY);
-    e.lineTo(-12 * t, baseY - 6 * t);
-    e.lineTo(12 * t, baseY - 6 * t);
-    e.lineTo(16 * t, baseY);
-    e.closePath();
+    e.ellipse(0, 2 * s, 50 * s, 38 * s, 0, 0, Math.PI * 2);
     e.fill();
 
-    // Neve nos degraus
-    e.fillStyle = "#f8fafc";
-    e.fillRect(-13 * t, baseY - 7 * t, 26 * t, 2.5 * t);
-
-    // Braseiro monumental de ferro forjado
+    // Base escalonada circular/octogonal de granito da montanha (cobrindo a área 3x3 do colisor)
     e.fillStyle = "#1e293b";
     e.beginPath();
-    e.moveTo(-10 * t, baseY - 6 * t);
-    e.lineTo(-12 * t, baseY - 16 * t);
-    e.lineTo(12 * t, baseY - 16 * t);
-    e.lineTo(10 * t, baseY - 6 * t);
+    e.ellipse(0, baseY + 4 * s, 38 * s, 26 * s, 0, 0, Math.PI * 2);
+    e.fill();
+    e.strokeStyle = "#0f172a";
+    e.lineWidth = 1.6 * s;
+    e.stroke();
+
+    // Segundo degrau de blocos de pedra com borda de neve derretendo
+    e.fillStyle = "#334155";
+    e.beginPath();
+    e.ellipse(0, baseY, 32 * s, 21 * s, 0, 0, Math.PI * 2);
+    e.fill();
+    e.strokeStyle = "#475569";
+    e.lineWidth = 1.4 * s;
+    e.stroke();
+
+    // Anel de pedras brutas maciças ao redor da fogueira
+    const stoneCount = 12;
+    for (let i = 0; i < stoneCount; i++) {
+      const ang = (i / stoneCount) * Math.PI * 2;
+      const rx = Math.cos(ang) * 26 * s;
+      const ry = baseY - 2 * s + Math.sin(ang) * 16 * s;
+      e.fillStyle = i % 2 === 0 ? "#475569" : "#334155";
+      e.beginPath();
+      e.ellipse(rx, ry, 6.5 * s, 4.8 * s, ang * 0.3, 0, Math.PI * 2);
+      e.fill();
+      e.strokeStyle = "#0f172a";
+      e.lineWidth = 1 * s;
+      e.stroke();
+    }
+
+    // Leito profundo de brasas ardentes e carvão incandescente
+    e.fillStyle = "#451a03";
+    e.beginPath();
+    e.ellipse(0, baseY - 3 * s, 22 * s, 13 * s, 0, 0, Math.PI * 2);
+    e.fill();
+
+    e.fillStyle = `rgba(234, 88, 12, ${0.82 + pulse * 0.18})`;
+    e.beginPath();
+    e.ellipse(0, baseY - 3.5 * s, 18 * s, 10.5 * s, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Grandes toras de pinheiro empilhadas em pirâmide na fogueira
+    const logs = [
+      { ang: -0.35, len: 34, w: 5.2, col: "#451a03" },
+      { ang: 0.35, len: 34, w: 5.2, col: "#78350f" },
+      { ang: 1.15, len: 28, w: 4.8, col: "#5c2808" },
+      { ang: -1.15, len: 28, w: 4.8, col: "#78350f" },
+      { ang: 0.05, len: 30, w: 4.5, col: "#92400e" },
+    ];
+    for (const lg of logs) {
+      e.save();
+      e.translate(0, baseY - 5 * s);
+      e.rotate(lg.ang);
+      e.fillStyle = lg.col;
+      e.fillRect((-lg.len * 0.5) * s, (-lg.w * 0.5) * s, lg.len * s, lg.w * s);
+      e.strokeStyle = "#271206";
+      e.lineWidth = 0.9 * s;
+      e.strokeRect((-lg.len * 0.5) * s, (-lg.w * 0.5) * s, lg.len * s, lg.w * s);
+      e.restore();
+    }
+
+    // Grandes Chamas Colossais da Fogueira da Praça
+    const f1 = Math.sin(animTimer * 10) * 4.5 * s;
+    const f2 = Math.cos(animTimer * 14) * 5 * s;
+    const f3 = Math.sin(animTimer * 8 + 1.4) * 3.5 * s;
+
+    e.save();
+    e.shadowColor = "#ea580c";
+    e.shadowBlur = 22;
+
+    // Língua de fogo externa vermelha/laranja escura
+    e.fillStyle = "rgba(220, 38, 38, 0.92)";
+    e.beginPath();
+    e.moveTo(-18 * s, baseY - 4 * s);
+    e.quadraticCurveTo(-16 * s + f1, baseY - 26 * s, -6 * s + f3, baseY - 38 * s);
+    e.quadraticCurveTo(0, baseY - 52 * s + f2, 6 * s - f3, baseY - 38 * s);
+    e.quadraticCurveTo(16 * s - f1, baseY - 26 * s, 18 * s, baseY - 4 * s);
     e.closePath();
     e.fill();
 
-    // Grandes Chamas Eternas da Cidade
-    const f1 = Math.sin(animTimer * 10) * 3 * t;
-    const f2 = Math.cos(animTimer * 14) * 3.5 * t;
-
-    e.fillStyle = "rgba(239, 68, 68, 0.9)";
+    // Língua de fogo intermediária laranja-ouro
+    e.fillStyle = "rgba(249, 115, 22, 0.96)";
     e.beginPath();
-    e.moveTo(-8 * t, baseY - 15 * t);
-    e.quadraticCurveTo(-4 * t + f1, baseY - 26 * t, 0, baseY - 34 * t + f2);
-    e.quadraticCurveTo(4 * t - f1, baseY - 26 * t, 8 * t, baseY - 15 * t);
+    e.moveTo(-13 * s, baseY - 4 * s);
+    e.quadraticCurveTo(-9 * s + f2, baseY - 24 * s, f1 * 0.6, baseY - 42 * s + f1);
+    e.quadraticCurveTo(9 * s - f2, baseY - 24 * s, 13 * s, baseY - 4 * s);
     e.closePath();
     e.fill();
 
-    e.fillStyle = "rgba(245, 158, 11, 0.95)";
+    // Chama interna amarela brilhante
+    e.fillStyle = "rgba(250, 204, 21, 0.98)";
     e.beginPath();
-    e.moveTo(-5 * t, baseY - 15 * t);
-    e.quadraticCurveTo(-2 * t + f2, baseY - 24 * t, 0, baseY - 28 * t + f1);
-    e.quadraticCurveTo(2 * t - f2, baseY - 24 * t, 5 * t, baseY - 15 * t);
+    e.moveTo(-8 * s, baseY - 4 * s);
+    e.quadraticCurveTo(-4 * s - f3, baseY - 18 * s, f2 * 0.4, baseY - 30 * s + f2 * 0.5);
+    e.quadraticCurveTo(4 * s + f3, baseY - 18 * s, 8 * s, baseY - 4 * s);
     e.closePath();
     e.fill();
 
-    e.fillStyle = "#fef08a";
+    // Núcleo branco-amarelado incandescente
+    e.fillStyle = "#fef9c3";
     e.beginPath();
-    e.arc(0, baseY - 18 * t, 3.5 * t, 0, Math.PI * 2);
+    e.ellipse(0, baseY - 9 * s, 5.5 * s, 7.5 * s, 0, 0, Math.PI * 2);
     e.fill();
+    e.restore();
+
+    // Fagulhas subindo ao céu gelado
+    for (let sp = 0; sp < 8; sp++) {
+      const cyc = (animTimer * 2.4 + sp * 0.45) % 2.2;
+      const prog = cyc / 2.2;
+      const sx = Math.sin(animTimer * 4 + sp * 1.9) * (12 * s) * (1 - prog * 0.3);
+      const sy = baseY - 14 * s - prog * 46 * s;
+      const alpha = Math.max(0, 1 - prog);
+      e.fillStyle = `rgba(254, 240, 138, ${alpha * 0.9})`;
+      e.beginPath();
+      e.arc(sx, sy, (1.8 - prog * 0.9) * s, 0, Math.PI * 2);
+      e.fill();
+    }
+
+    e.restore();
+  }
+
+  // 10b. Bancos da Praça Central ao redor da Grande Fogueira
+  function drawSnowCityBench(e, t, subType = 0, facing = "south") {
+    e.save();
+    const isVert = subType === 1 || facing === "east" || facing === "west";
+
+    // Sombra projetada no chão de paralelepípedo
+    e.fillStyle = "rgba(15, 23, 42, 0.55)";
+    if (isVert) {
+      e.fillRect(-7 * t, -15 * t, 14 * t, 30 * t);
+    } else {
+      e.fillRect(-16 * t, -6 * t, 32 * t, 14 * t);
+    }
+
+    if (isVert) {
+      // Banco vertical (Leste / Oeste da fogueira)
+      const backX = facing === "east" ? -5.5 * t : 2.5 * t;
+      const seatX = facing === "east" ? -2.5 * t : -5.5 * t;
+
+      // Pés de ferro forjado preto
+      e.fillStyle = "#0f172a";
+      e.fillRect(-6 * t, -14 * t, 12 * t, 2.5 * t);
+      e.fillRect(-6 * t, 11.5 * t, 12 * t, 2.5 * t);
+
+      // Assento de tábuas de carvalho aquecido
+      e.fillStyle = "#92400e";
+      e.fillRect(seatX, -13.5 * t, 8 * t, 27 * t);
+      e.strokeStyle = "#451a03";
+      e.lineWidth = 0.9 * t;
+      e.strokeRect(seatX, -13.5 * t, 8 * t, 27 * t);
+
+      // Divisão das ripas de madeira do assento
+      e.beginPath();
+      e.moveTo(seatX + 4 * t, -13.5 * t);
+      e.lineTo(seatX + 4 * t, 13.5 * t);
+      e.stroke();
+
+      // Encosto de madeira reforçada com neve fina nas pontas
+      e.fillStyle = "#78350f";
+      e.fillRect(backX, -14 * t, 3.2 * t, 28 * t);
+      e.strokeRect(backX, -14 * t, 3.2 * t, 28 * t);
+
+      // Apoios de braço de ferro forjado
+      e.fillStyle = "#1e293b";
+      e.fillRect(-6 * t, -14 * t, 12 * t, 2 * t);
+      e.fillRect(-6 * t, 12 * t, 12 * t, 2 * t);
+    } else {
+      // Banco horizontal (Norte / Sul da fogueira)
+      const backY = facing === "north" ? 1 * t : -9 * t;
+      const seatY = facing === "north" ? -5 * t : -4 * t;
+
+      // Pés laterais de ferro forjado
+      e.fillStyle = "#0f172a";
+      e.fillRect(-14 * t, -5 * t, 3 * t, 11 * t);
+      e.fillRect(11 * t, -5 * t, 3 * t, 11 * t);
+
+      // Assento de tábuas de carvalho
+      e.fillStyle = "#92400e";
+      e.fillRect(-15 * t, seatY, 30 * t, 7.5 * t);
+      e.strokeStyle = "#451a03";
+      e.lineWidth = 0.9 * t;
+      e.strokeRect(-15 * t, seatY, 30 * t, 7.5 * t);
+
+      // Linhas das ripas horizontais
+      e.beginPath();
+      e.moveTo(-15 * t, seatY + 3.8 * t);
+      e.lineTo(15 * t, seatY + 3.8 * t);
+      e.stroke();
+
+      // Encosto do banco
+      e.fillStyle = "#78350f";
+      e.fillRect(-15 * t, backY, 30 * t, 4.2 * t);
+      e.strokeRect(-15 * t, backY, 30 * t, 4.2 * t);
+
+      // Detalhe de neve acumulada nas pontas do encosto
+      e.fillStyle = "#f8fafc";
+      e.fillRect(-14.5 * t, backY, 5 * t, 1.6 * t);
+      e.fillRect(9.5 * t, backY, 5 * t, 1.6 * t);
+    }
 
     e.restore();
   }
