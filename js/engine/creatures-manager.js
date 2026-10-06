@@ -1448,7 +1448,12 @@
             (A = 0.85),
             (x = 0.95));
       else if (l) {
-        const K = Math.random();
+        const isInPrisonEarthMine =
+          typeof window !== "undefined" &&
+          window.SnowPeakCity &&
+          typeof window.SnowPeakCity.isPrisonMineArea === "function" &&
+          window.SnowPeakCity.isPrisonMineArea(y, w);
+        const K = isInPrisonEarthMine ? 0.5 : Math.random();
         K < 0.35
           ? ((v = "slime"),
             (T = "Gosma Cavernosa Bioluminescente"),

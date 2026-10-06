@@ -652,7 +652,40 @@
             g.fill(),
             (g.globalAlpha = 1));
         const T = t.detailHash;
-        if (t.isDungeonWall) {
+        if (t.isEarthMineWall) {
+          // Parede maciça de TERRA ESCAVADA da Mina Profunda (marrom terroso escuro com camadas de solo, sem pedras azuis nem neve)
+          const isAlt = (Math.abs(t.tx * 5 + t.ty * 11) % 2) === 0;
+          g.fillStyle = isAlt ? "#26150a" : "#1f1108";
+          g.fillRect(l, o, u + 1, u + 1);
+          g.fillStyle = "#361e0f";
+          g.fillRect(l + 1, o + 1, u - 2, u - 2);
+          // Topo de terra compactada e raízes/veios de barro escuro
+          g.fillStyle = "#4a2a16";
+          g.fillRect(l, o, u, 4);
+          g.strokeStyle = "rgba(18, 9, 4, 0.9)";
+          g.lineWidth = 1.2;
+          g.strokeRect(l + 0.5, o + 0.5, u - 1, u - 1);
+          if (T > 0.45) {
+            g.fillStyle = "rgba(92, 58, 33, 0.35)";
+            g.fillRect(l + 4, o + 8 + (t.tx % 3) * 5, u - 8, 3);
+          }
+          return;
+        } else if (t.isEarthMineFloor) {
+          // Piso de TERRA BATIDA dos longos túneis em espinha da Mina Profunda (sem trilhos, sem água, sem minérios!)
+          const isAlt = (Math.abs(t.tx + t.ty) % 2) === 0;
+          g.fillStyle = isAlt ? "#4d2f18" : "#422814";
+          g.fillRect(l, o, u + 1, u + 1);
+          // Textura orgânica de terra pisoteada nos túneis
+          g.fillStyle = T > 0.5 ? "rgba(92, 58, 33, 0.45)" : "rgba(42, 22, 9, 0.4)";
+          g.beginPath();
+          g.ellipse(l + u * 0.5, o + u * 0.5, u * 0.35, u * 0.24, T * Math.PI, 0, Math.PI * 2);
+          g.fill();
+          if (T > 0.35) {
+            g.fillStyle = "#694122";
+            g.fillRect(l + 5 + T * 14, o + 6 + (1 - T) * 14, 3, 2.2);
+          }
+          return;
+        } else if (t.isDungeonWall) {
           if (t.dungeonRole === "cave_tunnel_wall" || t.dungeonRole === "bone_cavern_wall") {
             // Parede natural de caverna rochosa escura e irregular
             g.fillStyle = "#070a10";
@@ -1783,6 +1816,9 @@
             break;
           case "prison_bunk_bed":
             drawPrisonBunkBed(c, f);
+            break;
+          case "excavated_dirt_mound":
+            drawExcavatedDirtMound(c, f, t.subType || 0);
             break;
           case "greek_wall": {
             const eng = this.engine,

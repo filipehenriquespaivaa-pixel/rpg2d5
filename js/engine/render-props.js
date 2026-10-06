@@ -5389,6 +5389,34 @@
       return;
     }
 
+    // G. SOLO DE TERRA ESCAVADA (SEM NEVE) AO REDOR DA GRANDE MINA PROFUNDA DA PRISÃO
+    if (role === "excavated_dirt") {
+      const hVal = Math.abs(Math.sin(t.tx * 12.9898 + t.ty * 78.233)) % 1;
+      g.fillStyle = isChecker ? "#5c3a21" : "#4a2e19";
+      g.fillRect(l, o, u + 1.2, u + 1.2);
+
+      // Manchas orgânicas de terra revolvida marrom-escura e ocre terroso (100% sem neve!)
+      g.fillStyle = hVal > 0.5 ? "#6b4423" : "#3e2412";
+      g.beginPath();
+      g.ellipse(
+        l + u * (0.3 + hVal * 0.4),
+        o + u * (0.35 + (1 - hVal) * 0.3),
+        u * 0.34,
+        u * 0.24,
+        hVal * Math.PI,
+        0,
+        Math.PI * 2
+      );
+      g.fill();
+
+      // Torrões e grânulos de terra solta
+      g.fillStyle = "#7c4d28";
+      g.fillRect(l + 4 + hVal * 14, o + 5 + (1 - hVal) * 14, 3.5, 2.5);
+      g.fillStyle = "#2e190b";
+      g.fillRect(l + 18 - hVal * 10, o + 16 - hVal * 8, 3, 2.5);
+      return;
+    }
+
     // Fundo padrão
     g.fillStyle = "#334155";
     g.fillRect(l, o, u + 1, u + 1);
@@ -5565,6 +5593,97 @@
     e.fillStyle = "#271206";
     e.fillRect(-14 * t, -15 * t, 2.5 * t, 22 * t);
     e.fillRect(11.5 * t, -15 * t, 2.5 * t, 22 * t);
+
+    e.restore();
+  }
+
+  // 1e. Grande Monte de Terra Escavada (SEM NEVE) ao lado da Entrada da Mina Profunda
+  function drawExcavatedDirtMound(e, t = 1, subType = 0) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    e.save();
+
+    // Sombra suave na base do monte de terra
+    e.fillStyle = "rgba(28, 15, 7, 0.55)";
+    e.beginPath();
+    e.ellipse(0, 14 * t, 68 * t, 36 * t, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Camada de base espalhada de terra marrom-escura (sem neve!)
+    const baseGrad = e.createRadialGradient(0, 4 * t, 8 * t, 0, 8 * t, 64 * t);
+    baseGrad.addColorStop(0, "#6b4423");
+    baseGrad.addColorStop(0.55, "#4a2e19");
+    baseGrad.addColorStop(1, "#3b2211");
+    e.fillStyle = baseGrad;
+    e.beginPath();
+    e.moveTo(-62 * t, 12 * t);
+    e.quadraticCurveTo(-66 * t, -8 * t, -42 * t, -22 * t);
+    e.quadraticCurveTo(-18 * t, -38 * t, 8 * t, -35 * t);
+    e.quadraticCurveTo(38 * t, -32 * t, 56 * t, -12 * t);
+    e.quadraticCurveTo(66 * t, 6 * t, 54 * t, 22 * t);
+    e.quadraticCurveTo(22 * t, 34 * t, -16 * t, 32 * t);
+    e.quadraticCurveTo(-50 * t, 30 * t, -62 * t, 12 * t);
+    e.closePath();
+    e.fill();
+
+    // Corpo principal elevado do monte de terra (duna volumosa 2.5D de terra revolvida)
+    const moundGrad = e.createLinearGradient(0, -44 * t, 0, 24 * t);
+    moundGrad.addColorStop(0, "#85522b");
+    moundGrad.addColorStop(0.45, "#6b4423");
+    moundGrad.addColorStop(0.85, "#4a2e19");
+    moundGrad.addColorStop(1, "#331d0e");
+    e.fillStyle = moundGrad;
+    e.beginPath();
+    e.moveTo(-52 * t, 14 * t);
+    e.quadraticCurveTo(-44 * t, -18 * t, -18 * t, -36 * t);
+    e.quadraticCurveTo(2 * t, -46 * t, 22 * t, -32 * t);
+    e.quadraticCurveTo(44 * t, -16 * t, 50 * t, 12 * t);
+    e.quadraticCurveTo(24 * t, 26 * t, -4 * t, 26 * t);
+    e.quadraticCurveTo(-34 * t, 26 * t, -52 * t, 14 * t);
+    e.closePath();
+    e.fill();
+
+    // Segundo cume / encosta lateral de terra para dar volume natural de escavação
+    if (subType === 0) {
+      e.fillStyle = "#754724";
+      e.beginPath();
+      e.moveTo(-36 * t, 16 * t);
+      e.quadraticCurveTo(-24 * t, -14 * t, 4 * t, -26 * t);
+      e.quadraticCurveTo(28 * t, -14 * t, 38 * t, 14 * t);
+      e.quadraticCurveTo(6 * t, 24 * t, -36 * t, 16 * t);
+      e.closePath();
+      e.fill();
+    }
+
+    // Cristas e sulcos de terra despejada (sem nenhuma neve!)
+    e.strokeStyle = "rgba(42, 22, 9, 0.65)";
+    e.lineWidth = 1.6 * t;
+    e.beginPath();
+    e.moveTo(-22 * t, -24 * t);
+    e.quadraticCurveTo(-6 * t, -8 * t, -14 * t, 14 * t);
+    e.moveTo(8 * t, -30 * t);
+    e.quadraticCurveTo(18 * t, -10 * t, 24 * t, 12 * t);
+    e.moveTo(-36 * t, -4 * t);
+    e.quadraticCurveTo(-18 * t, 6 * t, -28 * t, 18 * t);
+    e.stroke();
+
+    // Torrões de terra seca e pedregulhos terrosos espalhados pela encosta do monte
+    const clods = [
+      { x: -28, y: 6, rx: 5.5, ry: 3.5, col: "#3e2412" },
+      { x: -12, y: -14, rx: 4.5, ry: 2.8, col: "#925b30" },
+      { x: 6, y: -20, rx: 5.0, ry: 3.2, col: "#925b30" },
+      { x: 18, y: -4, rx: 6.0, ry: 3.6, col: "#3e2412" },
+      { x: -6, y: 10, rx: 6.5, ry: 3.8, col: "#523218" },
+      { x: 28, y: 8, rx: 5.2, ry: 3.2, col: "#4a2e19" },
+      { x: -38, y: 12, rx: 4.8, ry: 3.0, col: "#7c4d28" },
+      { x: 12, y: 16, rx: 5.5, ry: 3.2, col: "#3e2412" },
+    ];
+    for (let i = 0; i < clods.length; i++) {
+      const c = clods[i];
+      e.fillStyle = c.col;
+      e.beginPath();
+      e.ellipse(c.x * t, c.y * t, c.rx * t, c.ry * t, (i * 0.5) % Math.PI, 0, Math.PI * 2);
+      e.fill();
+    }
 
     e.restore();
   }

@@ -2942,7 +2942,65 @@
           let isIronBarsOpen = !1;
           let sProp = null;
 
-          if (bCell.role === "dungeon_wall") {
+          if (bCell.role === "earth_mine_wall") {
+            return {
+              tx: t,
+              ty: l,
+              elevation: 0.9,
+              moisture: 0.3,
+              temperature: 0.35,
+              biome: BIOMES[BiomeId.CAVE_WALL],
+              isEarthMineWall: !0,
+              dungeonRole: "earth_mine_wall",
+              dungeonRoomName: bCell.roomName,
+              prop: null,
+              detailHash: u,
+            };
+          } else if (bCell.role === "earth_mine_floor") {
+            return {
+              tx: t,
+              ty: l,
+              elevation: 0.1,
+              moisture: 0.4,
+              temperature: 0.35,
+              biome: BIOMES[BiomeId.CAVE_FLOOR],
+              isEarthMineFloor: !0,
+              dungeonRole: "earth_mine_floor",
+              dungeonRoomName: bCell.roomName,
+              prop: null,
+              detailHash: u,
+            };
+          } else if (bCell.role === "prison_mine_exit") {
+            return {
+              tx: t,
+              ty: l,
+              elevation: 0.1,
+              moisture: 0.4,
+              temperature: 0.35,
+              biome: BIOMES[BiomeId.CAVE_FLOOR],
+              isEarthMineFloor: !0,
+              dungeonRole: "earth_mine_floor",
+              dungeonRoomName: bCell.roomName,
+              prop: {
+                kind: "cave_exit",
+                subType: 0,
+                isMerged: !0,
+                mergedCount: 4,
+                isPrisonDeepMine: !0,
+                surfaceBiome: BIOMES[BiomeId.SNOW_PEAK],
+                targetTx: bCell.targetTx,
+                targetTy: bCell.targetTy,
+                offsetX: 0,
+                offsetY: -4,
+                scale: 1.9,
+                interactive: !0,
+                namePt: "Saída da Mina Profunda das Neves",
+                descriptionPt:
+                  "A grande boca nevada da mina que leva de volta à superfície ao lado da Prisão. Pressione [F] para sair!",
+              },
+              detailHash: u,
+            };
+          } else if (bCell.role === "dungeon_wall") {
             isDungeonWall = !0;
             sProp = {
               kind: "dungeon_wall",
@@ -5343,8 +5401,8 @@
     isCaveRockAt(x, y) {
       const tx = Math.floor(x / this.tileSize),
         ty = Math.floor(y / this.tileSize);
-      for (let dy = -2; dy <= 3; dy++) {
-        for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -3; dy <= 3; dy++) {
+        for (let dx = -3; dx <= 3; dx++) {
           const t = this.getTile(tx + dx, ty + dy);
           if (
             t &&
@@ -5353,16 +5411,17 @@
           ) {
             const isMerged = !!t.prop.isMerged;
             const isStair = !!t.prop.isStaircase;
+            const scaleMul = t.prop.isPrisonDeepMine ? (t.prop.scale || 1.95) / 1.35 : 1;
             const cx = t.tx * this.tileSize + this.tileSize / 2;
             const cy =
               t.ty * this.tileSize + this.tileSize / 2 + (t.prop.offsetY || -4);
             const rx = x - cx;
             const ry = y - cy;
-            const halfW = isMerged ? 38 : 24;
-            const topY = isMerged ? -62 : -38;
-            const doorHalfW = isStair ? (isMerged ? 16 : 13) : isMerged ? 11.5 : 8.5;
-            const sideBottomY = isMerged ? 10 : 6;
-            const backWallBottomY = isStair ? -12 : -2;
+            const halfW = (isMerged ? 38 : 24) * scaleMul;
+            const topY = (isMerged ? -62 : -38) * scaleMul;
+            const doorHalfW = (isStair ? (isMerged ? 16 : 13) : isMerged ? 11.5 : 8.5) * scaleMul;
+            const sideBottomY = (isMerged ? 10 : 6) * scaleMul;
+            const backWallBottomY = (isStair ? -12 : -2) * scaleMul;
             if (ry >= topY && ry <= backWallBottomY && Math.abs(rx) <= halfW) return !0;
             if (
               ry > backWallBottomY &&
@@ -5379,8 +5438,8 @@
     getNearbyCaveDoorwayAt(x, y) {
       const tx = Math.floor(x / this.tileSize),
         ty = Math.floor(y / this.tileSize);
-      for (let dy = -2; dy <= 2; dy++) {
-        for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -3; dy <= 3; dy++) {
+        for (let dx = -3; dx <= 3; dx++) {
           const t = this.getTile(tx + dx, ty + dy);
           if (
             t &&
@@ -5389,14 +5448,15 @@
           ) {
             const isMerged = !!t.prop.isMerged;
             const isStair = !!t.prop.isStaircase;
-            const doorHalfW = isStair ? (isMerged ? 16 : 13) : isMerged ? 11.5 : 8.5;
-            const topTriggerY = isStair ? -11 : -4;
+            const scaleMul = t.prop.isPrisonDeepMine ? (t.prop.scale || 1.95) / 1.35 : 1;
+            const doorHalfW = (isStair ? (isMerged ? 16 : 13) : isMerged ? 11.5 : 8.5) * scaleMul;
+            const topTriggerY = (isStair ? -11 : -4) * scaleMul;
             const cx = t.tx * this.tileSize + this.tileSize / 2;
             const cy =
               t.ty * this.tileSize + this.tileSize / 2 + (t.prop.offsetY || -4);
             const rx = x - cx;
             const ry = y - cy;
-            if (Math.abs(rx) <= doorHalfW && ry >= topTriggerY && ry <= 11) {
+            if (Math.abs(rx) <= doorHalfW && ry >= topTriggerY && ry <= 11 * scaleMul) {
               return {
                 action:
                   t.prop.kind === "cave_entrance" ? "enter_cave" : "exit_cave",

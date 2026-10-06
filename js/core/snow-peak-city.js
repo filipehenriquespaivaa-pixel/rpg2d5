@@ -28,6 +28,11 @@ window.Game = window.Game || {};
   const BARRACKS_STAIR_TX = CITY_CX;      // relX === 0
   const BARRACKS_STAIR_TY = CITY_CY + 51; // relY === 51
 
+  // Coordenadas da Grande Mina Profunda de Escavação ao lado de fora da Prisão (Leste do Quartel/Prisão)
+  // Entrada em relX === 46, relY === 56 -> (CITY_CX + 46, CITY_CY + 56) = (-334, -1164)
+  const PRISON_MINE_TX = CITY_CX + 46;
+  const PRISON_MINE_TY = CITY_CY + 56;
+
   // =========================================================================
   // URBANISMO ORGÂNICO E ASSIMÉTRICO DA VILA GLACIAL (24 CASAS):
   // - Mistura casas geminadas (coladas umas nas outras) com casas separadas por
@@ -1735,6 +1740,105 @@ window.Game = window.Game || {};
       };
     }
 
+    // =====================================================================
+    // 4. EXTERIOR AO LADO DA PRISÃO (LESTE DO QUARTEL, relX >= 37):
+    //    - Grande Entrada da Mina Profunda das Neves em (relX === 46, relY === 56)
+    //    - Grande Monte de Terra da Escavação (SEM NEVE) ao lado da entrada da mina
+    //      (centrado em relX === 58, relY === 57, cobrindo ~11x9 blocos de terra escavada!)
+    //    - Caminho de acesso ligando a rua/quartel até a boca da mina
+    // =====================================================================
+    if (relX >= 37 && relX <= 68 && relY >= 12 && relY <= 68) {
+      // 4.1 Grande Entrada da Mina Profunda das Neves (relX === 46, relY === 56)
+      if (relX === 46 && relY === 56) {
+        return {
+          isSnowCity: true,
+          role: "excavated_dirt",
+          roomName: "Mina Profunda da Prisão",
+          prop: {
+            kind: "cave_entrance",
+            subType: 0,
+            isMerged: true,
+            mergedCount: 4,
+            isPrisonDeepMine: true,
+            offsetX: 0,
+            offsetY: -4,
+            scale: 1.95,
+            interactive: true,
+            namePt: "Mina Profunda das Neves",
+            descriptionPt:
+              "Uma colossal entrada de mina escavada na rocha nevada ao lado da prisão, descendo para longos túneis subterrâneos de terra. Pressione [F] para entrar!",
+          },
+        };
+      }
+
+      // 4.2 Clarea a área imediata ao redor da boca gigante da mina (terra batida sem árvores/obstáculos)
+      const distToMine = Math.hypot(relX - 46, (relY - 56) * 1.15);
+      if (distToMine <= 4.6) {
+        return {
+          isSnowCity: true,
+          role: "excavated_dirt",
+          roomName: "Mina Profunda da Prisão",
+        };
+      }
+
+      // 4.3 Grande Monte de Terra ao lado da mina (terra pura de escavação, SEM NEVE e sem título!)
+      // Centrado em (relX = 57, relY = 57), espalhando-se de relX 51..63 e relY 52..62
+      const moundDx = (relX - 57) / 6.2;
+      const moundDy = (relY - 57) / 4.8;
+      const moundDist = Math.hypot(moundDx, moundDy);
+      if (moundDist <= 1.05) {
+        // Centro do monte de terra: grande elevação 2.5D de terra escavada (com colisor nos blocos centrais do monte)
+        if (relX === 57 && relY === 57) {
+          return {
+            isSnowCity: true,
+            role: "excavated_dirt",
+            roomName: "",
+            isCollider: true,
+            prop: {
+              kind: "excavated_dirt_mound",
+              subType: 0,
+              scale: 1.5,
+              interactive: false,
+            },
+          };
+        }
+        // Dunas secundárias do mesmo monte de terra para deixá-lo largo, volumoso e orgânico
+        if ((relX === 54 && relY === 56) || (relX === 60 && relY === 58) || (relX === 56 && relY === 59)) {
+          return {
+            isSnowCity: true,
+            role: "excavated_dirt",
+            roomName: "",
+            isCollider: true,
+            prop: {
+              kind: "excavated_dirt_mound",
+              subType: relX === 54 ? 1 : 2,
+              scale: 1.15,
+              interactive: false,
+            },
+          };
+        }
+        const isCoreCollider = Math.abs(relX - 57) <= 3 && Math.abs(relY - 57) <= 2;
+        return {
+          isSnowCity: true,
+          role: "excavated_dirt",
+          roomName: "",
+          isCollider: isCoreCollider,
+        };
+      }
+
+      // Trilha de terra/pedra que contorna a muralha leste do quartel/prisão até a entrada da mina
+      const isMineTrail =
+        (relX >= 40 && relX <= 43 && relY >= 12 && relY <= 59) ||
+        (relX >= 40 && relX <= 51 && relY >= 57 && relY <= 60);
+      if (isMineTrail) {
+        return {
+          isSnowCity: true,
+          role: relY <= 28 ? "road" : "excavated_dirt",
+          roomName: "Acesso Externo da Mina Profunda",
+        };
+      }
+    }
+
     // - BECOS COM SAÍDA (vielas estreitas que atravessam o quarteirão de um lado ao outro):
     //   1. Beco do Norte-Oeste (X = -8, Y de -24 até -12): passa entre a Casa #3 e a Casa #4 até a borda norte!
     //   2. Beco Central-Oeste (X = -33..-32, Y de -12 até +4): liga a Rua Norte ao pátio lateral entre as Casas #8 e #9!
@@ -1834,6 +1938,74 @@ window.Game = window.Game || {};
   //      - 1 Solitária de Segurança Máxima ("O Fosso Gelado") no fundo sul (dy in [39..45])
   // =========================================================================
   function getUndergroundCellAt(tx, ty, interactedProps) {
+    // =====================================================================
+    // A. GRANDE MINA PROFUNDA EM ESPINHA DE PEIXE (Ao lado de fora da Prisão)
+    //    - Entrada na superfície em (PRISON_MINE_TX, PRISON_MINE_TY) = (CITY_CX + 46, CITY_CY + 56)
+    //    - Apenas túneis longos de terra (espinha dorsal central + várias costelas laterais longas)
+    //    - Sem trilhos, sem água, sem minerais, sem cristais, sem cogumelos!
+    // =====================================================================
+    const mx = tx - PRISON_MINE_TX;
+    const my = ty - PRISON_MINE_TY;
+    if (mx >= -34 && mx <= 34 && my >= -6 && my <= 156) {
+      // Ponto exato da Saída da Mina Profunda de volta para a superfície ao lado da Prisão
+      if (mx === 0 && my === 0) {
+        return {
+          role: "prison_mine_exit",
+          targetTx: PRISON_MINE_TX,
+          targetTy: PRISON_MINE_TY,
+          roomName: "Mina Profunda de Terra",
+        };
+      }
+
+      // 1. VESTÍBULO DE ENTRADA DA MINA (mx in [-3..+3], my in [-3..+3])
+      const inEntryChamber = Math.abs(mx) <= 3 && my >= -3 && my <= 3;
+
+      // 2. TÚNEL CENTRAL PRINCIPAL ("A ESPINHA DORSAL" — longo túnel vertical de terra: my de -3 até +150, largura 3..5 blocos)
+      // Leve sinuosidade natural de escavação em terra (oscila -1, 0 ou +1)
+      const spineShift = my <= 4 ? 0 : Math.round(Math.sin(my * 0.08) * 1.0);
+      const inMainSpine = my >= -3 && my <= 150 && Math.abs(mx - spineShift) <= 2;
+
+      // 3. TÚNEIS LATERAIS LONGOS ("COSTELAS DA ESPINHA" — 9 pares de longas galerias horizontais de terra escavadas a cada 15 blocos!)
+      // Costelas em my = 14, 29, 44, 59, 74, 89, 104, 119, 134, 146
+      const ribCenters = [14, 29, 44, 59, 74, 89, 104, 119, 134, 146];
+      let inRibTunnel = false;
+      let inSubBranch = false;
+      for (let i = 0; i < ribCenters.length; i++) {
+        const ry = ribCenters[i];
+        // Comprimento variável porém sempre longo de cada túnel lateral (entre 24 e 31 blocos para cada lado!)
+        const leftLen = 25 + ((i * 3) % 7);  // -25 a -31
+        const rightLen = 26 + ((i * 5) % 6); // +26 a +31
+        // Leve inclinação orgânica ao longo da costela
+        const ribYOffset = Math.abs(mx) <= 4 ? 0 : Math.round(Math.sin(mx * 0.11 + i) * 0.8);
+        if (mx >= -leftLen && mx <= rightLen && Math.abs(my - (ry + ribYOffset)) <= 1) {
+          inRibTunnel = true;
+          break;
+        }
+        // Pequenos sub-ramos verticais curtos nas pontas de algumas costelas para acentuar o formato de espinha
+        const tipLeftX = -leftLen + 5;
+        const tipRightX = rightLen - 5;
+        if (
+          (Math.abs(mx - tipLeftX) <= 1 || Math.abs(mx - tipRightX) <= 1) &&
+          Math.abs(my - ry) <= 4
+        ) {
+          inSubBranch = true;
+        }
+      }
+
+      if (inEntryChamber || inMainSpine || inRibTunnel || inSubBranch) {
+        return {
+          role: "earth_mine_floor",
+          roomName: "Túnel de Terra da Mina Profunda",
+        };
+      }
+
+      // Tudo ao redor dos túneis da espinha é parede maciça de terra escavada!
+      return {
+        role: "earth_mine_wall",
+        roomName: "Parede de Terra da Mina Profunda",
+      };
+    }
+
     const dx = tx - BARRACKS_STAIR_TX;
     const dy = ty - BARRACKS_STAIR_TY;
 
@@ -2025,6 +2197,14 @@ window.Game = window.Game || {};
     return null;
   }
 
+  // Verifica se o ponto subterrâneo pertence à região da Grande Mina Profunda de Terra (ao leste da Prisão)
+  // Usado também para garantir que na mina nasçam SOMENTE morcegos (zero slimes, zero aranhas!)
+  function isPrisonMineArea(tx, ty) {
+    const mx = tx - PRISON_MINE_TX;
+    const my = ty - PRISON_MINE_TY;
+    return mx >= -36 && mx <= 36 && my >= -8 && my <= 165;
+  }
+
   // Exporta a definição
   const SnowPeakCity = {
     centerX: CITY_CX,
@@ -2032,10 +2212,13 @@ window.Game = window.Game || {};
     radius: CITY_RADIUS,
     barracksStairTx: BARRACKS_STAIR_TX,
     barracksStairTy: BARRACKS_STAIR_TY,
+    prisonMineTx: PRISON_MINE_TX,
+    prisonMineTy: PRISON_MINE_TY,
     houses: HOUSES,
     barracksRoofs: BARRACKS_ROOFS,
     isCityTerritory,
     isCityBiomeArea,
+    isPrisonMineArea,
     getHouseAt,
     getActiveHouseForPlayer,
     getCellAt,
