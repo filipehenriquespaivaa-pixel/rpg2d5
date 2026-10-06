@@ -22,7 +22,11 @@ window.Game = window.Game || {};
   // Centro e raio territorial da Cidade dos Picos Gelados (no coração do Bioma Gelado e Taiga Nevada)
   const CITY_CX = -380;
   const CITY_CY = -1220;
-  const CITY_RADIUS = 64;
+  const CITY_RADIUS = 96;
+
+  // Coordenadas da Escadaria do Subsolo do Quartel Militar (liga a Ala da Prisão na superfície ao Subsolo de Tortura e Solitárias!)
+  const BARRACKS_STAIR_TX = CITY_CX;      // relX === 0
+  const BARRACKS_STAIR_TY = CITY_CY + 51; // relY === 51
 
   // =========================================================================
   // URBANISMO ORGÂNICO E ASSIMÉTRICO DA VILA GLACIAL (24 CASAS):
@@ -697,10 +701,913 @@ window.Game = window.Game || {};
       (relY >= -12 && relY <= -5 && relX >= -4 && relX <= 4) ||
       (relY >= -24 && relY <= -11 && (relX === 4 || relX === 5));
 
-    //   * Ao Sul da Praça: passagem em X = -1..+2 que atravessa desde a Praça até o final Sul (Y = +5..+24)!
+    //   * Ao Sul da Praça: passagem em X = -1..+2 que atravessa desde a Praça até o Portão do Quartel Militar (Y = +5..+28)!
     const isSouthPlazaConnector =
       (relY >= 5 && relY <= 12 && relX >= -4 && relX <= 4) ||
-      (relY >= 11 && relY <= 24 && relX >= -1 && relX <= 2);
+      (relY >= 11 && relY <= 28 && relX >= -2 && relX <= 2);
+
+    // =====================================================================
+    // 3. GRANDE QUARTEL MILITAR E PRISÃO DE CONCENTRAÇÃO (relX in [-36..+36], relY in [28..74])
+    // Inclui:
+    //   - Entrada Fortificada e Portão do Quartel (relY === 28)
+    //   - Salas para Oficiais (Ala Noroeste: Gabinete do Comandante, Sala de Estratégia e Interrogatório)
+    //   - Salas de Descanso para Oficiais (Ala Nordeste: Dormitório Oficial, Salão de Jogos/Lareira e Refeitório)
+    //   - Pátio Central de Execução com Forca (relX in [-13..+13], relY in [30..45], Palanque + Forca no centro)
+    //   - Ala de Prisão com 4 Grandes Celas Coletivas tipo Campo de Concentração (relY in [46..74])
+    //   - Escadaria para o Subsolo da Prisão em (relX === 0, relY === 51) levando à Sala de Tortura e Solitárias!
+    // =====================================================================
+    if (relX >= -36 && relX <= 36 && relY >= 28 && relY <= 74) {
+      // 3.1 MURALHA EXTERNA PERIMETRAL DO QUARTEL E PRISÃO
+      const isOuterPerimeter =
+        relX === -36 || relX === 36 || relY === 28 || relY === 74;
+
+      if (isOuterPerimeter) {
+        // Portão Principal do Quartel ao Norte (relY === 28, relX in [-1, 0, 1])
+        if (relY === 28 && Math.abs(relX) <= 1) {
+          if (relX === 0) {
+            const isGateOpen = intState.opened !== undefined ? !!intState.opened : true;
+            return {
+              isSnowCity: true,
+              role: "door",
+              roomName: "Portão Principal do Quartel e Prisão Glacial",
+              isDoor: true,
+              isDoorOpen: isGateOpen,
+              isWall: false,
+              prop: {
+                kind: "snow_city_door",
+                opened: isGateOpen,
+                interactive: true,
+                namePt: isGateOpen
+                  ? "Portão Fortificado do Quartel (Aberto)"
+                  : "Portão Fortificado do Quartel (Fechado)",
+                descriptionPt:
+                  "Portão monumental de carvalho e barras de aço que dá acesso ao Grande Quartel Militar, Pátio da Forca e Prisão. Pressione [F] para abrir ou fechar.",
+              },
+            };
+          }
+          // Guaritas laterais da entrada com alabardas
+          return {
+            isSnowCity: true,
+            role: "plaza",
+            roomName: "Entrada do Quartel Militar",
+          };
+        }
+
+        // Chaminés nas paredes externas das Salas dos Oficiais
+        if (relY === 28 && (relX === -28 || relX === 28)) {
+          return {
+            isSnowCity: true,
+            role: "chimney",
+            roomName: "Chaminé do Quartel dos Oficiais",
+            isWall: true,
+            isChimney: true,
+            prop: {
+              kind: "snow_city_chimney",
+              interactive: true,
+              namePt: "Chaminé da Ala de Oficiais do Quartel",
+              descriptionPt: "Chaminé militar aquecendo os gabinetes e salas de descanso dos oficiais.",
+            },
+          };
+        }
+
+        return {
+          isSnowCity: true,
+          role: "wall",
+          roomName: "Muralha Fortificada do Quartel e Prisão",
+          isWall: true,
+          prop: {
+            kind: "snow_city_wall",
+            subType: 0,
+            wallHeightState: 0,
+            namePt: "Muralha Militar de Cantaria e Ferro",
+            descriptionPt:
+              "Muralha espessa de granito glacial reforçada com vigas e sentinelas que cerca o complexo do Quartel e Prisão.",
+          },
+        };
+      }
+
+      // 3.2 ALA NOROESTE: SALAS PARA OFICIAIS (relX in [-35..-14], relY in [29..45])
+      if (relX >= -35 && relX <= -14 && relY >= 29 && relY <= 45) {
+        // Parede Leste da Ala de Oficiais (separa do Pátio de Execução em relX === -14)
+        if (relX === -14) {
+          // Portas para o Pátio em relY === 33 e relY === 41
+          if (relY === 33 || relY === 41) {
+            const isDoorOpen = intState.opened !== undefined ? !!intState.opened : true;
+            return {
+              isSnowCity: true,
+              role: "door",
+              roomName: "Porta da Ala de Comando dos Oficiais",
+              isDoor: true,
+              isDoorOpen: isDoorOpen,
+              isWall: false,
+              prop: {
+                kind: "greek_door",
+                subType: 1,
+                opened: isDoorOpen,
+                interactive: true,
+                namePt: isDoorOpen
+                  ? "Porta da Ala de Oficiais (Aberta)"
+                  : "Porta da Ala de Oficiais (Fechada)",
+                descriptionPt: "Porta militar reforçada que conecta o Pátio de Execução às Salas de Comando dos Oficiais.",
+              },
+            };
+          }
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Parede da Ala de Oficiais",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 0, namePt: "Parede da Ala de Comando" },
+          };
+        }
+
+        // Parede Sul da Ala de Oficiais (relY === 45)
+        if (relY === 45) {
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Parede Divisória da Ala de Oficiais",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 0, namePt: "Parede da Ala de Comando" },
+          };
+        }
+
+        // Divisórias internas da Ala de Oficiais:
+        // - Parede horizontal em relY === 37 (com vãos de porta em relX === -30 e relX === -19)
+        // - Parede vertical em relX === -25 de relY 29..37 (com vão em relY === 33)
+        if (relY === 37 && relX !== -30 && relX !== -19) {
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Divisória das Salas de Oficiais",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 1, namePt: "Divisória Militar de Carvalho" },
+          };
+        }
+        if (relX === -25 && relY >= 29 && relY <= 37 && relY !== 33) {
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Divisória do Gabinete do Comandante",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 1, namePt: "Divisória do Gabinete do Comandante" },
+          };
+        }
+
+        // SALA 1 (Noroeste Superior): Gabinete do Comandante Supremo (relX in [-35..-26], relY in [29..36])
+        if (relX <= -26 && relY <= 36) {
+          const roomName = "Sala de Oficiais: Gabinete do Comandante do Quartel";
+          if (relX === -28 && relY === 29) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_fireplace",
+                interactive: true,
+                namePt: "Lareira Oficial do Comandante",
+                descriptionPt: "Lareira imponente de pedra aquecendo o gabinete de comando.",
+              },
+            };
+          }
+          if (relX === -31 && relY === 32) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              isCollider: true,
+              prop: {
+                kind: "barracks_officer_desk",
+                subType: 0,
+                interactive: true,
+                namePt: "Mesa de Comando e Mapas Táticos do General",
+                descriptionPt:
+                  "Mesa de carvalho maciço com mapas de guerra dos Picos Glaciais, selos imperiais de cera vermelha, ordens de execução e candelabro dourado.",
+              },
+            };
+          }
+          if ((relX === -34 || relX === -32) && relY === 29) {
+            const bKey = `${tx},${ty}`;
+            const bState = interactedProps && interactedProps.get ? interactedProps.get(bKey) || {} : {};
+            const taken = typeof bState.booksTaken === "number" ? bState.booksTaken : (bState.collected ? 4 : 0);
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "greek_bookshelf",
+                subType: relX === -34 ? 1 : 3,
+                scale: 1.15,
+                interactive: true,
+                collected: taken >= 4,
+                booksTaken: taken,
+                maxBooks: 4,
+                namePt: "Estante de Registros Militares e Códigos de Guerra",
+                descriptionPt: "Tomos encadernados em couro contendo relatórios de campanha e sentenças do tribunal militar. Pressione [F] para coletar!",
+              },
+            };
+          }
+          if (relX === -34 && relY === 35) {
+            const opened = !!intState.opened;
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "chest",
+                subType: 0,
+                scale: 1.1,
+                interactive: !opened,
+                opened,
+                namePt: opened ? "Cofre Militar do Comandante (Aberto)" : "Cofre de Ouro do Comandante",
+                descriptionPt: "Arca encouraçada do comandante do quartel. Pressione [F] para abrir!",
+              },
+            };
+          }
+          if (relX === -27 && relY === 35) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "weapon_rack",
+                scale: 1.15,
+                interactive: true,
+                namePt: "Suporte de Espadas e Alabardas Oficiais",
+                descriptionPt: "Armas cerimoniais e de combate dos oficiais superiores.",
+              },
+            };
+          }
+          return { isSnowCity: true, role: "house_floor", roomName };
+        }
+
+        // SALA 2 (Nordeste da Ala Oeste): Sala de Estratégia e Guerra dos Oficiais (relX in [-24..-15], relY in [29..36])
+        if (relX >= -24 && relY <= 36) {
+          const roomName = "Sala de Oficiais: Salão de Estratégia e Conselho Militar";
+          if (relX === -20 && relY === 32) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              isCollider: true,
+              prop: {
+                kind: "barracks_officer_desk",
+                subType: 1,
+                scale: 1.25,
+                interactive: true,
+                namePt: "Grande Mesa Tática de Operações Militares",
+                descriptionPt: "Mesa de comando cercada por cadeiras de oficiais com miniaturas de tropas, mapas das fronteiras de gelo e planos de defesa.",
+              },
+            };
+          }
+          if ((relX === -23 || relX === -17) && relY === 29) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "weapon_rack",
+                scale: 1.15,
+                interactive: true,
+                namePt: "Arsenal da Sala de Estratégia",
+                descriptionPt: "Lanças, escudos e espadas de aço temperado da guarda de elite.",
+              },
+            };
+          }
+          if (relX === -23 && relY === 35) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_wardrobe",
+                interactive: true,
+                namePt: "Armário de Fardas e Insígnias de Oficiais",
+                descriptionPt: "Guarda-roupa militar com sobretudos de lã pesada, dragonas douradas e medalhas.",
+              },
+            };
+          }
+          return { isSnowCity: true, role: "house_floor", roomName };
+        }
+
+        // SALA 3 (Sul da Ala Oeste): Sala de Administração Prisional e Interrogatório de Oficiais (relX in [-35..-15], relY in [38..44])
+        const roomName = "Sala de Oficiais: Administração da Prisão e Tribunal";
+        if (relX === -28 && relY === 41) {
+          const hasKey = !!intState.collectedKey;
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "jailer_table",
+              hasKey: !hasKey,
+              scale: 1.2,
+              interactive: true,
+              namePt: "Mesa do Oficial Carcereiro-Chefe (Chaves da Prisão)",
+              descriptionPt: hasKey
+                ? "Mesa de registros de prisioneiros e sentenças de forca."
+                : "Mesa do Oficial Carcereiro-Chefe com o Molho de Chaves Mestre da Prisão! Pressione [F] para pegar a Chave do Carcereiro.",
+            },
+          };
+        }
+        if (relX === -20 && relY === 41) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            isCollider: true,
+            prop: {
+              kind: "barracks_officer_desk",
+              subType: 0,
+              interactive: true,
+              namePt: "Bancada do Tribunal Militar e Sentenças",
+              descriptionPt: "Mesa onde os oficiais assinam os mandados para o Pátio da Forca e para a Solitária do Subsolo.",
+            },
+          };
+        }
+        if ((relX === -34 || relX === -16) && relY === 39) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "weapon_rack",
+              scale: 1.15,
+              interactive: true,
+              namePt: "Armas da Guarda Prisional",
+              descriptionPt: "Alabardas e correntes utilizadas pelos guardas do campo de prisioneiros.",
+            },
+          };
+        }
+        if (relX === -34 && relY === 43) {
+          const opened = !!intState.opened;
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "chest",
+              subType: 0,
+              scale: 1.05,
+              interactive: !opened,
+              opened,
+              namePt: opened ? "Baú de Pertences Confiscados (Aberto)" : "Baú de Pertences Confiscados",
+              descriptionPt: "Baú contendo ouro e relíquias confiscadas dos prisioneiros ao chegarem ao quartel.",
+            },
+          };
+        }
+        return { isSnowCity: true, role: "house_floor", roomName };
+      }
+
+      // 3.3 ALA NORDESTE: SALAS DE DESCANSO PARA OFICIAIS (relX in [14..35], relY in [29..45])
+      if (relX >= 14 && relX <= 35 && relY >= 29 && relY <= 45) {
+        // Parede Oeste da Ala de Descanso (separa do Pátio de Execução em relX === 14)
+        if (relX === 14) {
+          if (relY === 33 || relY === 41) {
+            const isDoorOpen = intState.opened !== undefined ? !!intState.opened : true;
+            return {
+              isSnowCity: true,
+              role: "door",
+              roomName: "Porta das Salas de Descanso dos Oficiais",
+              isDoor: true,
+              isDoorOpen: isDoorOpen,
+              isWall: false,
+              prop: {
+                kind: "greek_door",
+                subType: 1,
+                opened: isDoorOpen,
+                interactive: true,
+                namePt: isDoorOpen
+                  ? "Porta da Ala de Descanso dos Oficiais (Aberta)"
+                  : "Porta da Ala de Descanso dos Oficiais (Fechada)",
+                descriptionPt: "Porta que conduz aos alojamentos aquecidos, salão de lazer e refeitório exclusivo dos oficiais.",
+              },
+            };
+          }
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Parede da Ala de Descanso dos Oficiais",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 0, namePt: "Parede da Ala de Descanso" },
+          };
+        }
+
+        // Parede Sul da Ala de Descanso (relY === 45)
+        if (relY === 45) {
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Parede Sul da Ala de Descanso",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 0, namePt: "Parede da Ala de Descanso" },
+          };
+        }
+
+        // Divisórias internas das Salas de Descanso de Oficiais:
+        // - Parede horizontal em relY === 37 (com vãos em relX === 19 e relX === 30)
+        // - Parede vertical em relX === 25 de relY 29..37 (com vão em relY === 33)
+        if (relY === 37 && relX !== 19 && relX !== 30) {
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Divisória das Salas de Descanso",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 1, namePt: "Divisória de Madeira Nobre" },
+          };
+        }
+        if (relX === 25 && relY >= 29 && relY <= 37 && relY !== 33) {
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Divisória do Dormitório de Oficiais",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 1, namePt: "Divisória do Dormitório" },
+          };
+        }
+
+        // SALA DE DESCANSO 1 (Noroeste da Ala Leste): Salão de Convivência, Jogos e Lareira dos Oficiais (relX in [15..24], relY in [29..36])
+        if (relX <= 24 && relY <= 36) {
+          const roomName = "Sala de Descanso dos Oficiais: Salão de Lareira e Lazer";
+          if (relX === 20 && relY === 29) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_fireplace",
+                interactive: true,
+                namePt: "Lareira da Sala de Descanso dos Oficiais",
+                descriptionPt: "Lareira crepitante onde os oficiais descansam e bebem vinho quente após os turnos na neve.",
+              },
+            };
+          }
+          if ((relX === 18 || relX === 22) && relY === 32) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_sofa",
+                interactive: true,
+                namePt: "Poltrona de Couro e Peles dos Oficiais",
+                descriptionPt: "Sofá macio de couro estofado exclusivo para o descanso da oficialidade.",
+              },
+            };
+          }
+          if (relX === 20 && relY === 32) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_table",
+                interactive: true,
+                namePt: "Mesa de Jogos, Xadrez e Hidromel dos Oficiais",
+                descriptionPt: "Mesa de centro com tabuleiro de estratégia, taças de prata e garrafas de hidromel.",
+              },
+            };
+          }
+          if (relX === 16 && relY === 35) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_pantry",
+                interactive: true,
+                namePt: "Adega Particular e Reserva dos Oficiais",
+                descriptionPt: "Estante abastecida com bebidas quentes, queijos curados e charutos.",
+              },
+            };
+          }
+          return { isSnowCity: true, role: "house_floor", roomName };
+        }
+
+        // SALA DE DESCANSO 2 (Nordeste da Ala Leste): Dormitório Nobre dos Oficiais (relX in [26..35], relY in [29..36])
+        if (relX >= 26 && relY <= 36) {
+          const roomName = "Sala de Descanso dos Oficiais: Dormitório Aquecido";
+          if ((relX === 28 || relX === 33) && (relY === 30 || relY === 34)) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_bed",
+                interactive: true,
+                namePt: "Cama de Carvalho dos Oficiais com Peles de Urso",
+                descriptionPt: "Leito confortável e aquecido reservado ao descanso dos capitães e tenentes do quartel.",
+              },
+            };
+          }
+          if ((relX === 27 || relX === 34) && relY === 32) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_nightstand",
+                interactive: true,
+                namePt: "Criado-Mudo de Oficial com Castiçal",
+                descriptionPt: "Mesa de cabeceira com vela acesa e pertences pessoais.",
+              },
+            };
+          }
+          if (relX === 30 && relY === 29) {
+            return {
+              isSnowCity: true,
+              role: "house_floor",
+              roomName,
+              prop: {
+                kind: "snow_city_wardrobe",
+                interactive: true,
+                namePt: "Guarda-Roupa de Casacos e Mantas dos Oficiais",
+                descriptionPt: "Armário de carvalho com uniformes de gala e capas térmicas.",
+              },
+            };
+          }
+          return { isSnowCity: true, role: "house_floor", roomName };
+        }
+
+        // SALA DE DESCANSO 3 (Sul da Ala Leste): Refeitório, Cozinha Quente e Banhos dos Oficiais (relX in [15..35], relY in [38..44])
+        const roomName = "Sala de Descanso dos Oficiais: Refeitório, Cozinha e Banhos";
+        if ((relX === 19 || relX === 24) && relY === 41) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "snow_city_table",
+              interactive: true,
+              namePt: "Mesa de Banquete do Refeitório de Oficiais",
+              descriptionPt: "Mesa farta com assados, pães quentes e caldos para os oficiais do quartel.",
+            },
+          };
+        }
+        if ((relX === 19 || relX === 24) && (relY === 40 || relY === 42)) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "snow_city_sofa",
+              interactive: true,
+              namePt: "Banco Estofado do Refeitório Oficial",
+              descriptionPt: "Assento acolchoado ao redor das mesas de refeição dos oficiais.",
+            },
+          };
+        }
+        if (relX === 29 && relY === 39) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "snow_city_stove",
+              interactive: true,
+              namePt: "Fogão Industrial a Lenha dos Oficiais",
+              descriptionPt: "Fogão de ferro fundido preparando refeições quentes para a oficialidade.",
+            },
+          };
+        }
+        if (relX === 31 && relY === 39) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "snow_city_counter",
+              interactive: true,
+              namePt: "Bancada de Carnes e Mantimentos do Quartel",
+              descriptionPt: "Bancada culinária abastecida com carnes de caça e especiarias.",
+            },
+          };
+        }
+        if (relX === 34 && relY === 40) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "snow_city_pantry",
+              interactive: true,
+              namePt: "Despensa de Provisões dos Oficiais",
+              descriptionPt: "Prateleiras cheias de suprimentos nobres do quartel.",
+            },
+          };
+        }
+        if (relX === 33 && relY === 43) {
+          return {
+            isSnowCity: true,
+            role: "house_floor",
+            roomName,
+            prop: {
+              kind: "snow_city_bathtub",
+              interactive: true,
+              namePt: "Tina de Banho Quente dos Oficiais",
+              descriptionPt: "Banheira térmica de cedro com água fumegante para relaxamento dos oficiais.",
+            },
+          };
+        }
+        return { isSnowCity: true, role: "house_floor", roomName };
+      }
+
+      // 3.4 PÁTIO CENTRAL DE EXECUÇÃO COM FORCA (relX in [-13..+13], relY in [29..45])
+      if (relX >= -13 && relX <= 13 && relY >= 29 && relY <= 45) {
+        const roomName = "Pátio de Execução com Forca (Quartel Militar)";
+
+        // No centro do Pátio (relX in [-2..+2], relY in [35..39]): Palanque de Madeira e Forca!
+        if (Math.abs(relX) <= 2 && relY >= 35 && relY <= 39) {
+          if (relX === 0 && relY === 37) {
+            return {
+              isSnowCity: true,
+              role: "gallows_platform",
+              roomName: "Cadafalso e Forca do Pátio de Execução",
+              isCollider: true,
+              prop: {
+                kind: "barracks_gallows",
+                scale: 1.35,
+                interactive: true,
+                namePt: "Forca de Execução do Quartel Militar",
+                descriptionPt:
+                  "Palanque elevado de madeira escura com alçapão de ferro, trave dupla maciça e laços de corda de cânhamo balançando ao vento gelado no centro do Pátio de Execução.",
+              },
+            };
+          }
+          // Piso do palanque de madeira ao redor da trave da forca
+          return {
+            isSnowCity: true,
+            role: "gallows_platform",
+            roomName: "Palanque de Madeira da Forca",
+          };
+        }
+
+        // Bancos de observação e armas de guarda nas bordas do Pátio de Execução
+        if ((relX === -6 || relX === 6) && (relY === 34 || relY === 40)) {
+          return {
+            isSnowCity: true,
+            role: "plaza",
+            roomName,
+            isCollider: true,
+            prop: {
+              kind: "snow_city_lamppost",
+              interactive: true,
+              namePt: "Poste de Ferro do Pátio de Execução",
+              descriptionPt: "Lampião militar iluminando o cadafalso e a forca durante as execuções noturnas.",
+            },
+          };
+        }
+        if ((relX === -10 || relX === 10) && relY === 37) {
+          return {
+            isSnowCity: true,
+            role: "plaza",
+            roomName,
+            prop: {
+              kind: "hanging_cage",
+              scale: 1.2,
+              interactive: true,
+              namePt: "Gaiola de Ferro Suspensa no Pátio de Execução",
+              descriptionPt: "Gaiola pendurada como aviso sombrio aos insurgentes e prisioneiros do quartel.",
+            },
+          };
+        }
+
+        return {
+          isSnowCity: true,
+          role: "plaza",
+          roomName,
+        };
+      }
+
+      // 3.5 ALA DE PRISÃO: GRANDES CELAS COLETIVAS TIPO CAMPO DE CONCENTRAÇÃO (relY in [46..73])
+      // Parede divisória entre o Pátio de Execução e o Pavilhão de Concentração em relY === 46
+      if (relY === 46) {
+        if (Math.abs(relX) <= 1) {
+          if (relX === 0) {
+            const isOpen = intState.opened !== undefined ? !!intState.opened : true;
+            return {
+              isSnowCity: true,
+              role: "door",
+              roomName: "Portão de Grades do Campo de Concentração",
+              isDoor: true,
+              isDoorOpen: isOpen,
+              isWall: false,
+              prop: {
+                kind: "iron_bars_gate",
+                doorVertical: false,
+                defaultOpened: true,
+                unlocked: true,
+                opened: isOpen,
+                interactive: true,
+                namePt: isOpen
+                  ? "Portão de Ferro do Pavilhão de Prisioneiros (Aberto)"
+                  : "Portão de Ferro do Pavilhão de Prisioneiros (Fechado)",
+                descriptionPt: "Grades pesadas de ferro separando o Pátio da Forca dos grandes blocos de celas coletivas.",
+              },
+            };
+          }
+          return {
+            isSnowCity: true,
+            role: "road",
+            roomName: "Passagem para as Grandes Celas de Concentração",
+          };
+        }
+        return {
+          isSnowCity: true,
+          role: "wall",
+          roomName: "Muralha Interna da Prisão",
+          isWall: true,
+          prop: { kind: "snow_city_wall", subType: 0, namePt: "Muralha da Ala de Prisão" },
+        };
+      }
+
+      // Corredor Central de Vigilância da Prisão (relX in [-3..+3], relY in [47..73])
+      if (relX >= -3 && relX <= 3 && relY >= 47 && relY <= 73) {
+        // ESCADARIA PARA O SUBSOLO (SALA DE TORTURA E SOLITÁRIA) em (relX === 0, relY === 51)!
+        if (relX === 0 && relY === 51) {
+          return {
+            isSnowCity: true,
+            role: "plaza",
+            roomName: "Escadaria para o Subsolo da Prisão (Sala de Tortura e Solitárias)",
+            prop: {
+              kind: "cave_entrance",
+              subType: 2,
+              isStaircase: true,
+              offsetX: 0,
+              offsetY: -4,
+              scale: 1.4,
+              interactive: true,
+              namePt: "Escadaria para o Subsolo (Sala de Tortura e Solitárias)",
+              descriptionPt:
+                "Escadaria sombria de pedra e ferro que desce para o Subsolo do Quartel: Câmara de Tortura, Interrogatório e Celas Solitárias! Pressione [F] para descer.",
+            },
+          };
+        }
+
+        // Postos de guarda e tochas no corredor central das celas
+        if ((relX === -2 || relX === 2) && (relY === 49 || relY === 59 || relY === 69)) {
+          return {
+            isSnowCity: true,
+            role: "road",
+            roomName: "Corredor de Vigilância do Campo de Prisioneiros",
+            prop: {
+              kind: "corridor_torch",
+              lit: true,
+              interactive: false,
+              namePt: "Tocha de Vigilância da Prisão",
+              descriptionPt: "Tocha acesa iluminando o corredor entre as grandes celas coletivas.",
+            },
+          };
+        }
+
+        return {
+          isSnowCity: true,
+          role: "road",
+          roomName: "Corredor Central da Prisão (Acesso às Grandes Celas e ao Subsolo)",
+        };
+      }
+
+      // Paredes de Grades e Portões das 4 Grandes Celas Coletivas (em relX === -4 e relX === +4)
+      if (relX === -4 || relX === 4) {
+        // Portões das 4 grandes celas coletivas em relY === 53 (Bloco I e II) e relY === 66 (Bloco III e IV)
+        if (relY === 53 || relY === 66) {
+          const isOpen = intState.opened !== undefined ? !!intState.opened : false;
+          const blockNum = relY === 53 ? (relX < 0 ? "I (Noroeste)" : "II (Nordeste)") : (relX < 0 ? "III (Sudoeste)" : "IV (Sudeste)");
+          return {
+            isSnowCity: true,
+            role: "door",
+            roomName: `Portão da Grande Cela Coletiva — Bloco ${blockNum}`,
+            isDoor: true,
+            isDoorOpen: isOpen,
+            isWall: false,
+            prop: {
+              kind: "iron_bars_gate",
+              doorVertical: true,
+              defaultOpened: true,
+              unlocked: true,
+              opened: isOpen,
+              interactive: true,
+              namePt: isOpen
+                ? `Portão da Grande Cela Coletiva ${blockNum} (Aberto)`
+                : `Portão da Grande Cela Coletiva ${blockNum} (Fechado)`,
+              descriptionPt:
+                "Pesado portão de grades de ferro do pavilhão de concentração de prisioneiros. Pressione [F] para abrir ou fechar!",
+            },
+          };
+        }
+
+        // Demais blocos em relX === -4 ou +4: Grades de ferro fechadas para dar visão de toda a cela gigante!
+        if (relY === 60) {
+          return {
+            isSnowCity: true,
+            role: "wall",
+            roomName: "Pilar de Contenção da Cela",
+            isWall: true,
+            prop: { kind: "snow_city_wall", subType: 0, namePt: "Pilar de Pedra da Prisão" },
+          };
+        }
+        return {
+          isSnowCity: true,
+          role: "prison_floor",
+          roomName: "Gradeamento de Ferro da Grande Cela Coletiva",
+          isCollider: true,
+          prop: {
+            kind: "iron_bars_gate",
+            doorVertical: true,
+            opened: false,
+            interactive: false,
+            namePt: "Grades de Ferro do Campo de Prisioneiros",
+            descriptionPt: "Grades maciças de ferro que confinam as dezenas de prisioneiros nas grandes celas coletivas.",
+          },
+        };
+      }
+
+      // Parede divisória horizontal entre os Blocos Superiores (I/II) e Inferiores (III/IV) em relY === 60
+      if (relY === 60) {
+        return {
+          isSnowCity: true,
+          role: "wall",
+          roomName: "Muralha Divisória dos Pavilhões de Concentração",
+          isWall: true,
+          prop: { kind: "snow_city_wall", subType: 0, namePt: "Muralha Divisória das Grandes Celas" },
+        };
+      }
+
+      // INTERIOR DAS 4 GRANDES CELAS COLETIVAS TIPO CAMPO DE CONCENTRAÇÃO:
+      // Cada cela tem 31 x 12 blocos (relX in [-35..-5] ou [5..35], relY in [47..59] ou [61..73])!
+      const isWestCell = relX < 0;
+      const isNorthCell = relY < 60;
+      const cellBlockName = isNorthCell
+        ? (isWestCell ? "Grande Cela Coletiva — Pavilhão I (Campo de Concentração Oeste)" : "Grande Cela Coletiva — Pavilhão II (Campo de Concentração Leste)")
+        : (isWestCell ? "Grande Cela Coletiva — Pavilhão III (Campo de Concentração Sudoeste)" : "Grande Cela Coletiva — Pavilhão IV (Campo de Concentração Sudeste)");
+
+      // Fileiras de beliches triplos de madeira bruta (tipo barraca de campo de concentração!)
+      const bunkCols = isWestCell ? [-32, -26, -20, -14, -9] : [9, 14, 20, 26, 32];
+      const bunkRows = isNorthCell ? [49, 53, 57] : [63, 67, 71];
+
+      if (bunkCols.includes(relX) && bunkRows.includes(relY)) {
+        return {
+          isSnowCity: true,
+          role: "prison_floor",
+          roomName: cellBlockName,
+          isCollider: true,
+          prop: {
+            kind: "prison_bunk_bed",
+            interactive: true,
+            namePt: "Beliche Coletivo de Madeira Bruta (Campo de Prisioneiros)",
+            descriptionPt:
+              "Beliche triplo de tábuas ásperas e palha fria onde dezenas de prisioneiros dormem amontoados nas grandes celas do quartel.",
+          },
+        };
+      }
+
+      // Montes de palha úmida, ossadas acorrentadas e latrinas coletivas nos cantos das grandes celas
+      if ((relX === -34 || relX === 34) && (relY === 48 || relY === 62)) {
+        return {
+          isSnowCity: true,
+          role: "prison_floor",
+          roomName: cellBlockName,
+          prop: {
+            kind: "dungeon_latrine_bench",
+            interactive: true,
+            namePt: "Latrina Coletiva do Pavilhão de Prisioneiros",
+            descriptionPt: "Vala sanitária rústica de pedra no canto da grande cela coletiva.",
+          },
+        };
+      }
+      if ((relX === -34 || relX === 34) && (relY === 58 || relY === 72)) {
+        return {
+          isSnowCity: true,
+          role: "prison_floor",
+          roomName: cellBlockName,
+          prop: {
+            kind: "dungeon_skeleton",
+            interactive: true,
+            namePt: "Prisioneiro Acorrentado nas Grades",
+            descriptionPt: "Restos mortais de um prisioneiro que não resistiu ao inverno rigoroso na grande cela.",
+          },
+        };
+      }
+      if ((relX === -11 || relX === 11) && (relY === 51 || relY === 69)) {
+        return {
+          isSnowCity: true,
+          role: "prison_floor",
+          roomName: cellBlockName,
+          prop: {
+            kind: "dungeon_straw",
+            interactive: true,
+            namePt: "Palha Suja de Prisioneiros",
+            descriptionPt: "Forragem úmida espalhada pelo chão de concreto frio da grande cela.",
+          },
+        };
+      }
+
+      return {
+        isSnowCity: true,
+        role: "prison_floor",
+        roomName: cellBlockName,
+      };
+    }
 
     // - BECOS COM SAÍDA (vielas estreitas que atravessam o quarteirão de um lado ao outro):
     //   1. Beco do Norte-Oeste (X = -8, Y de -24 até -12): passa entre a Casa #3 e a Casa #4 até a borda norte!
@@ -785,17 +1692,227 @@ window.Game = window.Game || {};
     return null;
   }
 
+  // =========================================================================
+  // SUBSOLO DO QUARTEL E PRISÃO (SALA DE TORTURA E CELAS SOLITÁRIAS)
+  // Centrado na escadaria em (BARRACKS_STAIR_TX, BARRACKS_STAIR_TY) = (CITY_CX, CITY_CY + 51).
+  // Contém:
+  //   1. Vestíbulo da Escadaria de Retorno ao Quartel (dx in [-3..+3], dy in [-3..+3])
+  //   2. Grande Sala de Tortura e Interrogatório no Subsolo (dx in [-14..+14], dy in [4..18])
+  //      - Cavaletes de Estiramento (torture_rack), Donzelas de Ferro (iron_maiden),
+  //        Braseiros com Ferros em Brasa (torture_brazier), Mesas de Instrumentos (torture_tools),
+  //        Gaiolas Suspensas (hanging_cage), Esqueletos Acorrentados e Baú do Carrasco.
+  //   3. Ala das Celas Solitárias no Subsolo (dy in [19..38]):
+  //      - Corredor Escuro de Isolamento (dx in [-2..+2], dy in [19..38])
+  //      - 8 Celas Solitárias Individuais (4 à esquerda e 4 à direita, minúsculas e escuras,
+  //        fechadas com portas de ferro/grades, cama de pedra/palha e grilhões)
+  //      - 1 Solitária de Segurança Máxima ("O Fosso Gelado") no fundo sul (dy in [39..45])
+  // =========================================================================
+  function getUndergroundCellAt(tx, ty, interactedProps) {
+    const dx = tx - BARRACKS_STAIR_TX;
+    const dy = ty - BARRACKS_STAIR_TY;
+
+    if (dx < -15 || dx > 15 || dy < -4 || dy > 46) return null;
+
+    const pKey = `underground_${tx},${ty}`;
+    const intState =
+      interactedProps && interactedProps.get
+        ? interactedProps.get(pKey) || interactedProps.get(`dungeon_${tx},${ty}`) || interactedProps.get(`${tx},${ty}`) || {}
+        : {};
+
+    // 1. VESTÍBULO DA ESCADARIA DO QUARTEL (dx in [-4..+4], dy in [-4..+3])
+    if (dy >= -4 && dy <= 3) {
+      if (dx < -4 || dx > 4) return null;
+      if (dy === -4 || dx === -4 || dx === 4 || (dy === 3 && Math.abs(dx) > 1)) {
+        return { role: "dungeon_wall", roomName: "Muralha do Subsolo do Quartel" };
+      }
+      if (dx === 0 && dy === 0) {
+        return {
+          role: "barracks_stair_exit",
+          targetTx: BARRACKS_STAIR_TX,
+          targetTy: BARRACKS_STAIR_TY,
+          roomName: "Escadaria de Subida para o Quartel e Prisão",
+        };
+      }
+      if ((dx === -2 || dx === 2) && dy === -2) {
+        return { role: "corridor_torch", lit: true, roomName: "Vestíbulo Subterrâneo do Quartel" };
+      }
+      return { role: "dungeon_floor", roomName: "Vestíbulo Subterrâneo do Quartel" };
+    }
+
+    // 2. GRANDE SALA DE TORTURA DO SUBSOLO (dx in [-14..+14], dy in [4..18])
+    if (dy >= 4 && dy <= 18) {
+      if (dx < -14 || dx > 14) return null;
+
+      // Paredes externas da Sala de Tortura
+      if (dx === -14 || dx === 14 || (dy === 4 && Math.abs(dx) > 1) || (dy === 18 && Math.abs(dx) > 1)) {
+        return { role: "dungeon_wall", roomName: "Muralha da Grande Sala de Tortura" };
+      }
+
+      // Porta de entrada da Sala de Tortura (dy === 4, dx === 0) e saída para a Ala das Solitárias (dy === 18, dx === 0)
+      if ((dy === 4 || dy === 18) && dx === 0) {
+        const isOpen = intState.opened !== undefined ? !!intState.opened : true;
+        return {
+          role: "dungeon_door",
+          doorVertical: false,
+          defaultOpened: true,
+          opened: isOpen,
+          roomName: dy === 4 ? "Porta da Sala de Tortura do Subsolo" : "Porta para o Corredor das Solitárias",
+        };
+      }
+
+      const roomName = "Sala de Tortura do Subsolo (Quartel Militar)";
+
+      // Equipamentos de Tortura distribuídos na grande câmara:
+      // - 2 Cavaletes de Estiramento (torture_rack)
+      if ((dx === -7 || dx === 7) && dy === 8) {
+        return { role: "torture_rack", roomName };
+      }
+      // - 2 Donzelas de Ferro (iron_maiden)
+      if ((dx === -11 || dx === 11) && dy === 6) {
+        return { role: "iron_maiden", roomName };
+      }
+      // - 2 Braseiros de Tortura com Ferros em Brasa (torture_brazier)
+      if ((dx === -4 || dx === 4) && dy === 11) {
+        return { role: "torture_brazier", roomName };
+      }
+      // - 2 Mesas de Instrumentos de Suplício (torture_tools)
+      if ((dx === -7 || dx === 7) && dy === 14) {
+        return { role: "torture_tools", roomName };
+      }
+      // - 4 Gaiolas de Ferro Suspensas (hanging_cage)
+      if ((dx === -11 || dx === 11) && (dy === 11 || dy === 15)) {
+        return { role: "hanging_cage", roomName };
+      }
+      // - Ossadas acorrentadas nas paredes e baú do inquisidor
+      if ((dx === -12 || dx === 12) && dy === 17) {
+        return { role: "dungeon_skeleton", roomName };
+      }
+      if (dx === -12 && dy === 9) {
+        return { role: "weapon_rack", roomName };
+      }
+      if (dx === 12 && dy === 9) {
+        return { role: "chest", opened: !!intState.opened, roomName };
+      }
+      if ((dx === -3 || dx === 3) && (dy === 6 || dy === 16)) {
+        return { role: "corridor_torch", lit: true, roomName };
+      }
+
+      return { role: "torture_floor", roomName };
+    }
+
+    // 3. ALA DAS CELAS SOLITÁRIAS NO SUBSOLO (dx in [-9..+9], dy in [19..45])
+    if (dy >= 19 && dy <= 45) {
+      if (dx < -9 || dx > 9) return null;
+
+      // Muralhas externas laterais e final sul
+      if (dx === -9 || dx === 9 || dy === 45) {
+        return { role: "dungeon_wall", roomName: "Muralha das Celas Solitárias" };
+      }
+
+      // 3.1 SOLITÁRIA DE SEGURANÇA MÁXIMA AO FUNDO SUL ("O Fosso Solitário", dy in [39..44], dx in [-8..+8])
+      if (dy >= 39) {
+        if (dy === 39) {
+          if (dx === 0) {
+            const isOpen = intState.opened !== undefined ? !!intState.opened : false;
+            return {
+              role: "iron_bars_gate",
+              doorVertical: false,
+              defaultOpened: true,
+              unlocked: true,
+              opened: isOpen,
+              roomName: "Portão Blindado da Solitária Máxima (O Fosso)",
+            };
+          }
+          return { role: "dungeon_wall", roomName: "Parede da Solitária Máxima" };
+        }
+        // Paredes laterais para deixar a solitária central estreita e claustrofóbica (dx in [-4..+4])
+        if (Math.abs(dx) >= 5) {
+          return { role: "dungeon_wall", roomName: "Rocha Maciça de Isolamento" };
+        }
+        const roomName = "Solitária de Segurança Máxima (Subsolo da Prisão)";
+        if (dx === 0 && dy === 42) return { role: "hanging_cage", roomName };
+        if (dx === -3 && dy === 43) return { role: "dungeon_skeleton", roomName };
+        if (dx === 3 && dy === 43) return { role: "dungeon_straw", roomName };
+        if (dx === 0 && dy === 44) return { role: "chest", opened: !!intState.opened, roomName };
+        return { role: "cell_floor", roomName };
+      }
+
+      // 3.2 CORREDOR CENTRAL DAS SOLITÁRIAS (dx in [-2..+2], dy in [19..38])
+      if (dx >= -2 && dx <= 2) {
+        if ((dx === -1 || dx === 1) && (dy === 21 || dy === 29 || dy === 37)) {
+          return {
+            role: "corridor_torch",
+            lit: true,
+            roomName: "Corredor das Celas Solitárias (Subsolo)",
+          };
+        }
+        return {
+          role: "dungeon_floor",
+          roomName: "Corredor das Celas Solitárias (Subsolo)",
+        };
+      }
+
+      // 3.3 8 CELAS SOLITÁRIAS INDIVIDUAIS (4 a Oeste: dx in [-8..-3], 4 a Leste: dx in [3..8])
+      // Divididas por paredes horizontais em dy === 19, 24, 29, 34, 39 (cada solitária tem 4 blocos de altura interna!)
+      if (dy === 19 || dy === 24 || dy === 29 || dy === 34) {
+        return { role: "dungeon_wall", roomName: "Parede de Isolamento da Solitária" };
+      }
+
+      const cellRow = Math.floor((dy - 19) / 5); // 0, 1, 2, 3
+      const isLeft = dx < 0;
+      const solitaryNumber = cellRow * 2 + (isLeft ? 1 : 2);
+      const roomName = `Cela Solitária #${solitaryNumber} (Isolamento Total no Subsolo)`;
+      const doorDy = 19 + cellRow * 5 + 2; // centro de cada solitária (21, 26, 31, 36)
+
+      // Parede frontal de cada Solitária (dx === -3 ou dx === +3)
+      if (dx === -3 || dx === 3) {
+        if (dy === doorDy) {
+          const isOpen = intState.opened !== undefined ? !!intState.opened : false;
+          return {
+            role: "iron_bars_gate",
+            doorVertical: true,
+            defaultOpened: true,
+            unlocked: true,
+            opened: isOpen,
+            roomName: `Porta de Ferro da Cela Solitária #${solitaryNumber}`,
+          };
+        }
+        return { role: "dungeon_wall", roomName: `Parede da Cela Solitária #${solitaryNumber}` };
+      }
+
+      // Interior claustrofóbico de cada Cela Solitária (dx in [-8..-4] ou [4..8])
+      const farX = isLeft ? -7 : 7;
+      const cornerX = isLeft ? -8 : 8;
+      if (dx === farX && dy === doorDy - 1) {
+        return { role: "dungeon_straw", roomName };
+      }
+      if (dx === cornerX && dy === doorDy + 1) {
+        return {
+          role: solitaryNumber % 2 === 0 ? "dungeon_skeleton" : "dungeon_latrine_bench",
+          roomName,
+        };
+      }
+
+      return { role: "cell_floor", roomName };
+    }
+
+    return null;
+  }
+
   // Exporta a definição
   const SnowPeakCity = {
     centerX: CITY_CX,
     centerY: CITY_CY,
     radius: CITY_RADIUS,
+    barracksStairTx: BARRACKS_STAIR_TX,
+    barracksStairTy: BARRACKS_STAIR_TY,
     houses: HOUSES,
     isCityTerritory,
     isCityBiomeArea,
     getHouseAt,
     getActiveHouseForPlayer,
     getCellAt,
+    getUndergroundCellAt,
   };
 
   G.SnowPeakCity = SnowPeakCity;

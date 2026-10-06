@@ -2453,6 +2453,10 @@
             if (scCell.isDoor) {
               se.isSnowCityDoor = !0;
               se.isSnowCityDoorOpen = !!scCell.isDoorOpen;
+              if (scCell.prop && scCell.prop.kind === "iron_bars_gate") {
+                se.isIronBars = !0;
+                se.isIronBarsOpen = !!scCell.isDoorOpen;
+              }
             }
             if (scCell.prop) {
               se.prop = scCell.prop;
@@ -2919,6 +2923,207 @@
     }
     getUndergroundTile(t, l) {
       const u = this.hash2D(t, l, 97);
+
+      // =========================================================================
+      // SUBSOLO DO QUARTEL E PRISÃO GLACIAL (SALA DE TORTURA E CELAS SOLITÁRIAS):
+      // Avalia primeiro se estamos na estrutura subterrânea do Quartel dos Picos Gelados!
+      // =========================================================================
+      if (
+        typeof window !== "undefined" &&
+        window.SnowPeakCity &&
+        typeof window.SnowPeakCity.getUndergroundCellAt === "function"
+      ) {
+        const bCell = window.SnowPeakCity.getUndergroundCellAt(t, l, this.interactedProps);
+        if (bCell) {
+          let isDungeonWall = !1;
+          let isDungeonDoor = !1;
+          let isDungeonDoorOpen = !1;
+          let isIronBars = !1;
+          let isIronBarsOpen = !1;
+          let sProp = null;
+
+          if (bCell.role === "dungeon_wall") {
+            isDungeonWall = !0;
+            sProp = {
+              kind: "dungeon_wall",
+              subType: 0,
+              scale: 1,
+              namePt: "Muralha do Subsolo da Prisão",
+              descriptionPt: `Muralha maciça de granito negro selando: ${bCell.roomName}.`,
+            };
+          } else if (bCell.role === "barracks_stair_exit") {
+            sProp = {
+              kind: "cave_exit",
+              subType: 2,
+              isStaircase: !0,
+              targetTx: bCell.targetTx,
+              targetTy: bCell.targetTy,
+              offsetX: 0,
+              offsetY: -4,
+              scale: 1.38,
+              interactive: !0,
+              namePt: "Escadaria de Subida para o Quartel e Prisão",
+              descriptionPt:
+                "Escadaria de pedra e ferro que sobe do Subsolo (Sala de Tortura e Solitárias) de volta para a Ala da Prisão na superfície. Pressione [F] para subir!",
+            };
+          } else if (bCell.role === "dungeon_door") {
+            isDungeonDoor = !0;
+            isDungeonDoorOpen = !!bCell.opened;
+            sProp = {
+              kind: "dungeon_door",
+              doorVertical: !!bCell.doorVertical,
+              opened: !!bCell.opened,
+              scale: 1,
+              interactive: !0,
+              namePt: bCell.opened ? `${bCell.roomName} (Aberta)` : `${bCell.roomName} (Fechada)`,
+              descriptionPt: "Pesada porta blindada do subsolo da prisão. Pressione [F] para abrir ou fechar!",
+            };
+          } else if (bCell.role === "iron_bars_gate") {
+            isIronBars = !0;
+            isIronBarsOpen = !!bCell.opened;
+            sProp = {
+              kind: "iron_bars_gate",
+              doorVertical: !!bCell.doorVertical,
+              defaultOpened: !0,
+              unlocked: !0,
+              opened: !!bCell.opened,
+              scale: 1,
+              interactive: !0,
+              namePt: bCell.opened ? `${bCell.roomName} (Aberta)` : `${bCell.roomName} (Fechada)`,
+              descriptionPt: "Grade maciça de ferro de isolamento da Cela Solitária. Pressione [F] para abrir ou fechar!",
+            };
+          } else if (bCell.role === "torture_rack") {
+            sProp = {
+              kind: "torture_rack",
+              subType: 0,
+              scale: 1.25,
+              interactive: !0,
+              namePt: "Cavalete de Tortura (Mesa de Estiramento)",
+              descriptionPt: "Mesa de estiramento com manivelas e correntes de ferro na Sala de Tortura do Subsolo.",
+            };
+          } else if (bCell.role === "iron_maiden") {
+            sProp = {
+              kind: "iron_maiden",
+              subType: 0,
+              scale: 1.25,
+              interactive: !0,
+              namePt: "Donzela de Ferro (Sarcófago de Espinhos)",
+              descriptionPt: "Sarcófago de ferro forjado com espinhos afiados no interior, usado nos interrogatórios do quartel.",
+            };
+          } else if (bCell.role === "torture_brazier") {
+            sProp = {
+              kind: "torture_brazier",
+              subType: 0,
+              scale: 1.15,
+              interactive: !0,
+              namePt: "Braseiro de Tortura com Ferros em Brasa",
+              descriptionPt: "Braseiro incandescente aquecendo tenazes e ferros de marcar na Sala de Tortura.",
+            };
+          } else if (bCell.role === "torture_tools") {
+            sProp = {
+              kind: "torture_tools",
+              subType: 0,
+              scale: 1.15,
+              interactive: !0,
+              namePt: "Mesa de Instrumentos de Tortura e Interrogatório",
+              descriptionPt: "Bancada manchada de sangue com alicates, serras, tenazes e chicotes de ferro.",
+            };
+          } else if (bCell.role === "hanging_cage") {
+            sProp = {
+              kind: "hanging_cage",
+              subType: 0,
+              scale: 1.2,
+              interactive: !0,
+              namePt: "Gaiola Suspensa de Isolamento",
+              descriptionPt: "Gaiola de ferro suspensa por correntes no teto do subsolo.",
+            };
+          } else if (bCell.role === "dungeon_skeleton") {
+            sProp = {
+              kind: "dungeon_skeleton",
+              subType: 0,
+              scale: 1.1,
+              interactive: !0,
+              namePt: "Ossadas de Prisioneiro na Solitária",
+              descriptionPt: "Restos mortais acorrentados na parede fria do subsolo.",
+            };
+          } else if (bCell.role === "dungeon_straw") {
+            sProp = {
+              kind: "dungeon_straw",
+              subType: 0,
+              scale: 1.05,
+              interactive: !0,
+              namePt: "Leito Frio da Solitária",
+              descriptionPt: "Fina camada de palha úmida sobre a laje gelada da cela solitária.",
+            };
+          } else if (bCell.role === "dungeon_latrine_bench") {
+            sProp = {
+              kind: "dungeon_latrine_bench",
+              subType: 0,
+              scale: 1.1,
+              interactive: !0,
+              namePt: "Latrina de Pedra da Solitária",
+              descriptionPt: "Fosso sanitário rústico no canto da cela de isolamento.",
+            };
+          } else if (bCell.role === "weapon_rack") {
+            sProp = {
+              kind: "weapon_rack",
+              subType: 0,
+              scale: 1.15,
+              interactive: !0,
+              namePt: "Suporte de Armas dos Carcereiros",
+              descriptionPt: "Armas e bastões de ferro usados pelos guardas do subsolo.",
+            };
+          } else if (bCell.role === "chest") {
+            sProp = {
+              kind: "chest",
+              subType: 0,
+              scale: 1.05,
+              interactive: !bCell.opened,
+              opened: !!bCell.opened,
+              namePt: bCell.opened ? "Baú do Subsolo (Aberto)" : "Baú Reforçado da Sala de Tortura",
+              descriptionPt: "Baú trancado no subsolo da prisão. Pressione [F] para abrir!",
+            };
+          } else if (bCell.role === "corridor_torch") {
+            sProp = {
+              kind: "corridor_torch",
+              subType: 0,
+              lit: !0,
+              offsetX: 0,
+              offsetY: -2,
+              scale: 1.05,
+              interactive: !1,
+              namePt: "Tocha do Subsolo da Prisão",
+              descriptionPt: "Tocha bruxuleante iluminando o subsolo de tortura e solitárias.",
+            };
+          }
+
+          if (sProp) {
+            if (sProp.offsetX === undefined) sProp.offsetX = 0;
+            if (sProp.offsetY === undefined) sProp.offsetY = 0;
+            if (sProp.scale === undefined) sProp.scale = 1;
+          }
+
+          return {
+            tx: t,
+            ty: l,
+            elevation: 0.1,
+            moisture: 0.7,
+            temperature: 0.25,
+            biome: isDungeonWall ? BIOMES[BiomeId.CAVE_WALL] : BIOMES[BiomeId.CAVE_FLOOR],
+            isDungeonFloor: !isDungeonWall,
+            isDungeonWall,
+            isDungeonDoor,
+            isDungeonDoorOpen,
+            isIronBars,
+            isIronBarsOpen,
+            dungeonRole: bCell.role,
+            dungeonRoomName: bCell.roomName,
+            prop: sProp,
+            detailHash: u,
+          };
+        }
+      }
+
       const thisCave = this.getCaveEntranceAt(t, l);
       if (thisCave) {
         const surfBiome = this._computeSurfaceBaseBiome(t, l);
@@ -4312,37 +4517,62 @@
           reward: "Retorno ao Subsolo",
         };
       if (o.prop.kind === "iron_bars_gate") {
-        const pKey = `dungeon_${t},${l}`;
-        const isLocked = !o.prop.opened && o.prop.defaultOpened === false && !m.unlocked;
+        const pKey = this.undergroundLevel === 2 ? `dungeon_${t},${l}` : u;
+        const prev = this.interactedProps.get(pKey) || m;
+        const isLocked = !o.prop.opened && o.prop.defaultOpened === false && !prev.unlocked && !o.prop.unlocked;
         if (isLocked) {
           return {
             success: !1,
             action: "locked_cell",
             tx: t,
             ty: l,
-            message: "🔒 Esta cela está trancada com um pesado cadeado de ferro! Você precisa da Chave do Carcereiro (no Posto do Carcereiro) para destrancá-la.",
+            message: "🔒 Esta cela está trancada com um pesado cadeado de ferro! Você precisa da Chave do Carcereiro (na Sala de Administração dos Oficiais ou no Posto do Carcereiro) para destrancá-la.",
             reward: "Cela Trancada",
           };
         }
         const nextOpen = !o.prop.opened;
-        this.interactedProps.set(pKey, { ...m, opened: nextOpen });
+        this.interactedProps.set(pKey, { ...prev, opened: nextOpen });
+        this.interactedProps.set(u, { ...m, opened: nextOpen });
         this.invalidateTile(t, l);
         return {
           success: !0,
           action: "toggle_gate",
-          message: "",
+          message: nextOpen ? "🔓 Você abriu o portão de grades de ferro da cela." : "🔒 Você fechou o portão de grades de ferro da cela.",
           reward: "",
         };
       }
       if (o.prop.kind === "dungeon_door") {
         const nextOpen = !o.prop.opened;
-        const pKey = `dungeon_${t},${l}`;
-        this.interactedProps.set(pKey, { ...m, opened: nextOpen });
+        const pKey = this.undergroundLevel === 2 ? `dungeon_${t},${l}` : u;
+        const prev = this.interactedProps.get(pKey) || m;
+        this.interactedProps.set(pKey, { ...prev, opened: nextOpen });
+        this.interactedProps.set(u, { ...m, opened: nextOpen });
         this.invalidateTile(t, l);
         return {
           success: !0,
           action: "dungeon_door",
-          message: "",
+          message: nextOpen ? "🚪 Porta do subsolo aberta." : "🚪 Porta do subsolo fechada.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "barracks_gallows") {
+        return {
+          success: !0,
+          message: "🪢 Você inspecionou o Cadafalso e a Forca do Pátio de Execução: a trave de carvalho maciço sustenta dois laços de corda sobre o alçapão de ferro.",
+          reward: "Pátio de Execução (+45 XP)",
+        };
+      }
+      if (o.prop.kind === "barracks_officer_desk") {
+        return {
+          success: !0,
+          message: "🗺️ Você examinou a Mesa de Comando dos Oficiais: planos estratégicos da guarnição, listas de prisioneiros das grandes celas e ordens assinadas pelo Comandante.",
+          reward: "Documentos Militares (+50 XP)",
+        };
+      }
+      if (o.prop.kind === "prison_bunk_bed") {
+        return {
+          success: !0,
+          message: "🛏️ Beliches triplos de madeira bruta amontoados na grande cela coletiva do campo de prisioneiros.",
           reward: "",
         };
       }

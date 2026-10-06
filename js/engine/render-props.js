@@ -5350,9 +5350,215 @@
       return;
     }
 
+    // E. PALANQUE DE MADEIRA DO PÁTIO DE EXECUÇÃO (GALLOWS PLATFORM)
+    if (role === "gallows_platform") {
+      g.fillStyle = "#451a03";
+      g.fillRect(l, o, u + 1, u + 1);
+      const planks = 4;
+      const plankH = u / planks;
+      for (let p = 0; p < planks; p++) {
+        const py = o + p * plankH;
+        g.fillStyle = (p + t.tx) % 2 === 0 ? "#5c2808" : "#4a1f05";
+        g.fillRect(l + 0.5, py + 0.5, u - 1, plankH - 1);
+      }
+      g.strokeStyle = "#271206";
+      g.lineWidth = 1.2;
+      g.strokeRect(l + 0.5, o + 0.5, u - 1, u - 1);
+      return;
+    }
+
+    // F. PISO FRIO DAS GRANDES CELAS COLETIVAS (CAMPO DE CONCENTRAÇÃO)
+    if (role === "prison_floor") {
+      g.fillStyle = isChecker ? "#1e293b" : "#172033";
+      g.fillRect(l, o, u + 1, u + 1);
+      g.strokeStyle = "rgba(2, 6, 23, 0.78)";
+      g.lineWidth = 1.2;
+      g.strokeRect(l + 0.5, o + 0.5, u - 1, u - 1);
+      if ((Math.abs(t.tx * 7 + t.ty * 3) % 5) === 0) {
+        g.fillStyle = "rgba(15, 23, 42, 0.55)";
+        g.fillRect(l + 4, o + 5, u - 8, 2.5);
+      }
+      return;
+    }
+
     // Fundo padrão
     g.fillStyle = "#334155";
     g.fillRect(l, o, u + 1, u + 1);
+  }
+
+  // 1b. Forca de Execução no Pátio do Quartel Militar (Cadafalso com Alçapão e Laços de Corda)
+  function drawBarracksGallows(e, t = 1, animTimer = 0) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    e.save();
+    const s = t * 1.1;
+
+    // Sombra projetada sobre o palanque
+    e.fillStyle = "rgba(2, 6, 23, 0.65)";
+    e.beginPath();
+    e.ellipse(0, 8 * s, 26 * s, 11 * s, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Base elevada do cadafalso com alçapão duplo de ferro e madeira
+    e.fillStyle = "#3e1f0d";
+    e.fillRect(-22 * s, -4 * s, 44 * s, 14 * s);
+    e.strokeStyle = "#1c0d06";
+    e.lineWidth = 1.4 * s;
+    e.strokeRect(-22 * s, -4 * s, 44 * s, 14 * s);
+
+    // Alçapão central de execução (portinholas no piso com dobradiças de ferro)
+    e.fillStyle = "#1e293b";
+    e.fillRect(-13 * s, -2 * s, 26 * s, 9 * s);
+    e.fillStyle = "#291509";
+    e.fillRect(-11.5 * s, -1 * s, 11 * s, 7 * s);
+    e.fillRect(0.5 * s, -1 * s, 11 * s, 7 * s);
+
+    // Dois pilares verticais maciços de carvalho escuro
+    e.fillStyle = "#451a03";
+    e.fillRect(-19 * s, -42 * s, 4.5 * s, 46 * s);
+    e.fillRect(14.5 * s, -42 * s, 4.5 * s, 46 * s);
+    e.strokeStyle = "#271206";
+    e.lineWidth = 1.1 * s;
+    e.strokeRect(-19 * s, -42 * s, 4.5 * s, 46 * s);
+    e.strokeRect(14.5 * s, -42 * s, 4.5 * s, 46 * s);
+
+    // Mãos-francesas (escoras diagonais superiores)
+    e.strokeStyle = "#5c2808";
+    e.lineWidth = 3 * s;
+    e.beginPath();
+    e.moveTo(-16.5 * s, -31 * s);
+    e.lineTo(-9 * s, -40 * s);
+    e.moveTo(16.5 * s, -31 * s);
+    e.lineTo(9 * s, -40 * s);
+    e.stroke();
+
+    // Viga mestra horizontal superior da Forca (com camada de neve no topo)
+    e.fillStyle = "#5c2808";
+    e.fillRect(-23 * s, -45 * s, 46 * s, 5 * s);
+    e.strokeStyle = "#271206";
+    e.lineWidth = 1.2 * s;
+    e.strokeRect(-23 * s, -45 * s, 46 * s, 5 * s);
+
+    // Neve acumulada sobre a viga da forca
+    e.fillStyle = "#f8fafc";
+    e.fillRect(-22.5 * s, -46.8 * s, 45 * s, 2.4 * s);
+
+    // Alavanca de ferro do carrasco ao lado direito para abrir o alçapão
+    e.strokeStyle = "#64748b";
+    e.lineWidth = 1.8 * s;
+    e.beginPath();
+    e.moveTo(20 * s, 4 * s);
+    e.lineTo(23 * s, -8 * s);
+    e.stroke();
+    e.fillStyle = "#dc2626";
+    e.beginPath();
+    e.arc(23 * s, -8.5 * s, 1.8 * s, 0, Math.PI * 2);
+    e.fill();
+
+    // Dois laços de corda de enforcamento balançando com o vento glacial
+    const sway = Math.sin((animTimer || 0) * 2.2) * 1.6 * s;
+    for (const rx of [-6.5 * s, 6.5 * s]) {
+      e.strokeStyle = "#d97706";
+      e.lineWidth = 1.5 * s;
+      // Corda descendo da viga
+      e.beginPath();
+      e.moveTo(rx, -40 * s);
+      e.quadraticCurveTo(rx + sway * 0.5, -31 * s, rx + sway, -24 * s);
+      e.stroke();
+
+      // Nó grosso de enforcado (13 voltas)
+      e.fillStyle = "#b45309";
+      e.fillRect(rx + sway - 1.4 * s, -25 * s, 2.8 * s, 3.5 * s);
+
+      // Laço oval da forca
+      e.strokeStyle = "#f59e0b";
+      e.lineWidth = 1.6 * s;
+      e.beginPath();
+      e.ellipse(rx + sway, -18.5 * s, 3.2 * s, 4.2 * s, 0, 0, Math.PI * 2);
+      e.stroke();
+    }
+
+    e.restore();
+  }
+
+  // 1c. Mesa de Comando e Estratégia dos Oficiais do Quartel
+  function drawBarracksOfficerDesk(e, t = 1, subType = 0) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    e.save();
+    // Sombra
+    e.fillStyle = "rgba(2, 6, 23, 0.55)";
+    e.fillRect(-16 * t, -7 * t, 32 * t, 18 * t);
+
+    // Corpo da escrivaninha de carvalho nobre e detalhes dourados
+    e.fillStyle = "#451a03";
+    e.fillRect(-14 * t, -10 * t, 28 * t, 15 * t);
+    e.fillStyle = "#78350f";
+    e.fillRect(-13 * t, -9 * t, 26 * t, 12 * t);
+    e.strokeStyle = "#b45309";
+    e.lineWidth = 1.1 * t;
+    e.strokeRect(-13 * t, -9 * t, 26 * t, 12 * t);
+
+    // Mapa estratégico aberto no centro da mesa
+    e.fillStyle = "#fef3c7";
+    e.fillRect(-8 * t, -7 * t, 16 * t, 8 * t);
+    e.strokeStyle = "#92400e";
+    e.lineWidth = 0.8 * t;
+    e.strokeRect(-8 * t, -7 * t, 16 * t, 8 * t);
+
+    // Marcações vermelhas e azuis táticas no mapa
+    e.fillStyle = "#dc2626";
+    e.beginPath();
+    e.arc(-3 * t, -3 * t, 1.4 * t, 0, Math.PI * 2);
+    e.arc(3 * t, -4 * t, 1.4 * t, 0, Math.PI * 2);
+    e.fill();
+
+    // Candelabro dourado e tinteiro com pena
+    e.fillStyle = "#fbbf24";
+    e.beginPath();
+    e.arc(-10.5 * t, -6 * t, 1.8 * t, 0, Math.PI * 2);
+    e.fill();
+    e.fillStyle = "#1e293b";
+    e.beginPath();
+    e.arc(10 * t, -5 * t, 1.5 * t, 0, Math.PI * 2);
+    e.fill();
+
+    e.restore();
+  }
+
+  // 1d. Beliche Triplo Coletivo de Prisioneiros (Celas Grandes tipo Campo de Concentração)
+  function drawPrisonBunkBed(e, t = 1) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    e.save();
+    // Sombra no piso frio da grande cela
+    e.fillStyle = "rgba(2, 6, 23, 0.6)";
+    e.fillRect(-15 * t, -8 * t, 30 * t, 18 * t);
+
+    // Estrutura de madeira bruta de 2/3 andares de beliche coletivo
+    e.fillStyle = "#3e2723";
+    e.fillRect(-13.5 * t, -14 * t, 27 * t, 20 * t);
+    e.strokeStyle = "#1b0f0a";
+    e.lineWidth = 1.2 * t;
+    e.strokeRect(-13.5 * t, -14 * t, 27 * t, 20 * t);
+
+    // Colchões rústicos de estopa cinza-escura e palha nos andares do beliche
+    e.fillStyle = "#475569";
+    e.fillRect(-12 * t, -12.5 * t, 24 * t, 7 * t);
+    e.fillStyle = "#334155";
+    e.fillRect(-12 * t, -3 * t, 24 * t, 7 * t);
+
+    // Travesseiros rústicos e palha saindo pelas bordas
+    e.fillStyle = "#94a3b8";
+    e.fillRect(-11 * t, -11.5 * t, 5 * t, 5 * t);
+    e.fillRect(-11 * t, -2 * t, 5 * t, 5 * t);
+    e.fillStyle = "#a16207";
+    e.fillRect(6 * t, -11 * t, 4 * t, 2 * t);
+    e.fillRect(5 * t, -1 * t, 5 * t, 2 * t);
+
+    // Poste vertical nos 4 cantos do beliche
+    e.fillStyle = "#271206";
+    e.fillRect(-14 * t, -15 * t, 2.5 * t, 22 * t);
+    e.fillRect(11.5 * t, -15 * t, 2.5 * t, 22 * t);
+
+    e.restore();
   }
 
   // 2. Parede 2.5D de Pedra da Montanha com Vigas de Madeira e Telhado Nevado

@@ -1775,6 +1775,15 @@
           case "snow_city_lamppost":
             drawSnowCityLamppost(c, f, this.animTimer);
             break;
+          case "barracks_gallows":
+            drawBarracksGallows(c, f, this.animTimer);
+            break;
+          case "barracks_officer_desk":
+            drawBarracksOfficerDesk(c, f, t.subType || 0);
+            break;
+          case "prison_bunk_bed":
+            drawPrisonBunkBed(c, f);
+            break;
           case "greek_wall": {
             const eng = this.engine,
               tx = u.tx,
