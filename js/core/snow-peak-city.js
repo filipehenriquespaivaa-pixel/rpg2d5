@@ -122,6 +122,105 @@ window.Game = window.Game || {};
     };
   });
 
+  // =========================================================================
+  // TELHADOS ALPINOS MILITARES 2.5D DO QUARTEL E PRISÃO (COBERTOS DE NEVE):
+  // - Cada pavilhão coberto do Quartel Militar e da Prisão tem seu próprio telhado 2.5D
+  //   (deixando apenas o Pátio de Execução com Forca a céu aberto!).
+  // - Quando o jogador entra na Ala de Oficiais, na Ala de Descanso ou em qualquer um dos
+  //   4 Pavilhões de Celas de Concentração (ou no Corredor da Prisão), o telhado daquele
+  //   pavilhão fica invisível e volta ao sair!
+  // =========================================================================
+  const BARRACKS_ROOFS = [
+    // 1. Ala Noroeste: Salas para Oficiais (relX: -36..-14, relY: 28..45) — portas para o Pátio Leste (relX = -14, relY = 33 e 41)
+    {
+      id: "barracks_officers_wing",
+      isBarracksRoof: true,
+      minTileX: CITY_CX - 36,
+      maxTileX: CITY_CX - 14,
+      minTileY: CITY_CY + 28,
+      maxTileY: CITY_CY + 45,
+      doorSide: "east",
+      doorTilesY: [CITY_CY + 33, CITY_CY + 41],
+      chimneyTileX: CITY_CX - 28,
+      chimneyTileY: CITY_CY + 28,
+      roofStyle: 0,
+    },
+    // 2. Ala Nordeste: Salas de Descanso para Oficiais (relX: 14..36, relY: 28..45) — portas para o Pátio Oeste (relX = 14, relY = 33 e 41)
+    {
+      id: "barracks_rest_wing",
+      isBarracksRoof: true,
+      minTileX: CITY_CX + 14,
+      maxTileX: CITY_CX + 36,
+      minTileY: CITY_CY + 28,
+      maxTileY: CITY_CY + 45,
+      doorSide: "west",
+      doorTilesY: [CITY_CY + 33, CITY_CY + 41],
+      chimneyTileX: CITY_CX + 28,
+      chimneyTileY: CITY_CY + 28,
+      roofStyle: 1,
+    },
+    // 3. Corredor Central Coberto da Prisão e Acesso à Escadaria do Subsolo (relX: -4..+4, relY: 46..74) — portão ao Norte (relY = 46, relX = 0)
+    {
+      id: "barracks_prison_corridor",
+      isBarracksRoof: true,
+      minTileX: CITY_CX - 4,
+      maxTileX: CITY_CX + 4,
+      minTileY: CITY_CY + 46,
+      maxTileY: CITY_CY + 74,
+      doorSide: "north",
+      doorTileX: CITY_CX,
+      roofStyle: 0,
+    },
+    // 4. Grande Cela Coletiva — Bloco I Noroeste (relX: -36..-4, relY: 46..60) — portão a Leste (relX = -4, relY = 53)
+    {
+      id: "barracks_cell_nw",
+      isBarracksRoof: true,
+      minTileX: CITY_CX - 36,
+      maxTileX: CITY_CX - 4,
+      minTileY: CITY_CY + 46,
+      maxTileY: CITY_CY + 60,
+      doorSide: "east",
+      doorTilesY: [CITY_CY + 53],
+      roofStyle: 2,
+    },
+    // 5. Grande Cela Coletiva — Bloco II Nordeste (relX: 4..36, relY: 46..60) — portão a Oeste (relX = 4, relY = 53)
+    {
+      id: "barracks_cell_ne",
+      isBarracksRoof: true,
+      minTileX: CITY_CX + 4,
+      maxTileX: CITY_CX + 36,
+      minTileY: CITY_CY + 46,
+      maxTileY: CITY_CY + 60,
+      doorSide: "west",
+      doorTilesY: [CITY_CY + 53],
+      roofStyle: 2,
+    },
+    // 6. Grande Cela Coletiva — Bloco III Sudoeste (relX: -36..-4, relY: 60..74) — portão a Leste (relX = -4, relY = 66)
+    {
+      id: "barracks_cell_sw",
+      isBarracksRoof: true,
+      minTileX: CITY_CX - 36,
+      maxTileX: CITY_CX - 4,
+      minTileY: CITY_CY + 60,
+      maxTileY: CITY_CY + 74,
+      doorSide: "east",
+      doorTilesY: [CITY_CY + 66],
+      roofStyle: 2,
+    },
+    // 7. Grande Cela Coletiva — Bloco IV Sudeste (relX: 4..36, relY: 60..74) — portão a Oeste (relX = 4, relY = 66)
+    {
+      id: "barracks_cell_se",
+      isBarracksRoof: true,
+      minTileX: CITY_CX + 4,
+      maxTileX: CITY_CX + 36,
+      minTileY: CITY_CY + 60,
+      maxTileY: CITY_CY + 74,
+      doorSide: "west",
+      doorTilesY: [CITY_CY + 66],
+      roofStyle: 2,
+    },
+  ];
+
   // Verifica se o tile está dentro do território da cidade
   function isCityTerritory(tx, ty) {
     const dx = tx - CITY_CX;
@@ -149,7 +248,7 @@ window.Game = window.Game || {};
     return null;
   }
 
-  // Retorna o ID da casa se o jogador estiver dentro dela (ou atravessando a soleira da porta)
+  // Retorna o ID da casa ou do pavilhão do Quartel/Prisão se o jogador estiver dentro dele
   function getActiveHouseForPlayer(px, py, tileSize) {
     const ts = tileSize || 36;
     const ptx = px / ts - 0.5;
@@ -166,6 +265,32 @@ window.Game = window.Game || {};
       const doorY = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
       if (Math.abs(ptx - h.cx) <= 0.65 && Math.abs(pty - doorY) <= 0.55) {
         return h.id;
+      }
+    }
+    // Verifica se o jogador está dentro de um dos pavilhões cobertos do Quartel Militar e Prisão
+    for (let j = 0; j < BARRACKS_ROOFS.length; j++) {
+      const br = BARRACKS_ROOFS[j];
+      if (
+        ptx >= br.minTileX + 0.1 &&
+        ptx <= br.maxTileX - 0.1 &&
+        pty >= br.minTileY + 0.1 &&
+        pty <= br.maxTileY - 0.1
+      ) {
+        return br.id;
+      }
+      // Verifica se está atravessando a porta/portão de entrada do pavilhão
+      if (br.doorSide === "north" && Math.abs(ptx - br.doorTileX) <= 1.2 && Math.abs(pty - br.minTileY) <= 0.75) {
+        return br.id;
+      }
+      if (br.doorSide === "east" && Math.abs(ptx - br.maxTileX) <= 0.75 && br.doorTilesY) {
+        for (let k = 0; k < br.doorTilesY.length; k++) {
+          if (Math.abs(pty - br.doorTilesY[k]) <= 0.85) return br.id;
+        }
+      }
+      if (br.doorSide === "west" && Math.abs(ptx - br.minTileX) <= 0.75 && br.doorTilesY) {
+        for (let k = 0; k < br.doorTilesY.length; k++) {
+          if (Math.abs(pty - br.doorTilesY[k]) <= 0.85) return br.id;
+        }
       }
     }
     return null;
@@ -801,14 +926,14 @@ window.Game = window.Game || {};
               isDoorOpen: isDoorOpen,
               isWall: false,
               prop: {
-                kind: "greek_door",
-                subType: 1,
+                kind: "snow_city_door",
+                doorVertical: true,
                 opened: isDoorOpen,
                 interactive: true,
                 namePt: isDoorOpen
                   ? "Porta da Ala de Oficiais (Aberta)"
                   : "Porta da Ala de Oficiais (Fechada)",
-                descriptionPt: "Porta militar reforçada que conecta o Pátio de Execução às Salas de Comando dos Oficiais.",
+                descriptionPt: "Porta militar reforçada de carvalho e ferro que conecta o Pátio de Execução às Salas de Comando dos Oficiais.",
               },
             };
           }
@@ -1073,14 +1198,14 @@ window.Game = window.Game || {};
               isDoorOpen: isDoorOpen,
               isWall: false,
               prop: {
-                kind: "greek_door",
-                subType: 1,
+                kind: "snow_city_door",
+                doorVertical: true,
                 opened: isDoorOpen,
                 interactive: true,
                 namePt: isDoorOpen
                   ? "Porta da Ala de Descanso dos Oficiais (Aberta)"
                   : "Porta da Ala de Descanso dos Oficiais (Fechada)",
-                descriptionPt: "Porta que conduz aos alojamentos aquecidos, salão de lazer e refeitório exclusivo dos oficiais.",
+                descriptionPt: "Porta de carvalho e ferro que conduz aos alojamentos aquecidos, salão de lazer e refeitório exclusivo dos oficiais.",
               },
             };
           }
@@ -1433,6 +1558,7 @@ window.Game = window.Game || {};
               kind: "cave_entrance",
               subType: 2,
               isStaircase: true,
+              isBarracksStaircase: true,
               offsetX: 0,
               offsetY: -4,
               scale: 1.4,
@@ -1907,6 +2033,7 @@ window.Game = window.Game || {};
     barracksStairTx: BARRACKS_STAIR_TX,
     barracksStairTy: BARRACKS_STAIR_TY,
     houses: HOUSES,
+    barracksRoofs: BARRACKS_ROOFS,
     isCityTerritory,
     isCityBiomeArea,
     getHouseAt,

@@ -2272,7 +2272,11 @@
     }
   }
 
-  function bg(e, t, l, biome = null, isMerged = !1, mergedCount = 1, isStaircase = !1) {
+  function bg(e, t, l, biome = null, isMerged = !1, mergedCount = 1, isStaircase = !1, isBarracksStaircase = !1) {
+    if (isBarracksStaircase || (isStaircase && biome && (biome.id === "SNOW_PEAK" || biome.id === "SNOW_TAIGA" || biome.id === "GLACIER"))) {
+      drawDungeonStaircase(e, t, !1, l);
+      return;
+    }
     if (isStaircase || (biome && biome.id === "MEADOW")) {
       drawRuinsSubterraneanStaircase(e, t, l, !1, isMerged);
       return;
@@ -2324,7 +2328,11 @@
     // Cobertura de musgo da cor da grama (ou areia/neve conforme o bioma)
     drawCaveBiomeOverlay(e, t, theme, isMerged);
   }
-  function yg(e, t, l = 0, biome = null, isMerged = !1, mergedCount = 1, isStaircase = !1) {
+  function yg(e, t, l = 0, biome = null, isMerged = !1, mergedCount = 1, isStaircase = !1, isBarracksStaircase = !1) {
+    if (isBarracksStaircase || (isStaircase && biome && (biome.id === "SNOW_PEAK" || biome.id === "SNOW_TAIGA" || biome.id === "GLACIER"))) {
+      drawDungeonStaircase(e, t, !0, l);
+      return;
+    }
     if (isStaircase || (biome && biome.id === "MEADOW")) {
       drawRuinsSubterraneanStaircase(e, t, l, !0, isMerged);
       return;
@@ -5637,13 +5645,52 @@
     e.restore();
   }
 
-  // 3. Porta da Casa: Carvalho com Ferragens e Batente de Pedra (Abre e Fecha)
-  function drawSnowCityDoor(e, t, opened = false) {
+  // 3. Porta da Casa / Quartel: Carvalho com Ferragens e Batente de Pedra (Abre e Fecha, Horizontal ou Vertical)
+  function drawSnowCityDoor(e, t, opened = false, isVertical = false) {
     e.save();
-    const half = 18 * t;
     const baseY = 18 * t;
     const doorH = 25 * t;
     const topY = baseY - doorH;
+
+    if (isVertical) {
+      // Porta em parede vertical (Leste/Oeste — usada nas Alas de Oficiais e Descanso do Quartel)
+      e.fillStyle = "#334155";
+      e.fillRect(-5 * t, topY - 4 * t, 10 * t, doorH + 6 * t);
+      e.strokeStyle = "#1e293b";
+      e.lineWidth = 1.2 * t;
+      e.strokeRect(-5 * t, topY - 4 * t, 10 * t, doorH + 6 * t);
+
+      // Neve no topo do batente
+      e.fillStyle = "#f8fafc";
+      e.fillRect(-6 * t, topY - 5.5 * t, 12 * t, 3 * t);
+
+      if (opened) {
+        // Vão de passagem aberto com folha da porta recolhida
+        e.fillStyle = "rgba(245, 158, 11, 0.28)";
+        e.fillRect(-4 * t, topY + 2 * t, 8 * t, doorH - 2 * t);
+        e.fillStyle = "#78350f";
+        e.fillRect(-3.5 * t, topY - 2 * t, 12 * t, 6 * t);
+        e.strokeStyle = "#451a03";
+        e.strokeRect(-3.5 * t, topY - 2 * t, 12 * t, 6 * t);
+      } else {
+        // Folha de carvalho fechada na vertical
+        e.fillStyle = "#78350f";
+        e.fillRect(-3.5 * t, topY, 7 * t, doorH + 1 * t);
+        e.strokeStyle = "#451a03";
+        e.lineWidth = 1 * t;
+        e.strokeRect(-3.5 * t, topY, 7 * t, doorH + 1 * t);
+        // Ferragens de ferro preto
+        e.fillStyle = "#0f172a";
+        e.fillRect(-4 * t, topY + 5 * t, 8 * t, 2.2 * t);
+        e.fillRect(-4 * t, baseY - 6 * t, 8 * t, 2.2 * t);
+        e.fillStyle = "#fbbf24";
+        e.beginPath();
+        e.arc(0, baseY - 10 * t, 1.6 * t, 0, Math.PI * 2);
+        e.fill();
+      }
+      e.restore();
+      return;
+    }
 
     // Batente de cantaria de pedra cinza
     e.fillStyle = "#334155";
@@ -6838,6 +6885,275 @@
       ctx.translate(chimPxX, chimPxY);
       drawSnowCityChimney(ctx, tileSize / 36, animTimer);
       ctx.restore();
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 13. TELHADOS ALPINOS MILITARES 2.5D DO QUARTEL E PRISÃO (COBERTOS DE NEVE):
+    // - Cobre as Salas para Oficiais (Ala Noroeste), as Salas de Descanso para Oficiais (Ala Nordeste),
+    //   o Corredor Central da Prisão e cada uma das 4 Grandes Celas Coletivas de Concentração!
+    // - O Pátio de Execução com Forca permanece 100% a céu aberto no centro!
+    // - Cada pavilhão tem seu próprio telhado independente: quando o jogador entra em um pavilhão,
+    //   apenas o telhado daquele pavilhão fica invisível, e ao sair ele volta!
+    // - Deixa as portas/portões de entrada livres e visíveis com frontões 2.5D inclinados (1 a 3 blocos).
+    // =========================================================================
+    const barracksRoofs = city.barracksRoofs || [];
+    for (let b = 0; b < barracksRoofs.length; b++) {
+      const br = barracksRoofs[b];
+
+      const boxLeftPx = br.minTileX * tileSize;
+      const boxRightPx = (br.maxTileX + 1) * tileSize;
+      const boxTopPx = br.minTileY * tileSize;
+      const boxBottomPx = (br.maxTileY + 1) * tileSize;
+
+      // Frustum culling se o pavilhão estiver fora da câmera
+      if (
+        boxRightPx + tileSize < viewLeft ||
+        boxLeftPx - tileSize > viewRight ||
+        boxBottomPx + tileSize < viewTop ||
+        boxTopPx - tileSize > viewBottom
+      ) {
+        continue;
+      }
+
+      // Opacidade suave por pavilhão (0 quando o jogador está dentro deste pavilhão, 1 quando está fora)
+      const isPlayerInsideWing = activeHouseId === br.id;
+      const targetAlpha = isPlayerInsideWing ? 0 : 1;
+      const prevAlpha = alphaMap[br.id] !== undefined ? alphaMap[br.id] : targetAlpha;
+      const nextAlpha =
+        Math.abs(prevAlpha - targetAlpha) < 0.08
+          ? targetAlpha
+          : prevAlpha + (targetAlpha - prevAlpha) * 0.28;
+      alphaMap[br.id] = nextAlpha;
+
+      if (nextAlpha <= 0.02) continue;
+
+      ctx.save();
+      ctx.globalAlpha = nextAlpha;
+
+      // Recuo lateral/frontal na face onde ficam as portas/portões para NUNCA cobrir a entrada!
+      const roofLeft =
+        br.doorSide === "west" ? boxLeftPx + tileSize * 0.65 : boxLeftPx - 3;
+      const roofRight =
+        br.doorSide === "east" ? boxRightPx - tileSize * 0.65 : boxRightPx + 3;
+      const roofTop =
+        br.doorSide === "north" ? boxTopPx + tileSize * 0.38 : boxTopPx - tileSize * 0.55;
+      const roofBottom = boxBottomPx - tileSize * 0.22;
+
+      const roofW = roofRight - roofLeft;
+      const roofH = roofBottom - roofTop;
+      const ridgeY = roofTop + roofH * 0.48;
+      const ridgeInsetX = Math.min(roofW * 0.12, tileSize * 1.6);
+      const ridgeLeftX = roofLeft + ridgeInsetX;
+      const ridgeRightX = roofRight - ridgeInsetX;
+
+      // Paleta Militar Glacial (Ardósia Cinza-Rocha, Carvalho Escuro e Pinheiro com Neve Branca; sem azul!)
+      const rStyle = br.roofStyle || 0;
+      const northSlopeTopCol = rStyle === 0 ? "#1e293b" : rStyle === 1 ? "#2a1205" : "#292524";
+      const northSlopeBotCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#451a03" : "#44403c";
+      const southSlopeTopCol = rStyle === 0 ? "#475569" : rStyle === 1 ? "#78350f" : "#57534e";
+      const southSlopeBotCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#451a03" : "#292524";
+      const sideSlopeCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#5c2808" : "#44403c";
+
+      // 1. Sombra 2.5D projetada pelos beirais do quartel
+      ctx.fillStyle = "rgba(15, 23, 42, 0.44)";
+      ctx.fillRect(roofLeft + 2, roofTop + 5, roofW, roofH + 3);
+
+      // 2. Águas laterais Esquerda e Direita em perspectiva 2.5D (Trapézios inclinados)
+      ctx.fillStyle = sideSlopeCol;
+      ctx.beginPath();
+      ctx.moveTo(roofLeft, roofTop);
+      ctx.lineTo(ridgeLeftX, ridgeY);
+      ctx.lineTo(roofLeft, roofBottom);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(roofRight, roofTop);
+      ctx.lineTo(ridgeRightX, ridgeY);
+      ctx.lineTo(roofRight, roofBottom);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Água Norte do Telhado 2.5D
+      const northGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+      northGrad.addColorStop(0, northSlopeTopCol);
+      northGrad.addColorStop(1, northSlopeBotCol);
+      ctx.fillStyle = northGrad;
+      ctx.beginPath();
+      if (br.doorSide === "north" && br.doorTileX !== undefined) {
+        const dCenterX = (br.doorTileX + 0.5) * tileSize;
+        const gHalfBase = Math.min(roofW * 0.34, tileSize * 1.9);
+        const gHalfTop = tileSize * 0.48;
+        const gPeakY = roofTop + Math.min(roofH * 0.25, tileSize * 2.1);
+        ctx.moveTo(roofLeft, roofTop);
+        ctx.lineTo(dCenterX - gHalfBase, roofTop);
+        ctx.lineTo(dCenterX - gHalfTop, gPeakY);
+        ctx.lineTo(dCenterX + gHalfTop, gPeakY);
+        ctx.lineTo(dCenterX + gHalfBase, roofTop);
+        ctx.lineTo(roofRight, roofTop);
+      } else {
+        ctx.moveTo(roofLeft, roofTop);
+        ctx.lineTo(roofRight, roofTop);
+      }
+      ctx.lineTo(ridgeRightX, ridgeY);
+      ctx.lineTo(ridgeLeftX, ridgeY);
+      ctx.closePath();
+      ctx.fill();
+
+      // 4. Água Sul do Telhado 2.5D
+      const southGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+      southGrad.addColorStop(0, southSlopeTopCol);
+      southGrad.addColorStop(1, southSlopeBotCol);
+      ctx.fillStyle = southGrad;
+      ctx.beginPath();
+      ctx.moveTo(ridgeLeftX, ridgeY);
+      ctx.lineTo(ridgeRightX, ridgeY);
+      ctx.lineTo(roofRight, roofBottom);
+      ctx.lineTo(roofLeft, roofBottom);
+      ctx.closePath();
+      ctx.fill();
+
+      // 5. Caibros e Telhas em perspectiva 2.5D
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      const numRafters = Math.max(8, Math.floor(roofW / 18));
+      for (let r = 1; r < numRafters; r++) {
+        const tFrac = r / numRafters;
+        const topX = roofLeft + roofW * tFrac;
+        const midX = ridgeLeftX + (ridgeRightX - ridgeLeftX) * tFrac;
+        const botX = roofLeft + roofW * tFrac;
+        ctx.moveTo(topX, roofTop + 3);
+        ctx.lineTo(midX, ridgeY);
+        ctx.moveTo(midX, ridgeY);
+        ctx.lineTo(botX, roofBottom - 3);
+      }
+      for (let sy = roofTop + 14; sy < roofBottom - 8; sy += 14) {
+        ctx.moveTo(roofLeft + 5, sy);
+        ctx.lineTo(roofRight - 5, sy);
+      }
+      ctx.stroke();
+
+      // 6. CAMADA ESPESSA DE NEVE BRANCA ACUMULADA EM CIMA DO TELHADO DO QUARTEL E PRISÃO
+      const snowPad = 7;
+      const snowNorthGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+      snowNorthGrad.addColorStop(0, "#cbd5e1");
+      snowNorthGrad.addColorStop(0.5, "#f1f5f9");
+      snowNorthGrad.addColorStop(1, "#ffffff");
+      ctx.fillStyle = snowNorthGrad;
+      ctx.beginPath();
+      ctx.moveTo(roofLeft + snowPad, roofTop + 5);
+      ctx.lineTo(roofRight - snowPad, roofTop + 5);
+      ctx.lineTo(ridgeRightX - 2, ridgeY - 2);
+      ctx.lineTo(ridgeLeftX + 2, ridgeY - 2);
+      ctx.closePath();
+      ctx.fill();
+
+      const snowSouthGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+      snowSouthGrad.addColorStop(0, "#ffffff");
+      snowSouthGrad.addColorStop(0.65, "#f8fafc");
+      snowSouthGrad.addColorStop(1, "#e2e8f0");
+      ctx.fillStyle = snowSouthGrad;
+      ctx.beginPath();
+      ctx.moveTo(ridgeLeftX + 2, ridgeY + 2);
+      ctx.lineTo(ridgeRightX - 2, ridgeY + 2);
+      ctx.lineTo(roofRight - snowPad, roofBottom - 6);
+      ctx.lineTo(roofLeft + snowPad, roofBottom - 6);
+      ctx.closePath();
+      ctx.fill();
+
+      // 7. FRONTÕES 2.5D INCLINADOS SOBRE AS PORTAS E PORTÕES LATERAIS (1.8 a 2.2 quadrados, como nas casas!)
+      if ((br.doorSide === "east" || br.doorSide === "west") && br.doorTilesY) {
+        const isEast = br.doorSide === "east";
+        const edgeX = isEast ? roofRight : roofLeft;
+        const dirIn = isEast ? -1 : 1;
+        const gableDepthPx = tileSize * 2.0; // 2 quadrados de projeção 2.5D!
+        const gHalfBaseY = tileSize * 1.45;
+        const gHalfTopY = tileSize * 0.42;
+
+        for (let d = 0; d < br.doorTilesY.length; d++) {
+          const doorCY = (br.doorTilesY[d] + 0.5) * tileSize;
+          const by1 = Math.max(roofTop + 8, doorCY - gHalfBaseY);
+          const by2 = Math.min(roofBottom - 8, doorCY + gHalfBaseY);
+          const ty1 = doorCY - gHalfTopY;
+          const ty2 = doorCY + gHalfTopY;
+          const peakX = edgeX + dirIn * gableDepthPx;
+
+          // Interior de madeira/pedra do frontão sobre a porta
+          ctx.fillStyle = "#451a03";
+          ctx.beginPath();
+          ctx.moveTo(edgeX, by1);
+          ctx.lineTo(peakX, ty1);
+          ctx.lineTo(peakX, ty2);
+          ctx.lineTo(edgeX, by2);
+          ctx.closePath();
+          ctx.fill();
+
+          // Moldura de vigas de carvalho e neve branca no frontão
+          ctx.strokeStyle = "#78350f";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(edgeX, by1);
+          ctx.lineTo(peakX, ty1);
+          ctx.lineTo(peakX, ty2);
+          ctx.lineTo(edgeX, by2);
+          ctx.stroke();
+
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(edgeX, by1 - 1.5);
+          ctx.lineTo(peakX, ty1 - 1.5);
+          ctx.lineTo(peakX, ty2 - 1.5);
+          ctx.lineTo(edgeX, by2 - 1.5);
+          ctx.stroke();
+        }
+      }
+
+      // 8. Cumeeira central de madeira maciça e neve no topo
+      ctx.strokeStyle = "#451a03";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(roofLeft, roofTop);
+      ctx.lineTo(ridgeLeftX, ridgeY);
+      ctx.lineTo(roofLeft, roofBottom);
+      ctx.moveTo(roofRight, roofTop);
+      ctx.lineTo(ridgeRightX, ridgeY);
+      ctx.lineTo(roofRight, roofBottom);
+      ctx.stroke();
+
+      ctx.fillStyle = "#451a03";
+      ctx.fillRect(ridgeLeftX - 2, ridgeY - 4, ridgeRightX - ridgeLeftX + 4, 8);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(ridgeLeftX + 2, ridgeY - 2, ridgeRightX - ridgeLeftX - 4, 4);
+
+      ctx.strokeStyle = "#3b1d0a";
+      ctx.lineWidth = 2.6;
+      ctx.strokeRect(roofLeft, roofTop, roofW, roofH);
+
+      // 9. Pingentes de gelo discretos no beiral sul
+      ctx.fillStyle = "rgba(241, 245, 249, 0.9)";
+      for (let ix = roofLeft + 10; ix < roofRight - 10; ix += 12) {
+        const icicleLen = 4 + ((Math.abs(ix * 7 + b * 13) % 5));
+        ctx.beginPath();
+        ctx.moveTo(ix - 1.8, roofBottom);
+        ctx.lineTo(ix, roofBottom + icicleLen);
+        ctx.lineTo(ix + 1.8, roofBottom);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 10. Chaminé fumegante acima do telhado nas Alas de Oficiais e Descanso
+      if (br.chimneyTileX !== undefined && br.chimneyTileY !== undefined) {
+        const chimPxX = br.chimneyTileX * tileSize + tileSize * 0.5;
+        const chimPxY = br.chimneyTileY * tileSize + tileSize * 0.5;
+        ctx.save();
+        ctx.translate(chimPxX, chimPxY);
+        drawSnowCityChimney(ctx, tileSize / 36, animTimer);
+        ctx.restore();
+      }
 
       ctx.restore();
     }

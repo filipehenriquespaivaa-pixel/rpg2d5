@@ -2956,6 +2956,7 @@
               kind: "cave_exit",
               subType: 2,
               isStaircase: !0,
+              isBarracksStaircase: !0,
               targetTx: bCell.targetTx,
               targetTy: bCell.targetTy,
               offsetX: 0,
