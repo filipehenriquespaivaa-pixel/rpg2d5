@@ -1343,9 +1343,9 @@
             foundDist = 0;
 
           const tiers = [
-            { minR: 0, maxR: 600, rStep: 10, arcStep: 12 },
-            { minR: 600, maxR: 2000, rStep: 20, arcStep: 20 },
-            { minR: 2000, maxR: 5000, rStep: 35, arcStep: 35 }
+            { minR: 0, maxR: 1500, rStep: 50, arcStep: 60 },
+            { minR: 1500, maxR: 5000, rStep: 100, arcStep: 100 },
+            { minR: 5000, maxR: 15000, rStep: 200, arcStep: 200 }
           ];
 
           if (E === "DUNGEON_LOWER") {
@@ -1432,14 +1432,15 @@
           }
 
           if (E === "MEADOW" && !D.isUnderground) {
-            // Ao teleportar para Planície Florida (MEADOW), leva direto para a Cidade Grega (com 1 a 3 Salões e várias Casas de 4 salas)!
-            for (let r = 1; r <= 30 && !found; r++) {
+            // Ao teleportar para Planície Florida (MEADOW), tenta levar para a Cidade Grega se houver uma próxima
+            for (let r = 1; r <= 8 && !found; r++) {
               for (let dy = -r; dy <= r && !found; dy++) {
                 for (let dx = -r; dx <= r && !found; dx++) {
                   if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-                  const sampleTx = dx * 24,
-                    sampleTy = dy * 24,
-                    city = D._getMeadowCityDistrict && D._getMeadowCityDistrict(sampleTx, sampleTy);
+                  const sampleTx = dx * 48,
+                    sampleTy = dy * 48;
+                  if (!D._isMeadowCityBiomeAt(sampleTx, sampleTy)) continue;
+                  const city = D._getMeadowCityDistrict && D._getMeadowCityDistrict(sampleTx, sampleTy);
                   if (city && city.buildings && city.buildings.length > 0) {
                     const mainHall = city.buildings[0],
                       entranceTx = mainHall.cx,
@@ -1459,23 +1460,26 @@
             if (found) break;
             for (let r = tier.minR; r <= tier.maxR; r += tier.rStep) {
               if (r === 0) {
-                const tile = D.getTile(originTx, originTy);
-                if (tile.biome.id === E && (isImpassable || tile.biome.passable)) {
-                  targetPixelX = originTx * D.tileSize;
-                  targetPixelY = originTy * D.tileSize;
-                  foundDist = 0;
-                  found = !0;
-                  break;
+                const b0 = D.isUnderground ? D.getTile(originTx, originTy).biome : D._computeSurfaceBaseBiome(originTx, originTy);
+                if (b0 && b0.id === E && (isImpassable || b0.passable)) {
+                  const landingTile = D.getTile(originTx, originTy);
+                  if (isImpassable || (landingTile.biome.passable && !landingTile.isCliffWall)) {
+                    targetPixelX = originTx * D.tileSize + D.tileSize / 2;
+                    targetPixelY = originTy * D.tileSize + D.tileSize / 2;
+                    foundDist = 0;
+                    found = !0;
+                    break;
+                  }
                 }
                 continue;
               }
-              const steps = Math.max(16, Math.floor((2 * Math.PI * r) / tier.arcStep));
+              const steps = Math.max(12, Math.floor((2 * Math.PI * r) / tier.arcStep));
               for (let i = 0; i < steps; i++) {
                 const angle = (i / steps) * 2 * Math.PI;
                 const me = Math.round(originTx + Math.cos(angle) * r);
                 const ce = Math.round(originTy + Math.sin(angle) * r);
-                const Re = D.getTile(me, ce);
-                if (Re.biome.id === E) {
+                const b = D.isUnderground ? D.getTile(me, ce).biome : D._computeSurfaceBaseBiome(me, ce);
+                if (b && b.id === E) {
                   if (E === "CAVE_WALL") {
                     let foundFloor = !1;
                     for (let dx = -1; dx <= 1 && !foundFloor; dx++) {
@@ -1496,13 +1500,24 @@
                     found = !0;
                     break;
                   }
-                  if (isImpassable || (Re.biome.passable && !Re.isCliffWall)) {
-                    targetPixelX = me * D.tileSize + D.tileSize / 2;
-                    targetPixelY = ce * D.tileSize + D.tileSize / 2;
-                    foundDist = r;
-                    found = !0;
-                    break;
+                  // Encontra um ponto seguro e passável no bioma encontrado
+                  let landingTx = me, landingTy = ce, landedSafe = !1;
+                  for (let dy = -2; dy <= 2 && !landedSafe; dy++) {
+                    for (let dx = -2; dx <= 2 && !landedSafe; dx++) {
+                      const candX = me + dx, candY = ce + dy;
+                      const candTile = D.getTile(candX, candY);
+                      if (isImpassable || (candTile.biome.passable && !candTile.isCliffWall)) {
+                        landingTx = candX;
+                        landingTy = candY;
+                        landedSafe = !0;
+                      }
+                    }
                   }
+                  targetPixelX = landingTx * D.tileSize + D.tileSize / 2;
+                  targetPixelY = landingTy * D.tileSize + D.tileSize / 2;
+                  foundDist = r;
+                  found = !0;
+                  break;
                 }
               }
               if (found) break;
@@ -1520,7 +1535,7 @@
             }
             m.current.playShrineActivation();
           } else {
-            ve(isSpecialTarget ? "Escadaria do calabouço não localizada nas proximidades." : `Nenhum ${Q.namePt} localizado no raio de 5000 blocos.`);
+            ve(isSpecialTarget ? "Escadaria do calabouço não localizada nas proximidades." : `Nenhum ${Q.namePt} localizado no raio de 15000 blocos.`);
           }
         },
         [ve],
