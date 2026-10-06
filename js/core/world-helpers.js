@@ -36,6 +36,7 @@
       l.undergroundLevel === 2 ||
       (l.isUnderground && l.undergroundLevel === 2) ||
       o.isGreekRuin ||
+      o.isSnowCity ||
       (o.prop &&
         (o.prop.kind.startsWith("tree_") ||
           o.prop.kind.startsWith("dungeon_") ||

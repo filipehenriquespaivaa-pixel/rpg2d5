@@ -15,6 +15,7 @@ ESTRUTURA DE PASTAS E ARQUIVOS:
 - js/engine/: Motores de desenho (canvas), iluminação, renderização, áudio e gerência de entidades.
 - js/ui/: Interface do usuário (item-icon, hud, inventory, game-main, menu.js e main.js).
 - js/extras/: Ferramentas auxiliares e botões de depuração (colisores-debug.js).
+- js/core/snow-peak-city.js: Vila Glacial dos Picos Gelados (24 casas, quartos, banheiros, salas, cozinhas, chaminés com fumaça e ruas de paralelepípedo).
 - legacy/: Bundle original e histórico de código de referência.
 
 COMO EDITAR OU ADICIONAR UM MÓDULO:
@@ -28,6 +29,20 @@ COMO EDITAR OU ADICIONAR UM MÓDULO:
 2. Carregamento no index.html: Adicione a tag <script defer src="./js/.../meu-modulo.js"></script>
    no index.html exatamente no ponto correto da ordem de dependência (antes de main.js).
 3. Sem dependências externas: Use apenas JavaScript puro sem import/export e persistência via localStorage com try/catch.
+
+CIDADE DOS PICOS GELADOS (VILA GLACIAL DAS ALTURAS):
+- Localizada no bioma de Picos Gelados (SNOW_PEAK / Picos Glaciais).
+- Pavimentação completa de Ruas e Praça Central em Paralelepípedos (cobblestone 3D com juntas e toques de neve).
+- Total de 24 casas charmosas e funcionais (superando o mínimo de 20 casas):
+  * Todas as casas possuem Quarto (cama nórdica com peles quentes de inverno, criado-mudo e guarda-roupa).
+  * Todas as casas possuem Banheiro privativo (tina de banho quente de imersão em madeira, lavatório com espelho e sanitário).
+  * Todas as casas possuem Sala aconchegante (lareira de pedra da montanha com chamas ardentes animadas, poltrona e mesinha).
+  * Todas as casas possuem Cozinha (fogão a lenha de ferro fundido com panela fumegante, bancada de preparo e despensa).
+  * 12 casas possuem Sala e Cozinha integradas em conceito aberto acolhedor, e 12 casas possuem divisão tradicional com vão de porta.
+  * TODAS as 24 casas possuem Chaminé externa de cantaria no telhado com fumaça viva animada ondulando ao vento frio da montanha.
+  * Portas de carvalho maciço interativas (pressione [E] ou clique/toque para abrir e fechar).
+  * Praça Central no Marco Zero [-380, -1220] com a Grande Fogueira Comunal da Cordilheira e Postes de Lampião em ferro forjado.
+  * No Modo Desenvolvedor, o botão '❄️ Ir p/ Cidade Glacial' e a opção 'Picos Glaciais' na HUD teleportam direto para a praça da cidade no bioma gelado.
 
 SISTEMA DE LIVROS, PERGAMINHOS E BIBLIOTECA:
 1. Coleta Direta e Apenas Itens Coletáveis na Biblioteca:

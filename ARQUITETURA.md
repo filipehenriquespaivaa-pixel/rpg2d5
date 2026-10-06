@@ -23,6 +23,7 @@ O jogo era um bundle único (`assets/app.js`, 48 mil linhas). Foi dividido em ar
 ### Núcleo: regras e mundo, sem desenho
 
 - `js/core/noise-e-biomas.js` (669 linhas): Ruido (SimplexNoise), enum de biomas (BiomeId), tabela de biomas (BIOMES), funcoes de bioma (Jp, Fs) e dificuldade (RESOURCE_DIFFICULTY).
+- `js/core/snow-peak-city.js`: Vila Glacial dos Picos Gelados (24 casas com quarto, banheiro, sala, cozinha, chaminés com fumaça e ruas de paralelepípedo).
 - `js/core/world.js` (1827 linhas): Mundo procedural: classe World (tiles, cavernas, fogueiras, panela) + item de argila (Gu).
 - `js/core/world-helpers.js` (78 linhas): Auxiliares de mundo/colheita (Zu, tg, Hs, og).
 - `js/core/item-rules.js` (195 linhas): Regras de equipar item (To, fn, Qs).

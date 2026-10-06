@@ -1431,6 +1431,17 @@
             }
           }
 
+          if (E === "SNOW_PEAK" && !D.isUnderground) {
+            // Ao teleportar para Picos Glaciais (SNOW_PEAK), leva diretamente para a Praça da Cidade dos Picos Gelados!
+            const snowCity = typeof window !== "undefined" && window.SnowPeakCity;
+            const targetTx = snowCity ? snowCity.centerX : -380;
+            const targetTy = snowCity ? snowCity.centerY : -1220;
+            targetPixelX = targetTx * D.tileSize + D.tileSize / 2;
+            targetPixelY = targetTy * D.tileSize + D.tileSize / 2;
+            foundDist = Math.round(Math.hypot(targetTx - originTx, targetTy - originTy));
+            found = !0;
+          }
+
           if (E === "MEADOW" && !D.isUnderground) {
             // Ao teleportar para Planície Florida (MEADOW), tenta levar para a Cidade Grega se houver uma próxima
             for (let r = 1; r <= 8 && !found; r++) {
@@ -2918,7 +2929,8 @@
             } else if (
               Ke.action === "toggle_gate" ||
               Ke.action === "dungeon_door" ||
-              Ke.action === "greek_door"
+              Ke.action === "greek_door" ||
+              Ke.action === "snow_city_door"
             ) {
               m.current.playInventoryOpen && m.current.playInventoryOpen();
               return;

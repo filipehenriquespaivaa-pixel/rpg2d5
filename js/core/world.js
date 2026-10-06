@@ -1288,6 +1288,9 @@
                 2,
                 0.45,
               );
+      if (typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l))) {
+        return BIOMES.SNOW_PEAK;
+      }
       return Jp(T, A, P, {
         isIsland: S,
         isVolcano: p,
@@ -2072,15 +2075,21 @@
                 2,
                 0.45,
               );
-      let K = Jp(T, A, P, {
-        isIsland: S,
-        isVolcano: p,
-        volcanoCore: j,
-        swampVal: x,
-        oasisVal: M,
-        canyonVal: $,
-        lakeVal: z,
-      });
+      const isSnowCityArea = typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l));
+      let K;
+      if (isSnowCityArea) {
+        K = BIOMES.SNOW_PEAK;
+      } else {
+        K = Jp(T, A, P, {
+          isIsland: S,
+          isVolcano: p,
+          volcanoCore: j,
+          swampVal: x,
+          oasisVal: M,
+          canyonVal: $,
+          lakeVal: z,
+        });
+      }
       const V = this.hash2D(t, l, 7),
         O = `${this.isUnderground ? "cave_" : "surf_"}${t},${l}`;
       let _ = null;
@@ -2117,7 +2126,7 @@
         prop: _,
         detailHash: V,
       };
-      if (K.id === BiomeId.MOUNTAIN_25D) {
+      if (K.id === BiomeId.MOUNTAIN_25D && !isSnowCityArea) {
         // 1º Andar (tier = 1): O bioma inteiro cercado pelo paredão externo (4 tiles de espessura).
         // 2º Andar (tier = 2): Criado em cima do bioma com metade do tamanho do bioma (tamanho / 2),
         // cercado pelo seu próprio paredão 4x maior!
@@ -2415,6 +2424,36 @@
           } else {
             // Corredores, rua da Ágora, pátio da casa e pisos internos ficam limpos de árvores/pedras selvagens
             se.prop = null;
+          }
+        }
+      }
+      if (typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l))) {
+        se.biome = BIOMES.SNOW_PEAK;
+        se.isElevatedBiome = !1;
+        se.isPerimeterCliff = !1;
+        se.isSecondFloorCliff = !1;
+        se.isOuterCliffEdge = !1;
+        se.isCliffWall = !1;
+        se.isCliffRamp = !1;
+        se.mountainTier = 0;
+        if (window.SnowPeakCity.isCityTerritory(t, l)) {
+          const scCell = window.SnowPeakCity.getCellAt(t, l, this.interactedProps);
+          if (scCell) {
+            se.isSnowCity = !0;
+            se.snowCityRole = scCell.role;
+            se.snowCityRoom = scCell.roomName;
+            se.snowCityHouseIndex = scCell.houseIndex;
+            se.snowCityOpenConcept = !!scCell.openConcept;
+            if (scCell.isWall) se.isSnowCityWall = !0;
+            if (scCell.isDoor) {
+              se.isSnowCityDoor = !0;
+              se.isSnowCityDoorOpen = !!scCell.isDoorOpen;
+            }
+            if (scCell.prop) {
+              se.prop = scCell.prop;
+            } else {
+              se.prop = null;
+            }
           }
         }
       }
@@ -4665,6 +4704,59 @@
           reward: "",
         };
       }
+      if (o.prop.kind === "snow_city_door") {
+        const nextOpen = !o.prop.opened;
+        this.interactedProps.set(u, { ...m, opened: nextOpen });
+        this.invalidateTile(t, l);
+        return {
+          success: !0,
+          action: "snow_city_door",
+          message: nextOpen ? "🚪 Você abriu a porta do chalé." : "🚪 Você fechou a porta contra o vento dos picos.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "snow_city_fireplace") {
+        return {
+          success: !0,
+          message: "🔥 Lareira aconchegante com lenha estalando e chamas ardentes! A fumaça sobe pela chaminé.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "snow_city_chimney") {
+        return {
+          success: !0,
+          message: "💨 Chaminé sólida de pedras da montanha, expelindo fumaça aquecida no ar gelado dos picos.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "snow_city_stove") {
+        return {
+          success: !0,
+          message: "🍲 Fogão a lenha de ferro fundido com ensopado quente de inverno na cozinha.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "snow_city_bathtub") {
+        return {
+          success: !0,
+          message: "🛁 Tina de madeira nórdica com água aquecida para um banho revigorante nos picos gelados.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "snow_city_bed") {
+        return {
+          success: !0,
+          message: "🛏️ Cama nórdica com cobertor grosso e forro de pele de lã para descansar e se aquecer.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "snow_city_monument") {
+        return {
+          success: !0,
+          message: "🏔️ Marco Zero da Praça dos Picos Gelados: o fogo eterno acolhe os viajantes da cordilheira.",
+          reward: "Bênção da Cordilheira (+50 HP / Vigor)",
+        };
+      }
       if (o.prop.kind === "greek_statue") {
         return {
           success: !0,
@@ -4880,6 +4972,20 @@
       if (this.isUnderground && o.biome.id === BiomeId.CAVE_WALL) return !1;
       if (o && o.isGreekWall) return !1;
       if (o && o.isGreekDoor && !o.isGreekDoorOpen) return !1;
+      if (o && o.isSnowCityWall) return !1;
+      if (o && o.isSnowCityDoor && !o.isSnowCityDoorOpen) return !1;
+      if (
+        o &&
+        o.prop &&
+        (o.prop.kind === "snow_city_chimney" ||
+          o.prop.kind === "snow_city_fireplace" ||
+          o.prop.kind === "snow_city_bathtub" ||
+          o.prop.kind === "snow_city_bed" ||
+          o.prop.kind === "snow_city_stove" ||
+          o.prop.kind === "snow_city_monument" ||
+          o.prop.kind === "snow_city_lamppost")
+      )
+        return !1;
       if (o && o.isDungeonWall) return !1;
       if (o && o.isDungeonDoor && !o.isDungeonDoorOpen) return !1;
       if (o && o.isIronBars && !o.isIronBarsOpen) return !1;

@@ -5165,3 +5165,892 @@
 
     e.restore();
   }
+
+  // =========================================================================
+  // VILA GLACIAL DOS PICOS GELADOS: DESENHO DE PISOS, CASAS, CHAMINÉS E MÓVEIS
+  // =========================================================================
+
+  // 1. Desenho do Piso: Paralelepípedos nas ruas/praça, tábuas e pedras nas casas
+  function drawSnowCityFloor(g, l, o, u, t, animTimer) {
+    const role = t.snowCityRole || "road";
+    const roomName = t.snowCityRoom || "";
+    const isChecker = (Math.abs(t.tx + t.ty) % 2) === 0;
+
+    // A. RUAS DE PARALELEPÍPEDO (Cobblestone)
+    if (role === "road") {
+      // Base de argamassa escura entre as pedras
+      g.fillStyle = "#1e293b";
+      g.fillRect(l, o, u + 1, u + 1);
+
+      // 4 fileiras de pedras retangulares de paralelepípedo
+      const rows = 4;
+      const rowH = u / rows;
+      const stoneColors = ["#475569", "#3b4252", "#4c566a", "#334155", "#525d72"];
+
+      for (let r = 0; r < rows; r++) {
+        const ry = o + r * rowH;
+        // Alterna o deslocamento horizontal das pedras nas fileiras ímpares (running bond)
+        const offset = (r % 2 === 1) ? u * 0.25 : 0;
+        const stoneW = u * 0.46;
+
+        for (let col = -1; col < 3; col++) {
+          const rx = l + offset + col * stoneW + 1;
+          const rw = stoneW - 2;
+          const rh = rowH - 1.5;
+
+          // Seleciona cor pseudo-aleatória determinística por posição
+          const colorIdx = Math.abs(t.tx * 7 + t.ty * 13 + r * 5 + col * 3) % stoneColors.length;
+          g.fillStyle = stoneColors[colorIdx];
+          g.fillRect(rx, ry + 0.5, rw, rh);
+
+          // Chanfro de luz no topo e esquerda do paralelepípedo (relevo 3D)
+          g.fillStyle = "rgba(226, 232, 240, 0.35)";
+          g.fillRect(rx, ry + 0.5, rw, 1);
+          g.fillRect(rx, ry + 0.5, 1, rh);
+
+          // Sombra chanfrada na base e direita
+          g.fillStyle = "rgba(15, 23, 42, 0.7)";
+          g.fillRect(rx, ry + rh - 0.5, rw, 1);
+          g.fillRect(rx + rw - 1, ry + 0.5, 1, rh);
+        }
+      }
+
+      // Pequenas nesgas de neve acumulada nas frestas e cantos do calçamento
+      const snowSeed = Math.abs(t.tx * 11 + t.ty * 17) % 5;
+      if (snowSeed < 3) {
+        g.fillStyle = "rgba(241, 245, 249, 0.65)";
+        g.beginPath();
+        if (snowSeed === 0) {
+          g.arc(l + u * 0.2, o + u * 0.25, 2.2, 0, Math.PI * 2);
+          g.arc(l + u * 0.75, o + u * 0.8, 1.8, 0, Math.PI * 2);
+        } else if (snowSeed === 1) {
+          g.arc(l + u * 0.82, o + u * 0.3, 2.5, 0, Math.PI * 2);
+        } else {
+          g.arc(l + u * 0.35, o + u * 0.72, 2.0, 0, Math.PI * 2);
+        }
+        g.fill();
+      }
+      return;
+    }
+
+    // B. PRAÇA CENTRAL DE PARALELEPÍPEDOS (Mosaico Ornamental)
+    if (role === "plaza") {
+      g.fillStyle = "#1e293b";
+      g.fillRect(l, o, u + 1, u + 1);
+
+      // Padrão de paralelepípedos em anéis decorativos com pedra azul-ardósia
+      const plazaColors = isChecker
+        ? ["#334155", "#475569", "#3b4252"]
+        : ["#475569", "#525d72", "#334155"];
+
+      const cols = 3;
+      const colW = u / cols;
+      const rows = 3;
+      const rowH = u / rows;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const px = l + c * colW + 1;
+          const py = o + r * rowH + 1;
+          const pw = colW - 2;
+          const ph = rowH - 2;
+
+          const pCol = plazaColors[(r + c) % plazaColors.length];
+          g.fillStyle = pCol;
+          g.fillRect(px, py, pw, ph);
+
+          // Borda chanfrada
+          g.fillStyle = "rgba(241, 245, 249, 0.4)";
+          g.fillRect(px, py, pw, 1);
+          g.fillRect(px, py, 1, ph);
+          g.fillStyle = "rgba(15, 23, 42, 0.75)";
+          g.fillRect(px, py + ph - 1, pw, 1);
+          g.fillRect(px + pw - 1, py, 1, ph);
+        }
+      }
+
+      // Detalhe central no piso da praça
+      if (isChecker) {
+        g.fillStyle = "rgba(245, 158, 11, 0.25)";
+        g.fillRect(l + u * 0.35, o + u * 0.35, u * 0.3, u * 0.3);
+      }
+
+      // Neve nas juntas
+      g.fillStyle = "rgba(241, 245, 249, 0.5)";
+      g.fillRect(l + u * 0.05, o + u * 0.9, 3, 2);
+      g.fillRect(l + u * 0.9, o + u * 0.1, 2.5, 2.5);
+      return;
+    }
+
+    // C. PISO INTERIOR DAS CASAS
+    if (role === "house_floor") {
+      // Banheiro: Lajes polidas de ardósia cinza-azulada com tapete azul
+      if (roomName.includes("Banheiro")) {
+        g.fillStyle = isChecker ? "#334155" : "#1e293b";
+        g.fillRect(l, o, u + 1, u + 1);
+
+        g.strokeStyle = "rgba(15, 23, 42, 0.8)";
+        g.lineWidth = 1;
+        g.strokeRect(l + 0.5, o + 0.5, u * 0.5, u * 0.5);
+        g.strokeRect(l + u * 0.5 + 0.5, o + 0.5, u * 0.5, u * 0.5);
+        g.strokeRect(l + 0.5, o + u * 0.5 + 0.5, u * 0.5, u * 0.5);
+        g.strokeRect(l + u * 0.5 + 0.5, o + u * 0.5 + 0.5, u * 0.5, u * 0.5);
+
+        // Tapete azul no centro do banheiro
+        if ((Math.abs(t.tx * 3 + t.ty) % 4) === 0) {
+          g.fillStyle = "rgba(2, 132, 199, 0.35)";
+          g.fillRect(l + 3, o + 3, u - 6, u - 6);
+        }
+        return;
+      }
+
+      // Quarto e Sala: Tábuas aconchegantes de pinheiro nórdico com verniz âmbar
+      g.fillStyle = isChecker ? "#92400e" : "#78350f";
+      g.fillRect(l, o, u + 1, u + 1);
+
+      // Linhas das tábuas horizontais de madeira
+      const planks = 4;
+      const plankH = u / planks;
+      g.strokeStyle = "rgba(69, 26, 3, 0.65)";
+      g.lineWidth = 1;
+
+      for (let p = 0; p < planks; p++) {
+        const py = o + p * plankH;
+        g.beginPath();
+        g.moveTo(l, py);
+        g.lineTo(l + u, py);
+        g.stroke();
+
+        // Cabeças de pregos e veios sutis
+        g.fillStyle = "#451a03";
+        g.fillRect(l + 3, py + plankH * 0.45, 1.2, 1.2);
+        g.fillRect(l + u - 4, py + plankH * 0.45, 1.2, 1.2);
+      }
+
+      // Tapete felpudo decorativo no centro do quarto ou em frente à lareira da sala
+      if ((Math.abs(t.tx + t.ty * 2) % 3) === 0) {
+        g.fillStyle = "rgba(180, 83, 9, 0.32)";
+        g.fillRect(l + 2, o + 2, u - 4, u - 4);
+        g.strokeStyle = "#d97706";
+        g.lineWidth = 0.8;
+        g.strokeRect(l + 2.5, o + 2.5, u - 5, u - 5);
+      }
+      return;
+    }
+
+    // D. SOLEIRA DA PORTA
+    if (role === "door") {
+      g.fillStyle = "#475569";
+      g.fillRect(l, o, u + 1, u + 1);
+      g.fillStyle = "#64748b";
+      g.fillRect(l + 2, o + 2, u - 4, u - 4);
+      g.strokeStyle = "#334155";
+      g.lineWidth = 1.2;
+      g.strokeRect(l + 2, o + 2, u - 4, u - 4);
+      return;
+    }
+
+    // Fundo padrão
+    g.fillStyle = "#334155";
+    g.fillRect(l, o, u + 1, u + 1);
+  }
+
+  // 2. Parede 2.5D de Pedra da Montanha com Vigas de Madeira e Telhado Nevado
+  function drawSnowCityWall(e, t, subType = 0, neighbors = null) {
+    e.save();
+    const nL = !!(neighbors && neighbors.left);
+    const nR = !!(neighbors && neighbors.right);
+    const nB = !!(neighbors && neighbors.bottom);
+    const half = 18 * t;
+    const leftX = nL ? -half - 1 * t : -half + 1 * t;
+    const rightX = nR ? half + 1 * t : half - 1 * t;
+    const w = rightX - leftX;
+    const wallH = 26 * t;
+    const baseY = 18 * t;
+    const topFrontY = baseY - wallH;
+
+    // Sombra projetada no piso ao sul
+    if (!nB) {
+      e.fillStyle = "rgba(15, 23, 42, 0.65)";
+      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 9 * t);
+    }
+
+    // Face frontal da parede: Blocos de pedra de cantaria cinza ardósia
+    const wallGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
+    wallGrad.addColorStop(0, "#475569");
+    wallGrad.addColorStop(0.5, "#334155");
+    wallGrad.addColorStop(1, "#1e293b");
+    e.fillStyle = wallGrad;
+    e.fillRect(leftX, topFrontY, w, wallH);
+
+    // Linhas de assentamento de cantaria
+    e.strokeStyle = "rgba(15, 23, 42, 0.75)";
+    e.lineWidth = 1.2 * t;
+    e.beginPath();
+    e.moveTo(leftX, topFrontY + 8 * t);
+    e.lineTo(rightX, topFrontY + 8 * t);
+    e.moveTo(leftX, topFrontY + 17 * t);
+    e.lineTo(rightX, topFrontY + 17 * t);
+    // Juntas verticais
+    e.moveTo(leftX + w * 0.45, topFrontY);
+    e.lineTo(leftX + w * 0.45, topFrontY + 8 * t);
+    e.moveTo(leftX + w * 0.75, topFrontY + 8 * t);
+    e.lineTo(leftX + w * 0.75, topFrontY + 17 * t);
+    e.moveTo(leftX + w * 0.25, topFrontY + 8 * t);
+    e.lineTo(leftX + w * 0.25, topFrontY + 17 * t);
+    e.moveTo(leftX + w * 0.55, topFrontY + 17 * t);
+    e.lineTo(leftX + w * 0.55, baseY);
+    e.stroke();
+
+    // Vigas verticais e horizontais de carvalho nórdico (enxaimel alpino)
+    e.fillStyle = "#78350f";
+    e.fillRect(leftX, topFrontY, 2.5 * t, wallH);
+    e.fillRect(rightX - 2.5 * t, topFrontY, 2.5 * t, wallH);
+    e.fillRect(leftX, baseY - 3.5 * t, w, 3.5 * t);
+
+    // Beiral superior do telhado: Tábuas de pinheiro
+    e.fillStyle = "#451a03";
+    e.fillRect(leftX - 1.5 * t, topFrontY - 2 * t, w + 3 * t, 3.5 * t);
+
+    // Camada espessa de NEVE BRANCA acumulada no topo da parede
+    e.fillStyle = "#f8fafc";
+    e.beginPath();
+    e.moveTo(leftX - 2 * t, topFrontY - 2 * t);
+    e.lineTo(rightX + 2 * t, topFrontY - 2 * t);
+    e.lineTo(rightX + 2 * t, topFrontY + 2.5 * t);
+    // Ondulação suave da neve caída
+    e.quadraticCurveTo(leftX + w * 0.5, topFrontY + 4 * t, leftX - 2 * t, topFrontY + 2.5 * t);
+    e.closePath();
+    e.fill();
+
+    // Sombra suave sob a neve
+    e.strokeStyle = "rgba(203, 213, 225, 0.85)";
+    e.lineWidth = 1 * t;
+    e.stroke();
+
+    e.restore();
+  }
+
+  // 3. Porta da Casa: Carvalho com Ferragens e Batente de Pedra (Abre e Fecha)
+  function drawSnowCityDoor(e, t, opened = false) {
+    e.save();
+    const half = 18 * t;
+    const baseY = 18 * t;
+    const doorH = 25 * t;
+    const topY = baseY - doorH;
+
+    // Batente de cantaria de pedra cinza
+    e.fillStyle = "#334155";
+    e.fillRect(-12 * t, topY, 24 * t, doorH);
+    e.strokeStyle = "#1e293b";
+    e.lineWidth = 1.2 * t;
+    e.strokeRect(-12 * t, topY, 24 * t, doorH);
+
+    // Neve no topo do lintel de pedra
+    e.fillStyle = "#f8fafc";
+    e.fillRect(-13 * t, topY - 2 * t, 26 * t, 3 * t);
+
+    if (opened) {
+      // Interior visível escuro/acolhedor com luz âmbar da lareira
+      e.fillStyle = "#1e1b4b";
+      e.fillRect(-9 * t, topY + 2 * t, 18 * t, doorH - 2 * t);
+      e.fillStyle = "rgba(245, 158, 11, 0.4)";
+      e.fillRect(-8 * t, topY + 4 * t, 16 * t, doorH - 6 * t);
+
+      // Folha da porta aberta em perspectiva lateral
+      e.fillStyle = "#78350f";
+      e.beginPath();
+      e.moveTo(7 * t, topY + 2 * t);
+      e.lineTo(13 * t, topY - 2 * t);
+      e.lineTo(13 * t, baseY - 4 * t);
+      e.lineTo(7 * t, baseY);
+      e.closePath();
+      e.fill();
+    } else {
+      // Porta fechada de carvalho maciço
+      const woodGrad = e.createLinearGradient(0, topY, 0, baseY);
+      woodGrad.addColorStop(0, "#92400e");
+      woodGrad.addColorStop(1, "#78350f");
+      e.fillStyle = woodGrad;
+      e.fillRect(-9 * t, topY + 2 * t, 18 * t, doorH - 2 * t);
+
+      // Tábuas verticais
+      e.strokeStyle = "#451a03";
+      e.lineWidth = 1 * t;
+      e.beginPath();
+      e.moveTo(-3 * t, topY + 2 * t);
+      e.lineTo(-3 * t, baseY);
+      e.moveTo(3 * t, topY + 2 * t);
+      e.lineTo(3 * t, baseY);
+      e.stroke();
+
+      // Dobradiças de ferro preto
+      e.fillStyle = "#0f172a";
+      e.fillRect(-8.5 * t, topY + 6 * t, 15 * t, 2.2 * t);
+      e.fillRect(-8.5 * t, baseY - 8 * t, 15 * t, 2.2 * t);
+
+      // Maçaneta de latão dourado
+      e.fillStyle = "#fbbf24";
+      e.beginPath();
+      e.arc(5 * t, baseY - 12 * t, 1.8 * t, 0, Math.PI * 2);
+      e.fill();
+      e.strokeStyle = "#b45309";
+      e.lineWidth = 0.8 * t;
+      e.stroke();
+    }
+
+    e.restore();
+  }
+
+  // 4. Chaminé de Pedra em TODAS as Casas com Fumaça Viva Animada
+  function drawSnowCityChimney(e, t, animTimer = 0) {
+    e.save();
+    const half = 18 * t;
+    const baseY = 18 * t;
+    const chimneyH = 32 * t;
+    const topY = baseY - chimneyH;
+    const chimW = 16 * t;
+    const leftX = -chimW * 0.5;
+
+    // Sombra na base
+    e.fillStyle = "rgba(15, 23, 42, 0.65)";
+    e.fillRect(leftX - 1 * t, baseY - 2 * t, chimW + 2 * t, 8 * t);
+
+    // Corpo da chaminé: pedras de cantaria da montanha
+    const chimGrad = e.createLinearGradient(0, topY, 0, baseY);
+    chimGrad.addColorStop(0, "#475569");
+    chimGrad.addColorStop(0.5, "#334155");
+    chimGrad.addColorStop(1, "#1e293b");
+    e.fillStyle = chimGrad;
+    e.fillRect(leftX, topY, chimW, chimneyH);
+
+    // Juntas de argamassa da cantaria
+    e.strokeStyle = "rgba(15, 23, 42, 0.75)";
+    e.lineWidth = 1 * t;
+    e.strokeRect(leftX, topY, chimW, chimneyH);
+    e.beginPath();
+    for (let yOff = 8; yOff < 30; yOff += 7) {
+      e.moveTo(leftX, topY + yOff * t);
+      e.lineTo(leftX + chimW, topY + yOff * t);
+    }
+    e.stroke();
+
+    // Chapéu/coroamento da chaminé
+    e.fillStyle = "#1e293b";
+    e.fillRect(leftX - 2 * t, topY - 3 * t, chimW + 4 * t, 4 * t);
+
+    // Camada de neve no chapéu da chaminé
+    e.fillStyle = "#f8fafc";
+    e.fillRect(leftX - 2.5 * t, topY - 4.5 * t, chimW + 5 * t, 2.5 * t);
+
+    // Abertura escura da saída de fumaça com brilho de brasa avermelhado
+    e.fillStyle = "#0f172a";
+    e.fillRect(leftX + 2 * t, topY - 1 * t, chimW - 4 * t, 2.5 * t);
+    e.fillStyle = "rgba(234, 88, 12, 0.65)";
+    e.fillRect(leftX + 4 * t, topY, chimW - 8 * t, 1.5 * t);
+
+    // =====================================================================
+    // FUMAÇA VIVA E ANIMADA SUBINDO AO AR FRIO DOS PICOS GELADOS
+    // =====================================================================
+    const puffCount = 5;
+    for (let i = 0; i < puffCount; i++) {
+      // Ciclo temporal de cada baforada
+      const puffTime = ((animTimer * 1.5 + i * 0.75) % 3.5);
+      const prog = puffTime / 3.5; // 0 (saindo) até 1 (dissipando no ar)
+
+      // Sobe verticalmente de topY até bem acima da chaminé
+      const puffY = topY - 2 * t - prog * 44 * t;
+      // Oscila suavemente ao vento lateral para a direita
+      const puffX = Math.sin(animTimer * 2 + i * 1.3) * (3 * t) + prog * 16 * t;
+      // Expande conforme sobe
+      const puffRadius = (3.5 + prog * 8.5) * t;
+      // Desvanece a opacidade
+      const puffAlpha = Math.max(0, (1 - prog) * 0.58);
+
+      e.fillStyle = `rgba(226, 232, 240, ${puffAlpha})`;
+      e.beginPath();
+      e.arc(puffX, puffY, puffRadius, 0, Math.PI * 2);
+      e.fill();
+
+      // Núcleo um pouco mais denso
+      e.fillStyle = `rgba(241, 245, 249, ${puffAlpha * 0.75})`;
+      e.beginPath();
+      e.arc(puffX - 1 * t, puffY + 1 * t, puffRadius * 0.55, 0, Math.PI * 2);
+      e.fill();
+    }
+
+    e.restore();
+  }
+
+  // 5. Lareira de Pedra da Montanha com Chamas Dançantes e Lenha Crepitante
+  function drawSnowCityFireplace(e, t, animTimer = 0) {
+    e.save();
+    const half = 18 * t;
+    const baseY = 18 * t;
+    const fireW = 24 * t;
+    const fireH = 24 * t;
+    const leftX = -fireW * 0.5;
+    const topY = baseY - fireH;
+
+    // Estrutura externa de pedra da lareira
+    e.fillStyle = "#334155";
+    e.fillRect(leftX, topY, fireW, fireH);
+    e.strokeStyle = "#1e293b";
+    e.lineWidth = 1.2 * t;
+    e.strokeRect(leftX, topY, fireW, fireH);
+
+    // Moldura de cantaria no topo (prateleira da lareira)
+    e.fillStyle = "#475569";
+    e.fillRect(leftX - 2 * t, topY - 2 * t, fireW + 4 * t, 3.5 * t);
+    e.fillStyle = "#78350f";
+    e.fillRect(leftX - 2 * t, topY - 3.5 * t, fireW + 4 * t, 1.5 * t);
+
+    // Nicho arqueado escuro do fogo
+    e.fillStyle = "#0f172a";
+    e.beginPath();
+    e.moveTo(-8 * t, baseY);
+    e.lineTo(-8 * t, topY + 7 * t);
+    e.quadraticCurveTo(0, topY + 3 * t, 8 * t, topY + 7 * t);
+    e.lineTo(8 * t, baseY);
+    e.closePath();
+    e.fill();
+
+    // Troncos de lenha cruzados
+    e.fillStyle = "#78350f";
+    e.save();
+    e.translate(0, baseY - 3 * t);
+    e.rotate(-0.15);
+    e.fillRect(-7 * t, -2 * t, 14 * t, 3.5 * t);
+    e.rotate(0.3);
+    e.fillStyle = "#92400e";
+    e.fillRect(-6 * t, -2 * t, 12 * t, 3 * t);
+    e.restore();
+
+    // Brasa incandescente na base
+    e.fillStyle = "#ea580c";
+    e.fillRect(-6 * t, baseY - 5 * t, 12 * t, 3 * t);
+
+    // CHAMAS DANÇANTES VIVAS (Animadas)
+    const f1 = Math.sin(animTimer * 12) * 2 * t;
+    const f2 = Math.cos(animTimer * 16) * 2.5 * t;
+
+    // Labareda vermelha externa
+    e.fillStyle = "rgba(239, 68, 68, 0.88)";
+    e.beginPath();
+    e.moveTo(-6 * t, baseY - 3 * t);
+    e.quadraticCurveTo(-4 * t + f1, baseY - 12 * t, 0, baseY - 16 * t + f2);
+    e.quadraticCurveTo(4 * t - f1, baseY - 12 * t, 6 * t, baseY - 3 * t);
+    e.closePath();
+    e.fill();
+
+    // Labareda alaranjada média
+    e.fillStyle = "rgba(245, 158, 11, 0.95)";
+    e.beginPath();
+    e.moveTo(-4 * t, baseY - 3 * t);
+    e.quadraticCurveTo(-2 * t + f2, baseY - 10 * t, 0, baseY - 13 * t + f1);
+    e.quadraticCurveTo(2 * t - f2, baseY - 10 * t, 4 * t, baseY - 3 * t);
+    e.closePath();
+    e.fill();
+
+    // Núcleo amarelo vibrante
+    e.fillStyle = "#fef08a";
+    e.beginPath();
+    e.moveTo(-2.5 * t, baseY - 3 * t);
+    e.lineTo(0, baseY - 8 * t + f1);
+    e.lineTo(2.5 * t, baseY - 3 * t);
+    e.closePath();
+    e.fill();
+
+    // Grade protetora de ferro forjado na frente da lareira
+    e.strokeStyle = "#0f172a";
+    e.lineWidth = 1 * t;
+    e.beginPath();
+    for (let gx = -7; gx <= 7; gx += 3.5) {
+      e.moveTo(gx * t, baseY - 5 * t);
+      e.lineTo(gx * t, baseY);
+    }
+    e.moveTo(-7 * t, baseY - 4.5 * t);
+    e.lineTo(7 * t, baseY - 4.5 * t);
+    e.stroke();
+
+    e.restore();
+  }
+
+  // 6. Fogão a Lenha e Forno com Vapor Animado na Cozinha
+  function drawSnowCityStove(e, t, animTimer = 0) {
+    e.save();
+    const baseY = 18 * t;
+    const stoveH = 20 * t;
+    const stoveW = 20 * t;
+    const topY = baseY - stoveH;
+
+    // Corpo de ferro fundido escuro do fogão
+    e.fillStyle = "#1e293b";
+    e.fillRect(-10 * t, topY, stoveW, stoveH);
+    e.strokeStyle = "#0f172a";
+    e.lineWidth = 1.2 * t;
+    e.strokeRect(-10 * t, topY, stoveW, stoveH);
+
+    // Chapa superior de ferro com bocas circulares
+    e.fillStyle = "#334155";
+    e.fillRect(-11 * t, topY - 2 * t, 22 * t, 3.5 * t);
+    e.fillStyle = "#0f172a";
+    e.beginPath();
+    e.arc(-5 * t, topY, 2.5 * t, 0, Math.PI * 2);
+    e.arc(5 * t, topY, 2.5 * t, 0, Math.PI * 2);
+    e.fill();
+
+    // Panela de cobre com ensopado e vapor
+    e.fillStyle = "#b45309";
+    e.fillRect(-8 * t, topY - 7 * t, 6 * t, 5 * t);
+    e.fillStyle = "#d97706";
+    e.fillRect(-9 * t, topY - 8 * t, 8 * t, 1.5 * t);
+
+    // Chaleira com bico
+    e.fillStyle = "#475569";
+    e.beginPath();
+    e.arc(5 * t, topY - 4 * t, 3.5 * t, 0, Math.PI * 2);
+    e.fill();
+
+    // Baforadas de vapor suave da panela
+    const steam1 = Math.sin(animTimer * 5) * 2 * t;
+    const steamProg = (animTimer * 2) % 2;
+    e.fillStyle = "rgba(241, 245, 249, 0.6)";
+    e.beginPath();
+    e.arc(-5 * t + steam1, topY - 11 * t - steamProg * 6 * t, 2 * t + steamProg * 1.5 * t, 0, Math.PI * 2);
+    e.fill();
+
+    // Porta do forno de ferro com puxador
+    e.fillStyle = "#0f172a";
+    e.fillRect(-7 * t, topY + 7 * t, 14 * t, 10 * t);
+    e.fillStyle = "#ea580c";
+    e.fillRect(-5 * t, topY + 11 * t, 10 * t, 2 * t);
+    e.fillStyle = "#94a3b8";
+    e.fillRect(4 * t, topY + 11 * t, 1.5 * t, 4 * t);
+
+    e.restore();
+  }
+
+  // 7. Tina / Banheira de Imersão Aquecida no Banheiro
+  function drawSnowCityBathtub(e, t, animTimer = 0) {
+    e.save();
+    const baseY = 18 * t;
+    const tubW = 26 * t;
+    const tubH = 16 * t;
+    const topY = baseY - tubH;
+
+    // Corpo de madeira nobre com aros de ferro
+    e.fillStyle = "#78350f";
+    e.beginPath();
+    e.ellipse(0, baseY - 8 * t, tubW * 0.5, tubH * 0.5, 0, 0, Math.PI * 2);
+    e.fill();
+    e.strokeStyle = "#451a03";
+    e.lineWidth = 1.2 * t;
+    e.stroke();
+
+    // Aros de ferro escuro
+    e.strokeStyle = "#0f172a";
+    e.lineWidth = 1.5 * t;
+    e.beginPath();
+    e.ellipse(0, baseY - 6 * t, tubW * 0.48, tubH * 0.42, 0, 0, Math.PI * 2);
+    e.stroke();
+
+    // Água aquecida cristalina com ondulações sutis
+    e.fillStyle = "#0284c7";
+    e.beginPath();
+    e.ellipse(0, baseY - 9 * t, tubW * 0.42, tubH * 0.36, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Brilho da água
+    e.fillStyle = "rgba(186, 230, 253, 0.45)";
+    e.beginPath();
+    e.ellipse(-3 * t, baseY - 10 * t, tubW * 0.25, tubH * 0.18, -0.2, 0, Math.PI * 2);
+    e.fill();
+
+    // Vapor quente subindo suavemente
+    const steamY = ((animTimer * 1.5) % 3);
+    e.fillStyle = "rgba(241, 245, 249, 0.4)";
+    e.beginPath();
+    e.arc(Math.sin(animTimer * 3) * 3 * t, topY - steamY * 4 * t, 2.5 * t, 0, Math.PI * 2);
+    e.fill();
+
+    e.restore();
+  }
+
+  // 8. Cama Nórdica com Peles de Inverno no Quarto
+  function drawSnowCityBed(e, t) {
+    e.save();
+    const baseY = 18 * t;
+    const bedW = 24 * t;
+    const bedH = 26 * t;
+    const topY = baseY - bedH;
+
+    // Estrutura de madeira de pinheiro escuro
+    e.fillStyle = "#78350f";
+    e.fillRect(-bedW * 0.5, topY, bedW, bedH);
+    e.strokeStyle = "#451a03";
+    e.lineWidth = 1.2 * t;
+    e.strokeRect(-bedW * 0.5, topY, bedW, bedH);
+
+    // Cabeceira da cama torneada
+    e.fillStyle = "#92400e";
+    e.fillRect(-bedW * 0.5 - 1 * t, topY - 3 * t, bedW + 2 * t, 4 * t);
+
+    // Dois travesseiros macios brancos
+    e.fillStyle = "#f8fafc";
+    e.fillRect(-10 * t, topY + 2 * t, 9 * t, 5.5 * t);
+    e.fillRect(1 * t, topY + 2 * t, 9 * t, 5.5 * t);
+    e.strokeStyle = "#cbd5e1";
+    e.lineWidth = 0.8 * t;
+    e.strokeRect(-10 * t, topY + 2 * t, 9 * t, 5.5 * t);
+    e.strokeRect(1 * t, topY + 2 * t, 9 * t, 5.5 * t);
+
+    // Cobertor grosso vermelho xadrez nórdico
+    e.fillStyle = "#991b1b";
+    e.fillRect(-11 * t, topY + 8 * t, 22 * t, bedH - 9 * t);
+
+    // Pelerine / faixa de pele de carneiro felpuda branca no pé da cama
+    e.fillStyle = "#f1f5f9";
+    e.fillRect(-11 * t, baseY - 8 * t, 22 * t, 6.5 * t);
+    e.strokeStyle = "#e2e8f0";
+    e.lineWidth = 0.8 * t;
+    e.strokeRect(-11 * t, baseY - 8 * t, 22 * t, 6.5 * t);
+
+    e.restore();
+  }
+
+  // 9. Móveis Decorativos e Utilitários das Casas
+  function drawSnowCityFurniture(e, t, kind) {
+    e.save();
+    const baseY = 18 * t;
+
+    switch (kind) {
+      case "snow_city_sofa": {
+        // Sofá / poltrona acolchoada na sala
+        e.fillStyle = "#1e3a5f";
+        e.fillRect(-11 * t, baseY - 16 * t, 22 * t, 15 * t);
+        e.fillStyle = "#2563eb";
+        e.fillRect(-9 * t, baseY - 13 * t, 18 * t, 10 * t);
+        // Almofadas de lã
+        e.fillStyle = "#fef08a";
+        e.fillRect(-8 * t, baseY - 12 * t, 7 * t, 7 * t);
+        e.fillRect(1 * t, baseY - 12 * t, 7 * t, 7 * t);
+        break;
+      }
+      case "snow_city_table": {
+        // Mesinha de centro redonda com caneca quente
+        e.fillStyle = "#92400e";
+        e.beginPath();
+        e.ellipse(0, baseY - 6 * t, 9 * t, 5 * t, 0, 0, Math.PI * 2);
+        e.fill();
+        e.strokeStyle = "#78350f";
+        e.lineWidth = 1 * t;
+        e.stroke();
+        // Caneca de chá
+        e.fillStyle = "#f8fafc";
+        e.fillRect(-2 * t, baseY - 10 * t, 3.5 * t, 4 * t);
+        e.fillStyle = "#b45309";
+        e.fillRect(-1.5 * t, baseY - 9 * t, 2.5 * t, 1.5 * t);
+        break;
+      }
+      case "snow_city_nightstand": {
+        // Criado-mudo com vela
+        e.fillStyle = "#78350f";
+        e.fillRect(-7 * t, baseY - 13 * t, 14 * t, 12 * t);
+        e.strokeStyle = "#451a03";
+        e.lineWidth = 1 * t;
+        e.strokeRect(-7 * t, baseY - 13 * t, 14 * t, 12 * t);
+        // Castiçal e chama de vela
+        e.fillStyle = "#fbbf24";
+        e.fillRect(-2 * t, baseY - 15 * t, 4 * t, 2 * t);
+        e.fillStyle = "#f8fafc";
+        e.fillRect(-1 * t, baseY - 18 * t, 2 * t, 3 * t);
+        e.fillStyle = "#f59e0b";
+        e.beginPath();
+        e.arc(0, baseY - 20 * t, 1.5 * t, 0, Math.PI * 2);
+        e.fill();
+        break;
+      }
+      case "snow_city_wardrobe": {
+        // Armário guarda-roupa de madeira de pinheiro
+        e.fillStyle = "#78350f";
+        e.fillRect(-10 * t, baseY - 24 * t, 20 * t, 23 * t);
+        e.strokeStyle = "#451a03";
+        e.lineWidth = 1.2 * t;
+        e.strokeRect(-10 * t, baseY - 24 * t, 20 * t, 23 * t);
+        // Divisão das duas portas
+        e.beginPath();
+        e.moveTo(0, baseY - 24 * t);
+        e.lineTo(0, baseY - 1 * t);
+        e.stroke();
+        // Puxadores de latão
+        e.fillStyle = "#fbbf24";
+        e.fillRect(-2.5 * t, baseY - 12 * t, 1.5 * t, 2.5 * t);
+        e.fillRect(1 * t, baseY - 12 * t, 1.5 * t, 2.5 * t);
+        break;
+      }
+      case "snow_city_sink": {
+        // Lavatório de pedra com espelho no banheiro
+        e.fillStyle = "#475569";
+        e.fillRect(-8 * t, baseY - 13 * t, 16 * t, 12 * t);
+        e.fillStyle = "#cbd5e1";
+        e.fillRect(-6 * t, baseY - 12 * t, 12 * t, 4 * t);
+        // Espelho oval
+        e.fillStyle = "#38bdf8";
+        e.beginPath();
+        e.ellipse(0, baseY - 18 * t, 5 * t, 6 * t, 0, 0, Math.PI * 2);
+        e.fill();
+        e.strokeStyle = "#94a3b8";
+        e.lineWidth = 0.8 * t;
+        e.stroke();
+        break;
+      }
+      case "snow_city_toilet": {
+        // Sanitário de madeira tratada
+        e.fillStyle = "#78350f";
+        e.fillRect(-6 * t, baseY - 14 * t, 12 * t, 13 * t);
+        e.fillStyle = "#92400e";
+        e.beginPath();
+        e.ellipse(0, baseY - 8 * t, 5 * t, 4 * t, 0, 0, Math.PI * 2);
+        e.fill();
+        break;
+      }
+      case "snow_city_counter": {
+        // Bancada de preparo de alimentos na cozinha
+        e.fillStyle = "#78350f";
+        e.fillRect(-10 * t, baseY - 15 * t, 20 * t, 14 * t);
+        e.fillStyle = "#f8fafc";
+        e.fillRect(-11 * t, baseY - 16 * t, 22 * t, 2.5 * t);
+        // Tábua de corte e faca
+        e.fillStyle = "#b45309";
+        e.fillRect(-5 * t, baseY - 17.5 * t, 5 * t, 2 * t);
+        e.fillStyle = "#94a3b8";
+        e.fillRect(2 * t, baseY - 17.5 * t, 4 * t, 1 * t);
+        break;
+      }
+      case "snow_city_pantry": {
+        // Prateleiras de despensa com mantimentos
+        e.fillStyle = "#78350f";
+        e.fillRect(-9 * t, baseY - 22 * t, 18 * t, 21 * t);
+        e.fillStyle = "#451a03";
+        e.fillRect(-9 * t, baseY - 15 * t, 18 * t, 2 * t);
+        e.fillRect(-9 * t, baseY - 8 * t, 18 * t, 2 * t);
+        // Potes de cerâmica
+        e.fillStyle = "#dc2626";
+        e.fillRect(-7 * t, baseY - 14 * t, 3 * t, 4 * t);
+        e.fillStyle = "#16a34a";
+        e.fillRect(-2 * t, baseY - 14 * t, 3 * t, 4 * t);
+        e.fillStyle = "#f59e0b";
+        e.fillRect(3 * t, baseY - 14 * t, 3 * t, 4 * t);
+        break;
+      }
+    }
+
+    e.restore();
+  }
+
+  // 10. Monumento / Grande Fogueira da Praça dos Picos Gelados
+  function drawSnowCityMonument(e, t, animTimer = 0) {
+    e.save();
+    const baseY = 18 * t;
+
+    // Degraus octogonais de granito azul com neve
+    e.fillStyle = "#334155";
+    e.beginPath();
+    e.moveTo(-16 * t, baseY);
+    e.lineTo(-12 * t, baseY - 6 * t);
+    e.lineTo(12 * t, baseY - 6 * t);
+    e.lineTo(16 * t, baseY);
+    e.closePath();
+    e.fill();
+
+    // Neve nos degraus
+    e.fillStyle = "#f8fafc";
+    e.fillRect(-13 * t, baseY - 7 * t, 26 * t, 2.5 * t);
+
+    // Braseiro monumental de ferro forjado
+    e.fillStyle = "#1e293b";
+    e.beginPath();
+    e.moveTo(-10 * t, baseY - 6 * t);
+    e.lineTo(-12 * t, baseY - 16 * t);
+    e.lineTo(12 * t, baseY - 16 * t);
+    e.lineTo(10 * t, baseY - 6 * t);
+    e.closePath();
+    e.fill();
+
+    // Grandes Chamas Eternas da Cidade
+    const f1 = Math.sin(animTimer * 10) * 3 * t;
+    const f2 = Math.cos(animTimer * 14) * 3.5 * t;
+
+    e.fillStyle = "rgba(239, 68, 68, 0.9)";
+    e.beginPath();
+    e.moveTo(-8 * t, baseY - 15 * t);
+    e.quadraticCurveTo(-4 * t + f1, baseY - 26 * t, 0, baseY - 34 * t + f2);
+    e.quadraticCurveTo(4 * t - f1, baseY - 26 * t, 8 * t, baseY - 15 * t);
+    e.closePath();
+    e.fill();
+
+    e.fillStyle = "rgba(245, 158, 11, 0.95)";
+    e.beginPath();
+    e.moveTo(-5 * t, baseY - 15 * t);
+    e.quadraticCurveTo(-2 * t + f2, baseY - 24 * t, 0, baseY - 28 * t + f1);
+    e.quadraticCurveTo(2 * t - f2, baseY - 24 * t, 5 * t, baseY - 15 * t);
+    e.closePath();
+    e.fill();
+
+    e.fillStyle = "#fef08a";
+    e.beginPath();
+    e.arc(0, baseY - 18 * t, 3.5 * t, 0, Math.PI * 2);
+    e.fill();
+
+    e.restore();
+  }
+
+  // 11. Poste de Lampião de Ferro Forjado nas Ruas de Paralelepípedo
+  function drawSnowCityLamppost(e, t, animTimer = 0) {
+    e.save();
+    const baseY = 18 * t;
+
+    // Pedestal de pedra
+    e.fillStyle = "#334155";
+    e.fillRect(-3 * t, baseY - 4 * t, 6 * t, 4 * t);
+
+    // Haste de ferro preto
+    e.fillStyle = "#0f172a";
+    e.fillRect(-1.2 * t, baseY - 24 * t, 2.4 * t, 20 * t);
+
+    // Braço curvado e lanterna
+    e.fillRect(-4 * t, baseY - 25 * t, 8 * t, 2 * t);
+
+    // Caixa de vidro com topo cônico coberto de neve
+    e.fillStyle = "rgba(254, 240, 138, 0.85)";
+    e.fillRect(-3.5 * t, baseY - 30 * t, 7 * t, 6 * t);
+    e.strokeStyle = "#0f172a";
+    e.lineWidth = 1 * t;
+    e.strokeRect(-3.5 * t, baseY - 30 * t, 7 * t, 6 * t);
+
+    // Topo de ferro com camada de neve
+    e.fillStyle = "#0f172a";
+    e.beginPath();
+    e.moveTo(-4.5 * t, baseY - 30 * t);
+    e.lineTo(0, baseY - 34 * t);
+    e.lineTo(4.5 * t, baseY - 30 * t);
+    e.closePath();
+    e.fill();
+    e.fillStyle = "#f8fafc";
+    e.beginPath();
+    e.moveTo(-5 * t, baseY - 30 * t);
+    e.lineTo(0, baseY - 35 * t);
+    e.lineTo(5 * t, baseY - 30 * t);
+    e.closePath();
+    e.fill();
+
+    // Chama dançante no interior
+    const flameFlicker = Math.sin(animTimer * 15) * 0.8 * t;
+    e.fillStyle = "#f59e0b";
+    e.beginPath();
+    e.arc(flameFlicker, baseY - 27 * t, 1.8 * t, 0, Math.PI * 2);
+    e.fill();
+
+    e.restore();
+  }

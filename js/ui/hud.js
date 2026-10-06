@@ -500,6 +500,14 @@
                     title: "Ir direto para Montanhas 2.5D (Paredões)",
                     children: "Ir p/ Montanhas 2.5D",
                   }),
+                  h.jsx("button", {
+                    type: "button",
+                    onClick: () => p && p("SNOW_PEAK"),
+                    className:
+                      "px-2 py-0.5 rounded-full bg-sky-600 hover:bg-sky-500 text-white font-bold text-[10px] transition cursor-pointer active:scale-95 whitespace-nowrap shadow",
+                    title: "Teleportar direto para a Cidade dos Picos Gelados",
+                    children: "❄️ Ir p/ Cidade Glacial",
+                  }),
                   h.jsxs("button", {
                     id: "hud-dev-settings-sidebar-toggle-btn",
                     type: "button",
@@ -2735,6 +2743,25 @@
                                 className:
                                   "text-[10px] font-mono text-amber-400",
                                 children: "Superfície",
+                              }),
+                            ],
+                          }),
+                          h.jsxs("button", {
+                            type: "button",
+                            onClick: () => {
+                              p && p("SNOW_PEAK");
+                              setShowDevSettings(!1);
+                            },
+                            className:
+                              "py-2 px-3 rounded-lg bg-sky-950/80 hover:bg-sky-900 border border-sky-400/50 text-sky-200 hover:text-white font-bold text-xs flex items-center justify-between transition cursor-pointer shadow-sm",
+                            children: [
+                              h.jsx("span", {
+                                children: "❄️ Cidade Glacial (Picos Gelados)",
+                              }),
+                              h.jsx("span", {
+                                className:
+                                  "text-[10px] font-mono text-sky-400",
+                                children: "Picos Gelados",
                               }),
                             ],
                           }),

@@ -723,6 +723,8 @@
             g.lineTo(l + u * 0.8, o + u * 0.55);
             g.stroke();
           }
+        } else if (t.isSnowCity) {
+          drawSnowCityFloor(g, l, o, u, t, this.animTimer);
         } else if (t.isGreekRuin) {
           // Pisos em tons de Terracota Helênica, Travertino Dourado e Calcário Escuro para contrastar fortemente
           // com as Paredes de Mármore Branco/Marfim e Topo de Telha/Cornija!
@@ -1698,6 +1700,53 @@
             break;
           case "ruin_pillar":
             gg(c, f, t.subType);
+            break;
+          case "snow_city_wall": {
+            const eng = this.engine,
+              tx = u.tx,
+              ty = u.ty,
+              nb = {
+                left: !!(eng.getTile(tx - 1, ty) && eng.getTile(tx - 1, ty).isSnowCityWall),
+                right: !!(eng.getTile(tx + 1, ty) && eng.getTile(tx + 1, ty).isSnowCityWall),
+                top: !!(eng.getTile(tx, ty - 1) && eng.getTile(tx, ty - 1).isSnowCityWall),
+                bottom: !!(eng.getTile(tx, ty + 1) && eng.getTile(tx, ty + 1).isSnowCityWall),
+              };
+            drawSnowCityWall(c, f, t.subType || 0, nb);
+            break;
+          }
+          case "snow_city_door":
+            drawSnowCityDoor(c, f, !!t.opened);
+            break;
+          case "snow_city_chimney":
+            drawSnowCityChimney(c, f, this.animTimer);
+            break;
+          case "snow_city_fireplace":
+            drawSnowCityFireplace(c, f, this.animTimer);
+            break;
+          case "snow_city_stove":
+            drawSnowCityStove(c, f, this.animTimer);
+            break;
+          case "snow_city_bathtub":
+            drawSnowCityBathtub(c, f, this.animTimer);
+            break;
+          case "snow_city_bed":
+            drawSnowCityBed(c, f);
+            break;
+          case "snow_city_nightstand":
+          case "snow_city_wardrobe":
+          case "snow_city_sink":
+          case "snow_city_toilet":
+          case "snow_city_sofa":
+          case "snow_city_table":
+          case "snow_city_counter":
+          case "snow_city_pantry":
+            drawSnowCityFurniture(c, f, t.kind);
+            break;
+          case "snow_city_monument":
+            drawSnowCityMonument(c, f, this.animTimer);
+            break;
+          case "snow_city_lamppost":
+            drawSnowCityLamppost(c, f, this.animTimer);
             break;
           case "greek_wall": {
             const eng = this.engine,

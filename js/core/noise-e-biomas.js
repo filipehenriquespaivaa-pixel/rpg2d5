@@ -611,9 +611,9 @@
           ? BIOMES.COAST_WATER
           : e < 0.42
             ? BIOMES.BEACH
-            : e > 0.86 && l < 0.28
+            : e > 0.52 && l < 0.35
               ? BIOMES.SNOW_PEAK
-              : e > 0.67 && l >= 0.22 && l <= 0.7
+              : e > 0.67 && l >= 0.35 && l <= 0.7
                 ? BIOMES.MOUNTAIN_25D
                 : l >= 0.72
                 ? e < 0.48
