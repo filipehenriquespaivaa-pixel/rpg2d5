@@ -1432,10 +1432,10 @@
           }
 
           if (E === "SNOW_PEAK" && !D.isUnderground) {
-            // Ao teleportar para Picos Glaciais (SNOW_PEAK), leva diretamente para a Praça da Cidade dos Picos Gelados!
+            // Ao teleportar para Picos Glaciais (SNOW_PEAK), leva diretamente para a Praça da Cidade dos Picos Gelados (em frente à grande fogueira/monumento, área livre e desobstruída)!
             const snowCity = typeof window !== "undefined" && window.SnowPeakCity;
             const targetTx = snowCity ? snowCity.centerX : -380;
-            const targetTy = snowCity ? snowCity.centerY : -1220;
+            const targetTy = (snowCity ? snowCity.centerY : -1220) + 3;
             targetPixelX = targetTx * D.tileSize + D.tileSize / 2;
             targetPixelY = targetTy * D.tileSize + D.tileSize / 2;
             foundDist = Math.round(Math.hypot(targetTx - originTx, targetTy - originTy));
@@ -1539,6 +1539,8 @@
           if (found) {
             f.current.x = targetPixelX;
             f.current.y = targetPixelY;
+            f.current.vx = 0;
+            f.current.vy = 0;
             Oa.current = { x: 0, y: 0 };
             D.clearTileCache();
             if (!isSpecialTarget) {
