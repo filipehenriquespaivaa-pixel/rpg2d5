@@ -1599,12 +1599,12 @@
     }
 
     function getTile(tx, ty) {
-      const e = elevNoise.fbm2D(tx * 0.012, ty * 0.012, 4);
-      const m = moistNoise.fbm2D(tx * 0.01 + 50, ty * 0.01 + 50, 3);
-      const t = tempNoise.fbm2D(tx * 0.007 + 120, ty * 0.007 + 120, 3);
+      const e = elevNoise.fbm2D(tx * 0.003, ty * 0.003, 4);
+      const m = moistNoise.fbm2D(tx * 0.0025 + 50, ty * 0.0025 + 50, 3);
+      const t = tempNoise.fbm2D(tx * 0.00175 + 120, ty * 0.00175 + 120, 3);
       const distFromSpawn = Math.hypot(tx, ty);
-      const lakeVal = distFromSpawn < 24 ? 0 : lakeNoise.fbm2D(tx * 0.0078 + 920, ty * 0.0078 + 920, 2, 2.0, 0.45);
-      const oasisVal = lakeNoise.fbm2D(tx * 0.0028 + 560, ty * 0.0028 + 560, 2, 2.0, 0.5);
+      const lakeVal = distFromSpawn < 96 ? 0 : lakeNoise.fbm2D(tx * 0.00195 + 920, ty * 0.00195 + 920, 2, 2.0, 0.45);
+      const oasisVal = lakeNoise.fbm2D(tx * 0.0007 + 560, ty * 0.0007 + 560, 2, 2.0, 0.5);
       const biome = getBiome(e, m, t, { lakeVal, oasisVal });
       const h = hash2D(tx, ty, 7);
 

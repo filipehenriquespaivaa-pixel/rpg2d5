@@ -1215,21 +1215,21 @@
       return this.getSurfaceTile(t, l);
     }
     _computeSurfaceBaseBiome(t, l) {
-      const m = this.detailNoise.noise2D(t * 0.005, l * 0.005) * 12,
-        c = this.detailNoise.noise2D(t * 0.005 + 77, l * 0.005 + 77) * 12,
+      const m = this.detailNoise.noise2D(t * 0.00125, l * 0.00125) * 48,
+        c = this.detailNoise.noise2D(t * 0.00125 + 77, l * 0.00125 + 77) * 48,
         f = t + m,
         g = l + c,
-        y = this.elevNoise.fbm2D(f * 0.0011, g * 0.0011, 2, 2, 0.4),
+        y = this.elevNoise.fbm2D(f * 0.000275, g * 0.000275, 2, 2, 0.4),
         w = Math.hypot(t, l),
-        v = w < 36 ? (1 - w / 36) * 0.28 : 0;
+        v = w < 144 ? (1 - w / 144) * 0.28 : 0;
       let T = Math.max(0, Math.min(1, y + v)),
         S = !1,
         p = !1,
         j = !1;
       if (y < 0.24) {
         const ue = this.islandNoise.fbm2D(
-          t * 0.0022 + 400,
-          l * 0.0022 + 400,
+          t * 0.00055 + 400,
+          l * 0.00055 + 400,
           2,
           2,
           0.45,
@@ -1239,8 +1239,8 @@
           const N = (ue - 0.56) / 0.44;
           T = 0.32 + N * 0.56;
           const Ee = this.featureNoise.fbm2D(
-            t * 0.0025 + 200,
-            l * 0.0025 + 200,
+            t * 0.000625 + 200,
+            l * 0.000625 + 200,
             2,
             2,
             0.5,
@@ -1249,41 +1249,41 @@
             ((p = !0), (N > 0.4 || (Ee > 0.58 && T > 0.55)) && (j = !0));
         }
       }
-      const P = this.tempNoise.fbm2D(f * 9e-4 + 150, g * 9e-4 + 150, 2, 2, 0.4),
+      const P = this.tempNoise.fbm2D(f * 0.000225 + 150, g * 0.000225 + 150, 2, 2, 0.4),
         A = this.moistNoise.fbm2D(
-          f * 0.0012 + 280,
-          g * 0.0012 + 280,
+          f * 0.0003 + 280,
+          g * 0.0003 + 280,
           2,
           2,
           0.4,
         ),
         x = this.featureNoise.fbm2D(
-          t * 0.003 + 320,
-          l * 0.003 + 320,
+          t * 0.00075 + 320,
+          l * 0.00075 + 320,
           2,
           2,
           0.5,
         ),
         M = this.featureNoise.fbm2D(
-          t * 0.0028 + 560,
-          l * 0.0028 + 560,
+          t * 0.0007 + 560,
+          l * 0.0007 + 560,
           2,
           2,
           0.5,
         ),
         $ = this.canyonNoise.fbm2D(
-          t * 0.0028 + 780,
-          l * 0.0028 + 780,
+          t * 0.0007 + 780,
+          l * 0.0007 + 780,
           2,
           2,
           0.5,
         ),
         z =
-          w < 24
+          w < 96
             ? 0
             : this.lakeNoise.fbm2D(
-                f * 0.0078 + 920,
-                g * 0.0078 + 920,
+                f * 0.00195 + 920,
+                g * 0.00195 + 920,
                 2,
                 2,
                 0.45,
@@ -1349,7 +1349,7 @@
         return this._greekBiomeCityCache.get(qKey);
       }
 
-      const maxScan = 120;
+      const maxScan = 480;
       let minX = t,
         maxX = t,
         minY = l,
@@ -1861,7 +1861,7 @@
       const cachedBounds = this._mountainBoundsCache.get(key);
       if (cachedBounds) return cachedBounds;
       // Mede o tamanho horizontal e vertical do bioma a partir deste ponto (escaneia até a borda do bioma)
-      const maxScan = 160;
+      const maxScan = 640;
       let minX = t,
         maxX = t,
         minY = l,
@@ -1889,14 +1889,14 @@
         centerY = (cMinY + cMaxY) * 0.5;
 
       // Calcula os andares sucessivos dividindo o tamanho por 2 a cada andar (1º -> 2º -> 3º -> 4º...),
-      // parando no topo quando o andar atingir o limite mínimo de 10 blocos!
+      // parando no topo quando o andar atingir o limite mínimo de 20 blocos!
       const floors = [];
       let curW = biomeWidth * 0.5,
         curH = biomeHeight * 0.5,
         floorNum = 2;
-      while ((curW >= 10 || curH >= 10) && floorNum <= 12) {
-        const w = Math.max(10, curW),
-          h = Math.max(10, curH);
+      while ((curW >= 20 || curH >= 20) && floorNum <= 12) {
+        const w = Math.max(20, curW),
+          h = Math.max(20, curH);
         floors.push({
           tier: floorNum,
           width: w,
@@ -1904,19 +1904,19 @@
           rx: w * 0.5,
           ry: h * 0.5,
         });
-        if (curW <= 10 && curH <= 10) break;
+        if (curW <= 20 && curH <= 20) break;
         const nextW = curW * 0.5,
           nextH = curH * 0.5;
-        if (nextW < 10 && nextH < 10) {
-          // Se o andar atual ainda era maior que 10 blocos, cria o último andar do topo cravado no limite de 10 blocos
-          if (w > 10 || h > 10) {
+        if (nextW < 20 && nextH < 20) {
+          // Se o andar atual ainda era maior que 20 blocos, cria o último andar do topo cravado no limite de 20 blocos
+          if (w > 20 || h > 20) {
             floorNum++;
             floors.push({
               tier: floorNum,
-              width: 10,
-              height: 10,
-              rx: 5,
-              ry: 5,
+              width: 20,
+              height: 20,
+              rx: 10,
+              ry: 10,
             });
           }
           break;
@@ -1925,14 +1925,14 @@
         curH = nextH;
         floorNum++;
       }
-      // Caso o bioma seja pequeno mas ainda comporte pelo menos um 2º andar de 10 blocos no topo:
-      if (floors.length === 0 && biomeWidth >= 14 && biomeHeight >= 14) {
+      // Caso o bioma seja pequeno mas ainda comporte pelo menos um 2º andar de 20 blocos no topo:
+      if (floors.length === 0 && biomeWidth >= 28 && biomeHeight >= 28) {
         floors.push({
           tier: 2,
-          width: 10,
-          height: 10,
-          rx: 5,
-          ry: 5,
+          width: 20,
+          height: 20,
+          rx: 10,
+          ry: 10,
         });
       }
 
@@ -1964,7 +1964,7 @@
       if (!this._isMountain25DBiomeAt(t, l)) {
         return { isMountain: !1, tier: 0, tierRaw: -1 };
       }
-      // Cada andar divide o tamanho do andar anterior por 2 (1º -> 2º -> 3º -> 4º...) até o topo no limite de 10 blocos!
+      // Cada andar divide o tamanho do andar anterior por 2 (1º -> 2º -> 3º -> 4º...) até o topo no limite de 20 blocos!
       const b = this._getMountain25DBounds(t, l);
       let distToOuterEdge = 99;
       for (let d = 1; d <= 5; d++) {
@@ -1984,8 +1984,8 @@
           dy = l - b.centerY;
         for (let i = 0; i < b.floors.length; i++) {
           const f = b.floors[i],
-            nx = dx / Math.max(5, f.rx),
-            ny = dy / Math.max(5, f.ry);
+            nx = dx / Math.max(10, f.rx),
+            ny = dy / Math.max(10, f.ry);
           if (nx * nx + ny * ny <= 1.0) {
             tier = f.tier;
           } else {
@@ -1999,21 +1999,21 @@
       const o = this._tk(t, l, !1),
         cached = this.tileCache.get(o);
       if (cached) return cached;
-      const m = this.detailNoise.noise2D(t * 0.005, l * 0.005) * 12,
-        c = this.detailNoise.noise2D(t * 0.005 + 77, l * 0.005 + 77) * 12,
+      const m = this.detailNoise.noise2D(t * 0.00125, l * 0.00125) * 48,
+        c = this.detailNoise.noise2D(t * 0.00125 + 77, l * 0.00125 + 77) * 48,
         f = t + m,
         g = l + c,
-        y = this.elevNoise.fbm2D(f * 0.0011, g * 0.0011, 2, 2, 0.4),
+        y = this.elevNoise.fbm2D(f * 0.000275, g * 0.000275, 2, 2, 0.4),
         w = Math.hypot(t, l),
-        v = w < 36 ? (1 - w / 36) * 0.28 : 0;
+        v = w < 144 ? (1 - w / 144) * 0.28 : 0;
       let T = Math.max(0, Math.min(1, y + v)),
         S = !1,
         p = !1,
         j = !1;
       if (y < 0.24) {
         const ue = this.islandNoise.fbm2D(
-          t * 0.0022 + 400,
-          l * 0.0022 + 400,
+          t * 0.00055 + 400,
+          l * 0.00055 + 400,
           2,
           2,
           0.45,
@@ -2023,8 +2023,8 @@
           const N = (ue - 0.56) / 0.44;
           T = 0.32 + N * 0.56;
           const Ee = this.featureNoise.fbm2D(
-            t * 0.0025 + 200,
-            l * 0.0025 + 200,
+            t * 0.000625 + 200,
+            l * 0.000625 + 200,
             2,
             2,
             0.5,
@@ -2033,41 +2033,41 @@
             ((p = !0), (N > 0.4 || (Ee > 0.58 && T > 0.55)) && (j = !0));
         }
       }
-      const P = this.tempNoise.fbm2D(f * 9e-4 + 150, g * 9e-4 + 150, 2, 2, 0.4),
+      const P = this.tempNoise.fbm2D(f * 0.000225 + 150, g * 0.000225 + 150, 2, 2, 0.4),
         A = this.moistNoise.fbm2D(
-          f * 0.0012 + 280,
-          g * 0.0012 + 280,
+          f * 0.0003 + 280,
+          g * 0.0003 + 280,
           2,
           2,
           0.4,
         ),
         x = this.featureNoise.fbm2D(
-          t * 0.003 + 320,
-          l * 0.003 + 320,
+          t * 0.00075 + 320,
+          l * 0.00075 + 320,
           2,
           2,
           0.5,
         ),
         M = this.featureNoise.fbm2D(
-          t * 0.0028 + 560,
-          l * 0.0028 + 560,
+          t * 0.0007 + 560,
+          l * 0.0007 + 560,
           2,
           2,
           0.5,
         ),
         $ = this.canyonNoise.fbm2D(
-          t * 0.0028 + 780,
-          l * 0.0028 + 780,
+          t * 0.0007 + 780,
+          l * 0.0007 + 780,
           2,
           2,
           0.5,
         ),
         z =
-          w < 24
+          w < 96
             ? 0
             : this.lakeNoise.fbm2D(
-                f * 0.0078 + 920,
-                g * 0.0078 + 920,
+                f * 0.00195 + 920,
+                g * 0.00195 + 920,
                 2,
                 2,
                 0.45,
