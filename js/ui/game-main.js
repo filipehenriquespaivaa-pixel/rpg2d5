@@ -1,0 +1,4710 @@
+/* js/ui/game-main.js
+ * Componente principal do jogo (GameMain): estado, loop, atalhos, modais.
+ * Trecho de legacy/app.original.js (linhas 44919-48807); unica mudanca: nomes renomeados (ver RENOMEADOS.md).
+ * Escopo global compartilhado entre os <script>: a ORDEM em index.html importa.
+ */
+"use strict";
+  const GameMain = (props) => {
+    var ur, Vo, at, vi, wi, Ti, Co, Uo, Kp, Wp;
+    const e = J.useRef(null),
+      t = J.useRef(null),
+      l = J.useRef(null),
+      o = J.useRef(new World(4289)),
+      u = J.useRef(null),
+      m = J.useRef(new AudioManager()),
+      c = J.useRef(new CreatureManager(o.current)),
+      f = J.useRef({
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        direction: "down",
+        isMoving: !1,
+        walkCycle: 0,
+        speed: 3.4,
+        sprinting: !1,
+        stamina: 100,
+        hp: 100,
+        maxHp: 100,
+        isDead: !1,
+        deathTimer: 0,
+        invulnerableTimer: 0,
+        name: "Aventureiro",
+      }),
+      __autoCaveTimer = J.useRef(0),
+      g = J.useRef({}),
+      y = J.useRef({ up: !1, down: !1, left: !1, right: !1 }),
+      [w, v] = J.useState(BIOMES[BiomeId.MEADOW]),
+      [T, S] = J.useState({ tx: 0, ty: 0 }),
+      [p, j] = J.useState(4289),
+      [P, A] = J.useState(0.5),
+      timeOfDayRef = J.useRef(0.5),
+      nightCountRef = J.useRef(0),
+      [cycleDurationSec, setCycleDurationSecState] = J.useState(() => {
+        try {
+          const v = Number(localStorage.getItem("rpg2d_cycle_duration_sec"));
+          return v >= 5 ? v : 1200;
+        } catch (e) {
+          return 1200;
+        }
+      }),
+      cycleDurationRef = J.useRef(cycleDurationSec),
+      [cyclePaused, setCyclePausedState] = J.useState(() => {
+        try {
+          return localStorage.getItem("rpg2d_cycle_paused") === "1";
+        } catch (e) {
+          return !1;
+        }
+      }),
+      cyclePausedRef = J.useRef(cyclePaused),
+      setTimeOfDaySync = J.useCallback((valOrFn) => {
+        A((prev) => {
+          const raw = typeof valOrFn === "function" ? valOrFn(prev) : valOrFn;
+          const num = Number(raw);
+          const next = (((isFinite(num) ? num : 0.5) % 1) + 1) % 1;
+          timeOfDayRef.current = next;
+          o.current.setTimeState(next, nightCountRef.current);
+          if (rr.current) rr.current.timeOfDay = next;
+          return next;
+        });
+      }, []),
+      setCycleDurationSec = J.useCallback((sec) => {
+        const clean = Math.max(5, Math.min(86400, Number(sec) || 1200));
+        cycleDurationRef.current = clean;
+        setCycleDurationSecState(clean);
+        try {
+          localStorage.setItem("rpg2d_cycle_duration_sec", String(clean));
+        } catch (e) {}
+      }, []),
+      setCyclePaused = J.useCallback((paused) => {
+        const b = !!paused;
+        cyclePausedRef.current = b;
+        setCyclePausedState(b);
+        try {
+          localStorage.setItem("rpg2d_cycle_paused", b ? "1" : "0");
+        } catch (e) {}
+      }, []),
+      [x, M] = J.useState(!1),
+      [$, z] = J.useState(!1),
+      [K, V] = J.useState(1),
+      [O, _] = J.useState(!1),
+      [se, ue] = J.useState(null),
+      [N, Ee] = J.useState(100),
+      [ne, ke] = J.useState(100),
+      [G, de] = J.useState(!1),
+      W = J.useRef(100),
+      le = J.useRef(!1),
+      [te, oe] = J.useState(100),
+      [Ne, X] = J.useState(100),
+      [C, I] = J.useState(!1),
+      [be, Me] = J.useState(!1),
+      [Te, Fe] = J.useState(!1),
+      [_e, xe] = J.useState(null),
+      // Modal de cozinha: [R] com panela no fogo abre selecao de itens (6 slots)
+      [cookingModalOpen, setCookingModalOpen] = J.useState(!1),
+      [readerItem, setReaderItem] = J.useState(null),
+      [readerOpen, setReaderOpen] = J.useState(!1),
+      cookingPotRef = J.useRef(null),
+      Ue = J.useRef(null),
+      [$a, Ie] = J.useState(null),
+      ee = J.useRef(null);
+    ee.current = $a;
+    if (typeof window !== "undefined") window.__worldEngine = o.current;
+    const He = J.useRef(100),
+      Sa = J.useRef(100),
+      oa = J.useRef(!1),
+      ga = J.useRef(!1),
+      we = J.useRef(!1),
+      je = J.useRef({ tx: 0, ty: 0 }),
+      Be = J.useRef(""),
+      Se = J.useRef({ up: 0, down: 0, left: 0, right: 0 }),
+      Ae = J.useRef({ up: !1, down: !1, left: !1, right: !1 }),
+      fa = J.useRef(0),
+      [Oe, Wa] = J.useState(createEmptyEquipment),
+      [Ve, ra] = J.useState($b),
+      [ct, _t] = J.useState(0),
+      [qr, zo] = J.useState(!1),
+      [Lo, tr] = J.useState(!1),
+      So = J.useRef(!1),
+      pebbleKeyRef = J.useRef({ pressedAt: 0, aiming: !1, angle: void 0, distance: void 0, cancelled: !1 }),
+      mouseScreenPos = J.useRef({ x: typeof window !== "undefined" ? window.innerWidth / 2 : 0, y: typeof window !== "undefined" ? window.innerHeight / 2 : 0, active: !1 });
+    So.current = Lo;
+    const [We, Aa] = J.useState(null),
+      ma = J.useRef(null),
+      Ya = J.useMemo(() => {
+        const E = (D) => {
+          if (!D) return !1;
+          const Q = (D.name || "").toLowerCase(),
+            q = (D.id || "").toLowerCase();
+          return (
+            Q.includes("lança") || Q.includes("lanca") || q.includes("spear")
+          );
+        };
+        return E(Oe.mao_direita)
+          ? Oe.mao_direita
+          : E(Oe.mao_esquerda)
+            ? Oe.mao_esquerda
+            : Ve.find(E) || null;
+      }, [Oe.mao_direita, Oe.mao_esquerda, Ve]),
+      ko = J.useRef(null);
+    ko.current = Ya;
+    const or = J.useMemo(
+        () =>
+          Ve.find((E) => {
+            const D = (E.name || "").toLowerCase(),
+              Q =
+                D.includes("frasco") ||
+                D.includes("jarra") ||
+                D.includes("pote") ||
+                D.includes("panela") ||
+                D.includes("caldeirão") ||
+                D.includes("caldeirao"),
+              q = D.includes("com água") || D.includes("com agua");
+            return Q && !q;
+          }) || null,
+        [Ve],
+      ),
+      Br = J.useRef(null);
+    Br.current = or;
+    const Da = J.useRef(Oe);
+    Da.current = Oe;
+    const Zt = J.useRef(Ve);
+    Zt.current = Ve;
+    const [yl, pn] = J.useState(null),
+      Oa = J.useRef({ x: 0, y: 0 }),
+      [At, Et] = J.useState(!1),
+      Ka = J.useRef(K);
+    Ka.current = K;
+    const oc = !!(
+        ((ur = Oe.mao_esquerda) != null && ur.id.includes("torch")) ||
+        ((Vo = Oe.mao_direita) != null && Vo.id.includes("torch")) ||
+        ((at = Oe.mao_esquerda) != null &&
+          at.name.toLowerCase().includes("tocha")) ||
+        ((vi = Oe.mao_direita) != null &&
+          vi.name.toLowerCase().includes("tocha"))
+      ),
+      vl = !!(
+        ((wi = Oe.mao_esquerda) != null && wi.id.includes("sword")) ||
+        ((Ti = Oe.mao_direita) != null && Ti.id.includes("sword")) ||
+        ((Co = Oe.mao_esquerda) != null &&
+          Co.name.toLowerCase().includes("espada")) ||
+        ((Uo = Oe.mao_direita) != null &&
+          Uo.name.toLowerCase().includes("espada"))
+      ),
+      wl = oc && $,
+      rr = J.useRef({
+        showGrid: O,
+        timeOfDay: timeOfDayRef.current,
+        zoom: K,
+        enableWeather: !0,
+        lanternActive: wl,
+        hasSword: vl,
+        combatManager: c.current,
+        equipment: Da.current,
+        savedCampfire: ee.current,
+      });
+    rr.current = {
+      showGrid: O,
+      timeOfDay: timeOfDayRef.current,
+      zoom: K,
+      enableWeather: !0,
+      lanternActive: wl,
+      hasSword: vl,
+      combatManager: c.current,
+      equipment: Da.current,
+      savedCampfire: ee.current,
+    };
+    const lr = J.useRef(null),
+      lastSaveToastAt = J.useRef(0),
+      ve = J.useCallback((E) => {
+        // Toast de Ponto de Salve: aparece apenas uma vez a cada 60s, por pouco tempo
+        if (typeof E === "string" && E.includes("Ponto de Salve")) {
+          const nowT = Date.now();
+          if (nowT - lastSaveToastAt.current < 60000) return;
+          lastSaveToastAt.current = nowT;
+          ue(E);
+          lr.current && window.clearTimeout(lr.current);
+          lr.current = window.setTimeout(() => ue(null), 2800);
+          return;
+        }
+        (ue(E),
+          lr.current && window.clearTimeout(lr.current),
+          (lr.current = window.setTimeout(() => {
+            ue(null);
+          }, 3500)));
+      }, []),
+      Qt = J.useCallback(() => {
+        zo((E) => {
+          const D = !E;
+          return (
+            D ? m.current.playInventoryOpen() : m.current.playInventoryClose(),
+            D
+          );
+        });
+      }, []),
+      ir = J.useCallback(
+        (E, requestedSlot) => {
+          const isPebble = ((E.name || "").toLowerCase().includes("seixo") || (E.id || "").toLowerCase().includes("pebble"));
+          if ((!E.slot && !isPebble) || (!E.isEquippable && !isPebble)) return;
+          const D = requestedSlot || E.slot || "mao_direita";
+          Wa((Q) => {
+            var ie;
+            const q = Q[D];
+            (ra((ge) => {
+              let re = [...ge];
+              const me = re.findIndex((ce) => ce.id === E.id);
+              if (
+                (me !== -1 &&
+                  (re[me].stackCount && re[me].stackCount > 1
+                    ? (re[me] = {
+                        ...re[me],
+                        stackCount: (re[me].stackCount || 1) - 1,
+                      })
+                    : (re = re.filter((ce) => ce.id !== E.id))),
+                q)
+              ) {
+                const ce = re.findIndex((Re) => Re.name === q.name);
+                ce !== -1 &&
+                (q.stackCount !== void 0 ||
+                  q.name.toLowerCase().includes("galho"))
+                  ? (re[ce] = {
+                      ...re[ce],
+                      stackCount:
+                        (re[ce].stackCount || 1) + (q.stackCount || 1),
+                    })
+                  : re.push(q);
+              }
+              return re;
+            }),
+              m.current.playEquipItem());
+            const F =
+              (ie = E.stats) != null && ie.attack
+                ? ` (+${E.stats.attack} ATK)`
+                : "";
+            return (
+              ve(`Equipou ${E.name}!${F}`),
+              (E.id.includes("torch") ||
+                E.name.toLowerCase().includes("tocha")) &&
+                z(!0),
+              { ...Q, [D]: { ...E, stackCount: 1 } }
+            );
+          });
+        },
+        [ve],
+      ),
+      Vr = J.useCallback(
+        (E) => {
+          Wa((D) => {
+            const Q = D[E];
+            if (!Q) return D;
+            if (E === "mochila") {
+              if (Ve.length >= 6)
+                return (
+                  ve(
+                    `Não é possível desequipar a bolsa/mochila: você possui ${Ve.length} itens (capacidade básica é de 6 slots). Libere espaço primeiro!`,
+                  ),
+                  D
+                );
+            } else if (E === "cinto") {
+              const q = ot(D.mochila),
+                F = D.cinto_slot1,
+                ie = D.cinto_slot2;
+              let ge = 1;
+              if (
+                (F && !Ve.some((me) => me.name === F.name) && ge++,
+                ie && !Ve.some((me) => me.name === ie.name) && ge++,
+                Ve.length + ge > q)
+              )
+                return (
+                  ve(
+                    "Espaço insuficiente na mochila! Libere espaço antes de desequipar o Cinto com itens nos bolsos.",
+                  ),
+                  D
+                );
+              const re = [Q];
+              return (
+                F && re.push(F),
+                ie && re.push(ie),
+                ra((me) => {
+                  let ce = [...me];
+                  for (const Re of re) {
+                    const Ce = ce.findIndex((la) => la.name === Re.name),
+                      ze = Re.stackCount || 1;
+                    Ce !== -1 &&
+                    (Re.stackCount !== void 0 ||
+                      Re.name.toLowerCase().includes("galho") ||
+                      Re.name.toLowerCase().includes("frasco"))
+                      ? (ce[Ce] = {
+                          ...ce[Ce],
+                          stackCount: (ce[Ce].stackCount || 1) + ze,
+                        })
+                      : ce.push(Re);
+                  }
+                  return ce;
+                }),
+                m.current.playUnequipItem(),
+                ve(
+                  `Desequipou Cinto${F || ie ? " e recolheu os itens dos bolsos para a mochila" : ""}.`,
+                ),
+                { ...D, cinto: null, cinto_slot1: null, cinto_slot2: null }
+              );
+            } else if (E === "cinto_slot1" || E === "cinto_slot2") {
+              const q = ot(D.mochila);
+              if (
+                Ve.findIndex((ge) => ge.name === Q.name) === -1 &&
+                Ve.length >= q
+              )
+                return (
+                  ve(
+                    `Espaço de itens cheio (${Ve.length}/${q} slots)! Libere espaço para retirar o item do cinto.`,
+                  ),
+                  D
+                );
+              const ie = Q.stackCount || 1;
+              return (
+                ra((ge) => {
+                  const re = ge.findIndex((me) => me.name === Q.name);
+                  if (re !== -1) {
+                    const me = [...ge];
+                    return (
+                      (me[re] = {
+                        ...me[re],
+                        stackCount: (me[re].stackCount || 1) + ie,
+                      }),
+                      me
+                    );
+                  }
+                  return [...ge, Q];
+                }),
+                m.current.playUnequipItem(),
+                ve(`Retirou ${Q.name} do cinto.`),
+                { ...D, [E]: null }
+              );
+            } else {
+              const q = ot(D.mochila);
+              if (Ve.length >= q)
+                return (
+                  ve(
+                    `Espaço de itens cheio (${Ve.length}/${q} slots)! Libere espaço antes de desequipar.`,
+                  ),
+                  D
+                );
+            }
+            return (
+              (Q.id.includes("torch") ||
+                Q.name.toLowerCase().includes("tocha")) &&
+                z(!1),
+              ra((q) => {
+                const F = q.findIndex((ie) => ie.name === Q.name);
+                if (
+                  F !== -1 &&
+                  (Q.stackCount !== void 0 ||
+                    Q.name.toLowerCase().includes("galho"))
+                ) {
+                  const ie = [...q];
+                  return (
+                    (ie[F] = {
+                      ...ie[F],
+                      stackCount: (ie[F].stackCount || 1) + 1,
+                    }),
+                    ie
+                  );
+                }
+                return [...q, Q];
+              }),
+              m.current.playUnequipItem(),
+              ve(`Desequipou ${Q.name}.`),
+              { ...D, [E]: null }
+            );
+          });
+        },
+        [Ve, ve],
+      ),
+      gn = J.useCallback(
+        (E, D) => {
+          if (!Da.current.cinto) {
+            ve(
+              "⚠️ Você precisa ter um Cinto equipado para usar os bolsos de utilidade!",
+            );
+            return;
+          }
+          const q = Da.current[D],
+            F = Qs(E, q);
+          if (!F.allowed) {
+            ve(`⚠️ ${F.reason || "Item não permitido no cinto!"}`);
+            return;
+          }
+          const ie = F.maxAllowedToAdd,
+            ge = E.stackCount || 1,
+            re = Math.min(ge, ie);
+          if (re <= 0) {
+            ve("⚠️ Este bolso do cinto já está com a capacidade máxima!");
+            return;
+          }
+          (ra((me) => {
+            const ce = me.findIndex(
+              (Ce) => Ce.id === E.id || Ce.name === E.name,
+            );
+            if (ce === -1) return me;
+            const Re = me[ce].stackCount || 1;
+            if (Re <= re) return me.filter((Ce, ze) => ze !== ce);
+            {
+              const Ce = [...me];
+              return ((Ce[ce] = { ...Ce[ce], stackCount: Re - re }), Ce);
+            }
+          }),
+            Wa((me) => {
+              const ce = me[D];
+              return ce && ce.name === E.name
+                ? {
+                    ...me,
+                    [D]: { ...ce, stackCount: (ce.stackCount || 1) + re },
+                  }
+                : { ...me, [D]: { ...E, stackCount: re } };
+            }),
+            m.current.playEquipItem(),
+            ve(
+              `🎒 Guardou ${re > 1 ? `${re}x ` : ""}${E.name} no ${D === "cinto_slot1" ? "Bolso 1" : "Bolso 2"} do cinto!`,
+            ));
+        },
+        [ve],
+      ),
+      rc = J.useCallback(
+        (E, D = !1, Q) => {
+          const q = f.current,
+            F = o.current.isUnderground,
+            ie = (D && E.stackCount) || 1;
+          let ge = 0,
+            re = 0;
+          q.facing === "left"
+            ? (ge = -20)
+            : q.facing === "right"
+              ? (ge = 20)
+              : q.facing === "up"
+                ? (re = -20)
+                : (re = 20);
+          const me = q.x + ge,
+            ce = q.y + re;
+          if ((c.current.dropItem(E, me, ce, F, ie), Q)) {
+            if (Q === "mochila" && Ve.length > 6) {
+              ve(
+                "Não é possível jogar fora a mochila enquanto houver mais de 6 itens guardados nela!",
+              );
+              return;
+            }
+            ((E.id.includes("torch") ||
+              E.name.toLowerCase().includes("tocha")) &&
+              z(!1),
+              Wa((Ce) => {
+                const ze = { ...Ce };
+                return (delete ze[Q], ze);
+              }),
+              ve(`🗑️ ${E.name} jogado fora no chão! (Desaparecerá em 60s)`),
+              m.current.playUnequipItem());
+            return;
+          }
+          ra((Ce) => {
+            const ze = Ce.findIndex((ia) => ia.id === E.id);
+            if (ze < 0) return Ce;
+            const la = Ce[ze],
+              na = la.stackCount || 1;
+            if (!D && na > 1) {
+              const ia = [...Ce];
+              return ((ia[ze] = { ...la, stackCount: na - 1 }), ia);
+            } else return Ce.filter((ia, Je) => Je !== ze);
+          });
+          const Re = ie > 1 ? ` (${ie}x)` : "";
+          (ve(`🗑️ ${E.name}${Re} jogado no chão! (Desaparecerá em 60s)`),
+            m.current.playItemPickup());
+        },
+        [Ve.length, ve],
+      ),
+      bn = J.useCallback(
+        (E) => {
+          const D = ac(E);
+          if (!D) {
+            ve("Esta carcaça não pode ser destrinchada.");
+            return;
+          }
+          const Q = u0(Zt.current, Da.current);
+          if (!Q) {
+            ve("Você precisa de uma faca para destrinchar esta carcaça!");
+            return;
+          }
+          (ra((q) => {
+            const F = q.findIndex((ge) => ge.id === E.id || ge.name === E.name);
+            if (F === -1) return q;
+            const ie = q[F];
+            if ((ie.stackCount || 1) > 1) {
+              const ge = [...q];
+              return (
+                (ge[F] = { ...ie, stackCount: (ie.stackCount || 1) - 1 }),
+                ge
+              );
+            } else return q.filter((ge, re) => re !== F);
+          }),
+            m.current.playFusionSuccess(),
+            zo(!1),
+            pn({ creatureType: D, carcassItem: E, knifeItem: Q }));
+        },
+        [ve],
+      ),
+      bi = J.useCallback(
+        (E) => {
+          const D = ot(Da.current.mochila);
+          let Q = !1;
+          return (
+            ra((q) => {
+              const canStack = (E.maxStack === undefined || E.maxStack > 1) && E.isStackable !== !1;
+              const F = canStack
+                ? q.findIndex((ie) => ie.name === E.name && (ie.stackCount || 1) < (ie.maxStack || 20))
+                : -1;
+              if (F >= 0) {
+                // Anti-dupe: respeitar o limite de pilha do item (impede loot infinito ao re-clique)
+                const mx = E.maxStack || q[F].maxStack || 20;
+                const cur = q[F].stackCount || 1;
+                const add = Math.min(E.stackCount || 1, Math.max(0, mx - cur));
+                if (add <= 0) return q;
+                const ie = [...q];
+                return (
+                  (ie[F] = {
+                    ...ie[F],
+                    stackCount: cur + add,
+                  }),
+                  (Q = !0),
+                  ie
+                );
+              }
+              return q.length >= D ? q : ((Q = !0), [...q, E]);
+            }),
+            Q && m.current.playItemPickup(),
+            Q
+          );
+        },
+        [ve],
+      ),
+      Ut = J.useCallback(
+        (E) => {
+          const D = o.current,
+            Q = f.current;
+          if (!D || !Q) return !1;
+          const q = Math.floor(Q.x / D.tileSize),
+            F = Math.floor(Q.y / D.tileSize);
+          let ie = !1,
+            ge = "Lagoa";
+          for (let Re = -1; Re <= 1; Re++) {
+            for (let Ce = -1; Ce <= 1; Ce++) {
+              const ze = D.getTile(q + Re, F + Ce);
+              if (ze.biome.hasWater) {
+                ((ie = !0), (ge = ze.biome.namePt));
+                break;
+              }
+            }
+            if (ie) break;
+          }
+          if (!ie)
+            return (
+              m.current.playPunchWhoosh(),
+              ve(
+                "⚠️ Você precisa estar na margem de uma lagoa, rio ou oásis para coletar água fresca!",
+              ),
+              !1
+            );
+          let re = E || null;
+          if (
+            (re ||
+              (re =
+                Ve.find((Re) => {
+                  const Ce = (Re.name || "").toLowerCase(),
+                    ze =
+                      Ce.includes("frasco") ||
+                      Ce.includes("jarra") ||
+                      Ce.includes("pote") ||
+                      Ce.includes("panela") ||
+                      Ce.includes("caldeirão") ||
+                      Ce.includes("caldeirao"),
+                    la = Ce.includes("com água") || Ce.includes("com agua");
+                  return ze && !la;
+                }) || null),
+            !re)
+          )
+            return (
+              m.current.playPunchWhoosh(),
+              ve(
+                "⚠️ Você não possui recipientes vazios (frascos, jarras, potes ou panelas) na mochila para coletar água!",
+              ),
+              !1
+            );
+          const me = (re.name || "").toLowerCase();
+          let ce;
+          if (me.includes("frasco"))
+            ce = {
+              id: `water_frasco_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+              name: "Frasco com Água Fresca",
+              categoryType: "consumable",
+              isEquippable: !1,
+              rarity: "comum",
+              icon: "💧",
+              color: "#38bdf8",
+              value: 35,
+              stackCount: 1,
+              description: `Frasco cerâmico abastecido com água límpida e fresca de ${ge}. Pressione [Usar] para beber e restaurar +40 de Stamina. O frasco ficará vazio e reutilizável.`,
+            };
+          else if (me.includes("jarra") || me.includes("jarro") || me.includes("ânfora") || me.includes("anfora") || me.includes("cratera")) {
+            const isAnfora = me.includes("ânfora") || me.includes("anfora");
+            const isCratera = me.includes("cratera");
+            ce = {
+              id: `water_jarra_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+              name: isAnfora ? "Ânfora com Água Fresca" : isCratera ? "Cratera com Água Fresca" : "Jarro com Água Fresca",
+              categoryType: "consumable",
+              isEquippable: !1,
+              rarity: isCratera ? "raro" : "incomum",
+              icon: "🏺",
+              color: "#0ea5e9",
+              value: isCratera ? 85 : isAnfora ? 70 : 50,
+              stackCount: 1,
+              description: `Vaso cerâmico das ruínas cheio de água pura e refrescante de ${ge}. Pressione [Usar] para saciar a sede e restaurar ${isCratera ? "+90" : isAnfora ? "+75" : "+60"} de Stamina. O recipiente ficará vazio e reutilizável.`,
+            };
+          } else if (me.includes("pote"))
+            ce = {
+              id: `water_pote_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+              name: "Pote de Barro com Água",
+              categoryType: "consumable",
+              isEquippable: !1,
+              rarity: "comum",
+              icon: "🏺",
+              color: "#0284c7",
+              value: 40,
+              stackCount: 1,
+              description: `Pote de barro rústico contendo água fresca recolhida de ${ge}. Pressione [Usar] para beber e recuperar +55 de Stamina. O pote ficará vazio e reutilizável.`,
+            };
+          else {
+            const Re = me.includes("caldeirão") || me.includes("caldeirao");
+            ce = {
+              id: `water_panela_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+              name: Re
+                ? "Caldeirão de Barro com Água"
+                : "Panela de Barro com Água",
+              categoryType: "consumable",
+              isEquippable: !1,
+              rarity: "incomum",
+              icon: Re ? "🍲" : "🍳",
+              color: "#0369a1",
+              value: 60,
+              stackCount: 1,
+              description: `Recipiente robusto de barro transbordando de água límpida de ${ge}. Pressione [Usar] para beber e recuperar +90 de Stamina ou utilize para receitas de cozidos no fogo. Esvazia após o uso.`,
+            };
+          }
+          return (
+            ra((Re) => {
+              const Ce = Re.findIndex((na) => na.id === re.id);
+              if (Ce === -1) return Re;
+              const ze = [...Re],
+                la = ze[Ce].stackCount || 1;
+              return (
+                la > 1
+                  ? ((ze[Ce] = { ...ze[Ce], stackCount: la - 1 }), ze.push(ce))
+                  : (ze[Ce] = ce),
+                ze
+              );
+            }),
+            m.current.playCaveExit(),
+            !0
+          );
+        },
+        [Ve, ve],
+      ),
+      lc = J.useCallback(
+        (E) => {
+          if (E.categoryType !== "consumable") return;
+          const D = E.name.toLowerCase();
+          if (D.includes("forno de barro") || E.isPlaceableOven) {
+            const F = o.current,
+              ie = f.current;
+            if (!F || !ie) return;
+            const ge = F.tileSize,
+              re = Math.floor(ie.x / ge),
+              me = Math.floor(ie.y / ge);
+            (F.placeProp(re, me, {
+              kind: "clay_oven",
+              subType: 0,
+              offsetX: 0,
+              offsetY: 2,
+              scale: 1,
+              interactive: !0,
+              lit: !0,
+              namePt: "Forno de Barro",
+              descriptionPt:
+                "Forno cúpula artesanal de argila aquecido. Pressione [F] para descansar, salvar e assar peixes!",
+            }),
+              ra((ce) => {
+                const Re = ce.findIndex((ze) => ze.id === E.id);
+                if (Re === -1) return ce;
+                const Ce = ce[Re];
+                if (Ce.stackCount && Ce.stackCount > 1) {
+                  const ze = [...ce];
+                  return (
+                    (ze[Re] = { ...Ce, stackCount: Ce.stackCount - 1 }),
+                    ze
+                  );
+                } else return ce.filter((ze) => ze.id !== E.id);
+              }),
+              m.current.playChestChime(),
+              ve(
+                "🔥 Forno de Barro instalado no solo! Ele mantém brasas ativas para assar peixes e descansar.",
+              ));
+            return;
+          }
+          if (
+            D.includes("livro") ||
+            D.includes("tomo") ||
+            D.includes("tratado") ||
+            D.includes("compêndio") ||
+            D.includes("compendio") ||
+            D.includes("manuscrito") ||
+            D.includes("pergaminho") ||
+            (E.id && (E.id.includes("livro") || E.id.includes("pergaminho")))
+          ) {
+            m.current.playChestChime && m.current.playChestChime();
+            const xpGained = D.includes("tratado") || D.includes("segredos") || D.includes("runic") || D.includes("misterio") ? 100 : 75;
+            _t((xp) => xp + xpGained);
+            setReaderItem(E);
+            setReaderOpen(!0);
+            ve(`📖 Abrindo: ${E.name} (+${xpGained} XP)!`);
+            return;
+          }
+          if (D.includes("com água") || D.includes("com agua")) {
+            m.current.playCaveExit();
+            const F = f.current.maxStamina ?? 100;
+            let ie = 40,
+              ge = "Frasco de Barro",
+              re = "🏺",
+              me = "#ea580c",
+              ce =
+                "Frasco cerâmico torneado em pura argila e seco ao sol. Pode ser usado na beira da água para coletar água fresca (+40 Stamina ao beber).";
+            (D.includes("ânfora") || D.includes("anfora")
+              ? ((ie = 75),
+                (ge = "Ânfora Grega Antiga"),
+                (re = "🏺"),
+                (me = "#ea580c"),
+                (ce =
+                  "Ânfora cerâmica clássica recolhida das ruínas. Pode ser usada na água para coletar água fresca (+75 Stamina ao beber)."))
+              : D.includes("cratera")
+                ? ((ie = 90),
+                  (ge = "Cratera de Cerâmica das Ruínas"),
+                  (re = "🏺"),
+                  (me = "#d97706"),
+                  (ce =
+                    "Grande vaso cerâmico de banquete das ruínas. Pode ser usado para coletar água fresca (+90 Stamina ao beber)."))
+                : D.includes("jarro")
+                  ? ((ie = 60),
+                    (ge = "Pote de Terracota das Ruínas"),
+                    (re = "🏺"),
+                    (me = "#c2410c"),
+                    (ce =
+                      "Jarro e pote resistente de terracota recolhido das ruínas antigas (+60 Stamina ao beber)."))
+                  : D.includes("jarra")
+                    ? ((ie = 70),
+                      (ge = "Jarra de Barro Vazia"),
+                      (re = "🏺"),
+                      (me = "#d97706"),
+                      (ce =
+                        "Jarra cerâmica com alça e bico torneada em argila pura. Pode ser mergulhada na água para coletar água fresca (+70 Stamina ao beber)."))
+              : D.includes("pote")
+                ? ((ie = 55),
+                  (ge = "Pote de Barro Vazio"),
+                  (re = "🏺"),
+                  (me = "#c2410c"),
+                  (ce =
+                    "Pote de cerâmica rústica moldado em argila e seco ao sol. Pode ser levado à beira da água para coletar água fresca (+55 Stamina ao beber)."))
+                : D.includes("panela")
+                  ? ((ie = 90),
+                    (ge = "Panela de Barro Vazia"),
+                    (re = "🍳"),
+                    (me = "#b45309"),
+                    (ce =
+                      "Panela robusta de barro com paredes grossas. Pode coletar água fresca na lagoa (+90 Stamina ao beber) ou preparar receitas."))
+                  : (D.includes("caldeirão") || D.includes("caldeirao")) &&
+                    ((ie = 90),
+                    (ge = "Caldeirão de Barro Vazio"),
+                    (re = "🍲"),
+                    (me = "#9a3412"),
+                    (ce =
+                      "Caldeirão robusto moldado com paredes espessas de argila. Pode coletar água fresca (+90 Stamina) ou ser usado em receitas no fogo.")),
+              (f.current.stamina = Math.min(F, (f.current.stamina ?? 0) + ie)),
+              (f.current.isExhausted = !1),
+              (He.current = f.current.stamina),
+              (oa.current = !1),
+              oe(f.current.stamina),
+              I(!1),
+              ve(
+                `💧 Bebeu água fresca de ${E.name}! Recuperou +${ie} de Stamina. O recipiente voltou a ficar vazio.`,
+              ),
+              ra((Re) => {
+                const Ce = Re.findIndex((na) => na.id === E.id);
+                if (Ce === -1) return Re;
+                const ze = Re[Ce],
+                  la = {
+                    id: `item_empty_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                    name: ge,
+                    categoryType: "consumable",
+                    isEquippable: !1,
+                    rarity: "comum",
+                    value: Math.max(25, (ze.value || 35) - 10),
+                    stackCount: 1,
+                    icon: re,
+                    color: me,
+                    description: ce,
+                  };
+                if (ze.stackCount && ze.stackCount > 1) {
+                  const na = [...Re];
+                  return (
+                    (na[Ce] = { ...ze, stackCount: ze.stackCount - 1 }),
+                    na.push(la),
+                    na
+                  );
+                } else {
+                  const na = [...Re];
+                  return ((na[Ce] = la), na);
+                }
+              }));
+            return;
+          }
+          if (
+            D.includes("frasco") ||
+            D.includes("jarra") ||
+            D.includes("pote") ||
+            D.includes("panela") ||
+            D.includes("caldeirão") ||
+            D.includes("caldeirao")
+          ) {
+            if (ma.current) {
+              Ut(E);
+              return;
+            }
+            (m.current.playChestChime(),
+              ve(
+                `🏺 ${E.name}: este recipiente está vazio. Aproxime-se da margem de uma lagoa, rio ou oásis e clique [Usar] (ou aperte U) para coletar água fresca!`,
+              ));
+            return;
+          }
+          if (D.includes("assado") || D.includes("espeto")) {
+            m.current.playShrineActivation();
+            const F = f.current.maxHp ?? 100,
+              ie = f.current.maxStamina ?? 100;
+            ((f.current.hp = Math.min(F, (f.current.hp ?? 0) + 70)),
+              (f.current.stamina = Math.min(ie, (f.current.stamina ?? 0) + 90)),
+              (f.current.isExhausted = !1),
+              (W.current = f.current.hp),
+              (He.current = f.current.stamina),
+              (oa.current = !1),
+              Ee(f.current.hp),
+              oe(f.current.stamina),
+              I(!1),
+              ve(
+                `🍢 Saboreou ${E.name}! Dourado, crocante e defumado no espeto da fogueira (+70 Vida, +90 Stamina)!`,
+              ));
+          } else if (D.includes("tijolo"))
+            (m.current.playMiningStrike(),
+              ve(
+                `🧱 Usou ${E.name}! Bloco cerâmico firme para alvenaria e reforço.`,
+              ));
+          else if (D.includes("lambari")) {
+            m.current.playShrineActivation();
+            const F = f.current.maxHp ?? 100,
+              ie = f.current.maxStamina ?? 100;
+            ((f.current.hp = Math.min(F, (f.current.hp ?? 0) + 15)),
+              (f.current.stamina = Math.min(ie, (f.current.stamina ?? 0) + 25)),
+              (f.current.isExhausted = !1),
+              (W.current = f.current.hp),
+              (He.current = f.current.stamina),
+              (oa.current = !1),
+              Ee(f.current.hp),
+              oe(f.current.stamina),
+              I(!1),
+              ve(
+                `🐟 Saboreou ${E.name}! Peixe leve e fresco (+15 Vida, +25 Stamina).`,
+              ));
+          } else if (D.includes("tilápia") || D.includes("tilapia")) {
+            m.current.playShrineActivation();
+            const F = f.current.maxHp ?? 100,
+              ie = f.current.maxStamina ?? 100;
+            ((f.current.hp = Math.min(F, (f.current.hp ?? 0) + 35)),
+              (f.current.stamina = Math.min(ie, (f.current.stamina ?? 0) + 45)),
+              (f.current.isExhausted = !1),
+              (W.current = f.current.hp),
+              (He.current = f.current.stamina),
+              (oa.current = !1),
+              Ee(f.current.hp),
+              oe(f.current.stamina),
+              I(!1),
+              ve(
+                `🐟 Saboreou ${E.name}! Carne rica em nutrientes (+35 Vida, +45 Stamina).`,
+              ));
+          } else if (D.includes("truta")) {
+            m.current.playShrineActivation();
+            const F = f.current.maxHp ?? 100,
+              ie = f.current.maxStamina ?? 100;
+            ((f.current.hp = Math.min(F, (f.current.hp ?? 0) + 50)),
+              (f.current.stamina = Math.min(ie, (f.current.stamina ?? 0) + 70)),
+              (f.current.isExhausted = !1),
+              (W.current = f.current.hp),
+              (He.current = f.current.stamina),
+              (oa.current = !1),
+              Ee(f.current.hp),
+              oe(f.current.stamina),
+              I(!1),
+              ve(
+                `🌟 Saboreou ${E.name}! Peixe dourado saboroso e revigorante (+50 Vida, +70 Stamina).`,
+              ));
+          } else if (D.includes("cascudo") || D.includes("peixe")) {
+            m.current.playShrineActivation();
+            const F = f.current.maxHp ?? 100,
+              ie = f.current.maxStamina ?? 100;
+            ((f.current.hp = Math.min(F, (f.current.hp ?? 0) + 25)),
+              (f.current.stamina = Math.min(ie, (f.current.stamina ?? 0) + 35)),
+              (f.current.isExhausted = !1),
+              (W.current = f.current.hp),
+              (He.current = f.current.stamina),
+              (oa.current = !1),
+              Ee(f.current.hp),
+              oe(f.current.stamina),
+              I(!1),
+              ve(
+                `🐟 Saboreou ${E.name}! Nutritivo e revigorante (+25 Vida, +35 Stamina).`,
+              ));
+          } else
+            (m.current.playShrineActivation(),
+              ve(`Usou ${E.name}! Vigor e ânimo totalmente restaurados.`),
+              (f.current.stamina = f.current.maxStamina ?? 100),
+              (f.current.isExhausted = !1),
+              (He.current = f.current.stamina),
+              (oa.current = !1),
+              oe(f.current.stamina),
+              I(!1));
+          ra((F) => {
+            const ie = F.findIndex((re) => re.id === E.id);
+            if (ie === -1) return F;
+            const ge = F[ie];
+            if (ge.stackCount && ge.stackCount > 1) {
+              const re = [...F];
+              return ((re[ie] = { ...ge, stackCount: ge.stackCount - 1 }), re);
+            } else return F.filter((re) => re.id !== E.id);
+          });
+        },
+        [Ve, Ut, ve],
+      ),
+      Ur = J.useCallback(
+        (E) => {
+          if (!Da.current.cinto) {
+            (m.current.playBowEmpty(),
+              ve(
+                "⚠️ Você precisa ter um Cinto equipado para usar a troca rápida!",
+              ));
+            return;
+          }
+          const Q = E === "cinto_slot2",
+            q = Q ? "mao_direita" : "mao_esquerda",
+            F = Da.current[q],
+            ie = Da.current[E];
+          if (!F && !ie) {
+            ve(
+              `O ${Q ? "Bolso Direito" : "Bolso Esquerdo"} e a ${Q ? "Mão Direita" : "Mão Esquerda"} estão vazios.`,
+            );
+            return;
+          }
+          let ge = null,
+            re = null;
+          if (ie) {
+            const Ce = To(ie).category === "flask",
+              ze = ie.stackCount || 1;
+            Ce && ze > 1
+              ? ((ge = { ...ie, stackCount: 1 }),
+                (re = { ...ie, stackCount: ze - 1 }))
+              : ((ge = ie), (re = null));
+          }
+          let me = re,
+            ce = !1;
+          if (F) {
+            let Re = !1;
+            if (re === null) {
+              const Ce = To(F),
+                ze = F.stackCount || 1;
+              Ce.allowed && ze <= Ce.maxCapacity && (Re = !0);
+            }
+            if (Re)
+              ((me = F),
+                ((F.name || "").toLowerCase().includes("tocha") ||
+                  (F.id || "").toLowerCase().includes("torch")) &&
+                  $ &&
+                  z(!1));
+            else {
+              ((ce = !0),
+                ((F.name || "").toLowerCase().includes("tocha") ||
+                  (F.id || "").toLowerCase().includes("torch")) &&
+                  $ &&
+                  z(!1));
+              const ze = ot(Da.current.mochila);
+              if (
+                Zt.current.findIndex((Je) => Je.name === F.name) >= 0 ||
+                Zt.current.length < ze
+              )
+                (ra((Je) => {
+                  const he = Je.findIndex(($e) => $e.name === F.name);
+                  if (he >= 0) {
+                    const $e = [...Je];
+                    return (
+                      ($e[he] = {
+                        ...$e[he],
+                        stackCount:
+                          ($e[he].stackCount || 1) + (F.stackCount || 1),
+                      }),
+                      $e
+                    );
+                  }
+                  return [...Je, F];
+                }),
+                  ve(
+                    `📦 "${F.name}" guardado no inventário (sem espaço no cinto).`,
+                  ));
+              else {
+                const Je = f.current,
+                  he = o.current;
+                if (Je && he) {
+                  let $e = 0,
+                    da = 0;
+                  Je.facing === "left"
+                    ? ($e = -20)
+                    : Je.facing === "right"
+                      ? ($e = 20)
+                      : Je.facing === "up"
+                        ? (da = -20)
+                        : (da = 20);
+                  const Ye = Je.x + $e,
+                    Ge = Je.y + da;
+                  (c.current.dropItem(
+                    F,
+                    Ye,
+                    Ge,
+                    !!he.isUnderground,
+                    F.stackCount || 1,
+                  ),
+                    m.current.playUnequipItem(),
+                    ve(
+                      `🗑️ Inventário e cinto sem espaço! "${F.name}" foi jogado no chão!`,
+                    ));
+                }
+              }
+            }
+          }
+          if (
+            (Wa((Re) => ({ ...Re, [q]: ge, [E]: me })),
+            m.current.playEquipItem(),
+            ge && !ce && F)
+          ) {
+            const Re =
+                ge.stackCount && ge.stackCount > 1 ? `${ge.stackCount}x ` : "",
+              Ce = F.stackCount && F.stackCount > 1 ? `${F.stackCount}x ` : "";
+            ve(
+              `🔄 Troca Rápida: ${Re}${ge.name} (${Q ? "Mão Dir" : "Mão Esq"}) ⇄ ${Ce}${F.name} (Cinto)!`,
+            );
+          } else if (ge)
+            if (re !== null)
+              ve(
+                `🧪 Retirou 1x ${ge.name} para a ${Q ? "mão direita" : "mão esquerda"} (restam ${re.stackCount}x no cinto)!`,
+              );
+            else {
+              const Re =
+                ge.stackCount && ge.stackCount > 1 ? `${ge.stackCount}x ` : "";
+              ve(
+                `🖐️ Empunhou ${Re}${ge.name} na ${Q ? "mão direita" : "mão esquerda"}!`,
+              );
+            }
+          else if (me && !ce) {
+            const Re =
+              me.stackCount && me.stackCount > 1 ? `${me.stackCount}x ` : "";
+            ve(
+              `🎒 Guardou ${Re}${me.name} no ${Q ? "bolso direito" : "bolso esquerdo"} do cinto!`,
+            );
+          }
+        },
+        [$, ve],
+      ),
+      Oo = J.useCallback(() => {
+        ((Oa.current = { x: 0, y: 0 }),
+          Et(!1),
+          ve("Câmera centralizada no personagem!"));
+      }, [ve]),
+      nr = J.useCallback(() => {
+        if (!ma.current) {
+          ve("⚠️ Você precisa estar na beira do lago ou rio para pescar!");
+          return;
+        }
+        if (!ko.current) {
+          ve(
+            "⚠️ Você precisa de uma Lança para pescar! Crie uma na Bancada ou equipe uma lança.",
+          );
+          return;
+        }
+        (m.current.playCaveExit(),
+          tr(!0),
+          ve(
+            `🎣 Câmera aproximada na água! Mire e arremesse sua ${ko.current.name} para fisgar peixes.`,
+          ));
+      }, [ve]),
+      $r = J.useCallback(() => {
+        tr(!1);
+      }, []),
+      yi = J.useCallback(
+        (E) => {
+          ra((D) => {
+            const Q = ot(Da.current.mochila);
+            return D.length >= Q
+              ? (ve(`Mochila cheia (${D.length}/${Q})! ${E.name} escapou.`), D)
+              : [...D, E];
+          });
+        },
+        [ve],
+      ),
+      sr = J.useCallback(
+        (E, D, Q) => {
+          const q = o.current,
+            F = f.current;
+          if (!q || !F) return !1;
+          const ie = {
+            tx: E,
+            ty: D,
+            isUnderground: !!q.isUnderground,
+            undergroundLevel: q.undergroundLevel !== undefined ? q.undergroundLevel : (q.isUnderground ? 1 : 0),
+            activeDungeonStairCoords: q.activeDungeonStairCoords || null,
+            x: F.x,
+            y: F.y,
+            savedAt: Date.now(),
+            name: Q || "Fogueira Crepitante",
+          };
+          (Ie(ie), (ee.current = ie));
+          const ge = q.exportSaveData(),
+            re = {
+              version: 1,
+              timestamp: Date.now(),
+              checkpoint: ie,
+              player: {
+                hp: F.hp ?? 100,
+                maxHp: F.maxHp ?? 100,
+                stamina: F.stamina ?? 100,
+                maxStamina: F.maxStamina ?? 100,
+                name: F.name || "Aventureiro",
+              },
+              inventory: { backpack: Ve, equipment: Da.current, gold: ct },
+              world: {
+                seed: q.seed,
+                timeOfDay: timeOfDayRef.current,
+                nightCount: nightCountRef.current,
+                interactedProps: ge.interactedProps,
+                customPlacedProps: ge.customPlacedProps,
+                collectedGroundItems: ge.collectedGroundItems,
+              },
+            },
+            me = saveGameState(re);
+          m.current.playShrineActivation();
+          const ce = E * q.tileSize + q.tileSize / 2,
+            Re = D * q.tileSize + q.tileSize / 2;
+          return (
+            c.current.addDamageNumber(ce, Re - 30, "💾 JOGO SALVO!", "#38bdf8"),
+            me
+          );
+        },
+        [Ve, ct, P],
+      );
+    J.useEffect(() => {
+      const E = loadGameState();
+      if (E)
+        try {
+          (E.world &&
+            (typeof E.world.seed == "number" &&
+              (o.current.setSeed(E.world.seed), j(E.world.seed)),
+            typeof E.world.timeOfDay == "number" && setTimeOfDaySync(E.world.timeOfDay),
+            Number.isFinite(E.world.nightCount) && (nightCountRef.current = Math.max(0, Math.floor(E.world.nightCount))),
+            o.current.importSaveData(E.world)),
+            E.checkpoint &&
+              (Ie(E.checkpoint),
+              (ee.current = E.checkpoint),
+              (o.current.isUnderground = !!E.checkpoint.isUnderground),
+              (o.current.undergroundLevel = E.checkpoint.undergroundLevel !== undefined ? E.checkpoint.undergroundLevel : (E.checkpoint.isUnderground ? 1 : 0)),
+              (o.current.activeDungeonStairCoords = E.checkpoint.activeDungeonStairCoords || null),
+              (f.current.x = E.checkpoint.x),
+              (f.current.y = E.checkpoint.y),
+              S({
+                tx: Math.floor(E.checkpoint.x / o.current.tileSize),
+                ty: Math.floor(E.checkpoint.y / o.current.tileSize),
+              })),
+            E.player &&
+              ((f.current.hp = E.player.hp ?? 100),
+              (f.current.maxHp = E.player.maxHp ?? 100),
+              (f.current.stamina = E.player.stamina ?? 100),
+              (f.current.maxStamina = E.player.maxStamina ?? 100),
+              (W.current = f.current.hp),
+              (He.current = f.current.stamina),
+              Ee(f.current.hp),
+              ke(f.current.maxHp),
+              oe(f.current.stamina),
+              X(f.current.maxStamina)),
+            E.inventory &&
+              (E.inventory.backpack && ra(E.inventory.backpack),
+              E.inventory.equipment && Wa(E.inventory.equipment),
+              typeof E.inventory.gold == "number" && _t(E.inventory.gold)),
+            ve("💾 Jogo restaurado do seu último Ponto de Salve na Fogueira!"));
+        } catch (D) {
+          console.warn("Erro ao carregar salve:", D);
+        }
+    }, [ve]);
+    const Tl = J.useCallback(() => {
+      const E = f.current,
+        D = o.current,
+        Q = ee.current;
+      if (Q) {
+        D.isUnderground = !!Q.isUnderground;
+        D.undergroundLevel = Q.undergroundLevel !== undefined ? Q.undergroundLevel : (Q.isUnderground ? 1 : 0);
+        if (Q.activeDungeonStairCoords) D.activeDungeonStairCoords = Q.activeDungeonStairCoords;
+        const q = Q.tx * D.tileSize + D.tileSize / 2,
+          F = Q.ty * D.tileSize + D.tileSize / 2 + D.tileSize * 0.7;
+        (c.current.respawnPlayer(E, q, F),
+          c.current.scareMonstersNearFire(
+            q,
+            F,
+            (D.isUnderground ? 225 : 190) * 0.6,
+          ),
+          ve("✨ Você renasceu junto à sua fogueira de salve protegida!"));
+      } else {
+        if (D.isUnderground) {
+          const q = D.exitCave();
+          c.current.respawnPlayer(E, q.x, q.y);
+        } else c.current.respawnPlayer(E, 0, 0);
+        ve("✨ Você renasceu revigorado e protegido por um escudo celestial!");
+      }
+      ((Oa.current = { x: 0, y: 0 }),
+        Et(!1),
+        (W.current = E.hp ?? 100),
+        (le.current = !1),
+        Ee(E.hp ?? 100),
+        de(!1),
+        (E.stamina = E.maxStamina ?? 100),
+        (E.isExhausted = !1),
+        (E.sprinting = !1),
+        (He.current = E.stamina),
+        (oa.current = !1),
+        (ga.current = !1),
+        oe(E.stamina),
+        I(!1),
+        Me(!1));
+    }, [ve]);
+    J.useEffect(() => {
+      m.current.setEnabled(x);
+    }, [x]);
+    const mo = J.useCallback(() => {
+        const E = Math.floor(Math.random() * 9e5) + 1e4;
+        (o.current.setSeed(E),
+          c.current.reset(),
+          clearGameState(),
+          Ie(null),
+          (ee.current = null),
+          j(E),
+          (f.current.x = 0),
+          (f.current.y = 0),
+          ve(`Novo mundo gerado! Seed: #${E} (Ponto de Salve reiniciado)`));
+      }, [ve]),
+      dt = J.useCallback(
+        (E) => {
+          const D = o.current;
+          if (!D) return;
+          const isSpecialTarget = (E === "DUNGEON_LOWER" || E === "SUBSOLO_HALL" || E === "DUNGEON_STAIR_TARGET");
+          const Q = BIOMES[E] || (isSpecialTarget ? { namePt: "Calabouço / Escadaria", passable: true } : null);
+          if (!Q) return;
+          c.current.reset();
+          const isCave = Q.category === "cave" || E.startsWith("CAVE_");
+          if (isCave && !D.isUnderground) {
+            const ge = Math.floor(f.current.x / D.tileSize),
+              re = Math.floor(f.current.y / D.tileSize);
+            D.enterCave(ge, re, f.current.x, f.current.y);
+            m.current.playCaveEnter();
+          } else if (!isCave && !isSpecialTarget && D.isUnderground) {
+            const ge = D.exitCave();
+            f.current.x = ge.x;
+            f.current.y = ge.y;
+            m.current.playCaveExit();
+          }
+          const isImpassable = !Q.passable;
+          const originTx = Math.floor(f.current.x / D.tileSize);
+          const originTy = Math.floor(f.current.y / D.tileSize);
+
+          let found = !1,
+            targetPixelX = 0,
+            targetPixelY = 0,
+            foundDist = 0;
+
+          const tiers = [
+            { minR: 0, maxR: 600, rStep: 10, arcStep: 12 },
+            { minR: 600, maxR: 2000, rStep: 20, arcStep: 20 },
+            { minR: 2000, maxR: 5000, rStep: 35, arcStep: 35 }
+          ];
+
+          if (E === "DUNGEON_LOWER") {
+            let stair = null;
+            if (D.getDungeonEntranceStairForBiome) {
+              stair = D.getDungeonEntranceStairForBiome(originTx, originTy);
+            }
+            if (!stair) {
+              for (let r = 0; r <= 35 && !stair; r++) {
+                for (let dy = -r; dy <= r && !stair; dy++) {
+                  for (let dx = -r; dx <= r && !stair; dx++) {
+                    if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                    const sampleTx = originTx + dx * 24;
+                    const sampleTy = originTy + dy * 24;
+                    const candidate = D.getDungeonEntranceStairForBiome(sampleTx, sampleTy);
+                    if (candidate) {
+                      stair = candidate;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            if (!stair) stair = D.getDungeonEntranceStairForBiome(0, 0);
+            if (stair) {
+              if (!D.isUnderground) {
+                const ge = Math.floor(f.current.x / D.tileSize),
+                  re = Math.floor(f.current.y / D.tileSize);
+                D.enterCave(ge, re, f.current.x, f.current.y);
+              }
+              D.enterDungeon(stair.tx, stair.ty, stair.tx * D.tileSize + 14, stair.ty * D.tileSize + 20);
+              targetPixelX = stair.tx * D.tileSize + 14;
+              targetPixelY = (stair.ty + 2) * D.tileSize + 14;
+              foundDist = 0;
+              found = !0;
+              ve(`⚡ Teleportado diretamente para o Calabouço Inferior em [${stair.tx}, ${stair.ty}]!`);
+            }
+          }
+
+          if (E === "SUBSOLO_HALL" || E === "DUNGEON_STAIR_TARGET") {
+            let stair = null;
+            if (D.getDungeonEntranceStairForBiome) {
+              stair = D.getDungeonEntranceStairForBiome(originTx, originTy);
+            }
+            if (!stair) {
+              for (let r = 0; r <= 35 && !stair; r++) {
+                for (let dy = -r; dy <= r && !stair; dy++) {
+                  for (let dx = -r; dx <= r && !stair; dx++) {
+                    if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                    const sampleTx = originTx + dx * 24;
+                    const sampleTy = originTy + dy * 24;
+                    const candidate = D.getDungeonEntranceStairForBiome(sampleTx, sampleTy);
+                    if (candidate) {
+                      stair = candidate;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            if (!stair) stair = D.getDungeonEntranceStairForBiome(0, 0);
+            if (stair) {
+              if (!D.isUnderground) {
+                const ge = Math.floor(f.current.x / D.tileSize),
+                  re = Math.floor(f.current.y / D.tileSize);
+                D.enterCave(ge, re, f.current.x, f.current.y);
+              }
+              if (E === "SUBSOLO_HALL") {
+                D.isUnderground = !0;
+                D.undergroundLevel = 1;
+              } else if (D.undergroundLevel !== 2) {
+                D.isUnderground = !0;
+                D.undergroundLevel = 1;
+              }
+              D.clearTileCache();
+              targetPixelX = stair.tx * D.tileSize + 14;
+              targetPixelY = (stair.ty + 2) * D.tileSize + 14;
+              foundDist = 0;
+              found = !0;
+              ve(D.undergroundLevel === 2
+                ? `🧭 Teleportado diretamente para a Escadaria de Retorno ao Subsolo em [${stair.tx}, ${stair.ty}]!`
+                : `🧭 Teleportado diretamente para a Escadaria do Calabouço em [${stair.tx}, ${stair.ty}]!`);
+            }
+          }
+
+          if (E === "MEADOW" && !D.isUnderground) {
+            // Ao teleportar para Planície Florida (MEADOW), leva direto para a Cidade Grega (com 1 a 3 Salões e várias Casas de 4 salas)!
+            for (let r = 1; r <= 30 && !found; r++) {
+              for (let dy = -r; dy <= r && !found; dy++) {
+                for (let dx = -r; dx <= r && !found; dx++) {
+                  if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                  const sampleTx = dx * 24,
+                    sampleTy = dy * 24,
+                    city = D._getMeadowCityDistrict && D._getMeadowCityDistrict(sampleTx, sampleTy);
+                  if (city && city.buildings && city.buildings.length > 0) {
+                    const mainHall = city.buildings[0],
+                      entranceTx = mainHall.cx,
+                      entranceTy = mainHall.cy + mainHall.halfH + 2;
+                    targetPixelX = entranceTx * D.tileSize + D.tileSize / 2;
+                    targetPixelY = entranceTy * D.tileSize + D.tileSize / 2;
+                    foundDist = Math.round(Math.hypot(entranceTx - originTx, entranceTy - originTy));
+                    found = !0;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          for (const tier of tiers) {
+            if (found) break;
+            for (let r = tier.minR; r <= tier.maxR; r += tier.rStep) {
+              if (r === 0) {
+                const tile = D.getTile(originTx, originTy);
+                if (tile.biome.id === E && (isImpassable || tile.biome.passable)) {
+                  targetPixelX = originTx * D.tileSize;
+                  targetPixelY = originTy * D.tileSize;
+                  foundDist = 0;
+                  found = !0;
+                  break;
+                }
+                continue;
+              }
+              const steps = Math.max(16, Math.floor((2 * Math.PI * r) / tier.arcStep));
+              for (let i = 0; i < steps; i++) {
+                const angle = (i / steps) * 2 * Math.PI;
+                const me = Math.round(originTx + Math.cos(angle) * r);
+                const ce = Math.round(originTy + Math.sin(angle) * r);
+                const Re = D.getTile(me, ce);
+                if (Re.biome.id === E) {
+                  if (E === "CAVE_WALL") {
+                    let foundFloor = !1;
+                    for (let dx = -1; dx <= 1 && !foundFloor; dx++) {
+                      for (let dy = -1; dy <= 1 && !foundFloor; dy++) {
+                        const adj = D.getTile(me + dx, ce + dy);
+                        if (adj.biome.passable) {
+                          targetPixelX = (me + dx) * D.tileSize;
+                          targetPixelY = (ce + dy) * D.tileSize;
+                          foundFloor = !0;
+                        }
+                      }
+                    }
+                    if (!foundFloor) {
+                      targetPixelX = me * D.tileSize;
+                      targetPixelY = ce * D.tileSize;
+                    }
+                    foundDist = r;
+                    found = !0;
+                    break;
+                  }
+                  if (isImpassable || (Re.biome.passable && !Re.isCliffWall)) {
+                    targetPixelX = me * D.tileSize + D.tileSize / 2;
+                    targetPixelY = ce * D.tileSize + D.tileSize / 2;
+                    foundDist = r;
+                    found = !0;
+                    break;
+                  }
+                }
+              }
+              if (found) break;
+            }
+            if (found) break;
+          }
+
+          if (found) {
+            f.current.x = targetPixelX;
+            f.current.y = targetPixelY;
+            Oa.current = { x: 0, y: 0 };
+            D.clearTileCache();
+            if (!isSpecialTarget) {
+              ve(`Teletransportado para ${Q.namePt} (${foundDist} blocos de distância)!`);
+            }
+            m.current.playShrineActivation();
+          } else {
+            ve(isSpecialTarget ? "Escadaria do calabouço não localizada nas proximidades." : `Nenhum ${Q.namePt} localizado no raio de 5000 blocos.`);
+          }
+        },
+        [ve],
+      ),
+      ut = J.useCallback(
+        (E, D) => {
+          const Q = o.current;
+          if (Q.isGroundItemCollected(E, D)) return !1;
+          const q = Hs(E, D, Q);
+          if (!q) return !1;
+          const F = ot(Da.current.mochila);
+          if (
+            Zt.current.findIndex((re) => re.name === q.name) < 0 &&
+            Zt.current.length >= F
+          )
+            return (
+              ve(`Inventário de itens cheio (máximo de ${F} slots)!`),
+              !1
+            );
+          Q.collectGroundItem(E, D);
+          const ge = og(q, E, D);
+          return (
+            m.current.playItemPickup(),
+            ra((re) => {
+              const me = re.findIndex((ce) => ce.name === ge.name);
+              if (me >= 0) {
+                const ce = [...re];
+                return (
+                  (ce[me] = {
+                    ...ce[me],
+                    stackCount: (ce[me].stackCount || 1) + 1,
+                  }),
+                  ce
+                );
+              }
+              return re.length >= F
+                ? (ve(`Inventário de itens cheio (máximo de ${F} slots)!`), re)
+                : [...re, ge];
+            }),
+            !0
+          );
+        },
+        [ve],
+      ),
+      cr = J.useRef(ut);
+    J.useEffect(() => {
+      cr.current = ut;
+    }, [ut]);
+    const cancelPebbleAim = J.useCallback(() => {
+      const E = f.current;
+      if (E) {
+        E.isAiming = !1;
+        E.aimAngle = void 0;
+        E.aimDistance = void 0;
+      }
+      pebbleKeyRef.current = { pressedAt: 0, aiming: !1, angle: void 0, distance: void 0, cancelled: !0 };
+    }, []);
+    const Rl = J.useCallback((aimAngle, aimDistance) => {
+        const E = f.current;
+        if (E.isDead) return;
+        const D = c.current;
+        const Q = o.current;
+        const equipment = Da.current;
+        const isPebble = (item) => {
+          const name = (item?.name || "").toLowerCase();
+          const id = (item?.id || "").toLowerCase();
+          return name.includes("seixo") || id.includes("seixo") || id.includes("pebble");
+        };
+        const isSlingshot = (item) => {
+          if (!item) return !1;
+          const nm = (item.name || "").toLowerCase(),
+            idv = (item.id || "").toLowerCase();
+          return nm.includes("estilingue") || idv.includes("estilingue") || idv.includes("slingshot");
+        };
+        // 🎯 ESTILINGUE: equipado em qualquer das mãos equivale a estar pronto para atirar
+        // e pode disparar seixos que estiverem na mão OU diretamente no inventário/mochila!
+        const hasSlingshot = isSlingshot(equipment.mao_esquerda) || isSlingshot(equipment.mao_direita);
+        const hand = isPebble(equipment.mao_direita)
+          ? "mao_direita"
+          : isPebble(equipment.mao_esquerda)
+            ? "mao_esquerda"
+            : null;
+        const backpackPebbleIdx = Zt.current.findIndex(isPebble);
+        if (!hand && !(hasSlingshot && backpackPebbleIdx >= 0)) {
+          if (hasSlingshot) {
+            ve("⚠️ Você está com o Estilingue equipado, mas não tem nenhum Seixo no inventário para disparar!");
+          } else {
+            ve("⚠️ Equipe um Seixo ou um Estilingue (com Seixos no inventário) para disparar.");
+          }
+          return;
+        }
+        const maxRange = hasSlingshot ? 660 : 330;
+        const nearest = D.findNearestMonster(E.x, E.y, hasSlingshot ? 660 : 450, Q.isUnderground);
+        const isAutoAim = aimAngle === void 0;
+        let angle = aimAngle;
+        let throwDist = aimDistance;
+        if (isAutoAim) {
+          if (nearest) {
+            angle = Math.atan2(nearest.monster.y - E.y, nearest.monster.x - E.x);
+            throwDist = Math.max(25, Math.min(maxRange, nearest.distance));
+          } else {
+            const moveX = (g.current.KeyD || g.current.ArrowRight || y.current.right ? 1 : 0) - (g.current.KeyA || g.current.ArrowLeft || y.current.left ? 1 : 0);
+            const moveY = (g.current.KeyS || g.current.ArrowDown || y.current.down ? 1 : 0) - (g.current.KeyW || g.current.ArrowUp || y.current.up ? 1 : 0);
+            angle = moveX || moveY ? Math.atan2(moveY, moveX) : ({ right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[E.direction] || 0);
+            throwDist = maxRange;
+          }
+        } else {
+          if (angle === void 0) {
+            angle = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[E.direction] || 0;
+          }
+          if (throwDist === void 0) {
+            throwDist = maxRange;
+          }
+        }
+        const stats = Ks(equipment);
+        throwDist = Math.max(25, Math.min(maxRange, throwDist));
+        const snapshotPoint = (isAutoAim && nearest)
+          ? { x: nearest.monster.x, y: nearest.monster.y }
+          : { x: E.x + Math.cos(angle) * throwDist, y: E.y + Math.sin(angle) * throwDist };
+        const pebbleDamage = Math.max(1, stats.attack - 2) * (hasSlingshot ? 1.5 : 1);
+        D.queuePebbleProjectile(E, angle, pebbleDamage, Q.isUnderground, throwDist, snapshotPoint);
+        E.direction = angle > Math.PI * 0.25 && angle < Math.PI * 0.75 ? "down" : angle < -Math.PI * 0.25 && angle > -Math.PI * 0.75 ? "up" : angle >= 0 ? "right" : "left";
+        E.attackTimer = 0.32;
+        E.attackDuration = 0.32;
+        E.attackType = "throw";
+        E.attackAngle = angle;
+        E.isAiming = !1;
+        E.aimAngle = void 0;
+        E.aimDistance = void 0;
+        m.current.playPunchWhoosh();
+        // Se tinha seixo equipado na mão, consome da mão (e repõe da mochila se houver);
+        // se estava apenas com o Estilingue na mão, consome 1 seixo diretamente da mochila/inventário!
+        if (hand) {
+          Wa((previous) => {
+            const current = previous[hand];
+            if (!current) return previous;
+            const count = current.stackCount || 1;
+            if (count > 1) return { ...previous, [hand]: { ...current, stackCount: count - 1 } };
+            const replacementIndex = Zt.current.findIndex(isPebble);
+            if (replacementIndex >= 0) {
+              const replacement = Zt.current[replacementIndex];
+              ra((backpack) => {
+                const next = [...backpack];
+                const item = next[replacementIndex];
+                const count = item.stackCount || 1;
+                if (count > 1) next[replacementIndex] = { ...item, stackCount: count - 1 };
+                else next.splice(replacementIndex, 1);
+                return next;
+              });
+              return { ...previous, [hand]: { ...replacement, stackCount: 1 } };
+            }
+            return { ...previous, [hand]: null };
+          });
+        } else {
+          ra((backpack) => {
+            const idx = backpack.findIndex(isPebble);
+            if (idx < 0) return backpack;
+            const next = [...backpack];
+            const item = next[idx];
+            const count = item.stackCount || 1;
+            if (count > 1) next[idx] = { ...item, stackCount: count - 1 };
+            else next.splice(idx, 1);
+            return next;
+          });
+        }
+      }, [ve]);
+    const startPebbleAim = J.useCallback((customAngle, customDist) => {
+      pebbleKeyRef.current = { pressedAt: performance.now(), aiming: !0, angle: customAngle, distance: customDist, cancelled: !1 };
+      const E = f.current;
+      if (E) {
+        E.isAiming = !0;
+        if (customAngle !== void 0) E.aimAngle = customAngle;
+        if (customDist !== void 0) E.aimDistance = customDist;
+      }
+    }, []);
+    const endPebbleAim = J.useCallback((customAngle, customDist) => {
+      if (pebbleKeyRef.current.cancelled || pebbleKeyRef.current.pressedAt === 0) {
+        cancelPebbleAim();
+        return;
+      }
+      const E = f.current;
+      const angle = customAngle !== void 0 ? customAngle : (pebbleKeyRef.current.angle !== void 0 ? pebbleKeyRef.current.angle : E.aimAngle);
+      const dist = customDist !== void 0 ? customDist : (pebbleKeyRef.current.distance !== void 0 ? pebbleKeyRef.current.distance : E.aimDistance);
+      cancelPebbleAim();
+      Rl(angle, dist);
+    }, [Rl, cancelPebbleAim]);
+    const updatePebbleAim = J.useCallback((angle, distance) => {
+      if (pebbleKeyRef.current.pressedAt && !pebbleKeyRef.current.cancelled) {
+        pebbleKeyRef.current.angle = angle;
+        if (distance !== void 0) {
+          pebbleKeyRef.current.distance = distance;
+          if (f.current) f.current.aimDistance = distance;
+        }
+        if (angle !== void 0 && f.current) {
+          f.current.aimAngle = angle;
+          f.current.isAiming = !0;
+        }
+      }
+    }, []);
+    const Sl = J.useCallback(() => {
+        var ia, Je, he, $e, da, Ye;
+        const E = f.current;
+        if (E.isDead) return;
+        // Se estiver mirando com o seixo, desiste de jogar o seixo ao lutar no botão normal!
+        if (E.isAiming || pebbleKeyRef.current.pressedAt || g.current.ShiftLeft || g.current.ShiftRight || g.current.Shift) {
+          cancelPebbleAim();
+        }
+        const D = c.current,
+          Q = o.current,
+          q = Da.current,
+          F = Ks(q),
+          isRangedOnlyItem = (it) => {
+            if (!it) return !1;
+            const nm = (it.name || "").toLowerCase(),
+              idv = (it.id || "").toLowerCase();
+            return (
+              nm.includes("estilingue") ||
+              idv.includes("estilingue") ||
+              idv.includes("slingshot") ||
+              nm.includes("seixo") ||
+              idv.includes("seixo") ||
+              idv.includes("pebble")
+            );
+          },
+          ie = !!(
+            (q.mao_direita && !isRangedOnlyItem(q.mao_direita)) ||
+            ((ia = q.mao_esquerda) != null && ia.id.includes("sword")) ||
+            ((Je = q.mao_esquerda) != null &&
+              Je.name.toLowerCase().includes("espada")) ||
+            vl
+          ),
+          ge = !!(
+            (
+              ((he = q.mao_direita) == null ? void 0 : he.name) ||
+              (($e = q.mao_direita) == null ? void 0 : $e.id) ||
+              ""
+            )
+              .toLowerCase()
+              .match(/lança|lanca|spear/) ||
+            (
+              ((da = q.mao_esquerda) == null ? void 0 : da.name) ||
+              ((Ye = q.mao_esquerda) == null ? void 0 : Ye.id) ||
+              ""
+            )
+              .toLowerCase()
+              .match(/lança|lanca|spear/)
+          ),
+          whip = isWhipItemX(q.mao_direita) || isWhipItemX(q.mao_esquerda),
+          whipReach = 76,
+          {
+            reach: re,
+            hitRadius: me,
+            maxRange: ce,
+          } = D.getAttackReachAndRadius(ie, ge),
+          Re = whip ? whipReach + 24 : ge ? Math.max(ce * 2, 85) : ce * 1.5;
+        let Ce;
+        const ze = D.findNearestMonster(E.x, E.y, Re, Q.isUnderground);
+        if (ze) {
+          const { monster: Ge, distance: Pe } = ze,
+            aa = Ge.x - E.x,
+            Ke = Ge.y - E.y;
+          Ce = Math.atan2(Ke, aa);
+          let De;
+          if (
+            (Math.abs(aa) > Math.abs(Ke)
+              ? (De = aa > 0 ? "right" : "left")
+              : (De = Ke > 0 ? "down" : "up"),
+            (E.direction = De),
+            !(whip ? Pe <= whipReach : D.isTargetInAttackRange(E.x, E.y, De, Ge.x, Ge.y, ie, ge, Ce)))
+          ) {
+            let Ze = E.x,
+              sa = E.y;
+            ge && Ce !== void 0
+              ? ((Ze += Math.cos(Ce) * re), (sa += Math.sin(Ce) * re))
+              : De === "up"
+                ? (sa -= re)
+                : De === "down"
+                  ? (sa += re)
+                  : De === "left"
+                    ? (Ze -= re)
+                    : (Ze += re);
+            const Pa = Math.hypot(Ge.x - Ze, Ge.y - sa),
+              va = Math.max(1, Pa - me),
+              Nt = va <= 9 ? 1 : 2,
+              rt = Nt === 1 ? Math.min(va + 4, 10) : Math.min(va + 4, 18),
+              ka = aa / (Pe || 1),
+              ht = Ke / (Pe || 1),
+              ho = E.x + ka * rt,
+              Jt = E.y + ht * rt,
+              eo = Math.floor(ho / Q.tileSize),
+              Rt = Math.floor(Jt / Q.tileSize);
+            (Q.isTilePassable(eo, Rt)
+              ? ((E.x = ho), (E.y = Jt))
+              : Q.isTilePassable(eo, Math.floor(E.y / Q.tileSize))
+                ? (E.x = ho)
+                : Q.isTilePassable(Math.floor(E.x / Q.tileSize), Rt) &&
+                  (E.y = Jt),
+              (E.walkCycle += Nt === 1 ? 0.35 : 0.7));
+            const ft = Math.floor(E.x / Q.tileSize),
+              qa = Math.floor(E.y / Q.tileSize),
+              Xa = Q.getTile(ft, qa);
+            m.current.playFootstep(Xa.biome.hasWater);
+            const za = Ge.x - E.x,
+              It = Ge.y - E.y;
+            ((Ce = Math.atan2(It, za)),
+              Math.abs(za) > Math.abs(It)
+                ? (E.direction = za > 0 ? "right" : "left")
+                : (E.direction = It > 0 ? "down" : "up"));
+          }
+        } else if (ge || whip) {
+          const Ge = g.current,
+            Pe = y.current,
+            aa = !!(Ge.KeyW || Ge.ArrowUp || Pe.up),
+            Ke = !!(Ge.KeyS || Ge.ArrowDown || Pe.down),
+            De = !!(Ge.KeyA || Ge.ArrowLeft || Pe.left),
+            Ze =
+              (!!(Ge.KeyD || Ge.ArrowRight || Pe.right) ? 1 : 0) - (De ? 1 : 0),
+            sa = (Ke ? 1 : 0) - (aa ? 1 : 0);
+          Ze !== 0 || sa !== 0
+            ? (Ce = Math.atan2(sa, Ze))
+            : (Ce =
+                E.direction === "right"
+                  ? 0
+                  : E.direction === "left"
+                    ? Math.PI
+                    : E.direction === "up"
+                      ? -Math.PI / 2
+                      : Math.PI / 2);
+        }
+        const la = whip ? 0.4 : ge ? 0.24 : 0.28;
+        ((E.attackTimer = la),
+          (E.attackDuration = la),
+          (E.attackCombo = ((E.attackCombo || 0) + 1) % 2),
+          (E.attackType = ie ? "weapon" : "punch"),
+          (E.attackAngle = Ce));
+        const na = D.performAttack(E, F.attack, ie, Q.isUnderground, ge || whip, Ce, whip ? whipReach : void 0, void 0, whip);
+        na.hitCount > 0
+          ? (ge
+              ? m.current.playSpearHit()
+              : ie
+                ? (whip && m.current.playWhipCrack(), m.current.playHitImpact())
+                : m.current.playPunchImpact(),
+            na.defeatedCount > 0 && m.current.playMonsterDefeated())
+          : ge
+            ? m.current.playSpearThrust()
+            : whip
+              ? m.current.playWhipCrack()
+              : ie
+                ? m.current.playSwordSlash()
+                : m.current.playPunchWhoosh();
+      }, [vl]),
+      ic = J.useCallback(
+        (E, D, Q, q) => {
+          const F = s0(E, D, Q);
+          if (!F)
+            return (
+              m.current.playFusionFail(),
+              ve(
+                "⚠️ Esses materiais não se combinam em nenhuma fórmula conhecida.",
+              ),
+              null
+            );
+          const ie = F.createResult(q);
+          if (
+            !!ie.isClayDrying ||
+            F.id === "fuse_moldagem_argila" ||
+            (q == null ? void 0 : q.includes("choice_frasco_barro")) ||
+            (q == null ? void 0 : q.includes("choice_jarra_barro")) ||
+            (q == null ? void 0 : q.includes("choice_pote_barro")) ||
+            (q == null ? void 0 : q.includes("choice_panela_barro")) ||
+            (q == null ? void 0 : q.includes("choice_caldeirao_barro"))
+          ) {
+            const me = Ve.reduce(
+              (Ye, Ge) =>
+                Ge.name.toLowerCase().includes("argila") ||
+                Ge.id.includes("argila")
+                  ? Ye + (Ge.stackCount || 1)
+                  : Ye,
+              0,
+            );
+            if (me < 2)
+              return (
+                m.current.playFusionFail(),
+                ve(
+                  `⚠️ Você precisa de pelo menos 2 unidades de Argila Úmida para moldar a peça! (Você possui: ${me}/2).`,
+                ),
+                null
+              );
+            ra((Ye) => {
+              const Ge = [...Ye];
+              let Pe = 2;
+              for (let aa = Ge.length - 1; aa >= 0 && Pe > 0; aa--) {
+                const Ke = Ge[aa];
+                if (
+                  Ke.name.toLowerCase().includes("argila") ||
+                  Ke.id.includes("argila")
+                ) {
+                  const qe = Ke.stackCount || 1;
+                  qe <= Pe
+                    ? ((Pe -= qe), Ge.splice(aa, 1))
+                    : ((Ge[aa] = { ...Ke, stackCount: qe - Pe }), (Pe = 0));
+                }
+              }
+              return Ge;
+            });
+            const ce =
+                ie.dryingItemType ||
+                (q != null && q.includes("frasco")
+                  ? "frasco"
+                  : q != null && q.includes("jarra")
+                    ? "jarra"
+                    : q != null && q.includes("panela")
+                      ? "panela"
+                      : q != null && q.includes("caldeirao")
+                        ? "caldeirao"
+                        : "pote"),
+              Ce =
+                {
+                  frasco: "Frasco de Barro",
+                  jarra: "Jarra de Barro Vazia",
+                  pote: "Pote de Barro Vazio",
+                  panela: "Panela de Barro Vazia",
+                  caldeirao: "Caldeirão de Barro Vazio",
+                }[ce] || "Peça de Barro";
+            let ze = 2;
+            ce === "frasco"
+              ? (ze = 0)
+              : ce === "caldeirao"
+                ? (ze = 1)
+                : ce === "jarra"
+                  ? (ze = 3)
+                  : ce === "panela" && (ze = 4);
+            const la = o.current,
+              na = la.tileSize,
+              ia = Math.floor(f.current.x / na),
+              Je = Math.floor(f.current.y / na);
+            let he = ia,
+              $e = Je;
+            const da = la.getTile(ia, Je);
+            if (
+              la.getPlacedProp(ia, Je) ||
+              (da.prop && da.prop.kind !== "flower_patch")
+            ) {
+              const Ye = [
+                [1, 0],
+                [-1, 0],
+                [0, 1],
+                [0, -1],
+                [1, 1],
+                [-1, 1],
+                [1, -1],
+                [-1, -1],
+              ];
+              for (const [Ge, Pe] of Ye) {
+                const aa = ia + Ge,
+                  Ke = Je + Pe,
+                  De = la.getTile(aa, Ke);
+                if (
+                  !la.getPlacedProp(aa, Ke) &&
+                  (!De.prop || De.prop.kind === "flower_patch") &&
+                  De.biome.passable
+                ) {
+                  ((he = aa), ($e = Ke));
+                  break;
+                }
+              }
+            }
+            return (
+              la.placeProp(he, $e, {
+                kind: "drying_clay",
+                subType: ze,
+                offsetX: 0,
+                offsetY: 2,
+                scale: 1,
+                interactive: !0,
+                dryingItemType: ce,
+                dryingStartTime: Date.now(),
+                dryingDurationMs: 12e4,
+                namePt: `${Ce} (Secando ao Sol)`,
+                descriptionPt:
+                  "Moldado com pura argila da lagoa. Precisa de 2 minutos de secagem ao ar livre para virar um item coletável.",
+              }),
+              m.current.playClayHarvest(),
+              ve(
+                `🧱 [${Ce}] moldado no solo com sucesso! Aguarde 2 minutos de secagem para virar um item coletável.`,
+              ),
+              ie
+            );
+          }
+          if (
+            ie.mapPropKind === "clay_oven" ||
+            q === "choice_forno_barro_mapa"
+          ) {
+            ra((ia) => {
+              const Je = [...ia],
+                he = [E.id, D.id];
+              Q && he.push(Q.id);
+              const $e = {};
+              for (const da of he) $e[da] = ($e[da] || 0) + 1;
+              for (const [da, Ye] of Object.entries($e)) {
+                const Ge = Je.findIndex((Pe) => Pe.id === da);
+                if (Ge !== -1) {
+                  const Pe = Je[Ge].stackCount || 1;
+                  Pe > Ye
+                    ? (Je[Ge] = { ...Je[Ge], stackCount: Pe - Ye })
+                    : Je.splice(Ge, 1);
+                }
+              }
+              return Je;
+            });
+            const me = o.current,
+              ce = me.tileSize,
+              Re = Math.floor(f.current.x / ce),
+              Ce = Math.floor(f.current.y / ce);
+            let ze = Re,
+              la = Ce;
+            const na = me.getTile(Re, Ce);
+            if (
+              me.getPlacedProp(Re, Ce) ||
+              (na.prop && na.prop.kind !== "flower_patch")
+            ) {
+              const ia = [
+                [1, 0],
+                [-1, 0],
+                [0, 1],
+                [0, -1],
+                [1, 1],
+                [-1, 1],
+                [1, -1],
+                [-1, -1],
+              ];
+              for (const [Je, he] of ia) {
+                const $e = Re + Je,
+                  da = Ce + he,
+                  Ye = me.getTile($e, da);
+                if (
+                  !me.getPlacedProp($e, da) &&
+                  (!Ye.prop || Ye.prop.kind === "flower_patch") &&
+                  Ye.biome.passable
+                ) {
+                  ((ze = $e), (la = da));
+                  break;
+                }
+              }
+            }
+            return (
+              me.placeProp(ze, la, {
+                kind: "clay_oven",
+                subType: 0,
+                offsetX: 0,
+                offsetY: 2,
+                scale: 1,
+                interactive: !0,
+                lit: !0,
+                namePt: "Forno de Barro",
+                descriptionPt:
+                  "Forno cúpula artesanal de argila aquecido. Pressione [F] para descansar, salvar o jogo e assar peixes!",
+              }),
+              m.current.playChestChime(),
+              ve(
+                "🔥 Forno de Barro instalado no terreno com sucesso! Mantém brasas constantes para assar peixes e descansar.",
+              ),
+              ie
+            );
+          }
+          if (
+            (F.id === "fuse_campfire_unlit" || q === "choice_campfire_unlit") &&
+            ie.mapPropKind !== "clay_oven"
+          ) {
+            const me = Ve.reduce(
+              (la, na) =>
+                na.name.toLowerCase().includes("galho") ||
+                na.id.includes("galho")
+                  ? la + (na.stackCount || 1)
+                  : la,
+              0,
+            );
+            if (me < 10)
+              return (
+                m.current.playFusionFail(),
+                ve(
+                  `⚠️ Você precisa de um conjunto de pelo menos 10 Galhos de Madeira para montar a fogueira! (Você tem ${me}/10).`,
+                ),
+                null
+              );
+            ra((la) => {
+              const na = [...la];
+              let ia = 10;
+              for (let Je = na.length - 1; Je >= 0 && ia > 0; Je--) {
+                const he = na[Je];
+                if (
+                  he.name.toLowerCase().includes("galho") ||
+                  he.id.includes("galho")
+                ) {
+                  const da = he.stackCount || 1;
+                  da <= ia
+                    ? ((ia -= da), na.splice(Je, 1))
+                    : ((na[Je] = { ...he, stackCount: da - ia }), (ia = 0));
+                }
+              }
+              return na;
+            });
+            const ce = o.current,
+              Re = ce.tileSize,
+              Ce = Math.floor(f.current.x / Re),
+              ze = Math.floor(f.current.y / Re);
+            return (
+              ce.placeProp(Ce, ze, {
+                kind: "campfire",
+                subType: 0,
+                offsetX: 0,
+                offsetY: 2,
+                scale: 1,
+                interactive: !0,
+                lit: !1,
+                namePt: "Fogueira de Acampamento (Apagada)",
+                descriptionPt:
+                  "Uma fogueira montada com 10 galhos secos. Pressione [F] tendo 2 Pederneiras para acendê-la com faíscas!",
+              }),
+              m.current.playChestChime(),
+              ve(
+                "🏕️ Fogueira apagada montada no terreno com 10 galhos! Ela não ocupa slots do inventário. Use 2 Pederneiras para acendê-la.",
+              ),
+              ie
+            );
+          }
+          return (
+            ra((me) => {
+              const ce = [...me],
+                Re = [E.id, D.id];
+              Q && Re.push(Q.id);
+              const Ce = {};
+              for (const ze of Re) Ce[ze] = (Ce[ze] || 0) + 1;
+              for (const [ze, la] of Object.entries(Ce)) {
+                const na = ce.findIndex((ia) => ia.id === ze);
+                if (na !== -1) {
+                  const ia = ce[na].stackCount || 1;
+                  ia > la
+                    ? (ce[na] = { ...ce[na], stackCount: ia - la })
+                    : ce.splice(na, 1);
+                }
+              }
+              if (
+                ie.categoryType === "material" ||
+                ie.categoryType === "consumable"
+              ) {
+                const ze = ce.findIndex(
+                  (la) =>
+                    la.name.trim().toLowerCase() ===
+                      ie.name.trim().toLowerCase() && la.rarity === ie.rarity,
+                );
+                if (ze !== -1) {
+                  const la = ce[ze];
+                  return (
+                    (ce[ze] = {
+                      ...la,
+                      stackCount: (la.stackCount || 1) + (ie.stackCount || 1),
+                    }),
+                    ce
+                  );
+                }
+              }
+              return (ce.push(ie), ce);
+            }),
+            m.current.playFusionSuccess(),
+            ve(`⚗️ Fusão Concluída: [${ie.name}] forjado com sucesso!`),
+            ie
+          );
+        },
+        [ve, Ve],
+      ),
+      qo = J.useCallback(() => {
+        var ce, Re, Ce, ze, la, na, ia, Je, he, $e, da;
+        const E = o.current,
+          D = f.current;
+        if (D.isDead) return;
+        const Q = E.tileSize,
+          q = Math.floor(D.x / Q),
+          F = Math.floor(D.y / Q),
+          ie = c.current.getNearestDroppedItem(D.x, D.y, 50, E.isUnderground);
+        if (ie) {
+          const Ye = ot(Da.current.mochila),
+            Ge = Zt.current.findIndex((Ke) => Ke.name === ie.item.name),
+            Pe = ie.quantity || ie.item.stackCount || 1;
+          if (Ge < 0 && Zt.current.length >= Ye) {
+            ve(
+              `Mochila cheia (${Zt.current.length}/${Ye}) para recolher ${ie.item.name}!`,
+            );
+            return;
+          }
+          const aa = c.current.collectDroppedItem(ie.id);
+          if (aa) {
+            (m.current.playItemPickup(),
+              ra((Ke) => {
+                const De = Ke.findIndex((qe) => qe.name === aa.item.name);
+                if (De >= 0) {
+                  const qe = [...Ke];
+                  return (
+                    (qe[De] = {
+                      ...qe[De],
+                      stackCount: (qe[De].stackCount || 1) + Pe,
+                    }),
+                    qe
+                  );
+                }
+                return [...Ke, { ...aa.item, stackCount: Pe }];
+              }));
+            return;
+          }
+        }
+        const ge = c.current.getNearestCarcass(D.x, D.y, 56, E.isUnderground);
+        if (ge) {
+          const Ye = c.current.collectCarcass(ge.id);
+          if (Ye) {
+            const Ge = {
+              id: `creature_${Ye.type}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              name: Ye.lootItemName,
+              categoryType: "material",
+              isEquippable: !1,
+              rarity: Ye.lootItemRarity,
+              description: Ye.lootItemDescription,
+              icon: Ye.lootItemIcon,
+              color: Ye.lootItemColor,
+              value: Ye.lootItemValue,
+              stackCount: 1,
+            };
+            (ra((Pe) => {
+              const aa = Pe.findIndex((De) => De.name === Ge.name);
+              if (aa >= 0) {
+                const De = [...Pe];
+                return (
+                  (De[aa] = {
+                    ...De[aa],
+                    stackCount: (De[aa].stackCount || 1) + 1,
+                  }),
+                  De
+                );
+              }
+              const Ke = ot(Da.current.mochila);
+              return Pe.length >= Ke
+                ? (ve(`Inventário cheio (máximo de ${Ke} itens)!`), Pe)
+                : [...Pe, Ge];
+            }),
+              Ye.gold > 0 && _t((Pe) => Pe + Ye.gold),
+              m.current.playSlimePickup());
+            return;
+          }
+        }
+        let re = null;
+        for (let Ye = -1; Ye <= 1; Ye++)
+          for (let Ge = -1; Ge <= 1; Ge++) {
+            const Pe = q + Ye,
+              aa = F + Ge;
+            if (!E.isGroundItemCollected(Pe, aa) && Hs(Pe, aa, E)) {
+              const De = E.getTile(Pe, aa),
+                qe = ((De.detailHash * 13) % 10) - 5,
+                Ze = ((De.detailHash * 19) % 10) - 5,
+                sa = Pe * Q + Q / 2 + qe,
+                Pa = aa * Q + Q / 2 + Ze,
+                va = Math.hypot(D.x - sa, D.y - Pa);
+              va < 48 &&
+                (!re || va < re.dist) &&
+                (re = { tx: Pe, ty: aa, dist: va });
+            }
+          }
+        if (re) {
+          ut(re.tx, re.ty);
+          return;
+        }
+        const me = [
+          { tx: q, ty: F },
+          { tx: q + 1, ty: F },
+          { tx: q - 1, ty: F },
+          { tx: q, ty: F + 1 },
+          { tx: q, ty: F - 1 },
+        ];
+        for (const Ye of me) {
+          const Ge = E.getTile(Ye.tx, Ye.ty),
+            Pe = (ce = Ge.prop) == null ? void 0 : ce.kind,
+            aa = ((Re = Ge.prop) == null ? void 0 : Re.subType) ?? 0;
+          if (
+            Pe === "corridor_torch" &&
+            ((Ce = Ge.prop) == null ? void 0 : Ce.lit) === !1
+          ) {
+            const hasTorchInHand = !!(
+              (Oe.mao_esquerda &&
+                ((Oe.mao_esquerda.id || "").toLowerCase().includes("torch") ||
+                  (Oe.mao_esquerda.name || "").toLowerCase().includes("tocha"))) ||
+              (Oe.mao_direita &&
+                ((Oe.mao_direita.id || "").toLowerCase().includes("torch") ||
+                  (Oe.mao_direita.name || "").toLowerCase().includes("tocha")))
+            );
+            if (hasTorchInHand) {
+              E.lightCorridorTorch(Ye.tx, Ye.ty);
+              m.current.playTorchIgnite();
+              const qe = Ye.tx * E.tileSize + E.tileSize / 2,
+                Ze = Ye.ty * E.tileSize + E.tileSize / 2;
+              c.current &&
+                c.current.scareMonstersNearFire &&
+                c.current.scareMonstersNearFire(qe, Ze, 110);
+              _t((xp) => xp + 25);
+              return;
+            } else {
+              m.current.playPunchWhoosh();
+              return;
+            }
+          }
+          if (
+            Pe === "campfire" &&
+            ((Ce = Ge.prop) == null ? void 0 : Ce.lit) === !1
+          ) {
+            let De = 0;
+            for (const qe of Ve) {
+              const Ze = (qe.name || "").toLowerCase(),
+                sa = (qe.id || "").toLowerCase();
+              (Ze.includes("pederneira") ||
+                Ze.includes("pedreneira") ||
+                sa.includes("pederneira") ||
+                sa.includes("pedreneira")) &&
+                (De += qe.stackCount || 1);
+            }
+            for (const qe of ["mao_direita", "mao_esquerda"]) {
+              const Ze = Oe[qe];
+              if (Ze) {
+                const sa = (Ze.name || "").toLowerCase(),
+                  Pa = (Ze.id || "").toLowerCase();
+                (sa.includes("pederneira") ||
+                  sa.includes("pedreneira") ||
+                  Pa.includes("pederneira") ||
+                  Pa.includes("pedreneira")) &&
+                  (De += Ze.stackCount || 1);
+              }
+            }
+            if (De >= 2) {
+              (E.lightCampfire(Ye.tx, Ye.ty), m.current.playTorchIgnite());
+              const qe = Ye.tx * E.tileSize + E.tileSize / 2,
+                Ze = Ye.ty * E.tileSize + E.tileSize / 2;
+              (c.current.scareMonstersNearFire(
+                qe,
+                Ze,
+                (E.isUnderground ? 225 : 190) * 0.55,
+              ),
+                (D.hp = D.maxHp ?? 100),
+                (D.stamina = D.maxStamina ?? 100),
+                (D.isExhausted = !1),
+                (W.current = D.hp),
+                (He.current = D.stamina),
+                (oa.current = !1),
+                Ee(D.hp),
+                oe(D.stamina),
+                I(!1),
+                sr(Ye.tx, Ye.ty, "Fogueira Crepitante"),
+                ve(
+                  "🔥 Fogueira acesa! Ponto de Salve registrado com sucesso. Suas 2 pederneiras foram preservadas.",
+                ));
+              return;
+            } else {
+              (m.current.playPunchWhoosh(),
+                ve(
+                  `⚠️ Esta fogueira está apagada! Você precisa de 2 Pederneiras para golpear e produzir faíscas (Você possui: ${De}/2).`,
+                ));
+              return;
+            }
+          }
+          const Ke = E.interactWithTile(Ye.tx, Ye.ty);
+          if (Ke) {
+            if (Ke.action === "enter_cave") {
+              __autoCaveTimer.current = 1.0;
+              const oldX = D.x,
+                oldY = D.y;
+              (m.current.playCaveEnter(),
+                E.enterCave(Ye.tx, Ye.ty, oldX, oldY),
+                (Oa.current = { x: 0, y: 0 }),
+                Et(!1),
+                (D.x = Ye.tx * Q + 14),
+                (D.y = Ye.ty * Q + 20),
+                (D.vx = 0),
+                (D.vy = 0),
+                (D.direction = "down"));
+              const trM =
+                c.current && c.current.transferChasingMonsters
+                  ? c.current.transferChasingMonsters(oldX, oldY, D.x, D.y, !0)
+                  : 0;
+              const De = E.getTile(Ye.tx, Ye.ty);
+              (v(De.biome),
+                S({ tx: Ye.tx, ty: Ye.ty }),
+                !!(
+                  ((ze = Oe.mao_esquerda) != null && ze.id.includes("torch")) ||
+                  ((la = Oe.mao_direita) != null && la.id.includes("torch")) ||
+                  ((na = Oe.mao_esquerda) != null &&
+                    na.name.toLowerCase().includes("tocha")) ||
+                  ((ia = Oe.mao_direita) != null &&
+                    ia.name.toLowerCase().includes("tocha"))
+                )
+                  ? (z(!0),
+                    m.current.playTorchIgnite())
+                  : z(!1));
+              trM > 0 &&
+                ve(
+                  `⚠️ ${trM === 1 ? "A criatura que te perseguia atravessou" : `${trM} criaturas que te perseguiam atravessaram`} a caverna com você!`,
+                );
+            } else if (Ke.action === "exit_cave") {
+              __autoCaveTimer.current = 1.0;
+              const oldX = D.x,
+                oldY = D.y;
+              m.current.playCaveExit();
+              const targetTx =
+                  Ke.targetTx !== undefined ? Ke.targetTx : Math.floor(D.x / Q),
+                targetTy =
+                  Ke.targetTy !== undefined ? Ke.targetTy : Math.floor(D.y / Q);
+              const De = E.exitCave(targetTx, targetTy);
+              ((Oa.current = { x: 0, y: 0 }),
+                Et(!1),
+                (D.x = De.x),
+                (D.y = De.y + 16),
+                (D.vx = 0),
+                (D.vy = 0),
+                (D.direction = "down"));
+              const trM =
+                c.current && c.current.transferChasingMonsters
+                  ? c.current.transferChasingMonsters(oldX, oldY, D.x, D.y, !1)
+                  : 0;
+              const qe = Math.floor(D.x / Q),
+                Ze = Math.floor(D.y / Q),
+                sa = E.getTile(qe, Ze);
+              (v(sa.biome),
+                S({ tx: qe, ty: Ze }),
+                ve(
+                  `Emergindo de volta à superfície ensolarada [${qe}, ${Ze}]!`,
+                ));
+              trM > 0 &&
+                ve(
+                  `⚠️ ${trM === 1 ? "A criatura que te perseguia atravessou" : `${trM} criaturas que te perseguiam atravessaram`} a saída com você!`,
+                );
+            } else if (Ke.action === "enter_dungeon") {
+              __autoCaveTimer.current = 1.0;
+              const oldX = D.x,
+                oldY = D.y;
+              m.current.playCaveEnter();
+              E.enterDungeon(Ye.tx, Ye.ty, oldX, oldY);
+              Oa.current = { x: 0, y: 0 };
+              Et(!1);
+              D.x = Ye.tx * Q + 14;
+              D.y = (Ye.ty + 1) * Q + 14;
+              D.vx = 0;
+              D.vy = 0;
+              D.direction = "down";
+              v(E.getTile(Ye.tx, Ye.ty + 1).biome);
+              S({ tx: Ye.tx, ty: Ye.ty + 1 });
+              ve("Descendo a escadaria úmida para as masmorras e calabouços sombrios...");
+            } else if (Ke.action === "exit_dungeon") {
+              __autoCaveTimer.current = 1.0;
+              m.current.playCaveExit();
+              const targetTx =
+                  Ke.targetTx !== undefined ? Ke.targetTx : Math.floor(D.x / Q),
+                targetTy =
+                  Ke.targetTy !== undefined ? Ke.targetTy : Math.floor(D.y / Q);
+              const De = E.exitDungeon(targetTx, targetTy);
+              Oa.current = { x: 0, y: 0 };
+              Et(!1);
+              D.x = De.x;
+              D.y = De.y;
+              D.vx = 0;
+              D.vy = 0;
+              D.direction = "down";
+              const qe = Math.floor(D.x / Q),
+                Ze = Math.floor(D.y / Q);
+              v(E.getTile(qe, Ze).biome);
+              S({ tx: qe, ty: Ze });
+              ve("Subindo os degraus de pedra de volta aos salões do subsolo!");
+            } else if (Ke.action === "mine_crystal") {
+              m.current.playMineCrystal();
+              const De = pi("crystal", aa);
+              ra((qe) => {
+                const Ze = ot(Da.current.mochila);
+                return qe.length >= Ze
+                  ? (ve(`Inventário cheio (máximo ${Ze} itens)!`), qe)
+                  : [...qe, De];
+              });
+            } else if (Ke.action === "mine_ore") {
+              m.current.playChestChime();
+              const De = pi("ore", aa);
+              ra((qe) => {
+                const Ze = ot(Da.current.mochila);
+                return qe.length >= Ze
+                  ? (ve(`Inventário cheio (máximo ${Ze} itens)!`), qe)
+                  : [...qe, De];
+              });
+            } else if (Ke.action === "harvest_mushroom") {
+              m.current.playChestChime();
+              const De = pi("mushroom");
+              ra((qe) => {
+                const Ze = ot(Da.current.mochila);
+                return qe.length >= Ze
+                  ? (ve(`Inventário cheio (máximo ${Ze} itens)!`), qe)
+                  : [...qe, De];
+              });
+            } else if (Ke.action === "harvest_blue_plant") {
+              m.current.playChestChime();
+              const De = Ke.flowered
+                ? {
+                    id: `flor_azul_${Date.now()}`,
+                    name: "Flor Azul do Luar",
+                    icon: "flower_blue",
+                    color: "#2563eb",
+                    isEquippable: !1,
+                    categoryType: "material",
+                    rarity: "raro",
+                    value: 80,
+                    stackCount: 1,
+                    description: "Flor azul luminosa que só abre à noite no ponto mais alto das montanhas de pedra.",
+                  }
+                : {
+                    id: `ramo_azul_${Date.now()}`,
+                    name: "Ramo Azul",
+                    icon: "branch_blue",
+                    color: "#2563eb",
+                    isEquippable: !1,
+                    categoryType: "material",
+                    rarity: "incomum",
+                    value: 35,
+                    stackCount: 1,
+                    description: "Ramo azul colhido antes da floração da Planta Azul do Luar.",
+                  };
+              ra((qe) => {
+                const Ze = ot(Da.current.mochila);
+                const existing = qe.findIndex((Pa) => Pa.name === De.name);
+                if (existing >= 0) {
+                  const next = [...qe];
+                  next[existing] = { ...next[existing], stackCount: (next[existing].stackCount || 1) + 1 };
+                  return next;
+                }
+                return qe.length >= Ze ? (ve(`Inventário cheio (máximo de ${Ze} itens)!`), qe) : [...qe, De];
+              });
+              _t((qe) => qe + (Ke.flowered ? 80 : 35));
+              ve(Ke.message);
+            } else if (Ke.action === "harvest_clay") {
+              m.current.playClayHarvest();
+              const De = {
+                id: `item_argila_${Date.now()}`,
+                name: "Argila Úmida",
+                icon: "🧱",
+                color: "#c2410c",
+                isEquippable: !1,
+                description:
+                  "Argila mineral pura, densa e maleável extraída do leito da lagoa. Essencial para moldar frascos, caldeirões, potes e tijolos.",
+                categoryType: "material",
+                rarity: "comum",
+                value: 4,
+                stackCount: 2,
+              };
+              (ra((qe) => {
+                const Ze = qe.findIndex((Pa) => Pa.name.includes("Argila"));
+                if (Ze >= 0) {
+                  const Pa = [...qe],
+                    va = Pa[Ze];
+                  return (
+                    (Pa[Ze] = { ...va, stackCount: (va.stackCount ?? 1) + 2 }),
+                    Pa
+                  );
+                }
+                const sa = ot(Da.current.mochila);
+                return qe.length >= sa
+                  ? (ve(`Inventário cheio (máximo ${sa} itens)!`), qe)
+                  : [...qe, De];
+              }),
+                _t((qe) => qe + 5));
+            } else if (Ke.action === "collect_pebbles") {
+              m.current.playRockBreak && m.current.playRockBreak();
+              const De = pi("stone");
+              ra((qe) => {
+                const Ze = ot(Da.current.mochila);
+                return qe.length >= Ze
+                  ? (ve(`Inventário cheio (máximo ${Ze} itens)!`), qe)
+                  : [...qe, De];
+              });
+              ve("Você recolheu pedregulhos pontiagudos ao lado da muralha do calabouço!");
+            } else if (Ke.action === "collect_jailer_key") {
+              if (!Ke.alreadyCollected) {
+                m.current.playChestChime && m.current.playChestChime();
+                const keyItem = {
+                  id: `jailer_key_${Date.now()}`,
+                  name: "Chave do Carcereiro",
+                  icon: "🗝️",
+                  color: "#eab308",
+                  isEquippable: !1,
+                  categoryType: "material",
+                  rarity: "raro",
+                  value: 80,
+                  stackCount: 1,
+                  description:
+                    "Molho de pesadas chaves de ferro forjado do antigo carcereiro. Destranca as grades das celas da prisão do calabouço.",
+                };
+                ra((prev) => {
+                  const maxSlots = ot(Da.current.mochila);
+                  return prev.length >= maxSlots ? prev : [...prev, keyItem];
+                });
+                _t((xp) => xp + 60);
+              }
+              ve(Ke.message);
+            } else if (Ke.action === "collect_greek_vase") {
+              const maxSlots = ot(Da.current.mochila);
+              if (Ve.length >= maxSlots) {
+                const pKey = E.isUnderground ? `underground_${Ye.tx},${Ye.ty}` : `${Ye.tx},${Ye.ty}`;
+                const prev = E.interactedProps.get(pKey) || {};
+                E.interactedProps.set(pKey, { ...prev, collected: !1 });
+                E.invalidateTile(Ye.tx, Ye.ty);
+                m.current.playPunchWhoosh && m.current.playPunchWhoosh();
+                ve(`⚠️ Inventário cheio (máximo ${maxSlots} itens)! Libere espaço para coletar o jarro/pote.`);
+                return;
+              }
+              m.current.playItemPickup && m.current.playItemPickup();
+              const item = Ke.item;
+              if (item) {
+                ra((prev) => [...prev, item]);
+              }
+              _t((xp) => xp + 55);
+              ve(Ke.message || `🏺 Você recolheu: ${item ? item.name : "Jarro Antigo"}!`);
+              return;
+            } else if (Ke.action === "collect_bookshelf" || Ke.action === "collect_scroll_stand") {
+              const maxSlots = ot(Da.current.mochila);
+              if (Ve.length >= maxSlots) {
+                const pKey = E.isUnderground ? `underground_${Ye.tx},${Ye.ty}` : `${Ye.tx},${Ye.ty}`;
+                const prev = E.interactedProps.get(pKey) || {};
+                E.interactedProps.set(pKey, { ...prev, collected: !1 });
+                E.invalidateTile(Ye.tx, Ye.ty);
+                m.current.playPunchWhoosh && m.current.playPunchWhoosh();
+                ve(`⚠️ Inventário cheio (máximo ${maxSlots} itens)! Libere espaço para coletar o livro/pergaminho.`);
+                return;
+              }
+              m.current.playItemPickup && m.current.playItemPickup();
+              const item = Ke.item;
+              if (item) {
+                ra((prev) => [...prev, item]);
+              }
+              _t((xp) => xp + 80);
+              // Sem aviso de toast ao coletar livros e pergaminhos
+              return;
+            } else if (Ke.action === "locked_cell") {
+              const hasKey = Ve.some(
+                (it) =>
+                  (it.name || "").toLowerCase().includes("carcereiro") ||
+                  (it.name || "").toLowerCase().includes("chave") ||
+                  (it.id || "").toLowerCase().includes("jailer_key") ||
+                  (it.id || "").toLowerCase().includes("key"),
+              );
+              if (hasKey) {
+                E.unlockAndOpenGate(Ke.tx || Ye.tx, Ke.ty || Ye.ty);
+                m.current.playChestChime && m.current.playChestChime();
+              } else {
+                m.current.playPunchWhoosh && m.current.playPunchWhoosh();
+                ve(Ke.message);
+              }
+              return;
+            } else if (Ke.action === "clay_still_drying")
+              (m.current.playPunchWhoosh(), ve(Ke.message));
+            else if (Ke.action === "collect_dried_clay") {
+              const De = Ke.dryingItemType || "pote",
+                qe = ot(Da.current.mochila);
+              if (Ve.length >= qe) {
+                (E.placeProp(Ye.tx, Ye.ty, {
+                  kind: "drying_clay",
+                  subType: De === "frasco" ? 0 : De === "caldeirao" ? 1 : 2,
+                  offsetX: 0,
+                  offsetY: 2,
+                  scale: 1,
+                  interactive: !0,
+                  dryingItemType: De,
+                  dryingStartTime: Date.now() - 13e4,
+                  dryingDurationMs: 12e4,
+                  namePt: `${De === "frasco" ? "Frasco de Barro" : De === "caldeirao" ? "Caldeirão de Barro" : "Pote de Barro"} (Seco)`,
+                  descriptionPt:
+                    "Perfeitamente curado ao sol e pronto para recolher.",
+                }),
+                  ve(
+                    `Inventário cheio (máximo ${qe} itens)! Libere espaço para recolher a peça de barro.`,
+                  ));
+                return;
+              }
+              let Ze;
+              (De === "frasco"
+                ? (Ze = {
+                    id: `item_frasco_barro_${Date.now()}`,
+                    name: "Frasco de Barro",
+                    categoryType: "consumable",
+                    isEquippable: !1,
+                    rarity: "comum",
+                    value: 30,
+                    stackCount: 1,
+                    icon: "🏺",
+                    color: "#ea580c",
+                    description:
+                      "Frasco cerâmico torneado em pura argila e seco ao sol. Pode ser usado na beira da lagoa para coletar água fresca (+40 Stamina ao beber).",
+                  })
+                : De === "jarra"
+                  ? (Ze = {
+                      id: `item_jarra_barro_${Date.now()}`,
+                      name: "Jarra de Barro Vazia",
+                      categoryType: "consumable",
+                      isEquippable: !1,
+                      rarity: "incomum",
+                      value: 40,
+                      stackCount: 1,
+                      icon: "🏺",
+                      color: "#d97706",
+                      description:
+                        "Jarra cerâmica com alça e bico torneada em argila pura. Pode ser mergulhada na água para coletar água fresca (+70 Stamina ao beber).",
+                    })
+                  : De === "panela"
+                    ? (Ze = {
+                        id: `item_panela_barro_${Date.now()}`,
+                        name: "Panela de Barro Vazia",
+                        categoryType: "consumable",
+                        isEquippable: !1,
+                        rarity: "incomum",
+                        value: 45,
+                        stackCount: 1,
+                        icon: "🍳",
+                        color: "#b45309",
+                        description:
+                          "Panela robusta de barro com paredes grossas. Pode coletar água fresca na lagoa (+90 Stamina ao beber) ou preparar receitas.",
+                      })
+                    : De === "caldeirao"
+                      ? (Ze = {
+                          id: `item_caldeirao_barro_${Date.now()}`,
+                          name: "Caldeirão de Barro Vazio",
+                          categoryType: "consumable",
+                          isEquippable: !1,
+                          rarity: "incomum",
+                          value: 45,
+                          stackCount: 1,
+                          icon: "🍲",
+                          color: "#9a3412",
+                          description:
+                            "Caldeirão robusto moldado com paredes espessas de argila e curado ao sol. Pode coletar água fresca (+90 Stamina) ou ser usado em receitas no fogo.",
+                        })
+                      : (Ze = {
+                          id: `item_pote_barro_${Date.now()}`,
+                          name: "Pote de Barro Vazio",
+                          categoryType: "consumable",
+                          isEquippable: !1,
+                          rarity: "comum",
+                          value: 30,
+                          stackCount: 1,
+                          icon: "🏺",
+                          color: "#c2410c",
+                          description:
+                            "Pote de cerâmica rústica moldado em argila e seco ao sol. Pode ser usado na beira da água para coletar água fresca (+55 Stamina ao beber).",
+                        }),
+                m.current.playChestChime(),
+                ra((sa) => [...sa, Ze]));
+            } else if (Pe === "chest") {
+              m.current.playChestChime();
+              const De = pi("chest");
+              (ra((qe) => {
+                const Ze = ot(Da.current.mochila);
+                return qe.length >= Ze
+                  ? (ve(`Inventário cheio (máximo ${Ze} itens)!`), qe)
+                  : [...qe, De];
+              }),
+                _t((qe) => qe + 60));
+            } else if (Ke.action === "collect_roasted_fish") {
+              m.current.playChestChime();
+              const De = Ke.roastedFish;
+              De &&
+                ra((Ze) => {
+                  const sa = ot(Da.current.mochila);
+                  return Ze.length >= sa
+                    ? (ve(
+                        "Inventário cheio! Libere um espaço para pegar o peixe assado.",
+                      ),
+                      Ze)
+                    : [...Ze, De];
+                });
+              const qe = E.getNearbyCampfire(D.x, D.y, 95);
+              ((Ue.current = qe), xe(qe));
+              return;
+            } else if (Ke.action === "fish_still_roasting") {
+              (m.current.playPunchWhoosh(), ve(Ke.message));
+              return;
+            } else if (Ke.action === "start_roast_now") {
+              (m.current.playTorchIgnite(),
+                ve(
+                  `🍢 Espeto montado sobre as brasas! O ${Ke.fishName} está assando. Aguarde 1 minuto e pressione [F] para recolher.`,
+                ));
+              const De = E.getNearbyCampfire(D.x, D.y, 95);
+              ((Ue.current = De), xe(De));
+              return;
+            } else if (Ke.action === "collect_cooked_meal") {
+              m.current.playChestChime();
+              const De = Ke.cookedMeal;
+              if (!De) return;
+              (ra((qe) => {
+                const Ze = [...qe],
+                  sa = ot(Da.current.mochila);
+                for (const Pa of De.items || []) {
+                  if (Ze.length >= sa) {
+                    ve("⚠️ Mochila cheia! Alguns pratos ficaram de fora.");
+                    continue;
+                  }
+                  const va = Ze.findIndex((Nt) => Nt.name === Pa.name);
+                  if (
+                    va >= 0 &&
+                    (Ze[va].stackCount || 1) + (Pa.stackCount || 1) <=
+                      (Ze[va].maxStack || 20)
+                  )
+                    Ze[va] = {
+                      ...Ze[va],
+                      stackCount:
+                        (Ze[va].stackCount || 1) + (Pa.stackCount || 1),
+                    };
+                  else Ze.push(Pa);
+                }
+                return Ze;
+              }),
+                ve(De.message || "🍲 Refeição coletada da panela!"));
+              const qe = E.getNearbyCampfire(D.x, D.y, 95);
+              ((Ue.current = qe), xe(qe));
+              return;
+            } else if (Ke.action === "meal_cooking") {
+              (m.current.playPunchWhoosh(), ve(Ke.message));
+              return;
+            } else if (Pe === "campfire" || Pe === "clay_oven") {
+              const De = Pe === "clay_oven",
+                qe = !!(
+                  ((Je = Oe.mao_esquerda) != null && Je.id.includes("torch")) ||
+                  ((he = Oe.mao_direita) != null && he.id.includes("torch")) ||
+                  (($e = Oe.mao_esquerda) != null &&
+                    $e.name.toLowerCase().includes("tocha")) ||
+                  ((da = Oe.mao_direita) != null &&
+                    da.name.toLowerCase().includes("tocha")) ||
+                  Ve.some(
+                    (ka) =>
+                      ka.id.includes("torch") ||
+                      ka.name.toLowerCase().includes("tocha"),
+                  )
+                ),
+                Ze = ot(Oe.mochila);
+              if (!qe && Ve.length < Ze) {
+                const ka = pi("chest", 1);
+                (ra((ht) => [...ht, ka]), m.current.playTorchIgnite());
+              } else m.current.playShrineActivation();
+              ((D.hp = D.maxHp ?? 100),
+                (D.stamina = D.maxStamina ?? 100),
+                (D.isExhausted = !1),
+                (W.current = D.hp),
+                (He.current = D.stamina),
+                (oa.current = !1),
+                Ee(D.hp),
+                oe(D.stamina),
+                I(!1));
+              const sa = E.getNearbyCampfire(D.x, D.y, 95);
+              ((Ue.current = sa), xe(sa));
+              const Pa = sa ? sa.tx : Ye.tx,
+                va = sa ? sa.ty : Ye.ty,
+                Nt =
+                  (sa == null ? void 0 : sa.prop.namePt) ||
+                  Ge.prop.namePt ||
+                  (De ? "Forno de Barro" : "Fogueira Crepitante");
+              sr(Pa, va, Nt);
+              const rt = Ve.reduce(
+                (ka, ht) =>
+                  ht.name.toLowerCase().includes("galho") ||
+                  ht.id.includes("galho")
+                    ? ka + (ht.stackCount || 1)
+                    : ka,
+                0,
+              );
+              De
+                ? ve(
+                    "🔥 Salve no Forno de Barro! HP e Vigor restaurados. Brasas ativas para assar peixes [T]!",
+                  )
+                : rt >= 10
+                  ? ve(
+                      "💾 Ponto de Salve Registrado! HP e Vigor restaurados. Pressione [G] para alimentar a fogueira com 10 Galhos!",
+                    )
+                  : ve(
+                      "💾 Ponto de Salve Registrado! Esta fogueira é seu novo ponto de retorno com HP e Vigor restaurados.",
+                    );
+            } else if (
+              Ke.action === "toggle_gate" ||
+              Ke.action === "dungeon_door" ||
+              Ke.action === "greek_door"
+            ) {
+              m.current.playInventoryOpen && m.current.playInventoryOpen();
+              return;
+            } else if (Ke.action === "unlit_corridor_torch") {
+              m.current.playPunchWhoosh && m.current.playPunchWhoosh();
+              return;
+            } else
+              Ke.reward
+                ? m.current.playChestChime()
+                : m.current.playShrineActivation();
+            return;
+          }
+        }
+        if (ma.current && ko.current) {
+          nr();
+          return;
+        }
+        if (ma.current && Br.current) {
+          Ut();
+          return;
+        }
+      }, [Oe, Ve, z, ve, sr, nr, Ut]),
+      Yr = J.useCallback(
+        (E = 10) => {
+          const D = o.current,
+            Q = f.current;
+          if (!D || !Q) return;
+          const q = D.getNearbyCampfire(Q.x, Q.y, 95);
+          if (!q) {
+            (m.current.playPunchWhoosh(),
+              ve(
+                "⚠️ Nenhuma fogueira por perto para alimentar! Aproxime-se de uma fogueira.",
+              ));
+            return;
+          }
+          const F = Ve.reduce(
+            (ge, re) =>
+              re.name.toLowerCase().includes("galho") || re.id.includes("galho")
+                ? ge + (re.stackCount || 1)
+                : ge,
+            0,
+          );
+          if (F < E) {
+            (m.current.playFusionFail(),
+              ve(
+                `⚠️ Você precisa de pelo menos ${E} Galhos de Madeira para alimentar esta fogueira! (Você possui: ${F}/${E}).`,
+              ));
+            return;
+          }
+          ra((ge) => {
+            const re = [...ge];
+            let me = E;
+            for (let ce = re.length - 1; ce >= 0 && me > 0; ce--) {
+              const Re = re[ce];
+              if (
+                Re.name.toLowerCase().includes("galho") ||
+                Re.id.includes("galho")
+              ) {
+                const ze = Re.stackCount || 1;
+                ze <= me
+                  ? ((me -= ze), re.splice(ce, 1))
+                  : ((re[ce] = { ...Re, stackCount: ze - me }), (me = 0));
+              }
+            }
+            return re;
+          });
+          const ie = D.feedCampfire(q.tx, q.ty, E);
+          if (ie.success) {
+            m.current.playCampfireFeed();
+            const ge = q.tx * D.tileSize + D.tileSize / 2,
+              re = q.ty * D.tileSize + D.tileSize / 2;
+            c.current.addDamageNumber(
+              ge,
+              re - 24,
+              `${ie.scale.toFixed(1)}x TAMANHO 🔥`,
+              "#f97316",
+            );
+            const me = D.getNearbyCampfire(Q.x, Q.y, 95);
+            if (((Ue.current = me), xe(me), q.prop.lit !== !1)) {
+              const Re = (D.isUnderground ? 225 : 190) + (ie.scale - 1) * 85;
+              (c.current.scareMonstersNearFire(ge, re, Re * 0.5),
+                (Q.hp = Math.min(Q.maxHp ?? 100, (Q.hp ?? 100) + 30)),
+                (Q.stamina = Q.maxStamina ?? 100),
+                (Q.isExhausted = !1),
+                (W.current = Q.hp),
+                (He.current = Q.stamina),
+                (oa.current = !1),
+                Ee(Q.hp),
+                oe(Q.stamina),
+                I(!1),
+                sr(q.tx, q.ty, ie.propName));
+            }
+            ve(
+              `🔥 Fogueira alimentada com +${E} galhos! ${ie.percentageGrowth} (${ie.propName})`,
+            );
+          }
+        },
+        [Ve, ve, sr],
+      ),
+      Mo = J.useCallback(() => {
+        const E = o.current,
+          D = f.current,
+          Q = E.getNearbyCampfire(D.x, D.y, 95);
+        if (!Q) {
+          (m.current.playPunchWhoosh(),
+            ve("⚠️ Aproxime-se de uma fogueira para assar peixe no espeto."));
+          return;
+        }
+        if (Q.prop.lit === !1) {
+          (m.current.playPunchWhoosh(),
+            ve(
+              "⚠️ Esta fogueira está apagada. Acenda-a primeiro com as 2 pederneiras!",
+            ));
+          return;
+        }
+        if (Q.prop.roastingFish) {
+          const re = Date.now() - Q.prop.roastingFish.startTime;
+          if (re >= Q.prop.roastingFish.durationMs) qo();
+          else {
+            const me = Math.ceil((Q.prop.roastingFish.durationMs - re) / 1e3);
+            (m.current.playPunchWhoosh(),
+              ve(
+                `⏳ O peixe já está assando nas brasas! Faltam ${me}s para ficar no ponto.`,
+              ));
+          }
+          return;
+        }
+        const q = Ve.findIndex((re) => {
+          const me = (re.id || "").toLowerCase(),
+            ce = (re.name || "").toLowerCase();
+          return (
+            (me.includes("fish") ||
+              ce.includes("peixe") ||
+              ce.includes("lambari") ||
+              ce.includes("tilapia") ||
+              ce.includes("tilápia") ||
+              ce.includes("cascudo") ||
+              ce.includes("truta")) &&
+            !ce.includes("assado") &&
+            !ce.includes("espeto")
+          );
+        });
+        if (q === -1) {
+          (m.current.playFusionFail(),
+            ve(
+              "⚠️ Você precisa ter um peixe cru no inventário para colocar no espeto!",
+            ));
+          return;
+        }
+        const F = Ve.findIndex((re) => {
+          const me = (re.id || "").toLowerCase(),
+            ce = (re.name || "").toLowerCase();
+          return me.includes("galho") || ce.includes("galho");
+        });
+        if (F === -1) {
+          (m.current.playFusionFail(),
+            ve(
+              "⚠️ Você precisa de 1 Galho de madeira para montar o espeto de assar!",
+            ));
+          return;
+        }
+        const ie = Ve[q];
+        (ra((re) => {
+          const me = [...re],
+            ce = me[F];
+          (ce.stackCount || 1) > 1
+            ? (me[F] = { ...ce, stackCount: (ce.stackCount || 1) - 1 })
+            : me.splice(F, 1);
+          const Re = me.findIndex((Ce) => Ce.id === ie.id);
+          if (Re !== -1) {
+            const Ce = me[Re];
+            (Ce.stackCount || 1) > 1
+              ? (me[Re] = { ...Ce, stackCount: (Ce.stackCount || 1) - 1 })
+              : me.splice(Re, 1);
+          }
+          return me;
+        }),
+          E.startRoastingFish(Q.tx, Q.ty, ie),
+          m.current.playTorchIgnite(),
+          ve(
+            `🍢 ${ie.name} colocado no espeto de galho sobre a fogueira! Aguarde 1 minuto para ficar assado.`,
+          ));
+        const ge = E.getNearbyCampfire(D.x, D.y, 95);
+        ((Ue.current = ge), xe(ge));
+      }, [Ve, qo, ve]),
+      kG = J.useCallback(() => {
+        const E = o.current,
+          D = f.current;
+        if (!E || !D || D.isDead) return;
+        const Q = E.getNearbyCampfire(D.x, D.y, 120);
+        if (!Q) {
+          (m.current.playPunchWhoosh(),
+            ve(
+              "⚠️ Aproxime-se de uma fogueira acesa. Para colocar a panela no fogo, abra o inventário e clique nela.",
+            ));
+          return;
+        }
+        if (Q.prop.lit === !1) {
+          (m.current.playPunchWhoosh(),
+            ve("⚠️ Esta fogueira está apagada. Acenda-a primeiro com [F]!"));
+          return;
+        }
+        const q = Q.prop.cookingPot;
+        if (q) {
+          // ✅ Panela já está no fogo: [R] ABRE O MODAL de ingredientes (6 slots).
+          // Colocar/recolher panela é feito pelo botão do inventário.
+          cookingPotRef.current = { tx: Q.tx, ty: Q.ty };
+          setCookingModalOpen(!0);
+          m.current.playItemPickup();
+          return;
+        }
+        // Sem panela no fogo: [R] não faz nada (silencioso, a pedido do jogador).
+        // Colocar a panela no fogo é feito pelo botão do inventário.
+      }, [Ve, qo, ve]),
+      // Botão do inventário: coloca/recolhe a panela/caldeirão clicada no fogo
+      zK = J.useCallback((potItem) => {
+        const E = o.current,
+          D = f.current;
+        if (!E || !D || D.isDead || !potItem) return;
+        const Q = E.getNearbyCampfire(D.x, D.y, 120);
+        if (!Q) {
+          (m.current.playPunchWhoosh(),
+            ve("⚠️ Aproxime-se de uma fogueira para usar esta opção."));
+          return;
+        }
+        if (Q.prop.lit === !1) {
+          (m.current.playPunchWhoosh(),
+            ve("⚠️ Esta fogueira está apagada. Acenda-a primeiro com [F]!"));
+          return;
+        }
+        const potOnFire = Q.prop.cookingPot;
+        if (potOnFire) {
+          // Recolher a panela que está no fogo (ingredientes voltam pra mochila)
+          const finished = Date.now() - potOnFire.startTime >= 45e3;
+          if (finished) {
+            qo();
+          } else {
+            const back = E.removeCookingPot(Q.tx, Q.ty);
+            if (back) {
+              const items = [];
+              const pn = ((back.potItem || {}).name || "").toLowerCase();
+              items.push({ ...(back.potItem || {}), hasWater: !!back.hasWater });
+              for (const ing of back.ingredients || [])
+                items.push({ ...ing, id: ing.id || `cook_ing_${(ing.name || "").toLowerCase().replace(/\s+/g, "_")}` });
+              ra((Ce) => {
+                const la = [...Ce];
+                for (const it of items) {
+                  const ix = la.findIndex((x) => x.name === it.name);
+                  if (ix >= 0)
+                    la[ix] = { ...la[ix], stackCount: (la[ix].stackCount || 1) + 1 };
+                  else la.push({ ...it, stackCount: 1 });
+                }
+                return la;
+              });
+              m.current.playItemPickup();
+              ve(`↩️ ${pn.includes("caldeir") ? "Caldeirão" : "Panela"} recolhido(a) do fogo com seus ingredientes.`);
+            }
+          }
+          (() => {
+            const Ce = E.getNearbyCampfire(D.x, D.y, 120);
+            ((Ue.current = Ce), xe(Ce));
+          })();
+          return;
+        }
+        // Colocar a panela clicada no fogo
+        const pn = ((potItem.id || "") + " " + (potItem.name || "")).toLowerCase();
+        if (!(pn.includes("panela") || pn.includes("caldeir"))) {
+          (m.current.playFusionFail(), ve("⚠️ Este item não é uma panela ou caldeirão."));
+          return;
+        }
+        if ((potItem.stackCount || 1) > 1) {
+          (m.current.playPunchWhoosh(),
+            ve("⚠️ Separe a panela do monte antes de colocá-la no fogo (pilhas não vão ao fogo)."));
+          return;
+        }
+        const withWater = pn.includes("com água") || pn.includes("com agua") || !!potItem.hasWater;
+        ra((Ce) => {
+          const ze = Ce.findIndex((na) => na.id === potItem.id);
+          if (ze === -1) return Ce;
+          const la = [...Ce];
+          return (la[ze].stackCount || 1) > 1
+            ? ((la[ze] = { ...la[ze], stackCount: (la[ze].stackCount || 1) - 1 }), la)
+            : (la.splice(ze, 1), la);
+        });
+        E.setCookingPot(Q.tx, Q.ty, potItem),
+          m.current.playTorchIgnite(),
+          ve(
+            withWater
+              ? `🍳 ${potItem.name} colocada no fogo com ÁGUA! Pressione [R] perto da fogueira (ou toque na panela) para escolher os ingredientes.`
+              : `🍳 ${potItem.name} colocada no fogo VAZIA (ideal para fritar carnes)! Pressione [R] (ou toque na panela) para escolher os ingredientes.`,
+          ),
+          (() => {
+            const Ce = E.getNearbyCampfire(D.x, D.y, 120);
+            ((Ue.current = Ce), xe(Ce));
+          })();
+      }, [Ve, qo, ve]),
+      wK = J.useCallback((chosenItem) => {
+        const E = o.current,
+          D = f.current;
+        if (!E || !D || D.isDead) return;
+        const Q = E.getNearbyCampfire(D.x, D.y, 120);
+        if (!Q || !Q.prop.cookingPot) {
+          (m.current.playPunchWhoosh(),
+            ve(
+              "⚠️ Nenhuma panela no fogo por aqui! Coloque uma panela na fogueira com [R] primeiro.",
+            ));
+          return;
+        }
+        const q = Q.prop.cookingPot;
+        if ((q.ingredients || []).length >= 6) {
+          (m.current.playFusionFail(),
+            ve("🍲 O caldeirão já está cheio (6 ingredientes no máximo)!"));
+          return;
+        }
+        let ie = null, F = -1;
+        if (chosenItem) {
+          // Modal: item escolhido pelo jogador (sem filtro de tipo)
+          F = Ve.findIndex((me) => me.id === chosenItem.id);
+          if (F === -1) {
+            (m.current.playFusionFail(),
+              ve("⚠️ Este item não está mais na sua mochila."));
+            return;
+          }
+          ie = Ve[F];
+        } else {
+          F = Ve.findIndex((me) => {
+            const ce = ((me.id || "") + " " + (me.name || "")).toLowerCase();
+            return (
+              (ce.includes("carne") ||
+                ce.includes("meat") ||
+                ce.includes("gosma") ||
+                ce.includes("gelatina")) &&
+              !ce.includes("cozida") &&
+              !ce.includes("frita")
+            );
+          });
+          if (F === -1) {
+            (m.current.playFusionFail(),
+              ve(
+                "🥩 Nenhum ingrediente cozinhável na mochila! Traga Carne, Corpo de Gosma ou Gelatina.",
+              ));
+            return;
+          }
+          ie = Ve[F];
+        }
+        ra((me) => {
+          const ce = me.findIndex((Re) => Re.id === ie.id);
+          if (ce === -1) return me;
+          const ze = [...me],
+            la = ze[ce].stackCount || 1;
+          return (
+            la > 1
+              ? ((ze[ce] = { ...ze[ce], stackCount: la - 1 }), ze)
+              : (ze.splice(ce, 1), ze),
+            ze
+          );
+        }),
+          E.addIngredientToPot(Q.tx, Q.ty, ie),
+          m.current.playItemPickup(),
+          (() => {
+            const me = E.getNearbyCampfire(D.x, D.y, 120);
+            ((Ue.current = me), xe(me));
+          })();
+      }, [Ve, ve]),
+      dr = J.useCallback(() => {
+        var Q, q, F, ie;
+        if (
+          !!(
+            ((Q = Oe.mao_esquerda) != null && Q.id.includes("torch")) ||
+            ((q = Oe.mao_direita) != null && q.id.includes("torch")) ||
+            ((F = Oe.mao_esquerda) != null &&
+              F.name.toLowerCase().includes("tocha")) ||
+            ((ie = Oe.mao_direita) != null &&
+              ie.name.toLowerCase().includes("tocha"))
+          )
+        ) {
+          z((ge) => {
+            const re = !ge;
+            return (re && m.current.playTorchIgnite(), re);
+          });
+          return;
+        }
+        const D = Ve.find(
+          (ge) =>
+            ge.id.includes("torch") || ge.name.toLowerCase().includes("tocha"),
+        );
+        if (D) {
+          (ir(D), z(!0), m.current.playTorchIgnite());
+          return;
+        }
+        (m.current.playCaveExit(), z(!1));
+      }, [Oe, Ve, ir]),
+      Gr = (E, D) =>
+        E === "KeyW" ||
+        E === "ArrowUp" ||
+        D === "ArrowUp" ||
+        D === "Up" ||
+        D === "w" ||
+        D === "W"
+          ? "up"
+          : E === "KeyS" ||
+              E === "ArrowDown" ||
+              D === "ArrowDown" ||
+              D === "Down" ||
+              D === "s" ||
+              D === "S"
+            ? "down"
+            : E === "KeyA" ||
+                E === "ArrowLeft" ||
+                D === "ArrowLeft" ||
+                D === "Left" ||
+                D === "a" ||
+                D === "A"
+              ? "left"
+              : E === "KeyD" ||
+                  E === "ArrowRight" ||
+                  D === "ArrowRight" ||
+                  D === "Right" ||
+                  D === "d" ||
+                  D === "D"
+                ? "right"
+                : null,
+      Bo = J.useCallback((E, D) => {
+        if (((y.current[E] = D), D)) {
+          const Q = performance.now(),
+            q = Se.current[E] || 0,
+            F = Q - q;
+          (F > 40 && F < 360 && (Ae.current[E] = !0), (Se.current[E] = Q));
+        } else Ae.current[E] = !1;
+      }, []),
+      handleReadBook = J.useCallback(() => {
+        if (readerOpen) {
+          setReaderOpen(!1);
+          return;
+        }
+        if (readerItem) {
+          setReaderOpen(!0);
+          return;
+        }
+        const b = Ve.find((i) => {
+          const n = (i.name || "").toLowerCase();
+          const d = (i.id || "").toLowerCase();
+          return (
+            n.includes("livro") ||
+            n.includes("tomo") ||
+            n.includes("tratado") ||
+            n.includes("compêndio") ||
+            n.includes("compendio") ||
+            n.includes("manuscrito") ||
+            n.includes("pergaminho") ||
+            d.includes("livro") ||
+            d.includes("pergaminho")
+          );
+        });
+        if (b) {
+          setReaderItem(b);
+          setReaderOpen(!0);
+          ve(`📖 Abrindo: ${b.name}`);
+        } else {
+          ve("📚 Nenhum livro ou pergaminho na mochila no momento.");
+        }
+      }, [readerOpen, readerItem, Ve, ve]),
+      _readerEffect = J.useEffect(() => {
+        const onOpenReaderEvt = (evt) => {
+          if (evt.detail && evt.detail.item) {
+            setReaderItem(evt.detail.item);
+            setReaderOpen(!0);
+            if (evt.detail.item.name) {
+              ve(`📖 Consultando Grimório: ${evt.detail.item.name}`);
+            }
+          }
+        };
+        const onKnowledgeEvt = (evt) => {
+          if (evt.detail && evt.detail.completed) {
+            ve(`🎓 Conhecimento arquivado no slot de aprendizado do Inventário!`);
+          }
+        };
+        window.addEventListener("rpg_open_reader", onOpenReaderEvt);
+        window.addEventListener("rpg_knowledge_updated", onKnowledgeEvt);
+        return () => {
+          window.removeEventListener("rpg_open_reader", onOpenReaderEvt);
+          window.removeEventListener("rpg_knowledge_updated", onKnowledgeEvt);
+        };
+      }, [ve]),
+      Ga = J.useRef({
+        handleAttack: Sl,
+        handleThrowPebble: Rl,
+        handleInteract: qo,
+        handleStartFishing: nr,
+        handleStopFishing: $r,
+        handleCollectWater: Ut,
+        handleFeedCampfire: Yr,
+        handleRoastFish: Mo,
+        handleCookingPot: kG,
+        handleAddIngredient: wK,
+        handleToggleInventory: Qt,
+        handleReadBook: handleReadBook,
+        handleToggleTorch: dr,
+        handleRecenterCamera: Oo,
+        handleRespawn: Tl,
+        handleUseBeltSlot: Ur,
+        setSoundEnabled: M,
+        showToast: ve,
+      });
+    return (
+      (Ga.current = {
+        handleAttack: Sl,
+        handleThrowPebble: Rl,
+        startPebbleAim: startPebbleAim,
+        endPebbleAim: endPebbleAim,
+        handleInteract: qo,
+        handleStartFishing: nr,
+        handleStopFishing: $r,
+        handleCollectWater: Ut,
+        handleFeedCampfire: Yr,
+        handleRoastFish: Mo,
+        handleCookingPot: kG,
+        handleAddIngredient: wK,
+        handleToggleInventory: Qt,
+        handleReadBook: handleReadBook,
+        handleToggleTorch: dr,
+        handleRecenterCamera: Oo,
+        handleRespawn: Tl,
+        handleUseBeltSlot: Ur,
+        setSoundEnabled: M,
+        showToast: ve,
+      }),
+      J.useEffect(() => {
+        const E = (q) => {
+            ((g.current[q.code] = !0), (g.current[q.key] = !0));
+            const F = Gr(q.code, q.key);
+            if (F && !q.repeat) {
+              const ie = performance.now(),
+                ge = Se.current[F] || 0,
+                re = ie - ge;
+              (re > 40 && re < 360 && (Ae.current[F] = !0),
+                (Se.current[F] = ie));
+            }
+            if (q.code === "ShiftLeft" || q.code === "ShiftRight" || q.key === "Shift") {
+              if (!q.repeat && Ga.current.startPebbleAim) {
+                Ga.current.startPebbleAim();
+              }
+              return;
+            }
+            if (
+              (([
+                "ArrowUp",
+                "ArrowDown",
+                "ArrowLeft",
+                "ArrowRight",
+                "Up",
+                "Down",
+                "Left",
+                "Right",
+                "Space",
+              ].includes(q.key) ||
+                [
+                  "ArrowUp",
+                  "ArrowDown",
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "Space",
+                ].includes(q.code)) &&
+                q.preventDefault(),
+              So.current)
+            ) {
+              q.code === "Escape" && Ga.current.handleStopFishing();
+              return;
+            }
+            if (q.code === "Escape" && props && typeof props.onReturnToMenu === "function") {
+              props.onReturnToMenu();
+              return;
+            }
+            q.code === "Space"
+              ? Ga.current.handleAttack()
+              : q.code === "KeyF" || q.key === "f" || q.key === "F"
+                ? Ga.current.handleInteract()
+                : q.code === "KeyE" ||
+                    q.key === "e" ||
+                    q.key === "E" ||
+                    q.code === "KeyI" ||
+                    q.key === "i" ||
+                    q.key === "I" ||
+                    q.code === "KeyB" ||
+                    q.key === "b" ||
+                    q.key === "B"
+                  ? Ga.current.handleToggleInventory()
+                  : q.code === "KeyU" || q.key === "u" || q.key === "U"
+                    ? Ga.current.handleCollectWater()
+                    : q.code === "KeyP" || q.key === "p" || q.key === "P"
+                      ? ma.current && ko.current
+                        ? Ga.current.handleStartFishing()
+                        : ma.current && !ko.current
+                          ? Ga.current.showToast(
+                              "💧 Você precisa de uma Lança para pescar! Crie uma na Bancada ou equipe uma.",
+                            )
+                          : Ga.current.showToast(
+                              "⚠️ Aproxime-se da margem do lago para usar a pesca com lança!",
+                            )
+                      : q.code === "KeyG" || q.key === "g" || q.key === "G"
+                        ? Ga.current.handleFeedCampfire(10)
+                        : q.code === "KeyT" || q.key === "t" || q.key === "T"
+                          ? Ga.current.handleRoastFish()
+                          : q.code === "KeyR" || q.key === "r" || q.key === "R"
+                            ? Ga.current.handleCookingPot()
+                            : q.code === "KeyQ" || q.key === "q" || q.key === "Q"
+                              ? Ga.current.handleAddIngredient()
+                              : q.code === "Digit1" || q.key === "1"
+                            ? Ga.current.handleUseBeltSlot("cinto_slot1")
+                            : q.code === "Digit2" || q.key === "2"
+                              ? Ga.current.handleUseBeltSlot("cinto_slot2")
+                              : q.code === "KeyJ" ||
+                                  q.key === "j" ||
+                                  q.key === "J"
+                                ? Ga.current.handleReadBook()
+                                : q.code === "KeyL" ||
+                                  q.key === "l" ||
+                                  q.key === "L"
+                                ? Ga.current.handleToggleTorch()
+                                : q.code === "KeyM" ||
+                                    q.key === "m" ||
+                                    q.key === "M"
+                                  ? Ga.current.setSoundEnabled((ie) => !ie)
+                                  : q.code === "KeyC" ||
+                                      q.key === "c" ||
+                                      q.key === "C"
+                                    ? Ga.current.handleRecenterCamera()
+                                    : (q.code === "KeyR" ||
+                                        q.key === "r" ||
+                                        q.key === "R") &&
+                                      (f.current.isDead
+                                        ? Ga.current.handleRespawn()
+                                        : Ga.current.handleCookingPot());
+          },
+          D = (q) => {
+            ((g.current[q.code] = !1), (g.current[q.key] = !1));
+            if (q.code === "ShiftLeft" || q.code === "ShiftRight" || q.key === "Shift") {
+              if (Ga.current.endPebbleAim) {
+                Ga.current.endPebbleAim();
+              }
+            }
+            const F = Gr(q.code, q.key);
+            F && (Ae.current[F] = !1);
+          },
+          Q = () => {
+            ((g.current = {}),
+              (pebbleKeyRef.current = { pressedAt: 0, aiming: !1, angle: void 0 }),
+              (Ae.current = { up: !1, down: !1, left: !1, right: !1 }));
+          };
+        return (
+          window.addEventListener("keydown", E),
+          window.addEventListener("keyup", D),
+          window.addEventListener("blur", Q),
+          () => {
+            (window.removeEventListener("keydown", E),
+              window.removeEventListener("keyup", D),
+              window.removeEventListener("blur", Q));
+          }
+        );
+      }, []),
+      J.useEffect(() => {
+        const E = t.current;
+        if (!E) return;
+        const D = E.getContext("2d", { alpha: !1 });
+        if (!D) return;
+        const Q = o.current,
+          q = new Ws(D, Q);
+        u.current = q;
+        let F,
+          ie = 0;
+        const ge = () => {
+          const Je = Math.min(window.devicePixelRatio || 1, 2),
+            he = window.innerWidth,
+            $e = window.innerHeight;
+          ((E.width = Math.floor(he * Je)),
+            (E.height = Math.floor($e * Je)),
+            (E.style.width = `${he}px`),
+            (E.style.height = `${$e}px`),
+            D.setTransform(Je, 0, 0, Je, 0, 0));
+        };
+        (window.addEventListener("resize", ge), ge());
+        let re = null;
+        const me = {};
+        let ce = -999999,
+          Re = -999999;
+        const Ce = (Je, he = !1) => {
+          const $e = l.current;
+          if (!$e) return;
+          const da = $e.getContext("2d");
+          if (!da) return;
+          const Ye = Math.floor(Je.x / Q.tileSize),
+            Ge = Math.floor(Je.y / Q.tileSize);
+          if (!he && Ye === ce && Ge === Re && re) return;
+          ((ce = Ye), (Re = Ge));
+          const Pe = $e.width,
+            aa = $e.height;
+          (!re || re.width !== Pe || re.height !== aa) &&
+            (re = da.createImageData(Pe, aa));
+          const Ke = re.data,
+            De = Pe / 2,
+            qe = aa / 2;
+          for (let Ze = 0; Ze < aa; Ze += 2)
+            for (let sa = 0; sa < Pe; sa += 2) {
+              const Pa = Ye + Math.floor((sa - De) * 0.9),
+                va = Ge + Math.floor((Ze - qe) * 0.9),
+                tileAt = Q.getTile(Pa, va),
+                rt = tileAt.isCliffWall ? "#1e293b" : tileAt.biome.groundColor;
+              let ka = me[rt];
+              ka ||
+                ((ka = [
+                  parseInt(rt.slice(1, 3), 16) || 70,
+                  parseInt(rt.slice(3, 5), 16) || 120,
+                  parseInt(rt.slice(5, 7), 16) || 60,
+                ]),
+                (me[rt] = ka));
+              const ht = ka[0],
+                ho = ka[1],
+                Jt = ka[2];
+              for (let eo = 0; eo < 2; eo++)
+                for (let Rt = 0; Rt < 2; Rt++) {
+                  const ft = ((Ze + eo) * Pe + (sa + Rt)) * 4;
+                  ((Ke[ft] = ht),
+                    (Ke[ft + 1] = ho),
+                    (Ke[ft + 2] = Jt),
+                    (Ke[ft + 3] = 255));
+                }
+            }
+          da.putImageData(re, 0, 0);
+          // 🧭 Bússola e Marcador da Escadaria do Calabouço no Minimapa (Modo Desenvolvedor)
+          if (
+            window.__devMode &&
+            Q.isUnderground &&
+            typeof Q.getDungeonEntranceStairForBiome === "function"
+          ) {
+            const isL2 = Q.undergroundLevel === 2;
+            const stair = isL2 ? (Q.activeDungeonStairCoords || Q.getDungeonEntranceStairForBiome(Ye, Ge)) : Q.getDungeonEntranceStairForBiome(Ye, Ge);
+            if (stair) {
+              const dx = stair.tx - Ye;
+              const dy = stair.ty - Ge;
+              const sx = De + dx / 0.9;
+              const sy = qe + dy / 0.9;
+              da.save();
+              const isInside =
+                sx >= 8 && sx <= Pe - 8 && sy >= 8 && sy <= aa - 8;
+              if (isInside) {
+                const pulse = (Math.sin(performance.now() * 0.007) + 1) * 0.5;
+                da.strokeStyle = isL2 ? `rgba(251, 191, 36, ${0.55 + pulse * 0.45})` : `rgba(239, 68, 68, ${0.45 + pulse * 0.5})`;
+                da.lineWidth = 2.0;
+                da.beginPath();
+                da.arc(sx, sy, 5.5 + pulse * 3.5, 0, Math.PI * 2);
+                da.stroke();
+
+                da.fillStyle = isL2 ? "#fbbf24" : "#ef4444";
+                da.beginPath();
+                da.arc(sx, sy, 3.8, 0, Math.PI * 2);
+                da.fill();
+
+                da.fillStyle = "#ffffff";
+                da.beginPath();
+                da.arc(sx, sy, 1.8, 0, Math.PI * 2);
+                da.fill();
+              } else {
+                const angle = Math.atan2(dy, dx);
+                const edgeR = Math.min(De, qe) - 6;
+                const bx = De + Math.cos(angle) * edgeR;
+                const by = qe + Math.sin(angle) * edgeR;
+
+                da.save();
+                da.translate(bx, by);
+                da.rotate(angle);
+                da.fillStyle = "#ef4444";
+                da.beginPath();
+                da.moveTo(5.5, 0);
+                da.lineTo(-4.5, -4);
+                da.lineTo(-2, 0);
+                da.lineTo(-4.5, 4);
+                da.closePath();
+                da.fill();
+                da.restore();
+              }
+              da.restore();
+            }
+          }
+        };
+        c.current.setAudio(m.current);
+        let ze = 0,
+          la = performance.now(),
+          na = performance.now();
+        let __nt = 0;
+        const ia = (Je) => {
+          const __cap = window.__rpgFpsCap === void 0 ? 60 : window.__rpgFpsCap;
+          if (__cap > 0) {
+            const __iv = 1e3 / __cap;
+            if (Je < __nt - 2) {
+              F = requestAnimationFrame(ia);
+              return;
+            }
+            __nt = Je > __nt + __iv ? Je + __iv : __nt + __iv;
+          }
+          var Jt, eo, Rt, ft;
+          const he = f.current,
+            $e = g.current,
+            da = y.current,
+            Ye = Math.min(0.1, (Je - la) / 1e3);
+          if (!cyclePausedRef.current && Ye > 0) {
+            const activeCycleSec = Math.max(5, Number(cycleDurationRef.current) || 1200);
+            const previousTime = timeOfDayRef.current;
+            const nextTime = (timeOfDayRef.current + Ye / activeCycleSec) % 1;
+            if (nextTime < previousTime) nightCountRef.current += 1;
+            timeOfDayRef.current = nextTime;
+            Q.setTimeState(nextTime, nightCountRef.current);
+            if (rr.current) rr.current.timeOfDay = nextTime;
+          }
+          const isHoldingPebble = pebbleKeyRef.current.pressedAt > 0;
+          const isPebbleItem = (item) => {
+            const name = (item?.name || "").toLowerCase();
+            const id = (item?.id || "").toLowerCase();
+            return name.includes("seixo") || id.includes("seixo") || id.includes("pebble");
+          };
+          const isSlingshotItem = (item) => {
+            const name = (item?.name || "").toLowerCase();
+            const id = (item?.id || "").toLowerCase();
+            return name.includes("estilingue") || id.includes("estilingue") || id.includes("slingshot");
+          };
+          const handHasPebble = [Da.current.mao_esquerda, Da.current.mao_direita].some(isPebbleItem);
+          const handHasSlingshot = [Da.current.mao_esquerda, Da.current.mao_direita].some(isSlingshotItem);
+          const hasPebbleInPack = Zt.current.some(isPebbleItem);
+          const canAimPebble = handHasPebble || (handHasSlingshot && hasPebbleInPack);
+          const maxAimDist = handHasSlingshot ? 660 : 330;
+          const aimHeld = isHoldingPebble && canAimPebble && !pebbleKeyRef.current.cancelled;
+          he.isAiming = !!aimHeld;
+          he.hasSlingshotAim = !!handHasSlingshot;
+          if (aimHeld) {
+            if (pebbleKeyRef.current.angle !== void 0) {
+              he.aimAngle = pebbleKeyRef.current.angle;
+              if (pebbleKeyRef.current.distance !== void 0) {
+                he.aimDistance = pebbleKeyRef.current.distance;
+              }
+            } else if (mouseScreenPos.current.active && E) {
+              const rect = E.getBoundingClientRect();
+              const zoom = Ka.current || 1;
+              const playerScreenX = rect.left + rect.width / 2 - Oa.current.x * zoom;
+              const playerScreenY = rect.top + rect.height / 2 - Oa.current.y * zoom;
+              const dx = mouseScreenPos.current.x - playerScreenX;
+              const dy = mouseScreenPos.current.y - playerScreenY;
+              const screenDist = Math.hypot(dx, dy);
+              if (screenDist > 6) {
+                he.aimAngle = Math.atan2(dy, dx);
+                const worldDist = screenDist / zoom;
+                he.aimDistance = Math.max(35, Math.min(maxAimDist, worldDist));
+              }
+            }
+            const aimX = ($e.KeyD || $e.ArrowRight || da.right ? 1 : 0) - ($e.KeyA || $e.ArrowLeft || da.left ? 1 : 0);
+            const aimY = ($e.KeyS || $e.ArrowDown || da.down ? 1 : 0) - ($e.KeyW || $e.ArrowUp || da.up ? 1 : 0);
+            if ((aimX !== 0 || aimY !== 0) && !mouseScreenPos.current.active && pebbleKeyRef.current.angle === void 0) {
+              he.aimAngle = Math.atan2(aimY, aimX);
+            }
+            if (he.aimAngle === void 0) {
+              he.aimAngle = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[he.direction] || 0;
+            }
+            if (he.aimDistance === void 0) {
+              he.aimDistance = maxAimDist;
+            }
+          } else {
+            he.aimDistance = void 0;
+          }
+          ((la = Je),
+            he.attackTimer &&
+              he.attackTimer > 0 &&
+              ((he.attackTimer = Math.max(0, he.attackTimer - Ye)),
+              he.attackTimer === 0 && (he.attackAngle = void 0)));
+          const Ge = Math.floor(he.x / Q.tileSize),
+            Pe = Math.floor(he.y / Q.tileSize),
+            aa = Q.getTile(Ge, Pe),
+            Ke = rr.current.timeOfDay ?? 0.5,
+            De = Ks(Da.current),
+            qe = Da.current,
+            Ze = !!(
+              ((qe.mao_esquerda != null &&
+                ((qe.mao_esquerda.id && qe.mao_esquerda.id.includes("torch")) ||
+                  (qe.mao_esquerda.name &&
+                    qe.mao_esquerda.name.toLowerCase().includes("tocha")))) ||
+                (qe.mao_direita != null &&
+                  ((qe.mao_direita.id && qe.mao_direita.id.includes("torch")) ||
+                    (qe.mao_direita.name &&
+                      qe.mao_direita.name.toLowerCase().includes("tocha"))))) &&
+              (rr.current ? rr.current.lanternActive : !0)
+            ),
+            sa = Q.isNearLitCampfire(he.x, he.y, 190);
+          ((he.hasTorch = Ze),
+            (he.isNearCampfire = sa),
+            (he.fireProtected = Ze || sa),
+            he.fireProtected !== we.current &&
+              ((we.current = !!he.fireProtected), Fe(!!he.fireProtected)));
+          const Pa = Q.getNearbyCampfire(he.x, he.y, 90),
+            va = Ue.current;
+          if (
+            (Pa
+              ? (!va ||
+                  va.tx !== Pa.tx ||
+                  va.ty !== Pa.ty ||
+                  va.prop.scale !== Pa.prop.scale ||
+                  va.prop.lit !== Pa.prop.lit ||
+                  va.prop.fireLevel !== Pa.prop.fireLevel ||
+                  va.prop.sticksFed !== Pa.prop.sticksFed ||
+                  va.prop.roastingFish !== Pa.prop.roastingFish) &&
+                ((Ue.current = Pa), xe(Pa))
+              : va && ((Ue.current = null), xe(null)),
+            c.current.update(
+              Ye,
+              he,
+              Q.isUnderground,
+              aa.biome.id,
+              Ke,
+              De.defense,
+            ),
+            he.hp !== void 0 &&
+              (he.hp !== W.current || !!he.isDead !== le.current) &&
+              ((W.current = he.hp),
+              (le.current = !!he.isDead),
+              Ee(he.hp),
+              de(!!he.isDead)),
+            he.isDead)
+          )
+            ((he.isMoving = !1), (he.vx = 0), (he.vy = 0));
+          else {
+            let qa = 0,
+              Xa = 0;
+            (($e.KeyW || $e.ArrowUp || $e.Up || da.up) && (Xa -= 1),
+              ($e.KeyS || $e.ArrowDown || $e.Down || da.down) && (Xa += 1),
+              ($e.KeyA || $e.ArrowLeft || $e.Left || da.left) && (qa -= 1),
+              ($e.KeyD || $e.ArrowRight || $e.Right || da.right) && (qa += 1),
+              he.isAiming && ((qa = 0), (Xa = 0)),
+              (he.isMoving = qa !== 0 || Xa !== 0));
+            const za = 100 + (De.staminaBonus || 0);
+            ((he.maxStamina = za), he.stamina === void 0 && (he.stamina = za));
+            const It =
+                (Ae.current.up && ($e.KeyW || $e.ArrowUp || $e.Up || da.up)) ||
+                (Ae.current.down &&
+                  ($e.KeyS || $e.ArrowDown || $e.Down || da.down)) ||
+                (Ae.current.left &&
+                  ($e.KeyA || $e.ArrowLeft || $e.Left || da.left)) ||
+                (Ae.current.right &&
+                  ($e.KeyD || $e.ArrowRight || $e.Right || da.right)),
+              yn = It && he.isMoving,
+              kl = 24,
+              Ml = 30,
+              vn = 18,
+              wt = 0.25;
+            if (yn && !he.isExhausted && he.stamina > 0)
+              ((he.sprinting = !0),
+                (he.stamina = Math.max(0, he.stamina - kl * Ye)),
+                (fa.current = 0.45),
+                he.stamina <= 0 &&
+                  ((he.stamina = 0),
+                  (he.isExhausted = !0),
+                  (he.sprinting = !1),
+                  m.current.playExhaustedSigh()));
+            else if (((he.sprinting = !1), fa.current > 0))
+              fa.current = Math.max(0, fa.current - Ye);
+            else {
+              const Hr = he.isMoving ? vn : Ml;
+              ((he.stamina = Math.min(za, he.stamina + Hr * Ye)),
+                he.isExhausted &&
+                  he.stamina >= za * wt &&
+                  (he.isExhausted = !1));
+            }
+            const ao = he.sprinting;
+            ((Math.abs((He.current ?? 100) - he.stamina) >= 2 ||
+              (he.stamina <= 0.5 && He.current > 0.5) ||
+              (he.stamina >= za - 0.5 && He.current < za - 0.5) ||
+              he.isExhausted !== oa.current ||
+              he.sprinting !== ga.current ||
+              za !== Sa.current) &&
+              ((He.current = he.stamina),
+              (oa.current = !!he.isExhausted),
+              (ga.current = !!he.sprinting),
+              (Sa.current = za),
+              oe(he.stamina),
+              X(za),
+              I(!!he.isExhausted),
+              Me(!!he.sprinting)),
+              qa !== 0 && Xa !== 0 && ((qa *= 0.7071), (Xa *= 0.7071)),
+              So.current && ((qa = 0), (Xa = 0)));
+            const Xr = Math.floor(he.x / Q.tileSize),
+              fr = Math.floor(he.y / Q.tileSize),
+              wn = Q.getTile(Xr, fr),
+              Si = wn.biome.moveSpeedMultiplier,
+              ki = 1 + (De.speedBonusPercent || 0) / 100,
+              Fr = c.current.getPlayerSpeedMultiplier(),
+              Cl = he.poisonTimer && he.poisonTimer > 0 ? 0.88 : 1,
+              Tn = he.isExhausted ? 0.88 : 1,
+              Sn = (ao ? he.speed * 1.6 : he.speed * Tn) * Si * ki * Fr * Cl;
+            if (((he.isMoving = qa !== 0 || Xa !== 0), he.isMoving)) {
+              const Hr = he.x + qa * Sn,
+                Mi = he.y + Xa * Sn;
+              ((() => {
+                const _r = Q.moveWithSlide(
+                  he.x,
+                  he.y,
+                  Hr - he.x,
+                  Mi - he.y,
+                  !0,
+                );
+                ((he.x = _r.x), (he.y = _r.y));
+              })(),
+                (he.walkCycle += ao ? 0.32 : 0.22),
+                Math.abs(qa) > Math.abs(Xa)
+                  ? (he.direction = qa > 0 ? "right" : "left")
+                  : (he.direction = Xa > 0 ? "down" : "up"),
+                Je - ie > (ao ? 240 : 340) &&
+                  (m.current.playFootstep(wn.biome.hasWater), (ie = Je)));
+            }
+            if (__autoCaveTimer.current > 0) {
+              __autoCaveTimer.current -= Ye;
+            } else {
+              const autoC = Q.getNearbyCaveDoorwayAt(he.x, he.y);
+              if (autoC) {
+                __autoCaveTimer.current = 1.0;
+                const oldX = he.x,
+                  oldY = he.y;
+                if (autoC.action === "enter_cave") {
+                  (m.current.playCaveEnter(),
+                    Q.enterCave(autoC.tx, autoC.ty, oldX, oldY),
+                    (Oa.current = { x: 0, y: 0 }),
+                    Et(!1),
+                    (he.x = autoC.tx * Q.tileSize + 14),
+                    (he.y = autoC.ty * Q.tileSize + 20),
+                    (he.vx = 0),
+                    (he.vy = 0),
+                    (he.direction = "down"));
+                  const trM =
+                    c.current && c.current.transferChasingMonsters
+                      ? c.current.transferChasingMonsters(
+                          oldX,
+                          oldY,
+                          he.x,
+                          he.y,
+                          !0,
+                        )
+                      : 0;
+                  const De = Q.getTile(autoC.tx, autoC.ty);
+                  (v(De.biome),
+                    S({ tx: autoC.tx, ty: autoC.ty }),
+                    !!(
+                      (qe.mao_esquerda != null &&
+                        qe.mao_esquerda.id.includes("torch")) ||
+                      (qe.mao_direita != null &&
+                        qe.mao_direita.id.includes("torch")) ||
+                      (qe.mao_esquerda != null &&
+                        qe.mao_esquerda.name.toLowerCase().includes("tocha")) ||
+                      (qe.mao_direita != null &&
+                        qe.mao_direita.name.toLowerCase().includes("tocha"))
+                    )
+                      ? (z(!0),
+                        m.current.playTorchIgnite())
+                      : z(!1));
+                  trM > 0 &&
+                    ve(
+                      `⚠️ ${trM === 1 ? "A criatura que te perseguia atravessou" : `${trM} criaturas que te perseguiam atravessaram`} a caverna com você!`,
+                    );
+                } else if (autoC.action === "exit_cave") {
+                  m.current.playCaveExit();
+                  const De = Q.exitCave(autoC.tx, autoC.ty);
+                  ((Oa.current = { x: 0, y: 0 }),
+                    Et(!1),
+                    (he.x = De.x),
+                    (he.y = De.y + 16),
+                    (he.vx = 0),
+                    (he.vy = 0),
+                    (he.direction = "down"));
+                  const trM =
+                    c.current && c.current.transferChasingMonsters
+                      ? c.current.transferChasingMonsters(
+                          oldX,
+                          oldY,
+                          he.x,
+                          he.y,
+                          !1,
+                        )
+                      : 0;
+                  const qe_t = Math.floor(he.x / Q.tileSize),
+                    Ze_t = Math.floor(he.y / Q.tileSize),
+                    sa = Q.getTile(qe_t, Ze_t);
+                  (v(sa.biome),
+                    S({ tx: qe_t, ty: Ze_t }),
+                    ve(
+                      `Emergindo de volta à superfície ensolarada [${qe_t}, ${Ze_t}]!`,
+                    ));
+                  trM > 0 &&
+                    ve(
+                      `⚠️ ${trM === 1 ? "A criatura que te perseguia atravessou" : `${trM} criaturas que te perseguiam atravessaram`} a saída com você!`,
+                    );
+                } else if (autoC.action === "enter_dungeon") {
+                  m.current.playCaveEnter();
+                  Q.enterDungeon(autoC.tx, autoC.ty, oldX, oldY);
+                  Oa.current = { x: 0, y: 0 };
+                  Et(!1);
+                  he.x = autoC.tx * Q.tileSize + 14;
+                  he.y = (autoC.ty + 1) * Q.tileSize + 14;
+                  he.vx = 0;
+                  he.vy = 0;
+                  he.direction = "down";
+                  const qe_t = Math.floor(he.x / Q.tileSize),
+                    Ze_t = Math.floor(he.y / Q.tileSize);
+                  v(Q.getTile(qe_t, Ze_t).biome);
+                  S({ tx: qe_t, ty: Ze_t });
+                  ve("Descendo a escadaria para as masmorras e calabouços sombrios...");
+                } else if (autoC.action === "exit_dungeon") {
+                  m.current.playCaveExit();
+                  const targetTx =
+                      autoC.prop?.targetTx !== undefined ? autoC.prop.targetTx : autoC.tx,
+                    targetTy =
+                      autoC.prop?.targetTy !== undefined ? autoC.prop.targetTy : autoC.ty;
+                  const De = Q.exitDungeon(targetTx, targetTy);
+                  Oa.current = { x: 0, y: 0 };
+                  Et(!1);
+                  he.x = De.x;
+                  he.y = De.y;
+                  he.vx = 0;
+                  he.vy = 0;
+                  he.direction = "down";
+                  const qe_t = Math.floor(he.x / Q.tileSize),
+                    Ze_t = Math.floor(he.y / Q.tileSize);
+                  v(Q.getTile(qe_t, Ze_t).biome);
+                  S({ tx: qe_t, ty: Ze_t });
+                  ve("Subindo os degraus de volta aos salões do subsolo!");
+                }
+              }
+            }
+          }
+          const Nt = { x: he.x + Oa.current.x, y: he.y + Oa.current.y },
+            rt = Ka.current,
+            ka = { ...rr.current, zoom: rt },
+            ht = window.innerWidth,
+            ho = window.innerHeight;
+          if ((q.render(he, ht, ho, ka, Nt), ze++, ze % 10 === 0)) {
+            (A(timeOfDayRef.current),
+              Ce(he),
+              (Ge !== je.current.tx || Pe !== je.current.ty) &&
+                ((je.current = { tx: Ge, ty: Pe }), S({ tx: Ge, ty: Pe })),
+              aa.biome.id !== Be.current &&
+                ((Be.current = aa.biome.id), v(aa.biome)));
+            let qa = null;
+            for (let za = -1; za <= 1; za++) {
+              for (let It = -1; It <= 1; It++) {
+                const $o = Q.getTile(Ge + za, Pe + It);
+                if ($o.biome.hasWater) {
+                  qa = { tx: Ge + za, ty: Pe + It, biomeName: $o.biome.namePt };
+                  break;
+                }
+              }
+              if (qa) break;
+            }
+            const Xa = ma.current;
+            ((!Xa && qa) ||
+              (Xa && !qa) ||
+              (Xa && qa && (Xa.tx !== qa.tx || Xa.ty !== qa.ty))) &&
+              ((ma.current = qa), Aa(qa));
+          }
+          (Je - na > 1e4 && ((na = Je), Q.pruneTileCache(Ge, Pe, 75, 2400)),
+            (F = requestAnimationFrame(ia)));
+        };
+        return (
+          (F = requestAnimationFrame(ia)),
+          () => {
+            (cancelAnimationFrame(F), window.removeEventListener("resize", ge));
+          }
+        );
+      }, []),
+      J.useEffect(() => {
+        const E = t.current;
+        if (!E) return;
+        let D = 0,
+          Q = 0,
+          q = 0,
+          F = 0,
+          ie = !1,
+          ge = 0,
+          re = 1,
+          me = 0;
+        // 🍲 Toque/clique na panela que está no fogo -> abre o modal de ingredientes (igual à tecla R)
+        const tapPot = (cx, cy) => {
+          const Kr = E.getBoundingClientRect(),
+            zz = Ka.current,
+            pl = f.current,
+            wx = (cx - Kr.left - E.width / 2) / zz + pl.x + Oa.current.x,
+            wy = (cy - Kr.top - E.height / 2) / zz + pl.y + Oa.current.y,
+            cf = o.current.getNearbyCampfire(wx, wy, Math.max(55, 30 / zz));
+          if (cf && cf.prop && cf.prop.cookingPot) {
+            Ga.current.handleCookingPot();
+            return !0;
+          }
+          return !1;
+        };
+        const ce = (Pe) => {
+            if (Pe.touches.length === 1) {
+              ((ie = !0),
+                (D = Pe.touches[0].clientX),
+                (Q = Pe.touches[0].clientY),
+                (q = Oa.current.x),
+                (F = Oa.current.y));
+              const aa = Date.now();
+              (aa - me < 320 && Oo(), (me = aa));
+            } else
+              Pe.touches.length === 2 &&
+                ((ie = !1),
+                (ge = Math.hypot(
+                  Pe.touches[0].clientX - Pe.touches[1].clientX,
+                  Pe.touches[0].clientY - Pe.touches[1].clientY,
+                )),
+                (re = Ka.current));
+          },
+          Re = (Pe) => {
+            if (Pe.touches.length === 1 && ie) {
+              const aa = Pe.touches[0].clientX - D,
+                Ke = Pe.touches[0].clientY - Q,
+                De = Ka.current;
+              ((Oa.current.x = q - aa / De),
+                (Oa.current.y = F - Ke / De),
+                Math.hypot(Oa.current.x, Oa.current.y) > 15 && Et(!0),
+                Pe.cancelable && Pe.preventDefault());
+            } else if (Pe.touches.length === 2 && ge > 0) {
+              const Ke =
+                  Math.hypot(
+                    Pe.touches[0].clientX - Pe.touches[1].clientX,
+                    Pe.touches[0].clientY - Pe.touches[1].clientY,
+                  ) / ge,
+                De = Math.min(2.5, Math.max(0.25, +(re * Ke).toFixed(2)));
+              (V(De), (Ka.current = De), Pe.cancelable && Pe.preventDefault());
+            }
+          },
+          Ce = (Pe) => {
+            const wasPan = ie,
+              tp = Pe && Pe.type === "touchend" && Pe.changedTouches && Pe.changedTouches[0];
+            ((ie = !1), (ge = 0));
+            if (
+              wasPan &&
+              tp &&
+              Pe.touches.length === 0 &&
+              Math.hypot(tp.clientX - D, tp.clientY - Q) < 10 &&
+              tapPot(tp.clientX, tp.clientY)
+            )
+              Pe.cancelable && Pe.preventDefault();
+          };
+        let ze = !1,
+          la = 0,
+          na = 0,
+          ia = 0,
+          Je = 0;
+        const he = (Pe) => {
+            if (Pe.button === 0) {
+              mouseScreenPos.current = { x: Pe.clientX, y: Pe.clientY, active: !0 };
+              const Ke = E.getBoundingClientRect();
+              const De = Pe.clientX - Ke.left;
+              const qe = Pe.clientY - Ke.top;
+              const dx = De - E.width / 2;
+              const dy = qe - E.height / 2;
+              const angle = Math.atan2(dy, dx);
+              const sa = f.current;
+              if (sa && !sa.isDead) {
+                sa.direction = angle > Math.PI * 0.25 && angle < Math.PI * 0.75 ? "down" : angle < -Math.PI * 0.25 && angle > -Math.PI * 0.75 ? "up" : angle >= 0 ? "right" : "left";
+                sa.attackAngle = angle;
+                Sl();
+              }
+              ze = !0;
+              la = Pe.clientX;
+              na = Pe.clientY;
+              ia = Oa.current.x;
+              Je = Oa.current.y;
+            } else if (Pe.button === 2) {
+              Pe.preventDefault();
+              mouseScreenPos.current = { x: Pe.clientX, y: Pe.clientY, active: !0 };
+              const Ke = E.getBoundingClientRect();
+              const zoom = Ka.current || 1;
+              const playerScreenX = Ke.left + Ke.width / 2 - Oa.current.x * zoom;
+              const playerScreenY = Ke.top + Ke.height / 2 - Oa.current.y * zoom;
+              const dx = Pe.clientX - playerScreenX;
+              const dy = Pe.clientY - playerScreenY;
+              const angle = Math.atan2(dy, dx);
+              const worldDist = Math.hypot(dx, dy) / zoom;
+              const hasSlingshot = [Da.current.mao_esquerda, Da.current.mao_direita].some((it) => {
+                const nm = (it?.name || "").toLowerCase(), idv = (it?.id || "").toLowerCase();
+                return nm.includes("estilingue") || idv.includes("estilingue") || idv.includes("slingshot");
+              });
+              startPebbleAim(angle, Math.max(35, Math.min(hasSlingshot ? 660 : 330, worldDist)));
+            }
+          },
+          $e = (Pe) => {
+            mouseScreenPos.current = { x: Pe.clientX, y: Pe.clientY, active: !0 };
+            if (pebbleKeyRef.current.pressedAt && !pebbleKeyRef.current.cancelled) {
+              const Ke = E.getBoundingClientRect();
+              const zoom = Ka.current || 1;
+              const playerScreenX = Ke.left + Ke.width / 2 - Oa.current.x * zoom;
+              const playerScreenY = Ke.top + Ke.height / 2 - Oa.current.y * zoom;
+              const dx = Pe.clientX - playerScreenX;
+              const dy = Pe.clientY - playerScreenY;
+              const angle = Math.atan2(dy, dx);
+              const worldDist = Math.hypot(dx, dy) / zoom;
+              const hasSlingshot = [Da.current.mao_esquerda, Da.current.mao_direita].some((it) => {
+                const nm = (it?.name || "").toLowerCase(), idv = (it?.id || "").toLowerCase();
+                return nm.includes("estilingue") || idv.includes("estilingue") || idv.includes("slingshot");
+              });
+              updatePebbleAim(angle, Math.max(35, Math.min(hasSlingshot ? 660 : 330, worldDist)));
+            }
+            if (!ze) return;
+            const aa = Pe.clientX - la,
+              Ke = Pe.clientY - na;
+            if (Math.hypot(aa, Ke) > 4) {
+              const De = Ka.current;
+              ((Oa.current.x = ia - aa / De),
+                (Oa.current.y = Je - Ke / De),
+                Math.hypot(Oa.current.x, Oa.current.y) > 15 && Et(!0));
+            }
+          },
+          da = (Pe) => {
+            if (Pe.button === 2) {
+              Pe.preventDefault();
+              if (pebbleKeyRef.current.pressedAt) {
+                const Ke = E.getBoundingClientRect();
+                const zoom = Ka.current || 1;
+                const playerScreenX = Ke.left + Ke.width / 2 - Oa.current.x * zoom;
+                const playerScreenY = Ke.top + Ke.height / 2 - Oa.current.y * zoom;
+                const dx = Pe.clientX - playerScreenX;
+                const dy = Pe.clientY - playerScreenY;
+                const angle = Math.atan2(dy, dx);
+                const worldDist = Math.hypot(dx, dy) / zoom;
+                const hasSlingshot = [Da.current.mao_esquerda, Da.current.mao_direita].some((it) => {
+                  const nm = (it?.name || "").toLowerCase(), idv = (it?.id || "").toLowerCase();
+                  return nm.includes("estilingue") || idv.includes("estilingue") || idv.includes("slingshot");
+                });
+                endPebbleAim(angle, Math.max(35, Math.min(hasSlingshot ? 660 : 330, worldDist)));
+              }
+              return;
+            }
+            if (!ze) return;
+            if (((ze = !1), Math.hypot(Pe.clientX - la, Pe.clientY - na) < 6)) {
+              tapPot(Pe.clientX, Pe.clientY);
+            }
+          },
+          Ye = () => {
+            Oo();
+          },
+          noContext = (Pe) => {
+            Pe.preventDefault();
+          },
+          Ge = (Pe) => {
+            Pe.preventDefault();
+            const aa = Pe.deltaY < 0 ? 1.15 : 0.87;
+            V((Ke) => {
+              const De = Math.min(2.5, Math.max(0.25, +(Ke * aa).toFixed(2)));
+              return ((Ka.current = De), De);
+            });
+          };
+        return (
+          E.addEventListener("touchstart", ce, { passive: !1 }),
+          E.addEventListener("touchmove", Re, { passive: !1 }),
+          E.addEventListener("touchend", Ce),
+          E.addEventListener("touchcancel", Ce),
+          E.addEventListener("mousedown", he),
+          E.addEventListener("contextmenu", noContext),
+          window.addEventListener("mousemove", $e),
+          window.addEventListener("mouseup", da),
+          E.addEventListener("dblclick", Ye),
+          E.addEventListener("wheel", Ge, { passive: !1 }),
+          () => {
+            (E.removeEventListener("touchstart", ce),
+              E.removeEventListener("touchmove", Re),
+              E.removeEventListener("touchend", Ce),
+              E.removeEventListener("touchcancel", Ce),
+              E.removeEventListener("mousedown", he),
+              E.removeEventListener("contextmenu", noContext),
+              window.removeEventListener("mousemove", $e),
+              window.removeEventListener("mouseup", da),
+              E.removeEventListener("dblclick", Ye),
+              E.removeEventListener("wheel", Ge));
+          }
+        );
+      }, [Oo]),
+      h.jsxs("div", {
+        ref: e,
+        className: "relative w-full h-full overflow-hidden bg-slate-950",
+        children: [
+          h.jsx("canvas", {
+            ref: t,
+            id: "game-canvas",
+            className:
+              "block w-full h-full cursor-grab active:cursor-grabbing touch-none select-none",
+          }),
+          h.jsx(Hud, {
+            currentBiome: w,
+            coords: T,
+            seed: p,
+            timeOfDay: P,
+            setTimeOfDay: setTimeOfDaySync,
+            cycleDurationSec: cycleDurationSec,
+            setCycleDurationSec: setCycleDurationSec,
+            cyclePaused: cyclePaused,
+            setCyclePaused: setCyclePaused,
+            soundEnabled: x,
+            setSoundEnabled: M,
+            lanternActive: wl,
+            setLanternActive: z,
+            zoom: K,
+            setZoom: V,
+            showGrid: O,
+            setShowGrid: _,
+            onRerollSeed: mo,
+            onTeleportToBiome: dt,
+            onInteract: qo,
+            onAttack: Sl,
+            onThrowPebble: Rl,
+            onPebbleAimStart: startPebbleAim,
+            onPebbleAimEnd: endPebbleAim,
+            onPebbleAimUpdate: updatePebbleAim,
+            toastMessage: se,
+            minimapRef: l,
+            onMobileDirection: Bo,
+            isCameraOffset: At,
+            onRecenterCamera: Oo,
+            onToggleTorch: dr,
+            onOpenInventory: Qt,
+            inventoryItemCount: Ve.length,
+            equipment: Oe,
+            backpack: Ve,
+            gold: ct,
+            playerHp: N,
+            playerMaxHp: ne,
+            isDead: G,
+            onRespawn: Tl,
+            playerStamina: te,
+            playerMaxStamina: Ne,
+            isExhausted: C,
+            isSprinting: be,
+            isFireProtected: Te,
+            nearbyCampfire: _e,
+            onFeedCampfire: Yr,
+            onRoastFish: Mo,
+            onCookingPot: kG,
+            savedCampfire: $a,
+            onUseBeltSlot: Ur,
+            worldEngine: o.current,
+            devMode:
+              typeof (props && props.devMode) === "boolean"
+                ? props.devMode
+                : Boolean(window.__devMode),
+          }),
+          h.jsx(InventoryModal, {
+            isOpen: qr,
+            onClose: Qt,
+            equipment: Oe,
+            backpack: Ve,
+            onEquipItem: ir,
+            onUnequipSlot: Vr,
+            onUseConsumable: lc,
+            onFuseItems: ic,
+            gold: ct,
+            nearbyCampfire: _e,
+            onFeedCampfire: Yr,
+            onRoastFish: Mo,
+            onCookingPot: zK,
+            onOpenCookingModal: () => setCookingModalOpen(!0),
+            onButcherCarcass: bn,
+            onDropItem: rc,
+            onMoveToBeltSlot: gn,
+            onInvertBeltSlot: Ur,
+            currentBiome: w,
+            onTeleportToBiome: dt,
+            devMode:
+              typeof (props && props.devMode) === "boolean"
+                ? props.devMode
+                : Boolean(window.__devMode),
+            onDevAddItem: (item, count = 1) => {
+              if (!Da.current.mochila || Da.current.mochila.id !== "item_mochila_reforcada") {
+                const devBackpack = {
+                  id: "item_mochila_reforcada",
+                  name: "Mochila de Couro Reforçada",
+                  icon: "🎒",
+                  color: "#6366f1",
+                  slot: "mochila",
+                  categoryType: "equipment",
+                  isEquippable: true,
+                  rarity: "raro",
+                  description: "Mochila resistente com múltiplos compartimentos (+15 slots extras).",
+                  value: 120,
+                };
+                Wa((prevEq) => ({ ...prevEq, mochila: devBackpack }));
+                Da.current.mochila = devBackpack;
+              }
+              const maxSlots = 21;
+              const isStackable =
+                item.stackCount !== undefined ||
+                item.categoryType === "material" ||
+                item.categoryType === "consumable";
+              const baseId = (item.id || "item").replace(/^dev_/, "");
+              ra((prev) => {
+                const idx = prev.findIndex((i) => i.name === item.name);
+                if (idx >= 0 && isStackable) {
+                  const next = [...prev];
+                  next[idx] = {
+                    ...next[idx],
+                    stackCount: (next[idx].stackCount || 1) + count,
+                  };
+                  return next;
+                }
+                const newItem = {
+                  ...item,
+                  id: `item_${baseId}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                  stackCount: count,
+                };
+                if (prev.length >= maxSlots) {
+                  return [...prev.slice(1), newItem];
+                }
+                return [...prev, newItem];
+              });
+              ve(`🎒 [DEV] +${count}x ${item.name} no inventário comum!`);
+              m.current && m.current.playChestChime && m.current.playChestChime();
+            },
+            onDevEquipItem: (item) => {
+              if (item.isEquippable && item.slot) {
+                const baseId = (item.id || "item").replace(/^dev_/, "");
+                const newItem = {
+                  ...item,
+                  id: `eq_${baseId}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                };
+                Wa((prev) => ({ ...prev, [item.slot]: newItem }));
+                ra((prev) => {
+                  const maxSlots = 21;
+                  const idx = prev.findIndex((i) => i.name === item.name);
+                  if (idx >= 0) return prev;
+                  if (prev.length >= maxSlots) return [...prev.slice(1), { ...newItem, id: `inv_${newItem.id}` }];
+                  return [...prev, { ...newItem, id: `inv_${newItem.id}` }];
+                });
+                ve(`⚡ [DEV] Equipado e adicionado à mochila: ${item.name}!`);
+                m.current && m.current.playEquipItem && m.current.playEquipItem();
+              }
+            },
+            onDevAddGold: (amount) => {
+              _t((prevGold) => prevGold + amount);
+              ve(`🛠️ [DEV] +${amount} Ouro adicionado!`);
+              m.current && m.current.playCoinPickup && m.current.playCoinPickup();
+            },
+            onDevClearBackpack: () => {
+              ra([]);
+              ve("🛠️ [DEV] Mochila esvaziada!");
+            },
+            onDevEquipBackpack: () => {
+              const mochilaItem = {
+                id: `dev_backpack_${Date.now()}`,
+                name: "Mochila de Couro Reforçada",
+                slot: "mochila",
+                isEquippable: true,
+                categoryType: "equipment",
+                rarity: "incomum",
+                description:
+                  "Mochila reforçada com correias resistentes. Concede +15 slots de itens (+15 slots anil, total 21)!",
+                stats: { defense: 3, staminaBonus: 35 },
+                icon: "Briefcase",
+                color: "#6366f1",
+                value: 90,
+              };
+              Wa((prev) => ({ ...prev, mochila: mochilaItem }));
+              ve("🛠️ [DEV] Mochila de Couro Reforçada (+15 slots) equipada!");
+              m.current && m.current.playEquipItem && m.current.playEquipItem();
+            },
+          }),
+          cookingModalOpen &&
+            (() => {
+              const E = o.current,
+                D = f.current;
+              let potState = null;
+              if (E && D) {
+                const Q = E.getNearbyCampfire(D.x, D.y, 140);
+                if (Q && Q.prop.cookingPot) potState = Q.prop.cookingPot;
+              }
+              if (!potState) {
+                setTimeout(() => setCookingModalOpen(!1), 50);
+                return null;
+              }
+              const elapsed = Date.now() - potState.startTime,
+                ready = elapsed >= 45e3,
+                remain = Math.max(0, Math.ceil((45e3 - elapsed) / 1e3)),
+                contents = potState.ingredients || [],
+                potName = (potState.potItem || {}).name || "Panela",
+                isBig = String(potName).toLowerCase().includes("caldeir"),
+                slots = 6;
+              return h.jsx("div", {
+                className: "fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4",
+                onClick: () => setCookingModalOpen(!1),
+                children: h.jsxs("div", {
+                  className: "w-full max-w-2xl rounded-2xl border border-orange-500/40 bg-slate-950/95 p-4 shadow-2xl flex flex-col md:flex-row gap-4",
+                  onClick: (ev) => ev.stopPropagation(),
+                  children: [
+                    // ESQUERDA: inventario completo sem filtros
+                    h.jsxs("div", {
+                      className: "flex-1 min-w-0",
+                      children: [
+                        h.jsxs("div", {
+                          className: "text-xs font-bold text-amber-300 uppercase tracking-wider mb-2",
+                          children: ["🎒 Mochila — clique para colocar dentro (até ", slots, ")"],
+                        }),
+                        h.jsx("div", {
+                          className: "max-h-64 overflow-y-auto grid grid-cols-2 gap-1.5 pr-1",
+                          children: Ve.length === 0
+                            ? h.jsx("div", { className: "col-span-2 text-slate-500 text-xs py-4 text-center", children: "Mochila vazia." })
+                            : Ve.map((it) =>
+                                h.jsxs("button", {
+                                  className:
+                                    "flex items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-900/80 hover:bg-slate-800 hover:border-orange-500/60 px-2 py-1.5 text-left transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                                  disabled: contents.length >= slots,
+                                  onClick: () => wK(it),
+                                  children: [
+                                    h.jsx(ItemIcon, { item: it, size: 28 }),
+                                    h.jsxs("span", {
+                                      className: "min-w-0",
+                                      children: [
+                                        h.jsx("span", { className: "block text-[11px] font-semibold text-slate-100 truncate", children: it.name }),
+                                        h.jsx("span", { className: "block text-[9px] text-slate-400", children: `x${it.stackCount || 1}` }),
+                                      ],
+                                    }),
+                                  ],
+                                }, it.id || it.name),
+                              ),
+                        }),
+                      ],
+                    }),
+                    // DIREITA: visual do caldeirao/panela com os slots
+                    h.jsxs("div", {
+                      className: "w-full md:w-64 shrink-0 flex flex-col items-center gap-2 rounded-xl border border-orange-800/50 bg-gradient-to-b from-slate-900 to-orange-950/40 p-3",
+                      children: [
+                        h.jsx("div", { className: "text-base font-extrabold text-orange-200", children: [potState.potItem ? h.jsx(ItemIcon, { item: potState.potItem, size: 26, className: "align-middle mr-1.5" }) : (isBig ? "🍲 " : "🍳 "), potName] }),
+                        h.jsx("div", { className: "text-[10px] text-slate-300", children: potState.hasWater ? "💧 Com água (cozido)" : "🔥 Vazia (fritura)" }),
+                        h.jsx("div", {
+                          className: "grid grid-cols-3 gap-1.5 w-full",
+                          children: Array.from({ length: slots }).map((_, i) => {
+                            const ing = contents[i];
+                            return h.jsxs("div", {
+                              className:
+                                "h-14 rounded-lg border flex flex-col items-center justify-center text-center p-1 " +
+                                (ing
+                                  ? "border-amber-500/70 bg-amber-900/40"
+                                  : "border-dashed border-slate-600/60 bg-slate-900/40"),
+                              children: [
+                                ing
+                                  ? h.jsx(ItemIcon, { item: ing, size: 28 })
+                                  : h.jsx("span", { className: "text-lg leading-none", children: "＋" }),
+                                ing
+                                  ? h.jsx("span", { className: "text-[8px] text-amber-100 truncate max-w-full mt-0.5", children: ing.name })
+                                  : h.jsx("span", { className: "text-[8px] text-slate-500 mt-0.5", children: "vazio" }),
+                              ],
+                            }, i);
+                          }),
+                        }),
+                        ready
+                          ? h.jsxs("div", { className: "text-[11px] font-bold text-green-400 animate-pulse", children: ["✅ PRONTO! ", contents.length > 0 ? "Recolha a refeição:" : "(panela só com água/vazia — recolha de volta)"] })
+                          : h.jsxs("div", { className: "text-[11px] text-amber-300", children: ["⏳ Cozinhando… faltam ", remain, "s"] }),
+                        h.jsxs("div", { className: "flex flex-col gap-1.5 w-full mt-1", children: [
+                          h.jsxs("button", {
+                            className:
+                              "py-2 rounded-xl text-xs font-bold transition cursor-pointer " +
+                              (ready
+                                ? "bg-green-600 hover:bg-green-500 text-white"
+                                : "bg-slate-800 hover:bg-slate-700 text-slate-300"),
+                            onClick: () => {
+                              qo();
+                              setCookingModalOpen(!1);
+                            },
+                            children: [ready ? "🍽️ Recolher Prato Pronto" : `⏳ Aguardar (${remain}s) — recolher mesmo assim`],
+                          }),
+                          h.jsx("button", {
+                            className: "py-1.5 rounded-xl text-[11px] font-semibold bg-slate-800/70 hover:bg-slate-700 text-slate-300 transition cursor-pointer",
+                            onClick: () => setCookingModalOpen(!1),
+                            children: "✖ Fechar (panela continua no fogo)",
+                          }),
+                        ] }),
+                        h.jsx("div", { className: "text-[9px] text-slate-500 text-center", children: "Cada combinação de ingredientes pode dar um resultado diferente após ~45s no fogo." }),
+                      ],
+                    }),
+                  ],
+                }),
+              });
+            })(),
+          yl &&
+            h.jsx(r1, {
+              creatureType: yl.creatureType,
+              carcassItem: yl.carcassItem,
+              knifeItem: yl.knifeItem,
+              backpack: Ve,
+              maxBackpackSlots: ot(Oe.mochila),
+              onStoreItem: bi,
+              onClose: () => pn(null),
+            }),
+          readerOpen &&
+            readerItem &&
+            h.jsx(window.Game.BookScrollReaderModal, {
+              item: readerItem,
+              isOpen: readerOpen,
+              onClose: () => setReaderOpen(!1),
+            }),
+          We &&
+            !Lo &&
+            (or || Ya) &&
+            h.jsxs("div", {
+              id: "spearfishing-action-prompt",
+              className:
+                "fixed bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2",
+              children: [
+                or &&
+                  h.jsxs("button", {
+                    id: "btn-collect-water",
+                    onClick: Ut,
+                    className:
+                      "flex items-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-2xl shadow-blue-950/80 border border-sky-300/50 backdrop-blur-md transition-all hover:scale-105 active:scale-95 cursor-pointer",
+                    title: "Coletar água fresca da lagoa",
+                    children: [
+                      h.jsx("div", {
+                        className:
+                          "p-1.5 rounded-xl bg-white/20 shadow-inner text-base",
+                        children: or.icon || "🏺",
+                      }),
+                      h.jsxs("div", {
+                        className: "flex flex-col text-left",
+                        children: [
+                          h.jsxs("span", {
+                            className:
+                              "flex items-center gap-1.5 font-black uppercase tracking-wider text-[11px] sm:text-xs text-blue-100",
+                            children: [
+                              "Coletar Água",
+                              h.jsx("span", {
+                                className:
+                                  "px-1.5 py-0.5 rounded bg-black/40 text-[10px] font-mono border border-white/20",
+                                children: "U",
+                              }),
+                            ],
+                          }),
+                          h.jsx("span", {
+                            className:
+                              "text-[10px] sm:text-[11px] text-blue-200/90 font-medium",
+                            children: or.name,
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                Ya &&
+                  h.jsxs("button", {
+                    id: "btn-start-spearfishing",
+                    onClick: nr,
+                    className:
+                      "flex items-center gap-2.5 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-gradient-to-r from-sky-600 via-cyan-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-2xl shadow-cyan-950/80 border border-cyan-300/50 backdrop-blur-md transition-all hover:scale-105 active:scale-95 cursor-pointer hover:shadow-cyan-500/30",
+                    title: "Pescar com lança na margem da água",
+                    children: [
+                      h.jsx("div", {
+                        className: "p-1.5 rounded-xl bg-white/20 shadow-inner",
+                        children: h.jsx(Dp, {
+                          className:
+                            "h-4 w-4 sm:h-5 sm:w-5 text-white animate-pulse",
+                        }),
+                      }),
+                      h.jsxs("div", {
+                        className: "flex flex-col text-left",
+                        children: [
+                          h.jsxs("span", {
+                            className:
+                              "flex items-center gap-1.5 font-black uppercase tracking-wider text-[11px] sm:text-xs text-cyan-100",
+                            children: [
+                              "Pesca com Lança",
+                              h.jsx("span", {
+                                className:
+                                  "px-1.5 py-0.5 rounded bg-black/40 text-[10px] font-mono border border-white/20",
+                                children: "P",
+                              }),
+                            ],
+                          }),
+                          h.jsxs("span", {
+                            className:
+                              "text-[10px] sm:text-[11px] text-cyan-200/90 font-medium",
+                            children: [
+                              "Margeando ",
+                              We.biomeName,
+                              " • ",
+                              Ya.name,
+                            ],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+              ],
+            }),
+          Lo &&
+            Ya &&
+            We &&
+            h.jsx(o1, {
+              spearItem: Ya,
+              biomeName: We.biomeName,
+              audio: m.current,
+              onCatchFish: yi,
+              onClose: $r,
+            }),
+        ],
+      })
+    );
+  };

@@ -1,0 +1,2386 @@
+/* js/engine/creatures-manager.js
+ * Gerenciador de criaturas/entidades (CreatureManager): monstros, carcacas, itens no chao, projeteis.
+ * Trecho de legacy/app.original.js (linhas 30087-32456); unica mudanca: nomes renomeados (ver RENOMEADOS.md).
+ * Escopo global compartilhado entre os <script>: a ORDEM em index.html importa.
+ */
+"use strict";
+  class CreatureManager {
+    constructor(t, l) {
+      ((this.monsters = []),
+        (this.carcasses = []),
+        (this.droppedItems = []),
+        (this.floatingTexts = []),
+        (this.slashEffects = []),
+        (this.pebbleProjectiles = []),
+        (this.hitParticles = []),
+        (this.slimeParticles = []),
+        (this.spawnCooldown = 0),
+        (this.slimeSwarmTimer = 2),
+        (this.nextId = 1),
+        (this.lastPlayerX = 0),
+        (this.lastPlayerY = 0),
+        (this.lastIsUnderground = !1),
+        (this.animTimer = 0),
+        (this.engine = t),
+        (this.audio = l));
+    }
+    setAudio(t) {
+      this.audio = t;
+    }
+    getMonsterFacing(t, l, o = "down") {
+      const u = Math.abs(t),
+        m = Math.abs(l);
+      return u < 0.04 && m < 0.04
+        ? o
+        : m > u * (o === "up" || o === "down" ? 0.82 : 1.22)
+          ? l > 0
+            ? "down"
+            : "up"
+          : t >= 0
+            ? "right"
+            : "left";
+    }
+    getMonsterFacingToTarget(t, l, o, u, m = "down") {
+      const c = o - t,
+        f = u - l;
+      return Math.abs(c) < 1 && Math.abs(f) < 1
+        ? m
+        : Math.abs(f) > Math.abs(c)
+          ? f > 0
+            ? "down"
+            : "up"
+          : c >= 0
+            ? "right"
+            : "left";
+    }
+    scareMonstersNearFire(t, l, o) {
+      for (const u of this.monsters) {
+        if (!gl(u.type) || u.hp <= 0) continue;
+        if (Math.hypot(u.x - t, u.y - l) < o * 1.3) {
+          ((u.fleeFireTimer = 3.8),
+            (u.giveUpPursuitTimer = 8),
+            (u.attackCooldown = 3.5),
+            u.isLeaping && (u.isLeaping = !1),
+            u.attached && (u.attached = !1));
+          const c = Math.atan2(u.y - l, u.x - t) || Math.random() * Math.PI * 2;
+          u.targetAngle = c;
+          const f = u.speed * 1.55;
+          ((u.vx = Math.cos(c) * f),
+            (u.vy = Math.sin(c) * f),
+            (u.facing = this.getMonsterFacing(u.vx, u.vy, u.facing)),
+            (!u.fireFearTimer || u.fireFearTimer <= 0) &&
+              (u.fireFearTimer = 2.5));
+        }
+      }
+    }
+    getAnimalFireDeterrence(t, l) {
+      if (!gl(t.type))
+        return {
+          isDeterred: !1,
+          canAttack: !0,
+          fireSourceX: l.x,
+          fireSourceY: l.y,
+        };
+      const o = Math.hypot(l.x - t.x, l.y - t.y);
+      if (l.hasTorch && o < 58 && !l.isDead)
+        return {
+          isDeterred: !0,
+          canAttack: !1,
+          fireSourceX: l.x,
+          fireSourceY: l.y,
+        };
+      const u = this.engine.getClosestLitCampfire(t.x, t.y, 650);
+      if (u) {
+        const m = Math.hypot(t.x - u.fireX, t.y - u.fireY),
+          c = Math.hypot(l.x - u.fireX, l.y - u.fireY),
+          f = u.lightRadius * 0.5;
+        if (m < f)
+          return {
+            isDeterred: !0,
+            canAttack: !1,
+            fireSourceX: u.fireX,
+            fireSourceY: u.fireY,
+          };
+        if (!l.isDead && c < f)
+          return {
+            isDeterred: m < f + 24 || o < 50,
+            canAttack: !1,
+            fireSourceX: u.fireX,
+            fireSourceY: u.fireY,
+          };
+      }
+      return {
+        isDeterred: !1,
+        canAttack: !0,
+        fireSourceX: l.x,
+        fireSourceY: l.y,
+      };
+    }
+    isPathClear(x, y, ang, dist) {
+      const e = this.engine,
+        ux = Math.cos(ang),
+        uy = Math.sin(ang);
+      for (const k of [0.35, 0.7, 1.0]) {
+        const qx = x + ux * dist * k,
+          qy = y + uy * dist * k;
+        const tx = Math.floor(qx / e.tileSize);
+        const ty = Math.floor(qy / e.tileSize);
+        if (
+          !e.isTilePassable(tx, ty) ||
+          e.isCaveRockAt(qx, qy) ||
+          e.isCliffDarkWallAt(qx, qy) ||
+          e.isTrunkAt(qx, qy)
+        ) {
+          return !1;
+        }
+      }
+      return !0;
+    }
+    steerAroundObstacles(p, targetX, targetY, speed, isPrey = !1) {
+      const baseAngle = isPrey
+        ? Math.atan2(p.y - targetY, p.x - targetX)
+        : Math.atan2(targetY - p.y, targetX - p.x);
+      const probeDist = Math.max(20, speed * 60 * 0.45);
+      if (this.isPathClear(p.x, p.y, baseAngle, probeDist)) {
+        p.contourTimer = 0;
+        return baseAngle;
+      }
+      if (!p.contourSide || (p.contourTimer || 0) <= 0) {
+        let chosenSide = 1;
+        for (const angleOff of [0.55, 0.95, 1.35]) {
+          const clearPos = this.isPathClear(p.x, p.y, baseAngle + angleOff, probeDist);
+          const clearNeg = this.isPathClear(p.x, p.y, baseAngle - angleOff, probeDist);
+          if (clearPos && !clearNeg) { chosenSide = 1; break; }
+          if (clearNeg && !clearPos) { chosenSide = -1; break; }
+        }
+        p.contourSide = chosenSide;
+        p.contourTimer = 0.8 + Math.random() * 0.4;
+      }
+      const primarySide = p.contourSide || 1;
+      const angleOffsets = [0.38, 0.75, 1.1, 1.48, 1.85, 2.2];
+      for (const off of angleOffsets) {
+        const a1 = baseAngle + off * primarySide;
+        if (this.isPathClear(p.x, p.y, a1, probeDist)) return a1;
+        const a2 = baseAngle - off * primarySide;
+        if (this.isPathClear(p.x, p.y, a2, probeDist)) {
+          p.contourSide = -primarySide;
+          return a2;
+        }
+      }
+      return baseAngle + Math.PI * 0.5 * primarySide;
+    }
+    isFleePathFree(p, ang, dist) {
+      const e = this.engine,
+        ux = Math.cos(ang),
+        uy = Math.sin(ang);
+      for (const k of [0.34, 0.67, 1]) {
+        const qx = p.x + ux * dist * k,
+          qy = p.y + uy * dist * k;
+        if (
+          !e.isTilePassable(
+            Math.floor(qx / e.tileSize),
+            Math.floor(qy / e.tileSize),
+          ) ||
+          e.isCaveRockAt(qx, qy) ||
+          e.isTrunkAt(qx, qy)
+        )
+          return !1;
+      }
+      return !0;
+    }
+    pickFleeAngle(p, fx, fy, t, speed) {
+      p.fleeDirTimer = (p.fleeDirTimer || 0) - t;
+      const dist = Math.max(20, speed * 60 * 0.4);
+      if (
+        p.fleeDirTimer > 0 &&
+        p.fleeDir !== void 0 &&
+        this.isFleePathFree(p, p.fleeDir, dist)
+      )
+        return p.fleeDir;
+      const base =
+        Math.atan2(p.y - fy, p.x - fx) || Math.random() * Math.PI * 2;
+      p.fleeSide || (p.fleeSide = Math.random() < 0.5 ? 1 : -1);
+      let best = base,
+        found = !1;
+      for (const off of [0, 0.5, 1, 1.5, 2.2]) {
+        for (const sg of off === 0 ? [1] : [p.fleeSide, -p.fleeSide]) {
+          const a = base + off * sg;
+          if (this.isFleePathFree(p, a, dist)) {
+            ((best = a), (found = !0));
+            break;
+          }
+        }
+        if (found) break;
+      }
+      ((p.fleeDir = best),
+        (p.fleeDirTimer = found ? 0.8 + Math.random() * 0.4 : 0.15));
+      return best;
+    }
+    avoidFireZone(p, fire, zone) {
+      const sp = Math.hypot(p.vx, p.vy);
+      if (sp < 0.01) return;
+      const look = Math.max(24, sp * 60 * 0.9),
+        lim = zone * 1.25,
+        outside = (a) =>
+          Math.hypot(
+            p.x + Math.cos(a) * look - fire.fireX,
+            p.y + Math.sin(a) * look - fire.fireY,
+          ) >= lim;
+      if (outside(Math.atan2(p.vy, p.vx))) return;
+      const base = Math.atan2(p.y - fire.fireY, p.x - fire.fireX);
+      p.fireSide || (p.fireSide = Math.random() < 0.5 ? 1 : -1);
+      for (const off of [0.9, 1.3, 0.5, 1.7, 0.2])
+        for (const sg of [p.fireSide, -p.fireSide]) {
+          const a = base + off * sg;
+          if (outside(a) && this.isFleePathFree(p, a, look)) {
+            ((p.vx = Math.cos(a) * sp),
+              (p.vy = Math.sin(a) * sp),
+              (p.targetAngle = a),
+              (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+            return;
+          }
+        }
+    }
+    steerAnimalExploration(t, l, o, u, m) {
+      if (
+        ((t.exploreTimer = (t.exploreTimer || 0) - l),
+        !t.exploreTimer || t.exploreTimer <= 0)
+      ) {
+        t.exploreTimer = 1.8 + Math.random() * 2.2;
+        let f = Math.random() * Math.PI * 2;
+        if (o) {
+          const g = Math.hypot(t.x - o.fireX, t.y - o.fireY),
+            y = o.lightRadius * 0.5;
+          if (g < y * 1.5) {
+            const w = Math.atan2(t.y - o.fireY, t.x - o.fireX),
+              v = (Math.random() < 0.5 ? 1 : -1) * (0.6 + Math.random() * 0.8);
+            f = w + v;
+          }
+        }
+        (t.type === "slime" &&
+          u &&
+          !t.isUnderground &&
+          ((!t.shelterCooldown || t.shelterCooldown <= 0) &&
+            ((t.shelterCooldown = 2 + Math.random() * 1.5),
+            (t.shelterTarget = this.findNearestShelter(
+              t.x,
+              t.y,
+              m,
+              t.isUnderground,
+            ))),
+          t.shelterTarget &&
+            Math.random() < 0.75 &&
+            (f = Math.atan2(t.shelterTarget.y - t.y, t.shelterTarget.x - t.x))),
+          (t.targetAngle = f));
+      }
+      const c =
+        t.type === "slime" && t.inWater ? t.speed * 0.85 : t.speed * 0.7;
+      ((t.vx = Math.cos(t.targetAngle || 0) * c),
+        (t.vy = Math.sin(t.targetAngle || 0) * c),
+        (t.facing = this.getMonsterFacing(t.vx, t.vy, t.facing)));
+    }
+    updatePreyAI(t, l, o) {
+      const ai = creatureBehavior(t.type).preyAI;
+      t.alertEffectTimer && t.alertEffectTimer > 0 && (t.alertEffectTimer -= l);
+      const c = ai.alertRadius,
+        f = ai.wolfRadius,
+        g = ai.giveUpRadius,
+        y = Math.hypot(o.x - t.x, o.y - t.y),
+        w = !o.isDead && y < c;
+      let v = null,
+        T = f;
+      for (const p of this.monsters) {
+        if (
+          p.id === t.id ||
+          !creatureBehavior(p.type).predator ||
+          p.hp <= 0 ||
+          p.isUnderground !== t.isUnderground
+        )
+          continue;
+        const j = Math.hypot(p.x - t.x, p.y - t.y);
+        j < T && ((T = j), (v = p));
+      }
+      const S = v !== null;
+      if (w || S) {
+        const p = (t.fleeTimer || 0) > 0;
+        ((t.fleeTimer = ai.fleeTimerOnThreat),
+          S && v
+            ? ((t.lastThreatX = v.x),
+              (t.lastThreatY = v.y),
+              (t.threatName = creatureBehavior(v.type).threatName))
+            : ((t.lastThreatX = o.x),
+              (t.lastThreatY = o.y),
+              (t.threatName = "jogador")),
+          !p &&
+            (!t.alertEffectTimer || t.alertEffectTimer <= 0) &&
+            (t.alertEffectTimer = 3.5));
+      }
+      if (t.fleeTimer && t.fleeTimer > 0) {
+        t.fleeTimer -= l;
+        let p = 0,
+          j = 0;
+        if (S && v) {
+          const V = Math.atan2(t.y - v.y, t.x - v.x),
+            O = Math.max(0.5, 1 - T / f) * 2;
+          ((p += Math.cos(V) * O), (j += Math.sin(V) * O));
+        }
+        if (w) {
+          const V = Math.atan2(t.y - o.y, t.x - o.x),
+            O = Math.max(0.5, 1 - y / c);
+          ((p += Math.cos(V) * O), (j += Math.sin(V) * O));
+        }
+        if (p === 0 && j === 0)
+          if (t.lastThreatX !== void 0 && t.lastThreatY !== void 0) {
+            const V = Math.atan2(t.y - t.lastThreatY, t.x - t.lastThreatX);
+            ((p = Math.cos(V)), (j = Math.sin(V)));
+          } else
+            ((p = Math.cos(t.targetAngle || 0)),
+              (j = Math.sin(t.targetAngle || 0)));
+        let P = Math.atan2(j, p);
+        const A = ai.fleeProbeDistance,
+          x = t.x + Math.cos(P) * A,
+          M = t.y + Math.sin(P) * A,
+          $ = Math.floor(x / this.engine.tileSize),
+          z = Math.floor(M / this.engine.tileSize);
+        const isBlocked = (cx, cy) => {
+          const tx = Math.floor(cx / this.engine.tileSize),
+            ty = Math.floor(cy / this.engine.tileSize);
+          return (
+            !this.engine.isTilePassable(tx, ty) ||
+            this.engine.isTrunkAt(cx, cy, this.engine.footHX + 1, this.engine.footHY + 1) ||
+            this.engine.isCaveRockAt(cx, cy)
+          );
+        };
+        if (isBlocked(x, M)) {
+          const V = [0.45, -0.45, 0.9, -0.9, 1.35, -1.35, 1.8, -1.8];
+          for (const O of V) {
+            const _ = P + O;
+            const px = t.x + Math.cos(_) * A;
+            const py = t.y + Math.sin(_) * A;
+            if (!isBlocked(px, py)) {
+              P = _;
+              break;
+            }
+          }
+        }
+        ai.zigzag && (P += Math.sin(this.animTimer * 12) * 0.28);
+        const K = t.speed * ai.fleeSpeedMult;
+        ((t.targetAngle = P),
+          (t.vx = Math.cos(P) * K),
+          (t.vy = Math.sin(P) * K),
+          (t.facing = this.getMonsterFacing(t.vx, t.vy, t.facing)),
+          t.fleeTimer <= 1 && y >= g && T >= g && (t.fleeTimer = 0));
+        return;
+      }
+      if (((t.fleeTimer = 0), (t.wanderTimer -= l), t.wanderTimer <= 0))
+        if (Math.random() < 0.45)
+          ((t.wanderTimer = ai.idleWait[0] + Math.random() * ai.idleWait[1]),
+            (t.vx = 0),
+            (t.vy = 0));
+        else {
+          ((t.wanderTimer = ai.wanderWait[0] + Math.random() * ai.wanderWait[1]),
+            (t.targetAngle = Math.random() * Math.PI * 2));
+          const p = t.speed * ai.wanderSpeedMult;
+          ((t.vx = Math.cos(t.targetAngle) * p),
+            (t.vy = Math.sin(t.targetAngle) * p),
+            (t.facing = this.getMonsterFacing(t.vx, t.vy, t.facing)));
+        }
+    }
+    getNearestPreyForWolf(t, l, o, u) {
+      let m = null,
+        c = o;
+      for (const f of this.monsters) {
+        if (
+          !isPreyType(f.type) ||
+          f.hp <= 0 ||
+          f.isUnderground !== u
+        )
+          continue;
+        const g = Math.hypot(f.x - t, f.y - l);
+        g < c && ((c = g), (m = f));
+      }
+      return m;
+    }
+    wolfAttackPrey(t, l) {
+      const o = t.attack + (Math.random() * 2 - 1),
+        u = Math.max(3, Math.round(o - l.defense * 0.4));
+      ((l.hp -= u),
+        (l.hitFlashTimer = 0.22),
+        (l.fleeTimer = creatureBehavior(l.type).wolfHitFleeTimer ?? 3.5),
+        (l.lastThreatX = t.x),
+        (l.lastThreatY = t.y),
+        (l.threatName = creatureBehavior(t.type).threatName),
+        this.floatingTexts.push({
+          id: `dmg_${this.nextId++}`,
+          x: l.x,
+          y: l.y - 16,
+          text: `-${u}`,
+          color: "#ef4444",
+          isCrit: !1,
+          life: 0.8,
+        }));
+      for (let m = 0; m < 4; m++)
+        this.hitParticles.push({
+          x: l.x,
+          y: l.y,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -Math.random() * 2,
+          life: 0.4,
+          color: "#ef4444",
+          size: 2,
+        });
+      if (l.hp <= 0) {
+        for (let c = 0; c < creatureDeathParticles(l.type); c++) {
+          const f = Math.random() * Math.PI * 2,
+            g = 2 + Math.random() * 3;
+          this.hitParticles.push({
+            x: l.x,
+            y: l.y,
+            vx: Math.cos(f) * g,
+            vy: Math.sin(f) * g,
+            life: 0.75,
+            color: l.accentColor,
+            size: 2.5 + Math.random() * 2.5,
+          });
+        }
+        this.carcasses.push(this.createCarcassForMonster(l));
+        const m = this.monsters.findIndex((c) => c.id === l.id);
+        m >= 0 && this.monsters.splice(m, 1);
+      }
+    }
+    createCarcassForMonster(t) {
+      const l = t.type === "slime";
+      let o = l ? "Gosma Sem Vida" : `Corpo de ${t.name}`,
+        u = l ? "Corpo de Gosma" : `Corpo de ${t.name}`,
+        m = l ? "incomum" : "raro",
+        c = l ? 28 : 35,
+        f = l
+          ? "Corpo de criatura gosma coletado no solo. Preserva a forma gelatinosa viva com núcleo e olhos vítreos, ideal para forja e alquimia."
+          : `Corpo intacto de ${t.name} recolhido após o combate.`;
+      return (
+        creatureCarcass(t.type)
+ ? ((o = creatureCarcass(t.type).name),
+ (u = creatureCarcass(t.type).bodyName),
+ (f = creatureCarcass(t.type).description))
+              : t.type === "dragon" &&
+                ((o = "Carcaça de Dragão Ancião"),
+                (u = "Corpo de Dragão"),
+                (m = "lendario"),
+                (c = 250),
+                (f =
+                  "Carcaça lendária de dragão. Pode ser destrinchada com uma faca para extrair escamas, chifres, dentes, asas, crânio, carne e ossos.")),
+        {
+          id: `carcass_${this.nextId++}`,
+          monsterId: t.id,
+          name: o,
+          type: t.type,
+          x: t.x,
+          y: t.y,
+          color: t.color,
+          accentColor: t.accentColor,
+          scale: t.scale,
+          isUnderground: t.isUnderground,
+          isSlime: l,
+          collected: !1,
+          settleProgress: 0,
+          lifetime: 20,
+          maxLifetime: 20,
+          lootItemName: u,
+          lootItemIcon: `creature_${t.type}`,
+          lootItemColor: t.color,
+          lootItemRarity: m,
+          lootItemDescription: f,
+          lootItemValue: c,
+          gold: Math.floor(Math.random() * 8) + 4,
+        }
+      );
+    }
+    monsterAttackPlayer(t, l, o = 2) {
+      var f;
+      if (
+        l.isDead ||
+        (l.invulnerableTimer && l.invulnerableTimer > 0) ||
+        !this.getAnimalFireDeterrence(t, l).canAttack
+      )
+        return;
+      const m = t.attack + (Math.random() * 2.5 - 1.2),
+        c = Math.max(1, Math.round(m - o * 0.45));
+      ((l.hp = Math.max(0, (l.hp ?? 100) - c)),
+        (f = this.audio) == null || f.playPlayerHurt(),
+        this.floatingTexts.push({
+          id: `dmg_${this.nextId++}`,
+          x: l.x + (Math.random() - 0.5) * 10,
+          y: l.y - 20,
+          text: `-${c}`,
+          color: "#ef4444",
+          isCrit: !1,
+          life: 0.85,
+        }));
+      for (let g = 0; g < 4; g++) {
+        const y = Math.random() * Math.PI * 2;
+        this.slimeParticles.push({
+          x: l.x,
+          y: l.y - 8,
+          vx: Math.cos(y) * 4,
+          vy: Math.sin(y) * 4,
+          life: 0.35,
+          maxLife: 0.35,
+          type: "bubble",
+          color: "#f87171",
+          size: 1.8,
+        });
+      }
+      l.hp <= 0 && !l.isDead && this.handlePlayerDeath(l);
+    }
+    handlePlayerDeath(t) {
+      var l;
+      ((t.isDead = !0),
+        (t.hp = 0),
+        (t.deathTimer = 0),
+        (l = this.audio) == null || l.playPlayerDeath());
+      for (const o of this.monsters)
+        o.attached &&
+          ((o.attached = !1),
+          (o.isLeaping = !1),
+          (o.vx = (Math.random() - 0.5) * 5),
+          (o.vy = (Math.random() - 0.5) * 5));
+      ((t.attachedSlimes = 0),
+        this.floatingTexts.push({
+          id: `death_${this.nextId++}`,
+          x: t.x,
+          y: t.y - 28,
+          text: "DERROTADO!",
+          color: "#f43f5e",
+          isCrit: !0,
+          life: 3,
+        }));
+    }
+    respawnPlayer(t, l = 0, o = 0) {
+      var u;
+      ((t.isDead = !1),
+        (t.hp = t.maxHp ?? 100),
+        (t.poisonTimer = 0),
+        (t.poisonTickTimer = 0),
+        (t.attachedSlimes = 0),
+        (t.invulnerableTimer = 3.5),
+        (t.deathTimer = 0),
+        (t.x = l),
+        (t.y = o),
+        (t.vx = 0),
+        (t.vy = 0));
+      for (const m of this.monsters)
+        m.attached && ((m.attached = !1), (m.isLeaping = !1));
+      ((u = this.audio) == null || u.playPlayerRespawn(),
+        this.floatingTexts.push({
+          id: `respawn_${this.nextId++}`,
+          x: l,
+          y: o - 24,
+          text: "RENASCIDO!",
+          color: "#38bdf8",
+          isCrit: !0,
+          life: 2,
+        }));
+    }
+    reset() {
+      ((this.monsters = []),
+        (this.carcasses = []),
+        (this.droppedItems = []),
+        (this.floatingTexts = []),
+        (this.slashEffects = []),
+        (this.pebbleProjectiles = []),
+        (this.hitParticles = []),
+        (this.slimeParticles = []),
+        (this.slimeSwarmTimer = 2));
+    }
+    getAttachedSlimesCount() {
+      return this.monsters.filter(
+        (t) => t.type === "slime" && t.attached && t.hp > 0,
+      ).length;
+    }
+    getPlayerSpeedMultiplier() {
+      const t = this.getAttachedSlimesCount();
+      return t <= 0 ? 1 : Math.max(0.2, 1 - t * 0.35);
+    }
+    transferChasingMonsters(fromX, fromY, toX, toY, toUnderground) {
+      let count = 0;
+      for (const m of this.monsters) {
+        if (m.hp <= 0) continue;
+        const dist = Math.hypot(m.x - fromX, m.y - fromY);
+        const isHostile = !isPreyType(m.type);
+        const isChasing = m.attached || (isHostile && dist <= 180);
+        if (isChasing) {
+          m.isUnderground = toUnderground;
+          const relAngle =
+            Math.atan2(m.y - fromY, m.x - fromX) || Math.random() * Math.PI * 2;
+          const spawnDist = Math.max(16, Math.min(dist * 0.7, 44));
+          m.x = toX + Math.cos(relAngle) * spawnDist;
+          m.y = toY + Math.sin(relAngle) * spawnDist;
+          m.vx = 0;
+          m.vy = 0;
+          m.attackCooldown = Math.max(m.attackCooldown || 0, 0.4);
+          count++;
+        }
+      }
+      return count;
+    }
+    isShallowWater(t, l) {
+      const o = this.engine.getTile(t, l);
+      return (
+        o.biome.id === BiomeId.COAST_WATER ||
+        o.biome.id === BiomeId.CAVE_LAKE ||
+        (o.biome.hasWater && o.biome.passable)
+      );
+    }
+    isPositionInShade(t, l, o = 0.5, u = !1) {
+      if (u || o < 0.22 || o > 0.78) return !0;
+      const m = Math.floor(t / this.engine.tileSize),
+        c = Math.floor(l / this.engine.tileSize),
+        f = (o - 0.2) / 0.6,
+        g = f * Math.PI,
+        y = (f - 0.5) * 2.2,
+        w = Math.sin(g),
+        v = Math.max(0.35, Math.min(2.2, 0.45 + (1 - w) * 1.6)),
+        T = y,
+        S = 0.5 * (1 - w * 0.3);
+      for (let p = -2; p <= 2; p++)
+        for (let j = -2; j <= 2; j++) {
+          const P = m + p,
+            A = c + j,
+            x = this.engine.getTile(P, A);
+          if (!x.prop) continue;
+          const M = x.prop.kind,
+            $ = M.startsWith("tree_"),
+            z = M === "rock" || M === "ruin_pillar" || M === "shrine" || M === "cliff_wall";
+          if (!$ && !z) continue;
+          const K = x.prop.scale || 1,
+            V =
+              P * this.engine.tileSize +
+              this.engine.tileSize / 2 +
+              (x.prop.offsetX || 0),
+            O =
+              A * this.engine.tileSize +
+              this.engine.tileSize / 2 +
+              (x.prop.offsetY || 0);
+          if ($) {
+            if (Math.hypot(t - V, l - (O - 10)) <= 24 * K) return !0;
+            const se = (M === "tree_palm" ? 44 : 36) * K,
+              ue = T * se * v * 0.55,
+              N = S * se * v * 0.45,
+              Ee = V + ue,
+              ne = O + N,
+              ke = 24 * K,
+              G = 16 * v * K;
+            if (Math.hypot((t - Ee) / ke, (l - ne) / Math.max(9, G)) <= 1.05)
+              return !0;
+          } else if (z && Math.hypot(t - V, l - O) <= 16 * K) return !0;
+        }
+      return !1;
+    }
+    findNearestShelter(t, l, o = 0.5, u = !1) {
+      const m = Math.floor(t / this.engine.tileSize),
+        c = Math.floor(l / this.engine.tileSize);
+      let f = null,
+        g = 1 / 0;
+      for (let y = 1; y <= 5; y++) {
+        for (let w = -y; w <= y; w++)
+          for (let v = -y; v <= y; v++) {
+            if (Math.abs(w) !== y && Math.abs(v) !== y) continue;
+            const T = m + w,
+              S = c + v;
+            if (!this.engine.isTilePassable(T, S)) continue;
+            const p = T * this.engine.tileSize + this.engine.tileSize / 2,
+              j = S * this.engine.tileSize + this.engine.tileSize / 2,
+              P = this.isShallowWater(T, S),
+              A = P ? !1 : this.isPositionInShade(p, j, o, u);
+            if (P || A) {
+              const x = Math.hypot(p - t, j - l),
+                M = P ? x * 0.55 : x;
+              M < g && ((g = M), (f = { x: p, y: j, isWater: P }));
+            }
+          }
+        if (f) break;
+      }
+      return f;
+    }
+    update(t, l, o, u, m = 0.5, c = 2) {
+      var w, v, T;
+      ((this.lastPlayerX = l.x),
+        (this.lastPlayerY = l.y),
+        (this.lastIsUnderground = o),
+        (this.animTimer += t));
+      for (let S = this.carcasses.length - 1; S >= 0; S--) {
+        const p = this.carcasses[S];
+        if (
+          (p.settleProgress < 1 &&
+            (p.settleProgress = Math.min(1, p.settleProgress + t * 2.5)),
+          (p.lifetime -= t),
+          p.lifetime <= 0)
+        ) {
+          if (p.isSlime)
+            for (let P = 0; P < 5; P++)
+              this.hitParticles.push({
+                x: p.x + (Math.random() - 0.5) * 14,
+                y: p.y + (Math.random() - 0.5) * 8,
+                vx: (Math.random() - 0.5) * 0.8,
+                vy: -0.8 - Math.random() * 1.2,
+                life: 0.65,
+                color: p.accentColor || "#4ade80",
+                size: 1.8 + Math.random() * 1.5,
+              });
+          this.carcasses.splice(S, 1);
+          continue;
+        }
+        Math.hypot(p.x - l.x, p.y - l.y) > 1500 && this.carcasses.splice(S, 1);
+      }
+      for (let S = this.droppedItems.length - 1; S >= 0; S--) {
+        const p = this.droppedItems[S];
+        if (
+          (p.pickupCooldown &&
+            p.pickupCooldown > 0 &&
+            (p.pickupCooldown = Math.max(0, p.pickupCooldown - t)),
+          (p.lifetime -= t),
+          p.lifetime <= 0)
+        ) {
+          for (let P = 0; P < 7; P++)
+            this.hitParticles.push({
+              x: p.x + (Math.random() - 0.5) * 14,
+              y: p.y + (Math.random() - 0.5) * 10,
+              vx: (Math.random() - 0.5) * 1.2,
+              vy: -0.8 - Math.random() * 1.2,
+              life: 0.65,
+              color: p.item.color || "#fbbf24",
+              size: 2 + Math.random() * 1.5,
+            });
+          this.droppedItems.splice(S, 1);
+          continue;
+        }
+        Math.hypot(p.x - l.x, p.y - l.y) > 1800 &&
+          this.droppedItems.splice(S, 1);
+      }
+      const f = m >= 0.22 && m <= 0.78;
+      if (
+        (l.invulnerableTimer &&
+          l.invulnerableTimer > 0 &&
+          (l.invulnerableTimer = Math.max(0, l.invulnerableTimer - t)),
+        l.isDead)
+      ) {
+        l.deathTimer = (l.deathTimer || 0) + t;
+        for (const S of this.monsters)
+          S.attached && ((S.attached = !1), (S.isLeaping = !1));
+        l.attachedSlimes = 0;
+      }
+      for (let S = this.monsters.length - 1; S >= 0; S--) {
+        const p = this.monsters[S];
+        if (p.isUnderground !== o) {
+          this.monsters.splice(S, 1);
+          continue;
+        }
+        const j = Math.hypot(l.x - p.x, l.y - p.y);
+        if (j > 680) {
+          this.monsters.splice(S, 1);
+          continue;
+        }
+        ((p.animTimer += t * 3),
+          p.hitFlashTimer > 0 &&
+            (p.hitFlashTimer = Math.max(0, p.hitFlashTimer - t)));
+        const P = Math.floor(p.x / this.engine.tileSize),
+          A = Math.floor(p.y / this.engine.tileSize);
+        if (p.type === "slime") {
+          if (p.attached) {
+            const W = this.getAnimalFireDeterrence(p, l);
+            if (W.isDeterred) {
+              ((p.attached = !1), (p.isLeaping = !1), (p.attackCooldown = 3));
+              const le =
+                Math.atan2(p.y - W.fireSourceY, p.x - W.fireSourceX) ||
+                Math.random() * Math.PI * 2;
+              ((p.vx = Math.cos(le) * (p.speed * 1.5)),
+                (p.vy = Math.sin(le) * (p.speed * 1.5)),
+                (p.x = l.x + Math.cos(le) * 36),
+                (p.y = l.y + Math.sin(le) * 36),
+                (l.poisonTimer = 0));
+              continue;
+            }
+            if (
+              ((p.x = l.x + (p.attachOffsetX || 0)),
+              (p.y = l.y + (p.attachOffsetY || 0)),
+              (p.vx = 0),
+              (p.vy = 0),
+              (p.animTimer += t * 4.5),
+              (l.poisonTimer = Math.max(l.poisonTimer || 0, 6.5)),
+              (p.poisonTickCooldown = (p.poisonTickCooldown || 1) - t),
+              p.poisonTickCooldown <= 0)
+            ) {
+              if (
+                ((p.poisonTickCooldown = 1),
+                !l.isDead && (!l.invulnerableTimer || l.invulnerableTimer <= 0))
+              ) {
+                const le = Math.max(1, Math.round(p.attack * 0.55));
+                ((l.hp = Math.max(0, (l.hp ?? 100) - le)),
+                  (w = this.audio) == null || w.playPlayerHurt(),
+                  this.floatingTexts.push({
+                    id: `pois_${this.nextId++}`,
+                    x: l.x + (p.attachOffsetX || 0),
+                    y: l.y - 18,
+                    text: `-${le} ☠ Veneno`,
+                    color: "#4ade80",
+                    isCrit: !1,
+                    life: 0.9,
+                  }),
+                  l.hp <= 0 && !l.isDead && this.handlePlayerDeath(l));
+              }
+              for (let le = 0; le < 3; le++)
+                this.slimeParticles.push({
+                  x: p.x + (Math.random() - 0.5) * 8,
+                  y: p.y - 4,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: 4 + Math.random() * 6,
+                  life: 0.5,
+                  maxLife: 0.5,
+                  type: "poison",
+                  color: "#4ade80",
+                  size: 1.6,
+                });
+            }
+            continue;
+          }
+          if (p.emerging) {
+            ((p.emergeTimer = (p.emergeTimer || 0.55) - t),
+              (p.vx = 0),
+              (p.vy = 0),
+              Math.random() < t * 6 &&
+                this.slimeParticles.push({
+                  x: p.x + (Math.random() - 0.5) * 8,
+                  y: p.y + 2,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: -4 - Math.random() * 6,
+                  life: 0.45,
+                  maxLife: 0.45,
+                  type: "mud",
+                  color: "#78350f",
+                  size: 2,
+                }),
+              p.emergeTimer <= 0 && (p.emerging = !1));
+            continue;
+          }
+          if (p.isLeaping) {
+            const W = this.getAnimalFireDeterrence(p, l);
+            if (W.isDeterred) {
+              p.isLeaping = !1;
+              const te =
+                Math.atan2(p.y - W.fireSourceY, p.x - W.fireSourceX) ||
+                Math.random() * Math.PI * 2;
+              ((p.vx = Math.cos(te) * (p.speed * 1.4)),
+                (p.vy = Math.sin(te) * (p.speed * 1.4)),
+                (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)),
+                (p.attackCooldown = 3));
+              continue;
+            }
+            p.leapProgress = (p.leapProgress || 0) + t / 0.35;
+            const le = Math.min(1, p.leapProgress);
+            if (
+              ((p.x =
+                (p.leapStartX ?? p.x) +
+                ((p.leapTargetX ?? l.x) - (p.leapStartX ?? p.x)) * le),
+              (p.y =
+                (p.leapStartY ?? p.y) +
+                ((p.leapTargetY ?? l.y) - (p.leapStartY ?? p.y)) * le),
+              le >= 1 || j <= 16)
+            ) {
+              p.isLeaping = !1;
+              const te = this.getAnimalFireDeterrence(p, l);
+              if (j <= 26 && !l.isDead && te.canAttack) {
+                ((p.attached = !0), (p.poisonTickCooldown = 0.5));
+                const oe = this.monsters.filter(
+                    (C) =>
+                      C.id !== p.id &&
+                      C.type === "slime" &&
+                      C.attached &&
+                      C.hp > 0,
+                  ).length,
+                  Ne = [
+                    { dx: -6, dy: -8 },
+                    { dx: 7, dy: -12 },
+                    { dx: 0, dy: 3 },
+                    { dx: 6, dy: -6 },
+                    { dx: -7, dy: -12 },
+                    { dx: 0, dy: -14 },
+                  ],
+                  X = Ne[oe % Ne.length];
+                if (
+                  ((p.attachOffsetX = X.dx),
+                  (p.attachOffsetY = X.dy),
+                  (p.x = l.x + X.dx),
+                  (p.y = l.y + X.dy),
+                  (l.poisonTimer = Math.max(l.poisonTimer || 0, 6.5)),
+                  !l.invulnerableTimer || l.invulnerableTimer <= 0)
+                ) {
+                  const C = Math.max(1, Math.round(p.attack * 0.45 - c * 0.2));
+                  ((l.hp = Math.max(0, (l.hp ?? 100) - C)),
+                    (v = this.audio) == null || v.playPlayerHurt(),
+                    l.hp <= 0 && !l.isDead && this.handlePlayerDeath(l));
+                }
+                this.floatingTexts.push({
+                  id: `grud_${this.nextId++}`,
+                  x: l.x,
+                  y: l.y - 20,
+                  text: "GRUDOU!",
+                  color: "#4ade80",
+                  isCrit: !1,
+                  life: 0.95,
+                });
+                for (let C = 0; C < 6; C++) {
+                  const I = Math.random() * Math.PI * 2;
+                  this.slimeParticles.push({
+                    x: l.x,
+                    y: l.y - 8,
+                    vx: Math.cos(I) * 3,
+                    vy: Math.sin(I) * 3,
+                    life: 0.5,
+                    maxLife: 0.5,
+                    type: "poison",
+                    color: "#4ade80",
+                    size: 2,
+                  });
+                }
+              } else p.attackCooldown = 0.8;
+            }
+            continue;
+          }
+          const ne = this.isShallowWater(P, A),
+            ke = this.isPositionInShade(p.x, p.y, m, p.isUnderground),
+            G = !p.isUnderground && !ne && !ke && f;
+          ((p.inWater = ne),
+            (p.inShadow = ke),
+            (p.inSun = G),
+            ne &&
+              Math.random() < t * 1.5 &&
+              this.slimeParticles.push({
+                x: p.x + (Math.random() - 0.5) * 12 * p.scale,
+                y: p.y + 2 * p.scale,
+                vx: (Math.random() - 0.5) * 5,
+                vy: -8 - Math.random() * 6,
+                life: 0.7,
+                maxLife: 0.7,
+                type: "bubble",
+                color: "#38bdf8",
+                size: 1.4 + Math.random() * 1.2,
+              }),
+            G &&
+              Math.random() < t * 1.8 &&
+              this.slimeParticles.push({
+                x: p.x + (Math.random() - 0.5) * 10 * p.scale,
+                y: p.y - 8 * p.scale,
+                vx: (Math.random() - 0.5) * 6,
+                vy: -14 - Math.random() * 8,
+                life: 0.6,
+                maxLife: 0.6,
+                type: "vapor",
+                color: "rgba(255, 255, 255, 0.5)",
+                size: 1.8 + Math.random() * 1.5,
+              }));
+          const de = this.getAnimalFireDeterrence(p, l);
+          if (
+            ((p.attackCooldown = Math.max(0, (p.attackCooldown || 0) - t)),
+            j < 58 && j > 14 && p.attackCooldown <= 0 && de.canAttack)
+          ) {
+            ((p.isLeaping = !0),
+              (p.leapProgress = 0),
+              (p.leapStartX = p.x),
+              (p.leapStartY = p.y),
+              (p.leapTargetX =
+                l.x +
+                (l.isMoving
+                  ? l.direction === "left"
+                    ? -10
+                    : l.direction === "right"
+                      ? 10
+                      : 0
+                  : 0)),
+              (p.leapTargetY =
+                l.y +
+                (l.isMoving
+                  ? l.direction === "up"
+                    ? -10
+                    : l.direction === "down"
+                      ? 10
+                      : 0
+                  : 0)),
+              (p.attackCooldown = 1.6));
+            continue;
+          }
+        }
+        ((p.wanderTimer -= t),
+          (p.attackCooldown = Math.max(0, (p.attackCooldown || 0) - t)),
+          p.fireFearTimer &&
+            p.fireFearTimer > 0 &&
+            (p.fireFearTimer = Math.max(0, p.fireFearTimer - t)),
+          p.fleeFireTimer &&
+            p.fleeFireTimer > 0 &&
+            (p.fleeFireTimer = Math.max(0, p.fleeFireTimer - t)),
+          p.giveUpPursuitTimer &&
+            p.giveUpPursuitTimer > 0 &&
+            (p.giveUpPursuitTimer = Math.max(0, p.giveUpPursuitTimer - t)),
+          p.aggroTimer &&
+            p.aggroTimer > 0 &&
+            (p.aggroTimer = Math.max(0, p.aggroTimer - t)));
+        const x = this.engine.getClosestLitCampfire(p.x, p.y, 650),
+          M = x ? Math.hypot(p.x - x.fireX, p.y - x.fireY) : 1 / 0,
+          $ = x ? x.lightRadius * 0.5 : 0;
+        if (!l.hasTorch && !(x && M < $ * 1.6)) {
+          p.fleeFireTimer = 0;
+          p.giveUpPursuitTimer = 0;
+          p.fireFearTimer = 0;
+          p.attackCooldown = Math.min(p.attackCooldown || 0, 0.3);
+        }
+        const z = this.getAnimalFireDeterrence(p, l),
+          K = gl(p.type) && !!(x && M < $),
+          V = gl(p.type) && !!(l.hasTorch && j < 58 && !l.isDead),
+          O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
+          _ = K || V || O,
+          NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack);
+        if (_) {
+          ((!p.fleeFireTimer || p.fleeFireTimer <= 0) &&
+            (p.fleeFireTimer = 3.5),
+            (p.giveUpPursuitTimer = 8),
+            (p.attackCooldown = Math.max(p.attackCooldown || 0, 3.5)),
+            p.isLeaping && (p.isLeaping = !1),
+            p.attached &&
+              ((p.attached = !1),
+              (l.attachedSlimes = Math.max(0, (l.attachedSlimes || 1) - 1))),
+            (!p.fireFearTimer || p.fireFearTimer <= 0) &&
+              (p.fireFearTimer = 2.5));
+          const ne = V ? l.x : x.fireX,
+            ke = V ? l.y : x.fireY,
+            G = this.pickFleeAngle(p, ne, ke, t, p.speed * 1.55);
+          p.targetAngle = G;
+          const de = p.speed * 1.55;
+          ((p.vx = Math.cos(G) * de),
+            (p.vy = Math.sin(G) * de),
+            (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)),
+            (p.exploreTimer = 1.5));
+        } else if (
+          NC &&
+          !creatureBehavior(p.type).hunter &&
+          !isPreyType(p.type)
+        )
+          this.steerAnimalExploration(p, t, x, f, m);
+        else if (isPreyType(p.type))
+          this.updatePreyAI(p, t, l);
+        else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : 150)) && j > 22 && z.canAttack) {
+          const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1);
+          const chaseSpeed = p.speed * de;
+          const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
+          ((p.vx = Math.cos(G) * chaseSpeed),
+            (p.vy = Math.sin(G) * chaseSpeed),
+            (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+        } else if (!NC && !l.isDead && j <= 26 && z.canAttack)
+          ((p.vx = 0),
+            (p.vy = 0),
+            (p.facing = this.getMonsterFacingToTarget(
+              p.x,
+              p.y,
+              l.x,
+              l.y,
+              p.facing,
+            )),
+            p.attackCooldown <= 0 &&
+              (!l.invulnerableTimer || l.invulnerableTimer <= 0) &&
+              ((p.attackCooldown =
+                (creatureBehavior(p.type).attackCooldown ?? 1.25)),
+              this.monsterAttackPlayer(p, l, c)));
+        else if (creatureBehavior(p.type).hunter && (!p.aggroTimer || p.aggroTimer <= 0)) {
+          const hunterAI = creatureBehavior(p.type).hunter;
+          const G = this.getNearestPreyForWolf(p.x, p.y, hunterAI.huntRadius, p.isUnderground);
+          if (G)
+            if (Math.hypot(G.x - p.x, G.y - p.y) > hunterAI.meleeRange) {
+              const le = p.speed * hunterAI.huntSpeedMult;
+              const W = this.steerAroundObstacles(p, G.x, G.y, le, !1);
+              ((p.vx = Math.cos(W) * le),
+                (p.vy = Math.sin(W) * le),
+                (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+            } else
+              ((p.vx = 0),
+                (p.vy = 0),
+                (p.facing = this.getMonsterFacingToTarget(
+                  p.x,
+                  p.y,
+                  G.x,
+                  G.y,
+                  p.facing,
+                )),
+                p.attackCooldown <= 0 &&
+                  ((p.attackCooldown = hunterAI.attackCooldownPrey), this.wolfAttackPrey(p, G)));
+          else
+            p.wanderTimer <= 0 &&
+              ((p.wanderTimer = hunterAI.wanderWait[0] + Math.random() * hunterAI.wanderWait[1]),
+              Math.random() < hunterAI.idleChance
+                ? ((p.vx = 0), (p.vy = 0))
+                : ((p.targetAngle = Math.random() * Math.PI * 2),
+                  (p.vx = Math.cos(p.targetAngle) * (p.speed * hunterAI.wanderSpeedMult)),
+                  (p.vy = Math.sin(p.targetAngle) * (p.speed * hunterAI.wanderSpeedMult)),
+                  (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing))));
+        } else if (p.type === "slime" && p.inSun)
+          if (
+            ((p.shelterCooldown = (p.shelterCooldown || 0) - t),
+            p.shelterCooldown <= 0 &&
+              ((p.shelterCooldown = 1.6 + Math.random() * 0.8),
+              (p.shelterTarget = this.findNearestShelter(
+                p.x,
+                p.y,
+                m,
+                p.isUnderground,
+              ))),
+            p.shelterTarget)
+          )
+            if (
+              Math.hypot(p.shelterTarget.x - p.x, p.shelterTarget.y - p.y) < 16
+            )
+              ((p.shelterTarget = null), (p.shelterCooldown = 2));
+            else {
+              const de = Math.atan2(
+                  p.shelterTarget.y - p.y,
+                  p.shelterTarget.x - p.x,
+                ),
+                W = p.speed * 1.1;
+              ((p.vx = Math.cos(de) * W),
+                (p.vy = Math.sin(de) * W),
+                (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+            }
+          else
+            p.wanderTimer <= 0 &&
+              ((p.wanderTimer = 1 + Math.random() * 1.2),
+              (p.targetAngle = Math.random() * Math.PI * 2),
+              (p.vx = Math.cos(p.targetAngle) * (p.speed * 0.85)),
+              (p.vy = Math.sin(p.targetAngle) * (p.speed * 0.85)),
+              (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+        else if (p.type === "slime") {
+          if (p.wanderTimer <= 0)
+            if (
+              ((p.wanderTimer = 2 + Math.random() * 2.2), Math.random() < 0.35)
+            )
+              ((p.vx = 0), (p.vy = 0));
+            else {
+              let G = Math.random() * Math.PI * 2;
+              const de = p.inWater ? p.speed * 0.75 : p.speed * 0.55,
+                W = p.x + Math.cos(G) * de * 24,
+                le = p.y + Math.sin(G) * de * 24,
+                te = Math.floor(W / this.engine.tileSize),
+                oe = Math.floor(le / this.engine.tileSize);
+              (!p.isUnderground &&
+                !this.isShallowWater(te, oe) &&
+                !this.isPositionInShade(W, le, m, p.isUnderground) &&
+                f &&
+                Math.random() < 0.85 &&
+                (G += Math.PI),
+                (p.targetAngle = G),
+                (p.vx = Math.cos(G) * de),
+                (p.vy = Math.sin(G) * de),
+                (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+            }
+        } else
+          p.wanderTimer <= 0 &&
+            ((p.wanderTimer = 1.8 + Math.random() * 2.5),
+            Math.random() < 0.35
+              ? ((p.vx = 0), (p.vy = 0))
+              : ((p.targetAngle = Math.random() * Math.PI * 2),
+                (p.vx = Math.cos(p.targetAngle) * (p.speed * 0.55)),
+                (p.vy = Math.sin(p.targetAngle) * (p.speed * 0.55)),
+                (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing))));
+        !_ &&
+          gl(p.type) &&
+          x &&
+          !(!NC && !l.isDead && j < 150 && z.canAttack) &&
+          this.avoidFireZone(p, x, $);
+        const moveStepX = p.vx * t * 60,
+          moveStepY = p.vy * t * 60;
+        const attemptedDist = Math.hypot(moveStepX, moveStepY);
+        p.isMoving = attemptedDist > 0.001;
+        if (attemptedDist > 0.001) {
+          const _m = this.engine.moveWithSlide(
+            p.x,
+            p.y,
+            moveStepX,
+            moveStepY,
+            !1,
+          );
+          const actualMoved = Math.hypot(_m.x - p.x, _m.y - p.y);
+          p.x = _m.x;
+          p.y = _m.y;
+          if (_m.blocked) {
+            if (actualMoved < attemptedDist * 0.3) {
+              p.contourSide = (p.contourSide || 1) * -1;
+              p.contourTimer = 0.7;
+              if (p.wanderTimer > 0) p.wanderTimer = 0;
+            }
+          }
+        } else {
+          p.isMoving = !1;
+        }
+      }
+      const g = this.monsters.filter(
+        (S) => S.type === "slime" && S.attached && S.hp > 0,
+      ).length;
+      l.attachedSlimes = g;
+      const y = !!(
+        l.fireProtected ||
+        l.hasTorch ||
+        l.isNearCampfire ||
+        this.engine.isNearLitCampfire(l.x, l.y)
+      );
+      if (g > 0 && !l.isDead && !y) {
+        if (((this.slimeSwarmTimer -= t), this.slimeSwarmTimer <= 0)) {
+          this.slimeSwarmTimer = 2;
+          const S = this.monsters.filter(
+            (p) => p.type === "slime" && p.hp > 0,
+          ).length;
+          if (S < 9) {
+            const p = Math.min(9 - S, Math.random() < 0.5 ? 1 : 2);
+            for (let j = 0; j < p; j++) this.spawnSwarmSlimeNearPlayer(l, o, u);
+          }
+        }
+      } else this.slimeSwarmTimer = 2;
+      if (
+        (y && l.poisonTimer && l.poisonTimer > 0 && (l.poisonTimer = 0),
+        l.poisonTimer &&
+          l.poisonTimer > 0 &&
+          !l.isDead &&
+          ((l.poisonTimer = Math.max(0, l.poisonTimer - t)),
+          (l.poisonTickTimer = (l.poisonTickTimer || 1) - t),
+          l.poisonTickTimer <= 0))
+      ) {
+        l.poisonTickTimer = 1;
+        const S = 2;
+        ((l.hp = Math.max(0, (l.hp ?? 100) - S)),
+          (T = this.audio) == null || T.playPlayerHurt(),
+          this.floatingTexts.push({
+            id: `pois_${this.nextId++}`,
+            x: l.x,
+            y: l.y - 18,
+            text: `-${S} ☠ Veneno`,
+            color: "#4ade80",
+            isCrit: !1,
+            life: 0.9,
+          }),
+          l.hp <= 0 && !l.isDead && this.handlePlayerDeath(l));
+        for (let p = 0; p < 3; p++)
+          this.slimeParticles.push({
+            x: l.x + (Math.random() - 0.5) * 12,
+            y: l.y - 8 + Math.random() * 8,
+            vx: (Math.random() - 0.5) * 5,
+            vy: -10 - Math.random() * 8,
+            life: 0.55,
+            maxLife: 0.55,
+            type: "poison",
+            color: "#4ade80",
+            size: 1.8,
+          });
+      }
+      ((this.spawnCooldown -= t),
+        this.spawnCooldown <= 0 &&
+          this.monsters.length < 7 &&
+          !l.isDead &&
+          ((this.spawnCooldown = 2 + Math.random() * 1.5),
+          this.spawnMonsterNearPlayer(l, o, u, m)));
+      for (let S = this.floatingTexts.length - 1; S >= 0; S--) {
+        const p = this.floatingTexts[S];
+        ((p.life -= t * 1.8),
+          (p.y -= t * 32),
+          p.life <= 0 && this.floatingTexts.splice(S, 1));
+      }
+      for (let S = this.pebbleProjectiles.length - 1; S >= 0; S--) {
+        const p = this.pebbleProjectiles[S];
+        p.progress = Math.min(1, p.progress + t / p.duration);
+        const arc = Math.sin(p.progress * Math.PI) * 18;
+        const curX = p.startX + (p.targetX - p.startX) * p.progress;
+        const curY = p.startY + (p.targetY - p.startY) * p.progress;
+        p.x = curX;
+        p.y = curY - arc;
+        this.slashEffects.push({
+          kind: "pebble",
+          x: p.x,
+          y: p.y,
+          angle: p.angle,
+          progress: p.progress,
+          trail: !0,
+        });
+        let hitMonster = null;
+        if (p.progress > 0.08) {
+          for (const m of this.monsters) {
+            if (m.hp <= 0 || m.isUnderground !== p.underground) continue;
+            const dist = Math.hypot(m.x - curX, m.y - curY);
+            const mRadius = (m.size || 16) + 18;
+            if (dist <= mRadius) {
+              hitMonster = m;
+              break;
+            }
+          }
+        }
+        if (hitMonster || p.progress >= 1) {
+          const impactPoint = hitMonster ? { x: hitMonster.x, y: hitMonster.y } : { x: p.targetX, y: p.targetY };
+          const result = this.performAttack(p.player, p.damage, !1, p.underground, !0, p.angle, p.distance, impactPoint);
+          const audio = this.audio;
+          audio?.playHitImpact?.();
+          if (result.hitCount > 0) {
+            for (let i = 0; i < 6; i++) {
+              this.hitParticles.push({
+                x: impactPoint.x + (Math.random() - 0.5) * 12,
+                y: impactPoint.y + (Math.random() - 0.5) * 12,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -Math.random() * 3,
+                life: 0.45,
+                color: "#cbd5e1",
+                size: 2.5 + Math.random() * 1.5,
+              });
+            }
+          }
+          this.pebbleProjectiles.splice(S, 1);
+        }
+      }
+      for (let S = this.slashEffects.length - 1; S >= 0; S--) {
+        const p = this.slashEffects[S];
+        ((p.progress += t * 5.5),
+          p.progress >= 1 && this.slashEffects.splice(S, 1));
+      }
+      for (let S = this.hitParticles.length - 1; S >= 0; S--) {
+        const p = this.hitParticles[S];
+        ((p.x += p.vx * t * 60),
+          (p.y += p.vy * t * 60),
+          (p.life -= t * 3.5),
+          p.life <= 0 && this.hitParticles.splice(S, 1));
+      }
+      for (let S = this.slimeParticles.length - 1; S >= 0; S--) {
+        const p = this.slimeParticles[S];
+        ((p.x += p.vx * t),
+          (p.y += p.vy * t),
+          (p.life -= t),
+          p.life <= 0 && this.slimeParticles.splice(S, 1));
+      }
+    }
+    spawnMonsterNearPlayer(t, l, o, u = 0.5) {
+      const m = Math.random() * Math.PI * 2,
+        c = 180 + Math.random() * 180;
+      let f = t.x + Math.cos(m) * c,
+        g = t.y + Math.sin(m) * c,
+        y = Math.floor(f / this.engine.tileSize),
+        w = Math.floor(g / this.engine.tileSize);
+      if (
+        !this.engine.isTilePassable(y, w) ||
+        this.engine.isNearLitCampfire(f, g)
+      )
+        return;
+      let v = "slime",
+        T = "Gosma Verde da Floresta",
+        S = "#22c55e",
+        p = "#86efac",
+        j = 22,
+        P = 4,
+        A = 0.75,
+        x = 1;
+      const M = o === BiomeId.SNOW_TAIGA || o === BiomeId.SNOW_PEAK || o === BiomeId.GLACIER,
+        $ =
+          o === BiomeId.DESERT ||
+          o === BiomeId.CANYON ||
+          o === BiomeId.SAVANNA ||
+          o === BiomeId.BEACH ||
+          o === BiomeId.VOLCANIC;
+      if (o === BiomeId.MOUNTAIN_25D) {
+        const K = Math.random();
+        K < 0.38
+          ? ((v = "golem"),
+            (T = CREATURES.golem.spawnVariants.mountain.name),
+            (S = CREATURES.golem.spawnVariants.mountain.color),
+            (p = CREATURES.golem.spawnVariants.mountain.accentColor),
+            (j = CREATURES.golem.spawnVariants.mountain.hp),
+            (P = CREATURES.golem.spawnVariants.mountain.attack),
+            (A = CREATURES.golem.spawnVariants.mountain.speed),
+            (x = CREATURES.golem.spawnVariants.mountain.scale))
+          : K < 0.72
+            ? ((v = "wolf"),
+              (T = CREATURES.wolf.spawn.name),
+              (S = CREATURES.wolf.spawn.color),
+              (p = CREATURES.wolf.spawn.accentColor),
+              (j = CREATURES.wolf.spawn.hp),
+              (P = CREATURES.wolf.spawn.attack),
+              (A = CREATURES.wolf.spawn.speed),
+              (x = CREATURES.wolf.spawn.scale))
+            : ((v = "deer"),
+              (T = CREATURES.deer.spawn.name),
+              (S = CREATURES.deer.spawn.color),
+              (p = CREATURES.deer.spawn.accentColor),
+              (j = CREATURES.deer.spawn.hp),
+              (P = CREATURES.deer.spawn.attack),
+              (A = CREATURES.deer.spawn.speed),
+              (x = CREATURES.deer.spawn.scale));
+      } else if (M)
+        ((v = "wolf"),
+          (T = CREATURES.wolf.spawnVariants.snow.name),
+          (S = CREATURES.wolf.spawnVariants.snow.color),
+          (p = CREATURES.wolf.spawnVariants.snow.accentColor),
+          (j = CREATURES.wolf.spawnVariants.snow.hp),
+          (P = CREATURES.wolf.spawnVariants.snow.attack),
+          (A = CREATURES.wolf.spawnVariants.snow.speed),
+          (x = CREATURES.wolf.spawnVariants.snow.scale));
+      else if ($)
+        o === BiomeId.VOLCANIC
+          ? Math.random() < 0.35
+            ? ((v = "dragon"),
+              (T = "Dragão Ancião"),
+              (S = "#dc2626"),
+              (p = "#fbbf24"),
+              (j = 60),
+              (P = 9),
+              (A = 0.85),
+              (x = 1.3))
+            : ((v = "golem"),
+              (T = CREATURES.golem.spawn.name),
+              (S = CREATURES.golem.spawn.color),
+              (p = CREATURES.golem.spawn.accentColor),
+              (j = CREATURES.golem.spawn.hp),
+              (P = CREATURES.golem.spawn.attack),
+              (A = CREATURES.golem.spawn.speed),
+              (x = CREATURES.golem.spawn.scale))
+          : ((v = "scorpion"),
+            (T = "Escorpião das Areias"),
+            (S = "#d97706"),
+            (p = "#fef08a"),
+            (j = 24),
+            (P = 6),
+            (A = 0.85),
+            (x = 0.95));
+      else if (l) {
+        const K = Math.random();
+        K < 0.35
+          ? ((v = "slime"),
+            (T = "Gosma Cavernosa Bioluminescente"),
+            (S = "#0ea5e9"),
+            (p = "#7dd3fc"),
+            (j = 24),
+            (P = 4),
+            (A = 0.8),
+            (x = 1.05))
+          : K < 0.68
+            ? ((v = "bat"),
+              (T = "Morcego das Profundezas"),
+              (S = "#475569"),
+              (p = "#f43f5e"),
+              (j = 18),
+              (P = 5),
+              (A = 1.25),
+              (x = 0.9))
+            : ((v = "spider"),
+              (T = "Aranha Cavernosa"),
+              (S = "#334155"),
+              (p = "#ef4444"),
+              (j = 26),
+              (P = 6),
+              (A = 0.95),
+              (x = 1));
+      } else if (
+        o === BiomeId.COAST_WATER ||
+        o === BiomeId.OASIS_LAKE ||
+        o === BiomeId.MEADOW_LAKE ||
+        o === BiomeId.FOREST_LAKE ||
+        o === BiomeId.SWAMP_LAKE ||
+        o === BiomeId.SAVANNA_LAKE ||
+        o === BiomeId.TAIGA_LAKE ||
+        o === BiomeId.GLACIER_LAKE
+      )
+        ((v = "slime"),
+          o === BiomeId.OASIS_LAKE
+            ? ((T = "Gosma das Águas do Oásis"),
+              (S = "#06b6d4"),
+              (p = "#67e8f9"),
+              (j = 22),
+              (P = 3),
+              (A = 0.95),
+              (x = 1))
+            : o === BiomeId.FOREST_LAKE
+              ? ((T = "Gosma Musgosa do Lago"),
+                (S = "#0f766e"),
+                (p = "#2dd4bf"),
+                (j = 24),
+                (P = 4),
+                (A = 0.9),
+                (x = 1))
+              : o === BiomeId.SWAMP_LAKE
+                ? ((T = "Gosma das Profundezas Pantanosas"),
+                  (S = "#14532d"),
+                  (p = "#4ade80"),
+                  (j = 28),
+                  (P = 5),
+                  (A = 0.85),
+                  (x = 1.1))
+                : o === BiomeId.SAVANNA_LAKE
+                  ? ((T = "Gosma do Bebedouro"),
+                    (S = "#0369a1"),
+                    (p = "#f59e0b"),
+                    (j = 24),
+                    (P = 4),
+                    (A = 0.95),
+                    (x = 1))
+                  : o === BiomeId.TAIGA_LAKE
+                    ? ((T = "Gosma Boreal das Águas Frias"),
+                      (S = "#0c4a6e"),
+                      (p = "#bae6fd"),
+                      (j = 25),
+                      (P = 4),
+                      (A = 0.9),
+                      (x = 1))
+                    : o === BiomeId.GLACIER_LAKE
+                      ? ((T = "Gosma Glacial Cristalina"),
+                        (S = "#0891b2"),
+                        (p = "#e0f2fe"),
+                        (j = 26),
+                        (P = 4),
+                        (A = 0.85),
+                        (x = 1))
+                      : ((T =
+                          o === BiomeId.MEADOW_LAKE
+                            ? "Gosma Límpida do Lago"
+                            : "Gosma das Águas Rasas"),
+                        (S = "#0284c7"),
+                        (p = "#38bdf8"),
+                        (j = 20),
+                        (P = 3),
+                        (A = 0.95),
+                        (x = 1)));
+      else if (o === BiomeId.SWAMP)
+        Math.random() < 0.7
+          ? ((v = "slime"),
+            (T = "Gosma do Pântano Sombrio"),
+            (S = "#7e22ce"),
+            (p = "#d8b4fe"),
+            (j = 26),
+            (P = 5),
+            (A = 0.8),
+            (x = 1.1))
+          : ((v = "spider"),
+            (T = "Tarântula Pantaneira"),
+            (S = "#1e293b"),
+            (p = "#a855f7"),
+            (j = 28),
+            (P = 7),
+            (A = 0.9),
+            (x = 1.05));
+      else if (o === BiomeId.FOREST || o === BiomeId.DEEP_FOREST) {
+        const K = Math.random();
+        K < 0.28
+          ? ((v = "deer"),
+ (T = CREATURES.deer.spawn.name),
+ (S = CREATURES.deer.spawn.color),
+ (p = CREATURES.deer.spawn.accentColor),
+ (j = CREATURES.deer.spawn.hp),
+ (P = CREATURES.deer.spawn.attack),
+ (A = CREATURES.deer.spawn.speed),
+ (x = CREATURES.deer.spawn.scale))
+          : K < 0.52
+            ? ((v = "wolf"),
+              (T = CREATURES.wolf.spawn.name),
+              (S = CREATURES.wolf.spawn.color),
+              (p = CREATURES.wolf.spawn.accentColor),
+              (j = CREATURES.wolf.spawn.hp),
+              (P = CREATURES.wolf.spawn.attack),
+              (A = CREATURES.wolf.spawn.speed),
+              (x = CREATURES.wolf.spawn.scale))
+            : K < 0.78
+              ? ((v = "slime"),
+                (T =
+                  o === BiomeId.DEEP_FOREST
+                    ? "Gosma Musgosa Ancestral"
+                    : "Gosma Verde da Floresta"),
+                (S = o === BiomeId.DEEP_FOREST ? "#15803d" : "#22c55e"),
+                (p = o === BiomeId.DEEP_FOREST ? "#4ade80" : "#86efac"),
+                (j = 22),
+                (P = 4),
+                (A = 0.75),
+                (x = 1))
+              : ((v = "spider"),
+                (T = "Aranha dos Bosques"),
+                (S = "#334155"),
+                (p = "#22c55e"),
+                (j = 24),
+                (P = 5),
+                (A = 0.9),
+                (x = 0.95));
+      } else
+        Math.random() < 0.6
+          ? ((v = "rabbit"),
+ (T = CREATURES.rabbit.spawn.name),
+ (S = CREATURES.rabbit.spawn.color),
+ (p = CREATURES.rabbit.spawn.accentColor),
+ (j = CREATURES.rabbit.spawn.hp),
+ (P = CREATURES.rabbit.spawn.attack),
+ (A = CREATURES.rabbit.spawn.speed),
+ (x = CREATURES.rabbit.spawn.scale))
+          : ((v = "slime"),
+            (T = "Gosma Verde dos Prados"),
+            (S = "#16a34a"),
+            (p = "#86efac"),
+            (j = 20),
+            (P = 4),
+            (A = 0.75),
+            (x = 0.95));
+      if (v === "slime" && !l && u >= 0.22 && u <= 0.78) {
+        const V = this.isShallowWater(y, w),
+          O = this.isPositionInShade(f, g, u, l);
+        if (!V && !O) {
+          const _ = this.findNearestShelter(f, g, u, l);
+          if (_)
+            ((f = _.x),
+              (g = _.y),
+              (y = Math.floor(f / this.engine.tileSize)),
+              (w = Math.floor(g / this.engine.tileSize)));
+          else return;
+        }
+      }
+      const z = {
+        id: `mob_${this.nextId++}_${Date.now()}`,
+        name: T,
+        type: v,
+        x: f,
+        y: g,
+        vx: 0,
+        vy: 0,
+        hp: j,
+        maxHp: j,
+        attack: P,
+        defense: 2,
+        speed: A,
+        color: S,
+        accentColor: p,
+        scale: x,
+        isUnderground: l,
+        isMoving: !1,
+        hitFlashTimer: 0,
+        animTimer: Math.random() * 10,
+        wanderTimer: 1,
+        targetAngle: Math.random() * Math.PI * 2,
+        facing: ["down", "left", "right", "up"][Math.floor(Math.random() * 4)],
+      };
+      this.monsters.push(z);
+    }
+    spawnSwarmSlimeNearPlayer(t, l, o) {
+      const u = o === BiomeId.SNOW_TAIGA || o === BiomeId.SNOW_PEAK || o === BiomeId.GLACIER,
+        m =
+          o === BiomeId.DESERT ||
+          o === BiomeId.CANYON ||
+          o === BiomeId.SAVANNA ||
+          o === BiomeId.BEACH ||
+          o === BiomeId.VOLCANIC;
+      if (u || m) return;
+      const c = Math.random() * Math.PI * 2,
+        f = 36 + Math.random() * 44,
+        g = t.x + Math.cos(c) * f,
+        y = t.y + Math.sin(c) * f,
+        w = Math.floor(g / this.engine.tileSize),
+        v = Math.floor(y / this.engine.tileSize);
+      if (
+        !this.engine.isTilePassable(w, v) ||
+        this.engine.isNearLitCampfire(g, y) ||
+        this.engine.isNearLitCampfire(t.x, t.y)
+      )
+        return;
+      const T = [
+          { color: "#22c55e", accent: "#86efac", name: "Gosma Rastejante" },
+          { color: "#10b981", accent: "#6ee7b7", name: "Gosma Venenosa" },
+          { color: "#16a34a", accent: "#bbf7d0", name: "Gosma Caçadora" },
+        ],
+        S = T[Math.floor(Math.random() * T.length)],
+        p = {
+          id: `slime_swarm_${this.nextId++}`,
+          name: S.name,
+          type: "slime",
+          x: g,
+          y,
+          vx: 0,
+          vy: 0,
+          hp: 18,
+          maxHp: 18,
+          attack: 4,
+          defense: 0,
+          speed: 0.85,
+          color: S.color,
+          accentColor: S.accent,
+          scale: 0.85 + Math.random() * 0.25,
+          isUnderground: l,
+          hitFlashTimer: 0,
+          animTimer: Math.random() * 10,
+          wanderTimer: 0.2,
+          targetAngle: c + Math.PI,
+          facing: this.getMonsterFacingToTarget(g, y, t.x, t.y, "down"),
+          emerging: !0,
+          emergeTimer: 0.55,
+          attackCooldown: 0.5,
+        };
+      this.monsters.push(p);
+      for (let j = 0; j < 8; j++) {
+        const P = Math.random() * Math.PI * 2,
+          A = 1.2 + Math.random() * 3.5;
+        this.slimeParticles.push({
+          x: g,
+          y: y + 2,
+          vx: Math.cos(P) * A,
+          vy: Math.sin(P) * A - 2,
+          life: 0.55,
+          maxLife: 0.55,
+          type: Math.random() < 0.5 ? "mud" : "bubble",
+          color: Math.random() < 0.5 ? "#78350f" : S.color,
+          size: 1.8 + Math.random() * 2,
+        });
+      }
+      this.floatingTexts.push({
+        id: `txt_${this.nextId++}`,
+        x: g,
+        y: y - 14,
+        text: "+ Gosma emergiu!",
+        color: "#4ade80",
+        isCrit: !1,
+        life: 0.85,
+      });
+    }
+    getAttackReachAndRadius(t, l = !1, rangeOverride) {
+      if (rangeOverride !== void 0) return { reach: rangeOverride, hitRadius: 18, maxRange: rangeOverride + 18 };
+      if (l) return { reach: 26, hitRadius: 16, maxRange: 42 };
+      const o = t ? 18 : 12,
+        u = t ? 22 : 16;
+      return { reach: o, hitRadius: u, maxRange: o + u };
+    }
+    findNearestMonster(t, l, o, u = !1) {
+      let m = null,
+        c = 1 / 0;
+      for (const f of this.monsters) {
+        if (f.hp <= 0 || f.isUnderground !== u) continue;
+        const g = Math.hypot(f.x - t, f.y - l);
+        g <= o && g < c && ((c = g), (m = f));
+      }
+      return m ? { monster: m, distance: c } : null;
+    }
+    isTargetInAttackRange(t, l, o, u, m, c, f = !1, g) {
+      const { reach: y, hitRadius: w } = this.getAttackReachAndRadius(c, f);
+      let v = t,
+        T = l;
+      return (
+        f && g !== void 0
+          ? ((v += Math.cos(g) * y), (T += Math.sin(g) * y))
+          : o === "up"
+            ? (T -= y)
+            : o === "down"
+              ? (T += y)
+              : o === "left"
+                ? (v -= y)
+                : (v += y),
+        Math.hypot(u - v, m - T) <= w
+      );
+    }
+    queuePebbleProjectile(player, angle, damage, underground, maxRange = 330, snapshotPoint) {
+      const dirX = Math.cos(angle), dirY = Math.sin(angle);
+      let targetX = player.x + dirX * maxRange;
+      let targetY = player.y + dirY * maxRange;
+      if (snapshotPoint) {
+        targetX = snapshotPoint.x;
+        targetY = snapshotPoint.y;
+      } else {
+        let distance = maxRange;
+        for (const target of this.monsters) {
+          if (target.hp <= 0 || target.isUnderground !== underground) continue;
+          const dx = target.x - player.x, dy = target.y - player.y;
+          const along = dx * dirX + dy * dirY;
+          const perpendicular = Math.abs(dx * dirY - dy * dirX);
+          if (along >= 0 && along <= distance && perpendicular <= 28) distance = along;
+        }
+        distance = Math.max(18, distance);
+        targetX = player.x + dirX * distance;
+        targetY = player.y + dirY * distance;
+      }
+      const distance = Math.max(18, Math.hypot(targetX - player.x, targetY - player.y));
+      this.pebbleProjectiles.push({
+        x: player.x, y: player.y,
+        startX: player.x, startY: player.y,
+        targetX, targetY,
+        angle, distance, damage, underground,
+        progress: 0,
+        duration: Math.max(0.22, Math.min(0.58, distance / 420)),
+        player,
+      });
+    }
+    performAttack(t, l, o, u = !1, m = !1, c, rangeOverride, lockedPoint, whipFlag) {
+      if (t.isDead)
+        return {
+          hitCount: 0,
+          defeatedCount: 0,
+          totalDamage: 0,
+          lootGold: 0,
+          defeatedNames: [],
+        };
+      let f = lockedPoint?.x ?? t.x,
+        g = lockedPoint?.y ?? t.y;
+      let { reach: y, hitRadius: w } = this.getAttackReachAndRadius(o, m, rangeOverride),
+        v = c !== void 0 ? c : t.attackAngle;
+      if (!lockedPoint && rangeOverride !== void 0 && v !== void 0) {
+        let nearestDistance = rangeOverride;
+        const dirX = Math.cos(v), dirY = Math.sin(v);
+        for (const target of this.monsters) {
+          if (target.hp <= 0 || target.isUnderground !== u) continue;
+          const dx = target.x - t.x, dy = target.y - t.y;
+          const along = dx * dirX + dy * dirY;
+          const perpendicular = Math.abs(dx * dirY - dy * dirX);
+          if (along >= 0 && along <= nearestDistance && perpendicular <= w + 10) nearestDistance = along;
+        }
+        y = Math.max(18, nearestDistance);
+      }
+      if (lockedPoint) {
+        w = Math.max(w, 36);
+      } else {
+        (m && v !== void 0
+          ? ((f += Math.cos(v) * y), (g += Math.sin(v) * y))
+          : t.direction === "up"
+            ? (g -= y)
+            : t.direction === "down"
+              ? (g += y)
+              : t.direction === "left"
+                ? (f -= y)
+                : (f += y),
+        !whipFlag && this.slashEffects.push({
+          x: f,
+          y: g,
+          direction: t.direction,
+          progress: 0,
+          hasSword: o,
+          isThrust: m,
+          angle: v,
+          color: m || o ? "#38bdf8" : "#e2e8f0",
+        }));
+      }
+      const T = {
+        hitCount: 0,
+        defeatedCount: 0,
+        totalDamage: 0,
+        lootGold: 0,
+        defeatedNames: [],
+      };
+      for (let S = this.monsters.length - 1; S >= 0; S--) {
+        const p = this.monsters[S];
+        if (p.isUnderground !== u) continue;
+        const j = Math.hypot(p.x - f, p.y - g),
+          P = !!(p.type === "slime" && p.attached);
+        const monsterRadius = (p.size || 16) + (lockedPoint ? 14 : 0);
+        if (j <= w + monsterRadius || P) {
+          T.hitCount++;
+          const A = Math.random() < 0.22,
+            x = Math.floor(Math.random() * 3) - 1,
+            M = Math.max(1, l - p.defense + x),
+            $ = A ? Math.round(M * 1.6) : M;
+          if (
+            ((p.hp -= $),
+            (p.hitFlashTimer = 0.22),
+            (p.giveUpPursuitTimer = 0),
+            (p.fleeFireTimer = 0),
+            (T.totalDamage += $),
+            P)
+          ) {
+            ((p.attached = !1), (p.isLeaping = !1), (p.attackCooldown = 1.8));
+            const z = Math.random() * Math.PI * 2;
+            ((p.x = t.x + Math.cos(z) * 28), (p.y = t.y + Math.sin(z) * 28));
+          } else {
+            const z = A ? 14 : 9;
+            m && v !== void 0
+              ? ((p.x += Math.cos(v) * z), (p.y += Math.sin(v) * z))
+              : t.direction === "up"
+                ? (p.y -= z)
+                : t.direction === "down"
+                  ? (p.y += z)
+                  : t.direction === "left"
+                    ? (p.x -= z)
+                    : (p.x += z);
+          }
+          if (isPreyType(p.type)) {
+            p.fleeTimer = creatureBehavior(p.type).playerHitFleeTimer ?? 4.5;
+            p.lastThreatX = t.x;
+            p.lastThreatY = t.y;
+            p.threatName = "jogador";
+            p.alertEffectTimer = 3.5;
+            const fleeAngle = Math.atan2(p.y - t.y, p.x - t.x) || (Math.random() * Math.PI * 2);
+            p.targetAngle = fleeAngle;
+            const sprintSpeed = p.speed * 1.85;
+            p.vx = Math.cos(fleeAngle) * sprintSpeed;
+            p.vy = Math.sin(fleeAngle) * sprintSpeed;
+            p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+          } else {
+            p.aggroTimer = 9.5;
+            const rushAngle = Math.atan2(t.y - p.y, t.x - p.x);
+            p.targetAngle = rushAngle;
+            p.facing = this.getMonsterFacingToTarget(p.x, p.y, t.x, t.y, p.facing);
+            const rushSpeed = p.speed * 1.35;
+            p.vx = Math.cos(rushAngle) * rushSpeed;
+            p.vy = Math.sin(rushAngle) * rushSpeed;
+          }
+          this.floatingTexts.push({
+            id: `dmg_${this.nextId++}`,
+            x: p.x,
+            y: p.y - 18,
+            text: P ? `-${$} (Soltou!)` : A ? `CRÍTICO! -${$}` : `-${$}`,
+            color: P ? "#38bdf8" : A ? "#f59e0b" : "#f87171",
+            isCrit: A,
+            life: 1,
+          });
+          for (let z = 0; z < (A ? 8 : 5); z++) {
+            const K = Math.random() * Math.PI * 2,
+              V = 2 + Math.random() * 4;
+            this.hitParticles.push({
+              x: p.x,
+              y: p.y,
+              vx: Math.cos(K) * V,
+              vy: Math.sin(K) * V,
+              life: 1,
+              color: A ? "#fbbf24" : "#ef4444",
+              size: 2.5 + Math.random() * 2,
+            });
+          }
+          if (p.hp <= 0) {
+            (T.defeatedCount++, T.defeatedNames.push(p.name), (T.lootGold = 0));
+            for (let N = 0; N < (p.type === "slime" ? 8 : 12); N++) {
+              const Ee = Math.random() * Math.PI * 2,
+                ne = 2 + Math.random() * 3.5;
+              this.hitParticles.push({
+                x: p.x,
+                y: p.y,
+                vx: Math.cos(Ee) * ne,
+                vy: Math.sin(Ee) * ne,
+                life: 0.75,
+                color: p.accentColor,
+                size: 2.5 + Math.random() * 2.5,
+              });
+            }
+            const z = p.type === "slime";
+            let K = z ? "Gosma Sem Vida" : `Corpo de ${p.name}`,
+              V = z ? "Corpo de Gosma" : `Corpo de ${p.name}`,
+              O = z ? "incomum" : "raro",
+              _ = z ? 28 : 35,
+              se = z
+                ? "Corpo de criatura gosma coletado no solo. Preserva a forma gelatinosa viva com núcleo e olhos vítreos, ideal para forja e alquimia."
+                : `Corpo intacto de ${p.name} recolhido após o combate.`;
+            creatureCarcass(p.type)
+ ? ((K = creatureCarcass(p.type).name),
+ (V = creatureCarcass(p.type).bodyName),
+ (se = creatureCarcass(p.type).description))
+                  : p.type === "dragon" &&
+                    ((K = "Carcaça de Dragão Ancião"),
+                    (V = "Corpo de Dragão"),
+                    (O = "lendario"),
+                    (_ = 250),
+                    (se =
+                      "Carcaça lendária de dragão. Pode ser destrinchada com uma faca para extrair escamas, chifres, dentes, asas, crânio, carne e ossos."));
+            const ue = {
+              id: `carcass_${this.nextId++}`,
+              monsterId: p.id,
+              name: K,
+              type: p.type,
+              x: p.x,
+              y: p.y,
+              color: p.color,
+              accentColor: p.accentColor,
+              scale: p.scale,
+              isUnderground: p.isUnderground,
+              isSlime: z,
+              collected: !1,
+              settleProgress: 0,
+              lifetime: 20,
+              maxLifetime: 20,
+              lootItemName: V,
+              lootItemIcon: `creature_${p.type}`,
+              lootItemColor: p.color,
+              lootItemRarity: O,
+              lootItemDescription: se,
+              lootItemValue: _,
+              gold: Math.floor(Math.random() * 8) + 4,
+            };
+            (this.carcasses.push(ue),
+              (p.attached = !1),
+              this.monsters.splice(S, 1));
+          }
+        }
+      }
+      return T;
+    }
+    getNearestCarcass(t, l, o = 54, u = !1) {
+      let m = null,
+        c = 1 / 0;
+      for (const f of this.carcasses) {
+        if (f.collected || f.isUnderground !== u) continue;
+        const g = Math.hypot(f.x - t, f.y - l);
+        g <= o && g < c && ((c = g), (m = f));
+      }
+      return m;
+    }
+    collectCarcass(t) {
+      var u, m;
+      const l = this.carcasses.findIndex((c) => c.id === t);
+      if (l === -1) return null;
+      const o = this.carcasses[l];
+      (this.carcasses.splice(l, 1),
+        o.isSlime
+          ? (u = this.audio) == null || u.playSlimePickup()
+          : (m = this.audio) == null || m.playItemPickup());
+      for (let c = 0; c < 12; c++) {
+        const f = -Math.PI / 2 + (Math.random() - 0.5) * 1.4,
+          g = 1.5 + Math.random() * 2.5;
+        this.hitParticles.push({
+          x: o.x + (Math.random() - 0.5) * 14,
+          y: o.y + (Math.random() - 0.5) * 8,
+          vx: Math.cos(f) * g,
+          vy: Math.sin(f) * g,
+          life: 0.85,
+          color: o.accentColor || "#4ade80",
+          size: 2.2 + Math.random() * 2.5,
+        });
+      }
+      return o;
+    }
+    getRenderItems(t, l, o, u, m) {
+      const c = [];
+      for (const f of this.monsters)
+        f.x < l - 60 ||
+          f.x > o + 60 ||
+          f.y < u - 60 ||
+          f.y > m + 60 ||
+          c.push({ y: f.y, draw: () => Eg(t, f) });
+      for (const f of this.carcasses)
+        f.collected ||
+          f.isUnderground !== this.lastIsUnderground ||
+          f.x < l - 60 ||
+          f.x > o + 60 ||
+          f.y < u - 60 ||
+          f.y > m + 60 ||
+          c.push({ y: f.y - 4, draw: () => Ag(t, f, this.animTimer) });
+      for (const f of this.droppedItems) {
+        if (
+          f.isUnderground !== this.lastIsUnderground ||
+          f.x < l - 60 ||
+          f.x > o + 60 ||
+          f.y < u - 60 ||
+          f.y > m + 60
+        )
+          continue;
+        const g = Math.hypot(f.x - this.lastPlayerX, f.y - this.lastPlayerY);
+        c.push({ y: f.y - 2, draw: () => this.drawDroppedItem(t, f, g) });
+      }
+      return c;
+    }
+    drawDroppedItem(t, l, o) {
+      if ((t.save(), l.lifetime <= 15)) {
+        const f = 8 + (15 - l.lifetime) * 2,
+          g = Math.sin(this.animTimer * f) > 0 ? 0.35 : 1;
+        t.globalAlpha = g;
+      }
+      let u = 1;
+      l.lifetime < 1.5 && (u = Math.max(0.1, l.lifetime / 1.5));
+      const m = Math.sin(this.animTimer * 3.5 + l.bobOffset) * 2.5;
+      if (
+        (t.save(),
+        (t.fillStyle = "rgba(0, 0, 0, 0.35)"),
+        t.beginPath(),
+        t.ellipse(l.x, l.y + 6, 8 * u, 4 * u, 0, 0, Math.PI * 2),
+        t.fill(),
+        t.restore(),
+        t.save(),
+        t.translate(l.x, l.y + m),
+        u !== 1 && t.scale(u, u),
+        o < 52)
+      ) {
+        const f = Math.sin(this.animTimer * 5) * 0.15 + 0.85;
+        (t.save(),
+          (t.strokeStyle = l.item.color || "#38bdf8"),
+          (t.lineWidth = 1.2),
+          (t.globalAlpha = 0.5 * f),
+          t.beginPath(),
+          t.ellipse(0, 5, 12 * f, 6 * f, 0, 0, Math.PI * 2),
+          t.stroke(),
+          t.restore());
+      }
+      (t.translate(-13, -13),
+        drawItemIcon(t, l.item, 26, 26, this.animTimer, !1),
+        t.restore());
+      const c = l.quantity || l.item.stackCount || 1;
+      if (c > 1) {
+        (t.save(),
+          (t.fillStyle = "rgba(15, 23, 42, 0.9)"),
+          (t.strokeStyle = "rgba(245, 158, 11, 0.7)"),
+          (t.lineWidth = 1));
+        const f = `x${c}`;
+        t.font = "bold 8px monospace";
+        const g = t.measureText(f).width,
+          y = Math.max(14, g + 6);
+        (t.beginPath(),
+          t.roundRect(l.x + 2, l.y + m + 1, y, 10, 3),
+          t.fill(),
+          t.stroke(),
+          (t.fillStyle = "#fde68a"),
+          (t.textAlign = "center"),
+          (t.textBaseline = "middle"),
+          t.fillText(f, l.x + 2 + y / 2, l.y + m + 6),
+          t.restore());
+      }
+      t.restore();
+    }
+    dropItem(t, l, o, u, m = 1) {
+      const c = Math.random() * Math.PI * 2,
+        f = 4 + Math.random() * 14,
+        g = l + Math.cos(c) * f,
+        y = o + Math.sin(c) * f,
+        w = {
+          id: `drop_${this.nextId++}_${Date.now()}`,
+          item: { ...t, stackCount: m },
+          quantity: m,
+          x: g,
+          y,
+          isUnderground: u,
+          lifetime: 60,
+          maxLifetime: 60,
+          bobOffset: Math.random() * Math.PI * 2,
+          pickupCooldown: 0.8,
+        };
+      this.droppedItems.push(w);
+      for (let v = 0; v < 5; v++)
+        this.hitParticles.push({
+          x: g + (Math.random() - 0.5) * 12,
+          y: y + (Math.random() - 0.5) * 8,
+          vx: (Math.random() - 0.5) * 0.9,
+          vy: -0.6 - Math.random() * 0.8,
+          life: 0.5,
+          color: t.color || "#38bdf8",
+          size: 1.8 + Math.random() * 1.2,
+        });
+      return w;
+    }
+    getNearestDroppedItem(t, l, o = 48, u = !1) {
+      let m = null,
+        c = o;
+      for (const f of this.droppedItems) {
+        if (f.isUnderground !== u) continue;
+        const g = Math.hypot(f.x - t, f.y - l);
+        g < c && ((c = g), (m = f));
+      }
+      return m;
+    }
+    collectDroppedItem(t) {
+      const l = this.droppedItems.findIndex((u) => u.id === t);
+      if (l === -1) return null;
+      const o = this.droppedItems[l];
+      this.droppedItems.splice(l, 1);
+      for (let u = 0; u < 6; u++)
+        this.hitParticles.push({
+          x: o.x + (Math.random() - 0.5) * 12,
+          y: o.y + (Math.random() - 0.5) * 10,
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: -0.9 - Math.random() * 1,
+          life: 0.5,
+          color: o.item.color || "#38bdf8",
+          size: 1.8 + Math.random() * 1.5,
+        });
+      return o;
+    }
+    renderEffects(t) {
+      for (const l of this.slashEffects) {
+        (t.save(), t.translate(l.x, l.y));
+        const o = Math.max(0, 1 - l.progress);
+        if (l.kind === "pebble") {
+          t.rotate(l.angle || 0);
+          t.globalAlpha = l.trail ? 0.75 : 1;
+          t.strokeStyle = "rgba(226, 232, 240, 0.45)";
+          t.lineWidth = 2;
+          t.beginPath();
+          t.moveTo(-18, 0);
+          t.lineTo(-5, 0);
+          t.stroke();
+          t.fillStyle = "#94a3b8";
+          t.strokeStyle = "#f8fafc";
+          t.lineWidth = 1.4;
+          t.beginPath();
+          t.ellipse(0, 0, 5.5, 4.2, -0.25, 0, Math.PI * 2);
+          t.fill();
+          t.stroke();
+          t.fillStyle = "#475569";
+          t.beginPath();
+          t.arc(-1.5, -1, 1.1, 0, Math.PI * 2);
+          t.fill();
+          t.restore();
+          continue;
+        }
+        if (l.isThrust) {
+          const f =
+            l.angle !== void 0
+              ? l.angle
+              : l.direction === "right"
+                ? 0
+                : l.direction === "left"
+                  ? Math.PI
+                  : l.direction === "up"
+                    ? -Math.PI / 2
+                    : Math.PI / 2;
+          t.rotate(f);
+          const g = 22 + (1 - l.progress) * 10,
+            y = 8 * (1 - l.progress);
+          ((t.fillStyle = "#ffffff"),
+            (t.globalAlpha = o),
+            t.beginPath(),
+            t.moveTo(g + 6, 0),
+            t.lineTo(g - 8, -y * 0.7),
+            t.lineTo(g - 3, 0),
+            t.lineTo(g - 8, y * 0.7),
+            t.closePath(),
+            t.fill(),
+            (t.strokeStyle = l.color || "#38bdf8"),
+            (t.lineWidth = 3.8),
+            t.beginPath(),
+            t.moveTo(-12, 0),
+            t.lineTo(g + 5, 0),
+            t.stroke(),
+            (t.strokeStyle = "#ffffff"),
+            (t.lineWidth = 1.6),
+            t.beginPath(),
+            t.moveTo(-8, 0),
+            t.lineTo(g + 8, 0),
+            t.stroke(),
+            (t.strokeStyle = "#7dd3fc"),
+            (t.lineWidth = 1.3),
+            t.beginPath(),
+            t.moveTo(g - 2, -1),
+            t.lineTo(g - 20, -y - 3),
+            t.moveTo(g - 2, 1),
+            t.lineTo(g - 20, y + 3),
+            t.moveTo(g - 6, -0.5),
+            t.lineTo(-6, -y * 0.6),
+            t.moveTo(g - 6, 0.5),
+            t.lineTo(-6, y * 0.6),
+            t.stroke(),
+            (t.fillStyle = "#ffffff"),
+            t.beginPath(),
+            t.arc(g + 6, 0, 3.5 * (1 - l.progress), 0, Math.PI * 2),
+            t.fill(),
+            t.restore());
+          continue;
+        }
+        const u = l.hasSword ? 20 : 13;
+        let m = 0,
+          c = Math.PI;
+        (l.direction === "right"
+          ? ((m = -Math.PI * 0.4), (c = Math.PI * 0.4))
+          : l.direction === "left"
+            ? ((m = Math.PI * 0.6), (c = Math.PI * 1.4))
+            : l.direction === "up"
+              ? ((m = -Math.PI * 0.9), (c = -Math.PI * 0.1))
+              : ((m = Math.PI * 0.1), (c = Math.PI * 0.9)),
+          (t.strokeStyle = l.color),
+          (t.lineWidth = l.hasSword ? 5 : 3.5),
+          (t.globalAlpha = o),
+          t.beginPath(),
+          t.arc(0, 0, u, m, c),
+          t.stroke(),
+          (t.strokeStyle = "#ffffff"),
+          (t.lineWidth = 1.8),
+          (t.globalAlpha = o * 0.9),
+          t.beginPath(),
+          t.arc(0, 0, u * 0.92, m, c),
+          t.stroke(),
+          l.hasSword ||
+            ((t.fillStyle = "#ffffff"),
+            (t.globalAlpha = o),
+            t.beginPath(),
+            t.arc(0, 0, 5 * (1 - l.progress), 0, Math.PI * 2),
+            t.fill()),
+          t.restore());
+      }
+      for (const l of this.hitParticles)
+        (t.save(),
+          (t.fillStyle = l.color),
+          (t.globalAlpha = l.life),
+          t.beginPath(),
+          t.arc(l.x, l.y, l.size, 0, Math.PI * 2),
+          t.fill(),
+          t.restore());
+      for (const l of this.floatingTexts)
+        (t.save(),
+          (t.font = l.isCrit
+            ? "bold 14px monospace, sans-serif"
+            : "bold 12px monospace, sans-serif"),
+          (t.textAlign = "center"),
+          (t.strokeStyle = "#020617"),
+          (t.lineWidth = 3),
+          (t.globalAlpha = l.life),
+          t.strokeText(l.text, l.x, l.y),
+          (t.fillStyle = l.color),
+          t.fillText(l.text, l.x, l.y),
+          t.restore());
+      for (const l of this.slimeParticles) {
+        t.save();
+        const o = l.life / l.maxLife;
+        if (
+          ((t.globalAlpha = Math.max(0, Math.min(1, o * 0.85))),
+          l.type === "vapor")
+        )
+          ((t.fillStyle = l.color),
+            t.beginPath(),
+            t.arc(
+              l.x + Math.sin(o * 8) * 2,
+              l.y,
+              l.size * (1.6 - o * 0.6),
+              0,
+              Math.PI * 2,
+            ),
+            t.fill());
+        else if (l.type === "bubble")
+          ((t.strokeStyle = "rgba(255, 255, 255, 0.8)"),
+            (t.fillStyle = "rgba(56, 189, 248, 0.35)"),
+            (t.lineWidth = 1),
+            t.beginPath(),
+            t.arc(l.x, l.y, l.size, 0, Math.PI * 2),
+            t.fill(),
+            t.stroke(),
+            (t.fillStyle = "#ffffff"),
+            t.beginPath(),
+            t.arc(
+              l.x - l.size * 0.35,
+              l.y - l.size * 0.35,
+              l.size * 0.25,
+              0,
+              Math.PI * 2,
+            ),
+            t.fill());
+        else if (l.type === "heal") {
+          t.fillStyle = l.color;
+          const u = l.size;
+          (t.fillRect(l.x - 0.5, l.y - u, 1.5, u * 2),
+            t.fillRect(l.x - u, l.y - 0.5, u * 2, 1.5));
+        } else
+          l.type === "poison"
+            ? ((t.fillStyle = l.color),
+              t.beginPath(),
+              t.arc(l.x, l.y, l.size, 0, Math.PI * 2),
+              t.fill(),
+              (t.fillStyle = "#ffffff"),
+              t.beginPath(),
+              t.arc(
+                l.x - l.size * 0.35,
+                l.y - l.size * 0.35,
+                l.size * 0.28,
+                0,
+                Math.PI * 2,
+              ),
+              t.fill())
+            : l.type === "mud" &&
+              ((t.fillStyle = l.color),
+              t.beginPath(),
+              t.ellipse(
+                l.x,
+                l.y,
+                l.size * 1.2,
+                l.size * 0.8,
+                0,
+                0,
+                Math.PI * 2,
+              ),
+              t.fill());
+        t.restore();
+      }
+    }
+  }
