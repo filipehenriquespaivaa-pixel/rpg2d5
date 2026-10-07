@@ -785,6 +785,17 @@
             (p.hitFlashTimer = Math.max(0, p.hitFlashTimer - t)));
         const P = Math.floor(p.x / this.engine.tileSize),
           A = Math.floor(p.y / this.engine.tileSize);
+        if (
+          !p.isUnderground &&
+          p.type === "wolf" &&
+          typeof window !== "undefined" &&
+          window.SnowPeakCity &&
+          typeof window.SnowPeakCity.isCityTerritory === "function" &&
+          window.SnowPeakCity.isCityTerritory(P, A)
+        ) {
+          this.monsters.splice(S, 1);
+          continue;
+        }
         if (p.type === "slime") {
           if (p.attached) {
             const W = this.getAnimalFireDeterrence(p, l);
@@ -1366,6 +1377,18 @@
       if (
         !this.engine.isTilePassable(y, w) ||
         this.engine.isNearLitCampfire(f, g)
+      )
+        return;
+      if (
+        !l &&
+        typeof window !== "undefined" &&
+        window.SnowPeakCity &&
+        typeof window.SnowPeakCity.isCityTerritory === "function" &&
+        (window.SnowPeakCity.isCityTerritory(y, w) ||
+          window.SnowPeakCity.isCityTerritory(
+            Math.floor(t.x / this.engine.tileSize),
+            Math.floor(t.y / this.engine.tileSize),
+          ))
       )
         return;
       let v = "slime",
