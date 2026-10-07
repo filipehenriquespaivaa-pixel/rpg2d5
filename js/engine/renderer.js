@@ -336,7 +336,6 @@
           for (const ke of ne) Ee.push(ke);
         }
         if (
-          !this.engine.isUnderground &&
           typeof window !== "undefined" &&
           window.SnowPeakCity &&
           typeof window.SnowPeakCity.updateAndGetCitizenRenderItems === "function"
@@ -351,6 +350,7 @@
             p,
             j,
             P,
+            !!this.engine.isUnderground,
           );
           for (const ci of citItems) Ee.push(ci);
         }
@@ -1726,9 +1726,21 @@
           case "dungeon_staircase_up":
             drawDungeonStaircase(c, f, !0, this.animTimer);
             break;
-          case "iron_bars_gate":
-            drawIronBarsGate(c, f, t.doorVertical !== undefined ? !!t.doorVertical : !0, !!t.opened);
+          case "iron_bars_gate": {
+            const isGateOpenByNpc = !!(
+              typeof window !== "undefined" &&
+              window.SnowPeakCity &&
+              typeof window.SnowPeakCity.isDoorwayUsedByCitizen === "function" &&
+              window.SnowPeakCity.isDoorwayUsedByCitizen(u.tx, u.ty)
+            );
+            drawIronBarsGate(
+              c,
+              f,
+              t.doorVertical !== undefined ? !!t.doorVertical : !0,
+              !!t.opened || isGateOpenByNpc,
+            );
             break;
+          }
           case "dungeon_door":
             drawDungeonDoor(c, f, !!t.doorVertical, !!t.opened);
             break;

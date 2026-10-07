@@ -2319,12 +2319,15 @@
           return;
         }
         if (
-          !E.isUnderground &&
           typeof window !== "undefined" &&
           window.SnowPeakCity &&
           typeof window.SnowPeakCity.interactWithNearbyCitizen === "function"
         ) {
-          const npcChat = window.SnowPeakCity.interactWithNearbyCitizen(D.x, D.y);
+          const npcChat = window.SnowPeakCity.interactWithNearbyCitizen(
+            D.x,
+            D.y,
+            !!E.isUnderground,
+          );
           if (npcChat && npcChat.success) {
             m.current.playChestChime && m.current.playChestChime();
             ve(npcChat.message);

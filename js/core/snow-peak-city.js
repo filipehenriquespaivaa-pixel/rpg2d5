@@ -1839,6 +1839,15 @@ window.Game = window.Game || {};
       }
     }
 
+    // Estrada militar externa ligando o Portão Principal do Quartel (relX = 0, relY = 26..27) até a Trilha da Mina a Leste (relX = 41..43)
+    if (relX >= 0 && relX <= 43 && (relY === 26 || relY === 27)) {
+      return {
+        isSnowCity: true,
+        role: "road",
+        roomName: "Estrada Militar do Quartel para a Mina",
+      };
+    }
+
     // - BECOS COM SAÍDA (vielas estreitas que atravessam o quarteirão de um lado ao outro):
     //   1. Beco do Norte-Oeste (X = -8, Y de -24 até -12): passa entre a Casa #3 e a Casa #4 até a borda norte!
     //   2. Beco Central-Oeste (X = -33..-32, Y de -12 até +4): liga a Rua Norte ao pátio lateral entre as Casas #8 e #9!
@@ -2304,7 +2313,117 @@ window.Game = window.Game || {};
 
   let _citizensInitialized = false;
   const CITIZENS = [];
+  const PRISONERS = [];
+  const SOLDIERS = [];
   const _activeDoorwayTimers = new Map(); // key: "tx,ty" -> timestamp/remaining frames
+
+  // Polilinha oficial da marcha entre o Corredor das Celas da Prisão e a Entrada da Mina Profunda (em coordenadas relativas à cidade)
+  const PRISON_TO_MINE_ROUTE = [
+    { rx: 0.0,  ry: 68.0 }, // 0: Fundo do Corredor Central das Celas
+    { rx: -1.4, ry: 54.0 }, // 1: Corredor das Celas (desviando da escadaria em 0,51)
+    { rx: 0.0,  ry: 46.0 }, // 2: Portão de Grades do Campo de Concentração
+    { rx: -6.0, ry: 43.0 }, // 3: Pátio de Execução (contornando a forca pelo lado oeste)
+    { rx: -6.0, ry: 30.5 }, // 4: Norte do Pátio de Execução
+    { rx: 0.0,  ry: 28.0 }, // 5: Portão Principal do Quartel
+    { rx: 0.0,  ry: 26.5 }, // 6: Estrada Militar Externa
+    { rx: 41.5, ry: 26.5 }, // 7: Esquina Leste da Estrada Militar
+    { rx: 41.5, ry: 56.5 }, // 8: Trilha da Mina ao lado da Prisão
+    { rx: 46.0, ry: 56.5 }, // 9: Boca da Grande Mina Profunda das Neves
+  ];
+
+  // Calcula comprimento acumulado da polilinha para posicionar a fila de presos e os 6 tenentes (2 frente, 2 meio, 2 fim)
+  const _ROUTE_SEGMENTS = [];
+  let _ROUTE_TOTAL_LEN = 0;
+  for (let i = 0; i < PRISON_TO_MINE_ROUTE.length - 1; i++) {
+    const a = PRISON_TO_MINE_ROUTE[i];
+    const b = PRISON_TO_MINE_ROUTE[i + 1];
+    const len = Math.hypot(b.rx - a.rx, b.ry - a.ry);
+    _ROUTE_SEGMENTS.push({ a, b, len, startDist: _ROUTE_TOTAL_LEN });
+    _ROUTE_TOTAL_LEN += len;
+  }
+
+  function _sampleRouteAtDist(distTiles, lateralOffsetTiles, ts, reverse) {
+    const clamped = Math.max(0, Math.min(_ROUTE_TOTAL_LEN, distTiles));
+    const targetD = reverse ? _ROUTE_TOTAL_LEN - clamped : clamped;
+    let seg = _ROUTE_SEGMENTS[0];
+    for (let i = 0; i < _ROUTE_SEGMENTS.length; i++) {
+      if (targetD >= _ROUTE_SEGMENTS[i].startDist && targetD <= _ROUTE_SEGMENTS[i].startDist + _ROUTE_SEGMENTS[i].len + 0.001) {
+        seg = _ROUTE_SEGMENTS[i];
+        break;
+      }
+    }
+    const t = seg.len > 0 ? (targetD - seg.startDist) / seg.len : 0;
+    const rx = seg.a.rx + (seg.b.rx - seg.a.rx) * t;
+    const ry = seg.a.ry + (seg.b.ry - seg.a.ry) * t;
+    let dx = seg.b.rx - seg.a.rx;
+    let dy = seg.b.ry - seg.a.ry;
+    if (reverse) {
+      dx = -dx;
+      dy = -dy;
+    }
+    const norm = Math.hypot(dx, dy) || 1;
+    const ux = dx / norm;
+    const uy = dy / norm;
+    // Vetor perpendicular para colocar pares lado a lado na fila
+    const px = -uy * lateralOffsetTiles;
+    const py = ux * lateralOffsetTiles;
+    const facing = Math.abs(ux) > Math.abs(uy) ? (ux < 0 ? "left" : "right") : (uy < 0 ? "up" : "down");
+    return {
+      x: (CITY_CX + rx + px + 0.5) * ts,
+      y: (CITY_CY + ry + py + 0.5) * ts,
+      facing,
+      reachedStart: distTiles <= 0,
+      reachedEnd: distTiles >= _ROUTE_TOTAL_LEN,
+    };
+  }
+
+  // Definições das 4 Grandes Celas Coletivas para os 32 Prisioneiros (8 por cela)
+  const CELL_ZONES = [
+    { id: 0, roofId: "barracks_cell_nw", minRx: -31, maxRx: -7, aislesRy: [50.8, 51.4, 54.8, 55.4], gateRx: -4, gateRy: 53, clusterRx: -18, clusterRy: 51.2 },
+    { id: 1, roofId: "barracks_cell_ne", minRx: 7,   maxRx: 31, aislesRy: [50.8, 51.4, 54.8, 55.4], gateRx: 4,  gateRy: 53, clusterRx: 18,  clusterRy: 51.2 },
+    { id: 2, roofId: "barracks_cell_sw", minRx: -31, maxRx: -7, aislesRy: [64.8, 65.4, 68.8, 69.4], gateRx: -4, gateRy: 66, clusterRx: -18, clusterRy: 65.2 },
+    { id: 3, roofId: "barracks_cell_se", minRx: 7,   maxRx: 31, aislesRy: [64.8, 65.4, 68.8, 69.4], gateRx: 4,  gateRy: 66, clusterRx: 18,  clusterRy: 65.2 },
+  ];
+
+  const PRISONER_PHRASES = [
+    "Minhas mãos estão feridas de tanto cavar terra...",
+    "Aquele monte de terra lá fora não para de crescer.",
+    "Fiquem juntos aqui no canto, faz menos frio...",
+    "Os 6 tenentes já vão abrir as grades para a fila da mina.",
+    "Cuidado com o Capitão, ele fiscaliza cada túnel.",
+    "Só tem terra e morcegos naquela mina profunda...",
+    "Mais um dia carregando terra para fora...",
+  ];
+
+  const MILITARY_PHRASES = {
+    coronel: [
+      "Capitão, quero o relatório completo da escavação na mina!",
+      "Mantenha os 6 tenentes firmes na escolta dos 32 prisioneiros.",
+      "Vou inspecionar as ruas da cidade e retorno ao quartel antes do anoitecer.",
+      "A disciplina no quartel e na mina deve ser absoluta!",
+    ],
+    capitao: [
+      "Sim, Coronel! Os prisioneiros estão escavando os túneis e retirando a terra!",
+      "A escolta dos tenentes levou todos os presos em fila sem incidentes.",
+      "Vou retornar à mina agora mesmo para supervisionar os túneis, Coronel!",
+      "Acelerem essa retirada de terra, prisioneiros!",
+    ],
+    tenente: [
+      "Mantenham a fila alinhada até a entrada da mina! Sem parar!",
+      "Dois tenentes na frente, dois no meio e dois na retaguarda — avancem!",
+      "Levem esses sacos de terra para o monte ao lado da mina!",
+      "De volta para as celas, prisioneiros! Rápido!",
+    ],
+    carcereiro: [
+      "Ninguém se aproxima das grades! Silêncio nas celas!",
+      "Corredor da prisão sob controle.",
+    ],
+    soldado: [
+      "Em guarda! Perímetro seguro.",
+      "Ronda em andamento sem alterações.",
+      "Continuem escavando os túneis de terra, presos!",
+    ],
+  };
 
   function _initCitizens(tileSize) {
     if (_citizensInitialized) return;
@@ -2312,9 +2431,9 @@ window.Game = window.Game || {};
     const ts = tileSize || 36;
     let nameIdx = 0;
 
+    // 1. INICIALIZA AS 38 MORADORAS DAS 24 CASAS
     for (let i = 0; i < HOUSES.length; i++) {
       const h = HOUSES[i];
-      // 1 ou 2 mulheres em cada casa (2 nas casas de 2 quartos ou pares, 1 nas demais)
       const count = h.twoBedrooms || h.id % 2 === 0 ? 2 : 1;
 
       for (let r = 0; r < count; r++) {
@@ -2322,13 +2441,11 @@ window.Game = window.Game || {};
         const name = FEMALE_NAMES[nameIdx % FEMALE_NAMES.length];
         nameIdx++;
 
-        // Coordenadas chave da casa desta moradora (em tiles)
         const doorTx = h.cx;
         const doorTy = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
         const streetRelY = h.relY < 0 ? -11.15 : 11.15;
         const streetTy = CITY_CY + streetRelY;
 
-        // Pontos internos da casa (Quarto, Sala com Lareira, Cozinha e Hall da Porta)
         const northSide = h.doorOnSouth;
         const bedTx = r === 0 ? h.cx - 2.1 : h.twoBedrooms ? h.cx + 2.1 : h.cx - 2.1;
         const bedTy = r === 0
@@ -2343,15 +2460,13 @@ window.Game = window.Game || {};
         const hallTx = h.cx + 0.2;
         const hallTy = h.cy + (northSide ? h.halfH - 1.2 : -h.halfH + 1.2);
 
-        // Variedade garantida de tons de pele, cabelos, penteados e trajes com detalhes vermelhos
         const skinColor = SKIN_TONES[(id * 3 + r * 5 + i) % SKIN_TONES.length];
         const hairColor = HAIR_COLORS[(id * 5 + r * 2 + i) % HAIR_COLORS.length];
-        const hairStyle = (id + r * 2 + i) % 5; // 0: longo solto, 1: tranças com fitas vermelhas, 2: coque com laço vermelho, 3: ondulado com tiara vermelha, 4: capuz com borda vermelha
-        const outfitStyle = (id + r + i * 2) % 6; // 6 cortes/modelos de trajes de inverno com detalhes vermelhos
+        const hairStyle = (id + r * 2 + i) % 5;
+        const outfitStyle = (id + r + i * 2) % 6;
         const palette = OUTFIT_PALETTES[(id * 2 + r + i) % OUTFIT_PALETTES.length];
         const propInHand = (id + i) % 4 === 0 ? "basket" : (id + i) % 7 === 0 ? "pot" : null;
 
-        // Algumas começam já passeando na rua/praça durante o dia e outras saindo de casa
         const startOutside = (id + r) % 3 !== 0;
         const startX = startOutside
           ? (h.cx + ((r === 0 ? -1 : 1) * 1.5) + 0.5) * ts
@@ -2379,7 +2494,6 @@ window.Game = window.Game || {};
           isMoving: false,
           walkPhase: id * 1.7,
           speed: 0.92 + ((id * 7) % 5) * 0.04,
-          // Waypoints e estado da rotina
           doorTx,
           doorTy,
           streetTy,
@@ -2407,6 +2521,169 @@ window.Game = window.Game || {};
         }
         CITIZENS.push(cit);
       }
+    }
+
+    // 2. INICIALIZA OS 32 PRISIONEIROS (8 em cada uma das 4 Grandes Celas Coletivas, cores variadas, roupas brancas rasgadas)
+    const ribCenters = [14, 29, 44, 59, 74, 89, 104, 119, 134, 146];
+    for (let pIdx = 0; pIdx < 32; pIdx++) {
+      const id = pIdx + 1;
+      const cellIdx = pIdx % 4;
+      const cz = CELL_ZONES[cellIdx];
+      const slotInCell = Math.floor(pIdx / 4); // 0..7
+      const skinColor = SKIN_TONES[(pIdx * 3 + cellIdx * 2) % SKIN_TONES.length];
+      const hairColor = HAIR_COLORS[(pIdx * 5 + 1) % HAIR_COLORS.length];
+
+      // Posição inicial dentro da sua grande cela
+      const startRx = cz.minRx + 3 + (slotInCell * 3) % (cz.maxRx - cz.minRx - 4);
+      const startRy = cz.aislesRy[slotInCell % cz.aislesRy.length];
+
+      // Atribuição de trabalho na mina durante o dia:
+      // - 20 prisioneiros (pIdx < 20) escavam dentro dos túneis subterrâneos de terra da mina e levam terra até a saída;
+      // - 12 prisioneiros (pIdx >= 20) carregam os sacos de terra da boca da mina até o Grande Monte de Terra externo!
+      const worksUndergroundInMine = pIdx < 20;
+      const ribY = ribCenters[pIdx % ribCenters.length];
+      const ribDir = pIdx % 2 === 0 ? -1 : 1;
+      const digOffsetMx = ribDir * (6 + ((pIdx * 3) % 16));
+      const digTargetMx = pIdx % 5 === 0 ? (pIdx % 2 === 0 ? -1.8 : 1.8) : digOffsetMx;
+      const digTargetMy = pIdx % 5 === 0 ? 10 + ((pIdx * 11) % 120) : ribY;
+
+      PRISONERS.push({
+        id,
+        name: `Prisioneiro #${id}`,
+        cellIdx,
+        cellZone: cz,
+        slotInCell,
+        skinColor,
+        hairColor,
+        hasBeard: pIdx % 3 === 0,
+        tatterSeed: (pIdx * 7) % 5,
+        x: (CITY_CX + startRx + 0.5) * ts,
+        y: (CITY_CY + startRy + 0.5) * ts,
+        facing: "down",
+        isMoving: false,
+        walkPhase: id * 1.3,
+        speed: 0.95 + (pIdx % 4) * 0.03,
+        isUnderground: false,
+        carryingDirt: false,
+        isDigging: false,
+        digTimer: 0,
+        mode: "cell_explore", // "cell_explore", "cell_cluster", "marching_to_mine", "mine_work", "marching_to_cell"
+        modeTimer: 4 + (pIdx % 9),
+        pauseTimer: 0,
+        chatText: "",
+        worksUndergroundInMine,
+        digTargetMx,
+        digTargetMy,
+        haulPhase: pIdx % 2 === 0 ? "to_mound" : "to_mine",
+        waypoints: [],
+      });
+    }
+
+    // 3. INICIALIZA O CORONEL, CAPITÃO, 6 TENENTES, CARCEREIROS E SOLDADOS (Todos com tons de pele variados e uniforme preto com detalhes vermelhos idênticos!)
+    let solId = 1;
+    const makeSoldier = (rank, title, role, homeHouseIdx, startRx, startRy, isUnderground = false, goesHomeAtNight = false) => {
+      const h = HOUSES[homeHouseIdx % HOUSES.length];
+      const id = solId++;
+      const skinColor = SKIN_TONES[(id * 3 + homeHouseIdx) % SKIN_TONES.length];
+      const hairColor = HAIR_COLORS[(id * 4 + 2) % HAIR_COLORS.length];
+      const baseX = isUnderground ? (PRISON_MINE_TX + startRx + 0.5) * ts : (CITY_CX + startRx + 0.5) * ts;
+      const baseY = isUnderground ? (PRISON_MINE_TY + startRy + 0.5) * ts : (CITY_CY + startRy + 0.5) * ts;
+
+      return {
+        id,
+        rank, // "Coronel", "Capitão", "Tenente", "Carcereiro", "Soldado"
+        name: title,
+        role,
+        skinColor,
+        hairColor,
+        homeHouse: h,
+        homeHouseId: h.id,
+        goesHomeAtNight,
+        isInsideHouse: false,
+        isUnderground,
+        defaultUnderground: isUnderground,
+        postRx: startRx,
+        postRy: startRy,
+        x: baseX,
+        y: baseY,
+        facing: "down",
+        isMoving: false,
+        walkPhase: id * 2.1,
+        speed: rank === "Capitão" ? 1.18 : rank === "Coronel" ? 1.0 : 1.04,
+        state: "duty",
+        stateTimer: 5 + (id % 8),
+        pauseTimer: 0,
+        chatText: "",
+        waypoints: [],
+        // Específicos de patrulha/trajeto
+        patrolStep: 0,
+        captainPhase: "at_colonel", // "at_colonel" -> "to_mine" -> "at_mine" -> "to_colonel"
+        captainTimer: 6.0,
+      };
+    };
+
+    // 3.1 CORONEL (1 — Chefe de todos: fica na Sala de Administração conversando com o Capitão, depois anda pela cidade todo dia, volta para o quartel e à noite vai para casa!)
+    SOLDIERS.push(makeSoldier("Coronel", "Coronel Valerius (Comandante Chefe)", "colonel", 0, -22.0, 40.0, false, true));
+
+    // 3.2 CAPITÃO (1 — Vai e volta da Mina Profunda de tempos em tempos até a Sala do Coronel!)
+    SOLDIERS.push(makeSoldier("Capitão", "Capitão Rodrigo (Supervisor Geral)", "captain", 1, -20.0, 40.0, false, true));
+
+    // 3.3 6 TENENTES (2 na frente da fila, 2 no meio da fila, 2 no final da fila para transportar os presos das celas para a mina; metade dorme em casa à noite)
+    for (let lt = 0; lt < 6; lt++) {
+      const posDesc = lt < 2 ? "Vanguarda da Fila" : lt < 4 ? "Meio da Fila" : "Retaguarda da Fila";
+      const goesHome = lt % 2 === 0; // Metade (3 tenentes) vai para casa dormir à noite e retorna de dia!
+      const postRx = 44.0 + (lt % 3) * 3.2;
+      const postRy = 54.5 + Math.floor(lt / 3) * 4.2;
+      const s = makeSoldier("Tenente", `Tenente #${lt + 1} (${posDesc})`, "lieutenant", 2 + lt, postRx, postRy, false, goesHome);
+      s.ltIndex = lt; // 0,1 = frente; 2,3 = meio; 4,5 = fim
+      SOLDIERS.push(s);
+    }
+
+    // 3.4 2 SOLDADOS / CARCEREIROS COMO VIGIA NOS CORREDORES DA PRISÃO (metade = 1 vai para casa dormir à noite e retorna de dia)
+    SOLDIERS.push(makeSoldier("Carcereiro", "Carcereiro-Vigia #1 (Corredor da Prisão)", "prison_corridor_guard", 8, -1.6, 52.0, false, false));
+    SOLDIERS.push(makeSoldier("Carcereiro", "Carcereiro-Vigia #2 (Corredor da Prisão)", "prison_corridor_guard", 9, 1.6, 64.0, false, true));
+
+    // 3.5 2 SOLDADOS NA PORTA PRINCIPAL DO QUARTEL
+    SOLDIERS.push(makeSoldier("Soldado", "Soldado Sentinela #1 (Porta Principal)", "main_gate_guard", 10, -2.4, 27.2, false, false));
+    SOLDIERS.push(makeSoldier("Soldado", "Soldado Sentinela #2 (Porta Principal)", "main_gate_guard", 11, 2.4, 27.2, false, false));
+
+    // 3.6 2 SOLDADOS NA ENTRADA DA MINA (metade = 1 vai para casa dormir à noite e retorna de dia)
+    SOLDIERS.push(makeSoldier("Soldado", "Soldado da Mina #1 (Entrada da Mina)", "mine_entrance_guard", 12, 43.0, 56.8, false, false));
+    SOLDIERS.push(makeSoldier("Soldado", "Soldado da Mina #2 (Entrada da Mina)", "mine_entrance_guard", 13, 49.0, 56.8, false, true));
+
+    // 3.7 4 SOLDADOS DENTRO DA MINA FAZENDO RONDA (metade = 2 vão para casas dormir à noite e retornam de dia)
+    const minePatrolStartMy = [14, 44, 74, 104];
+    for (let mp = 0; mp < 4; mp++) {
+      const goesHome = mp >= 2; // Metade (2 soldados) vai para casa dormir à noite e retorna de dia!
+      const s = makeSoldier("Soldado", `Soldado de Ronda da Mina #${mp + 1}`, "mine_inside_patrol", 14 + mp, 0, minePatrolStartMy[mp], true, goesHome);
+      s.minePatrolIndex = mp;
+      SOLDIERS.push(s);
+    }
+
+    // 3.8 8 SOLDADOS FAZENDO RONDA NA CIDADE (4 soldados fazendo ronda de dia e 8 soldados fazendo ronda à noite!)
+    const cityPatrolStartRx = [-28, -10, 12, 30, -35, -18, 18, 35];
+    for (let cp = 0; cp < 8; cp++) {
+      const isNightOnly = cp >= 4; // Os 4 primeiros patrulham de dia e noite; os outros 4 saem à noite totalizando 8 à noite!
+      const startRy = cp % 2 === 0 ? -11.15 : 11.15;
+      const s = makeSoldier(
+        "Soldado",
+        `Soldado da Ronda Urbana #${cp + 1}`,
+        isNightOnly ? "city_patrol_night_extra" : "city_patrol_day_night",
+        16 + cp,
+        cityPatrolStartRx[cp],
+        startRy,
+        false,
+        false
+      );
+      if (isNightOnly) {
+        // De dia fica descansando em sua casa na cidade e sai ao anoitecer!
+        const h = s.homeHouse;
+        s.x = (h.cx + 1.0 + 0.5) * ts;
+        s.y = (h.cy + (h.doorOnSouth ? 1.5 : -1.5) + 0.5) * ts;
+        s.isInsideHouse = true;
+        s.state = "resting_day_at_home";
+      }
+      SOLDIERS.push(s);
     }
   }
 
@@ -2568,54 +2845,862 @@ window.Game = window.Game || {};
     return exp !== undefined && exp > 0;
   }
 
-  // Interação do jogador [F] com uma moradora próxima
-  function interactWithNearbyCitizen(playerX, playerY) {
+  // Interação do jogador [F] com uma moradora, prisioneiro ou militar próximo
+  function interactWithNearbyCitizen(playerX, playerY, isUnderground = false) {
     let best = null;
+    let bestType = null;
     let bestDist = 52;
-    for (let i = 0; i < CITIZENS.length; i++) {
-      const c = CITIZENS[i];
-      const d = Math.hypot(playerX - c.x, playerY - c.y);
-      if (d < bestDist) {
-        bestDist = d;
-        best = c;
+
+    if (!isUnderground) {
+      for (let i = 0; i < CITIZENS.length; i++) {
+        const c = CITIZENS[i];
+        const d = Math.hypot(playerX - c.x, playerY - c.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = c;
+          bestType = "citizen";
+        }
       }
     }
+
+    for (let i = 0; i < SOLDIERS.length; i++) {
+      const s = SOLDIERS[i];
+      if (!!s.isUnderground !== !!isUnderground) continue;
+      const d = Math.hypot(playerX - s.x, playerY - s.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = s;
+        bestType = "soldier";
+      }
+    }
+
+    for (let i = 0; i < PRISONERS.length; i++) {
+      const p = PRISONERS[i];
+      if (!!p.isUnderground !== !!isUnderground) continue;
+      const d = Math.hypot(playerX - p.x, playerY - p.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+        bestType = "prisoner";
+      }
+    }
+
     if (!best) return null;
 
-    // Vira para o jogador e responde com simpatia
     const dx = playerX - best.x;
     const dy = playerY - best.y;
     best.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
-    best.pauseTimer = 3.5;
-    const greetings = [
-      `Olá, viajante! Sou ${best.shortName}, moro na Casa #${best.houseId}.`,
-      `Que bom ver você nos Picos Gelados! A fogueira da praça está bem quentinha.`,
-      `Todas nós usamos detalhes vermelhos nos trajes — é a tradição da nossa vila na neve!`,
-      `Durante o dia passeamos e conversamos pela vila, mas à noite sempre voltamos para casa.`,
-    ];
-    const line = greetings[Math.floor(Math.random() * greetings.length)];
+    best.pauseTimer = 3.0;
+
+    if (bestType === "citizen") {
+      const greetings = [
+        `Olá, viajante! Sou ${best.shortName}, moro na Casa #${best.houseId}.`,
+        `Que bom ver você nos Picos Gelados! A fogueira da praça está bem quentinha.`,
+        `Todas nós usamos detalhes vermelhos nos trajes — é a tradição da nossa vila na neve!`,
+        `Durante o dia passeamos e conversamos pela vila, mas à noite sempre voltamos para casa.`,
+      ];
+      const line = greetings[Math.floor(Math.random() * greetings.length)];
+      best.chatText = line;
+      best.state = best.isInsideHouse ? best.state : "interacting";
+      best.stateTimer = 4.0;
+      return {
+        success: true,
+        citizen: best,
+        message: `💬 ${best.name}: "${line}"`,
+      };
+    }
+
+    if (bestType === "soldier") {
+      const rKey = best.rank === "Coronel"
+        ? "coronel"
+        : best.rank === "Capitão"
+          ? "capitao"
+          : best.rank === "Tenente"
+            ? "tenente"
+            : best.rank === "Carcereiro"
+              ? "carcereiro"
+              : "soldado";
+      const pool = MILITARY_PHRASES[rKey] || MILITARY_PHRASES.soldado;
+      const line = pool[Math.floor(Math.random() * pool.length)];
+      best.chatText = line;
+      best.stateTimer = 4.0;
+      return {
+        success: true,
+        citizen: best,
+        message: `⚔️ ${best.name}: "${line}"`,
+      };
+    }
+
+    const line = PRISONER_PHRASES[Math.floor(Math.random() * PRISONER_PHRASES.length)];
     best.chatText = line;
-    best.state = best.isInsideHouse ? best.state : "interacting";
-    best.stateTimer = 4.0;
     return {
       success: true,
       citizen: best,
-      message: `💬 ${best.name}: "${line}"`,
+      message: `⛓️ ${best.name}: "${line}"`,
     };
   }
 
-  // Atualiza a rotina de todas as moradoras e retorna os itens de renderização ordenados por Y
-  function updateAndGetCitizenRenderItems(ctx, tileSize, player, timeOfDay, animTimer, viewLeft, viewRight, viewTop, viewBottom) {
+  // Move uma entidade suavemente ao longo de sua lista de waypoints
+  function _stepWaypoints(ent, ts, speedMul = 1.0) {
+    if (!ent.waypoints || ent.waypoints.length === 0) {
+      ent.isMoving = false;
+      return false;
+    }
+    const wp = ent.waypoints[0];
+    const dx = wp.x - ent.x;
+    const dy = wp.y - ent.y;
+    const dist = Math.hypot(dx, dy);
+    const spd = (ent.speed || 1.0) * speedMul;
+
+    if (wp.doorTileTx !== undefined && wp.doorTileTy !== undefined) {
+      const dwX = (wp.doorTileTx + 0.5) * ts;
+      const dwY = (wp.doorTileTy + 0.5) * ts;
+      if (Math.hypot(ent.x - dwX, ent.y - dwY) < ts * 1.4) {
+        _activeDoorwayTimers.set(`${wp.doorTileTx},${wp.doorTileTy}`, 14);
+      }
+    }
+
+    if (dist <= spd * 1.45) {
+      ent.x = wp.x;
+      ent.y = wp.y;
+      if (wp.markInside !== undefined) ent.isInsideHouse = !!wp.markInside;
+      if (wp.setUnderground !== undefined) ent.isUnderground = !!wp.setUnderground;
+      if (wp.teleportX !== undefined && wp.teleportY !== undefined) {
+        ent.x = wp.teleportX;
+        ent.y = wp.teleportY;
+      }
+      ent.waypoints.shift();
+      if (ent.waypoints.length === 0) {
+        ent.isMoving = false;
+      }
+      return true;
+    }
+
+    ent.x += (dx / dist) * spd;
+    ent.y += (dy / dist) * spd;
+    ent.isMoving = true;
+    ent.walkPhase += 0.17 * speedMul;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      ent.facing = dx < 0 ? "left" : "right";
+    } else {
+      ent.facing = dy < 0 ? "up" : "down";
+    }
+    return true;
+  }
+
+  // Constrói rota de qualquer ponto externo até entrar na casa `h` para dormir à noite (usado por Coronel, Capitão, Tenentes e Soldados)
+  function _sendSoldierToHouseForNight(sol, ts) {
+    const h = sol.homeHouse;
+    const doorTx = h.cx;
+    const doorTy = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
+    const streetRelY = h.relY < 0 ? -11.15 : 11.15;
+    const doorStepY = doorTy + (h.doorOnSouth ? 1.1 : -1.1);
+    const insideX = (h.cx + (sol.id % 2 === 0 ? -1.8 : 1.5) + 0.5) * ts;
+    const insideY = (h.cy + (h.doorOnSouth ? -1.8 : 1.8) + 0.5) * ts;
+
+    // Se o soldado estava dentro da mina subterrânea, primeiro sai da mina para a superfície!
+    if (sol.isUnderground) {
+      sol.isUnderground = false;
+      sol.x = (PRISON_MINE_TX + 0.5) * ts;
+      sol.y = (PRISON_MINE_TY + 1.2) * ts;
+    }
+
+    const pts = [];
+    const curRx = sol.x / ts - 0.5 - CITY_CX;
+    const curRy = sol.y / ts - 0.5 - CITY_CY;
+
+    // Se estiver dentro do Quartel/Prisão (curRy >= 28 e |curRx| <= 36), sai pelo Portão Principal (0, 28)
+    if (curRy >= 28 && Math.abs(curRx) <= 36) {
+      if (curRy > 46) {
+        pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 46.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 46 });
+      }
+      pts.push({ x: (CITY_CX - 5.5) * ts, y: (CITY_CY + 32.5) * ts });
+      pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 28.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 28 });
+      pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 11.65) * ts });
+    } else if (curRx > 36 || curRy > 24) {
+      // Se estiver na área externa da Mina Profunda, sobe pela trilha leste até a Rua Sul
+      pts.push({ x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 26.5 + 0.5) * ts });
+      pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 26.5 + 0.5) * ts });
+      pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 11.65) * ts });
+    }
+
+    const fromX = pts.length > 0 ? pts[pts.length - 1].x : sol.x;
+    const fromY = pts.length > 0 ? pts[pts.length - 1].y : sol.y;
+    const streetRoute = _buildStreetRoute(fromX, fromY, h.relX, streetRelY, ts);
+    for (let k = 0; k < streetRoute.length; k++) pts.push(streetRoute[k]);
+
+    pts.push({ x: (doorTx + 0.5) * ts, y: (doorStepY + 0.5) * ts, doorTileTx: doorTx, doorTileTy: doorTy });
+    pts.push({ x: (doorTx + 0.5) * ts, y: (doorTy + 0.5) * ts, doorTileTx: doorTx, doorTileTy: doorTy, markInside: true });
+    pts.push({ x: insideX, y: insideY, markInside: true });
+    sol.waypoints = pts;
+    sol.state = "going_home_night";
+  }
+
+  // Faz o soldado/oficial sair de casa de manhã cedo para retornar ao seu posto
+  function _wakeSoldierFromHouse(sol, ts) {
+    const h = sol.homeHouse;
+    const doorTx = h.cx;
+    const doorTy = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
+    const streetRelY = h.relY < 0 ? -11.15 : 11.15;
+    const doorStepY = doorTy + (h.doorOnSouth ? 1.15 : -1.15);
+
+    const pts = [
+      { x: (doorTx + 0.5) * ts, y: (doorTy + 0.5) * ts, doorTileTx: doorTx, doorTileTy: doorTy, markInside: false },
+      { x: (doorTx + 0.5) * ts, y: (doorStepY + 0.5) * ts, doorTileTx: doorTx, doorTileTy: doorTy, markInside: false },
+      { x: (doorTx + 0.5) * ts, y: (CITY_CY + streetRelY + 0.5) * ts, markInside: false },
+    ];
+
+    // Vai pelas ruas até a saída Sul da Praça (0, 11.15 -> 0, 26.5)
+    const toSouth = _buildStreetRoute(pts[2].x, pts[2].y, 0, 11.15, ts);
+    for (let k = 0; k < toSouth.length; k++) pts.push(toSouth[k]);
+    pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 26.8) * ts });
+
+    if (sol.defaultUnderground) {
+      // Soldado de ronda interna da mina: caminha até a entrada da mina e entra no subsolo!
+      pts.push({ x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 26.8) * ts });
+      pts.push({ x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 56.8) * ts });
+      pts.push({
+        x: (PRISON_MINE_TX + 0.5) * ts,
+        y: (PRISON_MINE_TY + 0.5) * ts,
+        setUnderground: true,
+        teleportX: (PRISON_MINE_TX + 0.5) * ts,
+        teleportY: (PRISON_MINE_TY + sol.postRy + 0.5) * ts,
+      });
+    } else if (sol.postRy >= 28 && Math.abs(sol.postRx) <= 35) {
+      // Posto dentro do Quartel / Prisão / Sala do Coronel
+      pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 28.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 28 });
+      pts.push({ x: (CITY_CX - 6.0 + 0.5) * ts, y: (CITY_CY + 33.5) * ts });
+      if (sol.role === "colonel" || sol.role === "captain") {
+        pts.push({ x: (CITY_CX - 14.0 + 0.5) * ts, y: (CITY_CY + 41.5) * ts, doorTileTx: CITY_CX - 14, doorTileTy: CITY_CY + 41 });
+      } else if (sol.postRy > 46) {
+        pts.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 46.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 46 });
+      }
+      pts.push({ x: (CITY_CX + sol.postRx + 0.5) * ts, y: (CITY_CY + sol.postRy + 0.5) * ts });
+    } else {
+      // Posto externo na Entrada da Mina
+      pts.push({ x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 26.8) * ts });
+      pts.push({ x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 56.8) * ts });
+      pts.push({ x: (CITY_CX + sol.postRx + 0.5) * ts, y: (CITY_CY + sol.postRy + 0.5) * ts });
+    }
+
+    sol.waypoints = pts;
+    sol.state = "returning_to_duty";
+  }
+
+  // Atualiza os 32 Prisioneiros e todos os Soldados/Oficiais
+  function _updatePrisonersAndSoldiers(ts, dt, timeOfDay, animTimer) {
+    // Fases do dia para a Prisão e o Quartel:
+    // - isMarchToMine (0.24 <= timeOfDay < 0.34): Fila de 32 prisioneiros levados das celas para a Mina por 6 Tenentes (2 frente, 2 meio, 2 fim)
+    // - isMineWorkTime (0.34 <= timeOfDay <= 0.66): Prisioneiros escavando os túneis de terra da mina e retirando a terra para o monte externo
+    // - isMarchToCells (0.66 < timeOfDay <= 0.75): Fila de 32 prisioneiros trazidos de volta da Mina para as celas pelos 6 Tenentes
+    // - isPrisonNight (timeOfDay < 0.24 || timeOfDay > 0.75): Prisioneiros dentro das 4 Grandes Celas explorando e se aglomerando; metade dos soldados da mina/prisão e o Coronel em casa dormindo; 8 soldados na ronda da cidade!
+    const isMarchToMine = timeOfDay >= 0.24 && timeOfDay < 0.34;
+    const isMineWorkTime = timeOfDay >= 0.34 && timeOfDay <= 0.66;
+    const isMarchToCells = timeOfDay > 0.66 && timeOfDay <= 0.75;
+    const isNightShift = timeOfDay < 0.24 || timeOfDay > 0.75;
+
+    // Progresso da marcha (0.0 a 1.0)
+    const marchFrac = isMarchToMine
+      ? (timeOfDay - 0.24) / 0.10
+      : isMarchToCells
+        ? (timeOfDay - 0.66) / 0.09
+        : 0;
+    // Distância percorrida pelo líder da fila ao longo da polilinha (_ROUTE_TOTAL_LEN ~ 125 blocos)
+    const marchLeadDist = marchFrac * (_ROUTE_TOTAL_LEN + 30);
+
+    // Mantém os portões da prisão e do quartel abertos durante a passagem da fila
+    if (isMarchToMine || isMarchToCells) {
+      _activeDoorwayTimers.set(`${CITY_CX},${CITY_CY + 28}`, 10);
+      _activeDoorwayTimers.set(`${CITY_CX},${CITY_CY + 46}`, 10);
+      _activeDoorwayTimers.set(`${CITY_CX - 4},${CITY_CY + 53}`, 10);
+      _activeDoorwayTimers.set(`${CITY_CX + 4},${CITY_CY + 53}`, 10);
+      _activeDoorwayTimers.set(`${CITY_CX - 4},${CITY_CY + 66}`, 10);
+      _activeDoorwayTimers.set(`${CITY_CX + 4},${CITY_CY + 66}`, 10);
+    }
+
+    // =========================================================================
+    // A. ATUALIZA OS 32 PRISIONEIROS
+    // =========================================================================
+    // Ponto de aglomeração dinâmico em cada uma das 4 grandes celas (muda a cada ~18s)
+    const clusterCycle = Math.floor(animTimer * 0.08);
+    const isClusterPhase = (Math.floor(animTimer * 0.12) % 3) !== 0; // 2/3 do tempo há grupos se aglomerando nas celas
+
+    for (let i = 0; i < PRISONERS.length; i++) {
+      const p = PRISONERS[i];
+      if (p.pauseTimer > 0) p.pauseTimer = Math.max(0, p.pauseTimer - dt);
+
+      // 1. MARCHA MATINAL (Celas -> Mina) ou MARCHA VESPERTINA (Mina -> Celas) EM FILA
+      if (isMarchToMine || isMarchToCells) {
+        p.isDigging = false;
+        p.carryingDirt = false;
+        p.waypoints = [];
+        // Posição de cada prisioneiro na fila entre os 6 Tenentes:
+        // - Prisioneiros 0..15 ficam entre os 2 Tenentes da Frente (offset 0) e os 2 Tenentes do Meio (offset 14.5)
+        // - Prisioneiros 16..31 ficam entre os 2 Tenentes do Meio (offset 14.5) e os 2 Tenentes do Final (offset 29.0)
+        const halfGroup = i < 16 ? 0 : 1;
+        const rowInHalf = Math.floor((i % 16) / 2); // 0..7
+        const sideSign = i % 2 === 0 ? -0.42 : 0.42;
+        const distBehindLead = halfGroup === 0
+          ? 2.2 + rowInHalf * 1.45
+          : 16.5 + rowInHalf * 1.45;
+        const myDist = marchLeadDist - distBehindLead;
+
+        if (isMarchToMine && myDist >= _ROUTE_TOTAL_LEN) {
+          // Já chegou na boca da Mina Profunda: inicia o trabalho na mina!
+          if (p.worksUndergroundInMine) {
+            p.isUnderground = true;
+            p.x = (PRISON_MINE_TX + 0.5) * ts;
+            p.y = (PRISON_MINE_TY + 2.5 + (i % 6)) * ts;
+          } else {
+            p.isUnderground = false;
+            p.x = (CITY_CX + 46.5 + (i % 3)) * ts;
+            p.y = (CITY_CY + 56.8) * ts;
+          }
+          p.isMoving = false;
+        } else {
+          p.isUnderground = false;
+          const pos = _sampleRouteAtDist(myDist, sideSign, ts, isMarchToCells);
+          p.x = pos.x;
+          p.y = pos.y;
+          p.facing = pos.facing;
+          p.isMoving = myDist > 0 && myDist < _ROUTE_TOTAL_LEN;
+          if (p.isMoving) p.walkPhase += 0.18;
+          p.chatText = (i === 0 && Math.floor(animTimer) % 9 === 0)
+            ? "Marchando em fila para a mina..."
+            : "";
+        }
+        continue;
+      }
+
+      // 2. HORÁRIO DE TRABALHO NA MINA PROFUNDA (Escavar os túneis de terra e retirar a terra para fora)
+      if (isMineWorkTime) {
+        if (p.worksUndergroundInMine) {
+          // Trabalha DENTRO dos túneis de terra da Mina Profunda (isUnderground = true)
+          if (!p.isUnderground || p.mode !== "mine_work") {
+            p.isUnderground = true;
+            p.mode = "mine_work";
+            p.carryingDirt = false;
+            p.isDigging = false;
+            p.x = (PRISON_MINE_TX + (i % 2 === 0 ? -1 : 1) + 0.5) * ts;
+            p.y = (PRISON_MINE_TY + 8 + (i * 5) % 95 + 0.5) * ts;
+            p.waypoints = [];
+          }
+
+          if (p.isDigging) {
+            p.isMoving = false;
+            p.digTimer -= dt;
+            p.walkPhase += 0.22; // Anima os braços escavando a parede de terra!
+            p.facing = p.digTargetMx < 0 ? "left" : p.digTargetMx > 0 ? "right" : "down";
+            p.chatText = (i % 6 === 0 && Math.floor(animTimer + i) % 8 === 0)
+              ? "Escavando o túnel de terra..."
+              : "";
+            if (p.digTimer <= 0) {
+              // Terminou de encher o saco de terra: leva pelo túnel até a saída da mina!
+              p.isDigging = false;
+              p.carryingDirt = true;
+              const spineX = (PRISON_MINE_TX + (i % 2 === 0 ? -0.8 : 0.8) + 0.5) * ts;
+              const ribEntryY = (PRISON_MINE_TY + p.digTargetMy + 0.5) * ts;
+              const exitX = (PRISON_MINE_TX + (i % 2 === 0 ? -1.2 : 1.2) + 0.5) * ts;
+              const exitY = (PRISON_MINE_TY + 2.2 + 0.5) * ts;
+              p.waypoints = [
+                { x: spineX, y: ribEntryY },
+                { x: exitX, y: exitY },
+              ];
+            }
+          } else if (!_stepWaypoints(p, ts, p.carryingDirt ? 0.88 : 1.0)) {
+            if (p.carryingDirt) {
+              // Chegou perto da saída da mina e entregou o saco de terra para a turma externa: volta para escavar!
+              p.carryingDirt = false;
+              const spineX = (PRISON_MINE_TX + (i % 2 === 0 ? -0.8 : 0.8) + 0.5) * ts;
+              const ribEntryY = (PRISON_MINE_TY + p.digTargetMy + 0.5) * ts;
+              const digX = (PRISON_MINE_TX + p.digTargetMx + 0.5) * ts;
+              const digY = (PRISON_MINE_TY + p.digTargetMy + 0.5) * ts;
+              p.waypoints = [
+                { x: spineX, y: ribEntryY },
+                { x: digX, y: digY },
+              ];
+            } else {
+              // Chegou na parede de terra do túnel: começa a escavar!
+              p.isDigging = true;
+              p.digTimer = 5.0 + (i % 5) * 1.2;
+            }
+          }
+        } else {
+          // Trabalha FORA da mina (isUnderground = false) retirando a terra da boca da mina até o Grande Monte de Terra!
+          if (p.isUnderground || p.mode !== "mine_work") {
+            p.isUnderground = false;
+            p.mode = "mine_work";
+            const lane = i - 20; // 0..11
+            const startAtMine = lane % 2 === 0;
+            p.carryingDirt = startAtMine;
+            p.isDigging = false;
+            p.x = (CITY_CX + (startAtMine ? 46.2 : 52.8) + (lane % 3) * 0.6 + 0.5) * ts;
+            p.y = (CITY_CY + 55.8 + (lane % 4) * 0.7 + 0.5) * ts;
+            p.waypoints = [];
+          }
+
+          if (p.pauseTimer <= 0 && !_stepWaypoints(p, ts, p.carryingDirt ? 0.86 : 1.0)) {
+            const lane = i - 20;
+            const rowOff = (lane % 4) * 0.75 - 1.1;
+            if (p.carryingDirt) {
+              // Estava indo com saco de terra para o Monte de Terra (ou acabou de chegar lá)
+              const distToMound = Math.hypot(p.x - (CITY_CX + 53.2) * ts, p.y - (CITY_CY + 57.0) * ts);
+              if (distToMound < ts * 2.5) {
+                // Despeja a terra no grande monte de terra e volta vazio para a boca da mina!
+                p.carryingDirt = false;
+                p.pauseTimer = 1.2;
+                p.facing = "right";
+                p.chatText = (lane === 0 && Math.floor(animTimer) % 7 === 0) ? "Despejando a terra escavada..." : "";
+                p.waypoints = [
+                  { x: (CITY_CX + 46.2 + (lane % 2) * 0.6 + 0.5) * ts, y: (CITY_CY + 56.5 + rowOff * 0.5 + 0.5) * ts },
+                ];
+              } else {
+                p.waypoints = [
+                  { x: (CITY_CX + 52.8 + (lane % 2) * 0.7 + 0.5) * ts, y: (CITY_CY + 56.8 + rowOff + 0.5) * ts },
+                ];
+              }
+            } else {
+              // Chegou na boca da mina: pega outro saco cheio de terra dos túneis e leva até o Monte de Terra!
+              p.carryingDirt = true;
+              p.pauseTimer = 1.0;
+              p.facing = "left";
+              p.chatText = "";
+              p.waypoints = [
+                { x: (CITY_CX + 52.8 + (lane % 2) * 0.7 + 0.5) * ts, y: (CITY_CY + 56.8 + rowOff + 0.5) * ts },
+              ];
+            }
+          }
+        }
+        continue;
+      }
+
+      // 3. DENTRO DAS 4 GRANDES CELAS COLETIVAS (Exploram o ambiente e às vezes se aglomeram!)
+      const cz = p.cellZone;
+      p.isUnderground = false;
+      p.carryingDirt = false;
+      p.isDigging = false;
+
+      // Garante que está dentro dos limites da própria grande cela coletiva
+      const curRx = p.x / ts - 0.5 - CITY_CX;
+      const curRy = p.y / ts - 0.5 - CITY_CY;
+      if (
+        curRx < cz.minRx - 1 ||
+        curRx > cz.maxRx + 1 ||
+        curRy < cz.aislesRy[0] - 3 ||
+        curRy > cz.aislesRy[cz.aislesRy.length - 1] + 3
+      ) {
+        const snapRx = cz.minRx + 3 + (p.slotInCell * 3) % (cz.maxRx - cz.minRx - 4);
+        const snapRy = cz.aislesRy[p.slotInCell % cz.aislesRy.length];
+        p.x = (CITY_CX + snapRx + 0.5) * ts;
+        p.y = (CITY_CY + snapRy + 0.5) * ts;
+        p.waypoints = [];
+      }
+
+      // Define se este prisioneiro participa da aglomeração atual da cela (6 dos 8 presos da cela se aglomeram)
+      const shouldCluster = isClusterPhase && (p.slotInCell + clusterCycle) % 4 !== 0;
+      p.mode = shouldCluster ? "cell_cluster" : "cell_explore";
+
+      if (p.pauseTimer <= 0 && !_stepWaypoints(p, ts, 0.85)) {
+        if (shouldCluster) {
+          // Ponto de aglomeração (rodinha de prisioneiros conversando dentro da grande cela)
+          const cSpotOffsets = [-8, 0, 7];
+          const hubRx = cz.clusterRx + cSpotOffsets[(p.cellIdx + clusterCycle) % cSpotOffsets.length];
+          const hubRy = cz.aislesRy[(p.cellIdx + clusterCycle) % cz.aislesRy.length];
+          const angle = (p.slotInCell / 6) * Math.PI * 2;
+          const targetRx = hubRx + Math.cos(angle) * 1.15;
+          const targetRy = hubRy + Math.sin(angle) * 0.48;
+          const dToHub = Math.hypot(curRx - targetRx, curRy - targetRy);
+
+          if (dToHub > 0.6) {
+            p.waypoints = [
+              { x: (CITY_CX + targetRx + 0.5) * ts, y: (CITY_CY + targetRy + 0.5) * ts },
+            ];
+          } else {
+            // Já está aglomerado na roda: olha para o centro da roda!
+            p.facing = Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))
+              ? (Math.cos(angle) > 0 ? "left" : "right")
+              : (Math.sin(angle) > 0 ? "up" : "down");
+            p.pauseTimer = 2.0 + Math.random() * 2.0;
+            p.chatText = (p.slotInCell === 0 && Math.floor(animTimer + p.cellIdx) % 6 === 0)
+              ? PRISONER_PHRASES[(p.id + clusterCycle) % PRISONER_PHRASES.length]
+              : "";
+          }
+        } else {
+          // Explora o ambiente da grande cela caminhando pelos corredores entre os beliches e grades
+          p.chatText = "";
+          const nextAisleRy = cz.aislesRy[Math.floor(Math.random() * cz.aislesRy.length)];
+          const nextRx = cz.minRx + 2 + Math.random() * (cz.maxRx - cz.minRx - 4);
+          p.waypoints = [
+            { x: (CITY_CX + curRx + 0.5) * ts, y: (CITY_CY + nextAisleRy + 0.5) * ts },
+            { x: (CITY_CX + nextRx + 0.5) * ts, y: (CITY_CY + nextAisleRy + 0.5) * ts },
+          ];
+          p.pauseTimer = 1.2 + Math.random() * 2.2;
+        }
+      }
+    }
+
+    // =========================================================================
+    // B. ATUALIZA O CORONEL, CAPITÃO, 6 TENENTES, CARCEREIROS E SOLDADOS
+    // =========================================================================
+    const colonel = SOLDIERS[0];
+    const captain = SOLDIERS[1];
+
+    for (let i = 0; i < SOLDIERS.length; i++) {
+      const s = SOLDIERS[i];
+      if (s.pauseTimer > 0) s.pauseTimer = Math.max(0, s.pauseTimer - dt);
+
+      // -----------------------------------------------------------------------
+      // 1. ROTINA DO CORONEL (Chefe de todos):
+      //    - Manhã (0.24..0.44): Sala de Administração (Sala do Coronel) conversando com o Capitão
+      //    - Tarde (0.44..0.65): Anda pela cidade todo dia (Praça Central e Ruas)
+      //    - Fim de tarde (0.65..0.75): Volta para o Quartel (Sala do Coronel / Pátio)
+      //    - Noite (< 0.24 ou > 0.75): Vai para casa dormir!
+      // -----------------------------------------------------------------------
+      if (s.role === "colonel") {
+        if (isNightShift) {
+          if (s.state !== "going_home_night" && s.state !== "sleeping_at_home") {
+            _sendSoldierToHouseForNight(s, ts);
+          } else if (!_stepWaypoints(s, ts, 1.0)) {
+            s.state = "sleeping_at_home";
+            s.isInsideHouse = true;
+            s.facing = "down";
+            s.chatText = "";
+          }
+        } else if (timeOfDay >= 0.24 && timeOfDay < 0.44) {
+          // Manhã na Sala de Administração (Sala do Coronel: rx = -22, ry = 40) esperando/conversando com o Capitão
+          if (s.isInsideHouse || s.state === "sleeping_at_home" || s.state === "going_home_night") {
+            _wakeSoldierFromHouse(s, ts);
+            s.state = "going_to_office";
+          } else if (!_stepWaypoints(s, ts, 1.0)) {
+            const officeX = (CITY_CX - 22.0 + 0.5) * ts;
+            const officeY = (CITY_CY + 40.0 + 0.5) * ts;
+            if (Math.hypot(s.x - officeX, s.y - officeY) > ts * 1.2) {
+              s.waypoints = [
+                { x: (CITY_CX - 14.0 + 0.5) * ts, y: (CITY_CY + 41.0 + 0.5) * ts, doorTileTx: CITY_CX - 14, doorTileTy: CITY_CY + 41 },
+                { x: officeX, y: officeY },
+              ];
+            } else {
+              s.state = "in_office_waiting_captain";
+              s.facing = "right";
+              const capDist = captain ? Math.hypot(captain.x - s.x, captain.y - s.y) : 999;
+              s.chatText = capDist < ts * 3.5
+                ? "Capitão, mantenha os presos escavando a mina sem descanso!"
+                : "";
+            }
+          }
+        } else if (timeOfDay >= 0.44 && timeOfDay < 0.65) {
+          // Depois de conversar com o Capitão, o Coronel sai do Quartel e anda pela cidade todo dia!
+          s.chatText = "";
+          if (s.state !== "strolling_city") {
+            s.state = "strolling_city";
+            s.waypoints = [
+              { x: (CITY_CX - 14.0 + 0.5) * ts, y: (CITY_CY + 41.0 + 0.5) * ts, doorTileTx: CITY_CX - 14, doorTileTy: CITY_CY + 41 },
+              { x: (CITY_CX - 6.0 + 0.5) * ts, y: (CITY_CY + 32.0 + 0.5) * ts },
+              { x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 28.0 + 0.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 28 },
+              { x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 11.15 + 0.5) * ts },
+            ];
+          } else if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.95)) {
+            _assignStrollDestination(s, ts);
+            s.pauseTimer = 1.5;
+          }
+        } else {
+          // Fim de tarde (0.65..0.75): Volta da cidade para o Quartel antes de ir para casa à noite!
+          if (s.state !== "returning_to_barracks") {
+            s.state = "returning_to_barracks";
+            const toGate = _buildStreetRoute(s.x, s.y, 0, 11.15, ts);
+            toGate.push({ x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 28.0 + 0.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 28 });
+            toGate.push({ x: (CITY_CX - 6.0 + 0.5) * ts, y: (CITY_CY + 33.0 + 0.5) * ts });
+            toGate.push({ x: (CITY_CX - 14.0 + 0.5) * ts, y: (CITY_CY + 41.0 + 0.5) * ts, doorTileTx: CITY_CX - 14, doorTileTy: CITY_CY + 41 });
+            toGate.push({ x: (CITY_CX - 22.0 + 0.5) * ts, y: (CITY_CY + 40.0 + 0.5) * ts });
+            s.waypoints = toGate;
+          } else {
+            _stepWaypoints(s, ts, 1.0);
+          }
+        }
+        continue;
+      }
+
+      // -----------------------------------------------------------------------
+      // 2. ROTINA DO CAPITÃO:
+      //    - Vai e volta da Mina Profunda de tempos em tempos até a Sala do Coronel!
+      // -----------------------------------------------------------------------
+      if (s.role === "captain") {
+        if (isNightShift) {
+          if (s.state !== "going_home_night" && s.state !== "sleeping_at_home") {
+            _sendSoldierToHouseForNight(s, ts);
+          } else if (!_stepWaypoints(s, ts, 1.0)) {
+            s.state = "sleeping_at_home";
+            s.isInsideHouse = true;
+            s.facing = "down";
+            s.chatText = "";
+          }
+        } else {
+          if (s.isInsideHouse || s.state === "sleeping_at_home" || s.state === "going_home_night") {
+            _wakeSoldierFromHouse(s, ts);
+            s.state = "duty";
+            s.captainPhase = "at_colonel";
+            s.captainTimer = 5.0;
+          } else if (!_stepWaypoints(s, ts, 1.15)) {
+            s.captainTimer -= dt;
+            if (s.captainPhase === "at_colonel") {
+              s.facing = "left";
+              const colDist = colonel ? Math.hypot(colonel.x - s.x, colonel.y - s.y) : 999;
+              s.chatText = colDist < ts * 3.5
+                ? "Coronel, a escavação nos túneis da mina segue em ritmo total!"
+                : "Verificando ordens na Sala do Coronel...";
+              if (s.captainTimer <= 0) {
+                // Sai da Sala do Coronel e caminha até a Entrada da Mina Profunda!
+                s.captainPhase = "to_mine";
+                s.chatText = "";
+                s.waypoints = [
+                  { x: (CITY_CX - 14.0 + 0.5) * ts, y: (CITY_CY + 41.0 + 0.5) * ts, doorTileTx: CITY_CX - 14, doorTileTy: CITY_CY + 41 },
+                  { x: (CITY_CX - 6.0 + 0.5) * ts, y: (CITY_CY + 31.0 + 0.5) * ts },
+                  { x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 28.0 + 0.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 28 },
+                  { x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 26.5 + 0.5) * ts },
+                  { x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 26.5 + 0.5) * ts },
+                  { x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 56.5 + 0.5) * ts },
+                  { x: (CITY_CX + 45.0 + 0.5) * ts, y: (CITY_CY + 57.5 + 0.5) * ts },
+                ];
+              }
+            } else if (s.captainPhase === "to_mine") {
+              s.captainPhase = "at_mine";
+              s.captainTimer = 6.0;
+            } else if (s.captainPhase === "at_mine") {
+              s.facing = "right";
+              s.chatText = "Mais rápido com essa terra, prisioneiros! Tenentes, vigiem a fila!";
+              if (s.captainTimer <= 0) {
+                // Volta da Mina Profunda até a Sala do Coronel!
+                s.captainPhase = "to_colonel";
+                s.chatText = "";
+                s.waypoints = [
+                  { x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 56.5 + 0.5) * ts },
+                  { x: (CITY_CX + 41.5 + 0.5) * ts, y: (CITY_CY + 26.5 + 0.5) * ts },
+                  { x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 26.5 + 0.5) * ts },
+                  { x: (CITY_CX + 0.5) * ts, y: (CITY_CY + 28.0 + 0.5) * ts, doorTileTx: CITY_CX, doorTileTy: CITY_CY + 28 },
+                  { x: (CITY_CX - 6.0 + 0.5) * ts, y: (CITY_CY + 31.0 + 0.5) * ts },
+                  { x: (CITY_CX - 14.0 + 0.5) * ts, y: (CITY_CY + 41.0 + 0.5) * ts, doorTileTx: CITY_CX - 14, doorTileTy: CITY_CY + 41 },
+                  { x: (CITY_CX - 19.8 + 0.5) * ts, y: (CITY_CY + 40.0 + 0.5) * ts },
+                ];
+              }
+            } else if (s.captainPhase === "to_colonel") {
+              s.captainPhase = "at_colonel";
+              s.captainTimer = 6.5;
+            }
+          }
+        }
+        continue;
+      }
+
+      // -----------------------------------------------------------------------
+      // 3. ROTINA DOS 6 TENENTES:
+      //    - De manhã cedo (isMarchToMine) e ao entardecer (isMarchToCells):
+      //      2 na frente da fila, 2 no meio da fila e 2 no final da fila escoltando os 32 prisioneiros!
+      //    - Durante o dia (isMineWorkTime): supervisionam a retirada de terra na Mina Profunda!
+      //    - À noite (isNightShift): metade (3 tenentes) vai para casa dormir e retorna de dia!
+      // -----------------------------------------------------------------------
+      if (s.role === "lieutenant") {
+        const lt = s.ltIndex; // 0,1 = frente; 2,3 = meio; 4,5 = final
+        if (isMarchToMine || isMarchToCells) {
+          s.isInsideHouse = false;
+          s.isUnderground = false;
+          s.waypoints = [];
+          const sideSign = lt % 2 === 0 ? -0.58 : 0.58;
+          // Posição exata na fila: 0,1 na frente (dist = 0); 2,3 no meio (dist = 14.4); 4,5 no final (dist = 29.0)
+          const distBehindLead = lt < 2 ? 0 : lt < 4 ? 14.4 : 29.0;
+          const myDist = marchLeadDist - distBehindLead;
+          const pos = _sampleRouteAtDist(myDist, sideSign, ts, isMarchToCells);
+          s.x = pos.x;
+          s.y = pos.y;
+          s.facing = pos.facing;
+          s.isMoving = myDist > 0 && myDist < _ROUTE_TOTAL_LEN;
+          if (s.isMoving) s.walkPhase += 0.18;
+          s.chatText = (lt === 0 && Math.floor(animTimer) % 8 === 0)
+            ? "Mantenham a fila dos prisioneiros andando!"
+            : "";
+          continue;
+        }
+
+        if (isMineWorkTime) {
+          s.isInsideHouse = false;
+          s.isUnderground = false;
+          if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.95)) {
+            // Ronda de supervisão ao redor da boca da mina e do grande monte de terra
+            const spots = [
+              { rx: 44.0, ry: 54.5 },
+              { rx: 49.5, ry: 54.5 },
+              { rx: 52.0, ry: 59.8 },
+              { rx: 44.5, ry: 59.8 },
+            ];
+            const pick = spots[(lt + Math.floor(animTimer * 0.2)) % spots.length];
+            s.waypoints = [
+              { x: (CITY_CX + pick.rx + (lt % 2) * 1.2 + 0.5) * ts, y: (CITY_CY + pick.ry + 0.5) * ts },
+            ];
+            s.pauseTimer = 2.0 + (lt % 3);
+            s.facing = pick.ry < 56 ? "down" : "up";
+          }
+          continue;
+        }
+
+        // Horário noturno para os Tenentes: metade vai para casa dormir, metade vigia o Quartel
+        if (s.goesHomeAtNight) {
+          if (s.state !== "going_home_night" && s.state !== "sleeping_at_home") {
+            _sendSoldierToHouseForNight(s, ts);
+          } else if (!_stepWaypoints(s, ts, 1.0)) {
+            s.state = "sleeping_at_home";
+            s.isInsideHouse = true;
+            s.facing = "down";
+          }
+        } else {
+          if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.9)) {
+            const pSpots = [
+              { rx: -6.0, ry: 33.0 },
+              { rx: 6.0,  ry: 33.0 },
+              { rx: -6.0, ry: 43.0 },
+              { rx: 6.0,  ry: 43.0 },
+            ];
+            const sp = pSpots[(lt + Math.floor(animTimer * 0.15)) % pSpots.length];
+            s.waypoints = [{ x: (CITY_CX + sp.rx + 0.5) * ts, y: (CITY_CY + sp.ry + 0.5) * ts }];
+            s.pauseTimer = 2.5;
+          }
+        }
+        continue;
+      }
+
+      // -----------------------------------------------------------------------
+      // 4. ROTINA DOS SOLDADOS E CARCEREIROS DA MINA E PRISÃO
+      //    (Metade vai para as casas dormir à noite e retorna de dia!)
+      // -----------------------------------------------------------------------
+      if (
+        s.role === "prison_corridor_guard" ||
+        s.role === "main_gate_guard" ||
+        s.role === "mine_entrance_guard" ||
+        s.role === "mine_inside_patrol"
+      ) {
+        if (isNightShift && s.goesHomeAtNight) {
+          if (s.state !== "going_home_night" && s.state !== "sleeping_at_home") {
+            _sendSoldierToHouseForNight(s, ts);
+          } else if (!_stepWaypoints(s, ts, 1.0)) {
+            s.state = "sleeping_at_home";
+            s.isInsideHouse = true;
+            s.facing = "down";
+          }
+          continue;
+        }
+
+        // Se amanheceu e estava dormindo em casa, retorna ao seu posto!
+        if (!isNightShift && (s.isInsideHouse || s.state === "sleeping_at_home" || s.state === "going_home_night")) {
+          _wakeSoldierFromHouse(s, ts);
+          continue;
+        }
+        if (s.state === "returning_to_duty") {
+          if (!_stepWaypoints(s, ts, 1.05)) {
+            s.state = "duty";
+          }
+          continue;
+        }
+
+        // Comportamento no posto durante o turno:
+        if (s.role === "prison_corridor_guard") {
+          // 2 soldados como vigia nos corredores da prisão (patrulham relY de 48 a 72 ao longo das grades das celas)
+          if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.85)) {
+            const targetRy = s.patrolStep % 2 === 0 ? 71.5 : 48.5;
+            s.patrolStep++;
+            s.waypoints = [{ x: (CITY_CX + s.postRx + 0.5) * ts, y: (CITY_CY + targetRy + 0.5) * ts }];
+            s.pauseTimer = 1.8;
+          }
+        } else if (s.role === "main_gate_guard") {
+          // 2 soldados na porta principal do quartel
+          if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.75)) {
+            const offsetRx = (s.patrolStep % 2 === 0) ? 0 : (s.postRx < 0 ? -1.4 : 1.4);
+            s.patrolStep++;
+            s.waypoints = [{ x: (CITY_CX + s.postRx + offsetRx + 0.5) * ts, y: (CITY_CY + s.postRy + 0.5) * ts }];
+            s.pauseTimer = 3.2;
+            s.facing = "up";
+          }
+        } else if (s.role === "mine_entrance_guard") {
+          // 2 soldados na entrada da mina
+          if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.78)) {
+            const offsetRy = (s.patrolStep % 2 === 0) ? -1.2 : 1.2;
+            s.patrolStep++;
+            s.waypoints = [{ x: (CITY_CX + s.postRx + 0.5) * ts, y: (CITY_CY + s.postRy + offsetRy + 0.5) * ts }];
+            s.pauseTimer = 2.8;
+            s.facing = "down";
+          }
+        } else if (s.role === "mine_inside_patrol") {
+          // 4 soldados dentro da mina fazendo ronda pelos túneis longos de terra (espinha e costelas)!
+          s.isUnderground = true;
+          if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.92)) {
+            const ribList = [14, 29, 44, 59, 74, 89, 104, 119, 134];
+            const myRib = ribList[(s.minePatrolIndex * 2 + s.patrolStep) % ribList.length];
+            const dir = (s.patrolStep % 2 === 0) ? -1 : 1;
+            const ribTargetX = dir * (14 + (s.minePatrolIndex * 3) % 10);
+            s.patrolStep++;
+            s.waypoints = [
+              { x: (PRISON_MINE_TX + 0.5) * ts, y: (PRISON_MINE_TY + myRib + 0.5) * ts },
+              { x: (PRISON_MINE_TX + ribTargetX + 0.5) * ts, y: (PRISON_MINE_TY + myRib + 0.5) * ts },
+              { x: (PRISON_MINE_TX + 0.5) * ts, y: (PRISON_MINE_TY + myRib + 0.5) * ts },
+            ];
+            s.pauseTimer = 1.4;
+          }
+        }
+        continue;
+      }
+
+      // -----------------------------------------------------------------------
+      // 5. SOLDADOS FAZENDO RONDA NA CIDADE (4 soldados de dia e 8 soldados à noite!)
+      // -----------------------------------------------------------------------
+      if (s.role === "city_patrol_day_night") {
+        // Os 4 primeiros fazem ronda nas ruas da cidade de dia e de noite
+        s.isInsideHouse = false;
+        s.isUnderground = false;
+        if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.95)) {
+          _assignStrollDestination(s, ts);
+          s.pauseTimer = 1.0;
+        }
+      } else if (s.role === "city_patrol_night_extra") {
+        // Os 4 soldados extras da noite: descansam em casa de dia e saem para fazer ronda à noite (totalizando 8 à noite!)
+        if (isNightShift) {
+          if (s.isInsideHouse || s.state === "resting_day_at_home" || s.state === "going_home_day") {
+            const h = s.homeHouse;
+            const doorTx = h.cx;
+            const doorTy = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
+            const streetRelY = h.relY < 0 ? -11.15 : 11.15;
+            s.waypoints = [
+              { x: (doorTx + 0.5) * ts, y: (doorTy + 0.5) * ts, doorTileTx: doorTx, doorTileTy: doorTy, markInside: false },
+              { x: (doorTx + 0.5) * ts, y: (CITY_CY + streetRelY + 0.5) * ts, markInside: false },
+            ];
+            s.state = "night_patrol";
+          } else if (s.pauseTimer <= 0 && !_stepWaypoints(s, ts, 0.98)) {
+            _assignStrollDestination(s, ts);
+            s.pauseTimer = 1.0;
+          }
+        } else {
+          // Durante o dia recolhem-se para casa para que fiquem exatamente 4 soldados em ronda de dia!
+          if (!s.isInsideHouse && s.state !== "going_home_day") {
+            _sendSoldierToHouseForNight(s, ts);
+            s.state = "going_home_day";
+          } else if (!_stepWaypoints(s, ts, 1.0)) {
+            s.state = "resting_day_at_home";
+            s.isInsideHouse = true;
+          }
+        }
+      }
+    }
+  }
+
+  // Atualiza a rotina de todas as moradoras, prisioneiros e soldados e retorna os itens de renderização ordenados por Y
+  function updateAndGetCitizenRenderItems(ctx, tileSize, player, timeOfDay, animTimer, viewLeft, viewRight, viewTop, viewBottom, isUnderground = false) {
     const ts = tileSize || 36;
     _initCitizens(ts);
 
-    // Só processa se o jogador estiver próximo do território da Vila Glacial
+    // Só processa se o jogador estiver próximo do território da Vila Glacial ou dentro da Mina Profunda
     if (player) {
       const distToCity = Math.hypot(player.x - CITY_CX * ts, player.y - CITY_CY * ts);
-      if (distToCity > (CITY_RADIUS + 80) * ts) return [];
+      const distToMine = Math.hypot(player.x - PRISON_MINE_TX * ts, player.y - PRISON_MINE_TY * ts);
+      if (distToCity > (CITY_RADIUS + 95) * ts && distToMine > 190 * ts) return [];
     }
 
-    // Decrementa timers de portas abertas pelas moradoras
+    // Decrementa timers de portas abertas pelas moradoras / soldados / prisioneiros
     for (const [k, v] of _activeDoorwayTimers.entries()) {
       if (v <= 1) _activeDoorwayTimers.delete(k);
       else _activeDoorwayTimers.set(k, v - 1);
@@ -2623,7 +3708,10 @@ window.Game = window.Game || {};
 
     const dt = 0.016;
     const isNight = timeOfDay < 0.24 || timeOfDay > 0.76;
-    const activePlayerHouseId = player ? getActiveHouseForPlayer(player.x, player.y, ts) : null;
+    const activePlayerHouseId = (!isUnderground && player) ? getActiveHouseForPlayer(player.x, player.y, ts) : null;
+
+    // Atualiza os 32 Prisioneiros e todos os Soldados/Oficiais (tanto na superfície quanto na mina subterrânea!)
+    _updatePrisonersAndSoldiers(ts, dt, timeOfDay, animTimer);
 
     for (let i = 0; i < CITIZENS.length; i++) {
       const c = CITIZENS[i];
@@ -2635,7 +3723,6 @@ window.Game = window.Game || {};
           _sendCitizenHome(c, ts, true);
         }
       } else {
-        // Quando amanhece, quem estava dormindo acorda e inicia a rotina do dia
         if (c.state === "night_at_home" || c.state === "returning_home_night") {
           c.state = c.isInsideHouse ? "inside_home" : "strolling";
           c.stateTimer = 1.5 + (c.id % 6) * 0.8;
@@ -2643,7 +3730,6 @@ window.Game = window.Game || {};
         }
       }
 
-      // 2. Se estiver conversando / interagindo com outra moradora (ou com o jogador)
       if (c.state === "interacting") {
         c.isMoving = false;
         c.stateTimer -= dt;
@@ -2659,21 +3745,18 @@ window.Game = window.Game || {};
         continue;
       }
 
-      // 3. Pausa breve contemplando a praça/rua ou dentro de casa
       if (c.pauseTimer > 0) {
         c.pauseTimer -= dt;
         c.isMoving = false;
         continue;
       }
 
-      // 4. Movimentação ao longo dos waypoints atuais
       if (c.waypoints && c.waypoints.length > 0) {
         const wp = c.waypoints[0];
         const dx = wp.x - c.x;
         const dy = wp.y - c.y;
         const dist = Math.hypot(dx, dy);
 
-        // Se estiver perto da porta da própria casa, mantém a porta aberta para passar
         const doorWorldX = (c.doorTx + 0.5) * ts;
         const doorWorldY = (c.doorTy + 0.5) * ts;
         if (Math.hypot(c.x - doorWorldX, c.y - doorWorldY) < ts * 1.15) {
@@ -2687,7 +3770,6 @@ window.Game = window.Game || {};
           if (wp.markOutside) c.isInsideHouse = false;
           c.waypoints.shift();
 
-          // Ao concluir a rota de entrada/saída:
           if (c.waypoints.length === 0) {
             c.isMoving = false;
             if (c.state === "returning_home_night") {
@@ -2726,15 +3808,12 @@ window.Game = window.Game || {};
         c.isMoving = false;
       }
 
-      // 5. Gerenciamento dos estados durante o DIA
       if (!isNight) {
         if (c.state === "inside_home") {
           c.stateTimer -= dt;
           if (c.stateTimer <= 0) {
-            // Sai de casa para passear na cidade!
             _sendCitizenOutside(c, ts);
           } else if (!c.waypoints || c.waypoints.length === 0) {
-            // Caminha entre os cômodos da casa (Quarto, Sala da Lareira, Cozinha)
             const spots = [
               { tx: c.livingTx, ty: c.livingTy },
               { tx: c.kitchenTx, ty: c.kitchenTy },
@@ -2749,13 +3828,11 @@ window.Game = window.Game || {};
         } else if (c.state === "strolling") {
           c.stateTimer -= dt;
           if (c.stateTimer <= 0) {
-            // Volta para entrar um pouco em casa antes de sair de novo!
             _sendCitizenHome(c, ts, false);
           } else if (!c.waypoints || c.waypoints.length === 0) {
             _assignStrollDestination(c, ts);
           }
 
-          // Verifica se encontrou outra moradora na rua/praça para interagir e conversar!
           if (c.chatCooldown <= 0 && !c.isInsideHouse) {
             for (let j = i + 1; j < CITIZENS.length; j++) {
               const other = CITIZENS[j];
@@ -2797,35 +3874,488 @@ window.Game = window.Game || {};
       }
     }
 
-    // Monta os itens de renderização para as moradoras visíveis na câmera
     const items = [];
-    for (let i = 0; i < CITIZENS.length; i++) {
-      const c = CITIZENS[i];
+
+    // 1. Renderiza as moradoras (apenas na superfície)
+    if (!isUnderground) {
+      for (let i = 0; i < CITIZENS.length; i++) {
+        const c = CITIZENS[i];
+        if (
+          c.x < viewLeft - 48 ||
+          c.x > viewRight + 48 ||
+          c.y < viewTop - 48 ||
+          c.y > viewBottom + 48
+        ) {
+          continue;
+        }
+        if (c.isInsideHouse && activePlayerHouseId !== c.houseId) {
+          const doorWorldY = (c.doorTy + 0.5) * ts;
+          if (Math.abs(c.y - doorWorldY) > ts * 0.85) {
+            continue;
+          }
+        }
+        items.push({
+          y: c.y,
+          draw: () => _renderCitizen(ctx, c, timeOfDay, animTimer, player),
+        });
+      }
+    }
+
+    // 2. Renderiza os 32 Prisioneiros (na superfície ou dentro da Mina Profunda, conforme p.isUnderground)
+    for (let i = 0; i < PRISONERS.length; i++) {
+      const p = PRISONERS[i];
+      if (!!p.isUnderground !== !!isUnderground) continue;
       if (
-        c.x < viewLeft - 48 ||
-        c.x > viewRight + 48 ||
-        c.y < viewTop - 48 ||
-        c.y > viewBottom + 48
+        p.x < viewLeft - 48 ||
+        p.x > viewRight + 48 ||
+        p.y < viewTop - 48 ||
+        p.y > viewBottom + 48
       ) {
         continue;
       }
-
-      // Se a moradora estiver lá dentro da casa (longe da porta) e o jogador estiver FORA da casa (telhado visível),
-      // não desenha a moradora por cima/através do telhado; assim que o jogador entra na casa (ou ela passa pela porta), ela aparece!
-      if (c.isInsideHouse && activePlayerHouseId !== c.houseId) {
-        const doorWorldY = (c.doorTy + 0.5) * ts;
-        if (Math.abs(c.y - doorWorldY) > ts * 0.85) {
-          continue;
-        }
-      }
-
       items.push({
-        y: c.y,
-        draw: () => _renderCitizen(ctx, c, timeOfDay, animTimer, player),
+        y: p.y,
+        draw: () => _renderPrisoner(ctx, p, timeOfDay, animTimer, player),
+      });
+    }
+
+    // 3. Renderiza todos os Soldados, Carcereiros, Tenentes, Capitão e Coronel
+    for (let i = 0; i < SOLDIERS.length; i++) {
+      const s = SOLDIERS[i];
+      if (!!s.isUnderground !== !!isUnderground) continue;
+      if (
+        s.x < viewLeft - 48 ||
+        s.x > viewRight + 48 ||
+        s.y < viewTop - 48 ||
+        s.y > viewBottom + 48
+      ) {
+        continue;
+      }
+      if (!isUnderground && s.isInsideHouse && activePlayerHouseId !== s.homeHouseId) {
+        continue;
+      }
+      items.push({
+        y: s.y,
+        draw: () => _renderSoldier(ctx, s, timeOfDay, animTimer, player),
       });
     }
 
     return items;
+  }
+
+  // Renderiza um Prisioneiro (tons de pele variados, TODOS com roupas brancas rasgadas, animação de escavar terra ou carregar saco de terra)
+  function _renderPrisoner(c, p, timeOfDay, animTimer, player) {
+    c.save();
+    c.translate(p.x, p.y);
+
+    const w = p.facing || "down";
+    const isMoving = !!p.isMoving;
+    const isDigging = !!p.isDigging;
+    const carryingDirt = !!p.carryingDirt;
+    const walkSin = (isMoving || isDigging) ? Math.sin(p.walkPhase) : 0;
+    const bob = isMoving
+      ? Math.abs(Math.sin(p.walkPhase)) * 1.6
+      : isDigging
+        ? Math.abs(Math.sin(p.walkPhase * 1.4)) * 2.1
+        : Math.sin(animTimer * 2 + p.id) * 0.3;
+
+    // 1. Sombra no chão
+    c.fillStyle = "rgba(15, 23, 42, 0.36)";
+    c.beginPath();
+    c.ellipse(0, 2.5, 7.5, 4.0, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // 2. Pernas com calças brancas rasgadas na canela e pés descalços/enfaixados
+    const legL = isMoving ? walkSin * 3.0 : 0;
+    const legR = isMoving ? -walkSin * 3.0 : 0;
+    // Pés (tom de pele variado + atadura suja)
+    c.fillStyle = p.skinColor;
+    if (w === "up" || w === "down") {
+      c.fillRect(-5, 1 + legL, 3.5, 4.2);
+      c.fillRect(1.5, 1 + legR, 3.5, 4.2);
+      // Calça branca rasgada acima do tornozelo
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-5.2, -3 + legL * 0.6, 3.9, 4.6);
+      c.fillRect(1.3, -3 + legR * 0.6, 3.9, 4.6);
+    } else {
+      c.fillRect(-2.4 + legL, 1, 3.6, 4.2);
+      c.fillRect(-0.8 + legR, 1, 3.6, 4.2);
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-2.6 + legL * 0.6, -3, 3.9, 4.6);
+      c.fillRect(-1.0 + legR * 0.6, -3, 3.9, 4.6);
+    }
+
+    // 3. Túnica/Camisa Branca Rasgada (com pontas desfiadas, rasgos e manchas de terra da escavação)
+    c.fillStyle = "#f1f5f9";
+    c.fillRect(-6.5, -15.5 - bob, 13, 12.2);
+
+    // Barra inferior rasgada em zigue-zague (farrapos brancos pendurados)
+    c.fillStyle = "#f1f5f9";
+    for (let tx = -6; tx <= 4; tx += 3.2) {
+      c.beginPath();
+      c.moveTo(tx, -3.5 - bob);
+      c.lineTo(tx + 1.6, -1.0 - bob + ((Math.abs(tx + p.id) % 2) * 1.1));
+      c.lineTo(tx + 3.0, -3.5 - bob);
+      c.closePath();
+      c.fill();
+    }
+
+    // Rasgos nas roupas brancas mostrando a pele por baixo e manchas de terra marrom
+    c.fillStyle = p.skinColor;
+    c.fillRect(-4.2, -12.5 - bob, 2.6, 1.8); // Rasgo no peito/ombro
+    c.fillRect(1.8, -8.5 - bob, 2.8, 1.6);   // Rasgo na costela
+    // Manchas de barro/terra na roupa branca
+    c.fillStyle = "rgba(120, 53, 15, 0.35)";
+    c.fillRect(-5.5, -6.5 - bob, 4.2, 2.5);
+    c.fillRect(1.5, -14.0 - bob, 3.5, 2.2);
+    // Corda rústica amarrada na cintura
+    c.fillStyle = "#78350f";
+    c.fillRect(-6.6, -6.8 - bob, 13.2, 1.4);
+
+    // 4. Braços com mangas brancas rasgadas + Animação de Escavar ou Carregar Saco de Terra
+    const armSwing = isDigging ? Math.sin(p.walkPhase * 1.6) * 5.2 : walkSin * 2.8;
+    if (carryingDirt) {
+      // Braços segurando um grande saco/cesto de terra escavada na frente do corpo!
+      c.fillStyle = "#f1f5f9";
+      c.fillRect(-8.5, -14.5 - bob, 2.5, 4.5);
+      c.fillRect(6.0, -14.5 - bob, 2.5, 4.5);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-8.2, -10.2 - bob, 2.2, 3.5);
+      c.fillRect(6.0, -10.2 - bob, 2.2, 3.5);
+
+      // Saco/Cesto cheio de TERRA MARROM ESCAVADA (sem neve!)
+      const bagX = w === "left" ? -3.5 : w === "right" ? 3.5 : 0;
+      const bagY = -9.5 - bob;
+      c.fillStyle = "#451a03";
+      c.beginPath();
+      c.ellipse(bagX, bagY, 6.2, 4.5, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#78350f";
+      c.beginPath();
+      c.ellipse(bagX, bagY - 1.2, 5.2, 3.2, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#92400e";
+      c.fillRect(bagX - 2.5, bagY - 2.5, 2.2, 1.6);
+      c.fillRect(bagX + 0.8, bagY - 1.8, 1.8, 1.4);
+    } else {
+      // Braços normais ou golpeando a terra na escavação
+      c.fillStyle = "#f1f5f9";
+      c.fillRect(-8.6, -15.0 - bob + armSwing * 0.3, 2.4, 4.0); // Manga branca curta/rasgada
+      c.fillRect(6.2, -15.0 - bob - armSwing * 0.3, 2.4, 4.0);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-8.4, -11.0 - bob + armSwing * 0.5, 2.1, 4.8);
+      c.fillRect(6.3, -11.0 - bob - armSwing * 0.5, 2.1, 4.8);
+
+      // Se estiver escavando dentro do túnel da mina, desenha a pá/picareta e torrões de terra voando!
+      if (isDigging) {
+        const dirX = w === "left" ? -1 : 1;
+        c.save();
+        c.translate(dirX * 6, -10 - bob);
+        c.rotate(dirX * (0.4 + Math.sin(p.walkPhase * 1.6) * 0.65));
+        // Cabo de madeira da pá/picareta de escavação
+        c.fillStyle = "#78350f";
+        c.fillRect(-1, -8, 2, 13);
+        // Lâmina de ferro suja de terra
+        c.fillStyle = "#475569";
+        c.fillRect(-3.5, -10, 7, 3.2);
+        c.restore();
+
+        // Partículas de terra marrom soltando da parede do túnel!
+        c.fillStyle = "#78350f";
+        for (let k = 0; k < 3; k++) {
+          const prog = ((animTimer * 3.5 + k * 0.33 + p.id) % 1);
+          const px = dirX * (9 + prog * 5);
+          const py = -12 + prog * 10;
+          c.fillRect(px, py, 2.2, 2.2);
+        }
+      }
+    }
+
+    // 5. Cabeça (tom de pele variado, cabelo desalinhado)
+    const headY = -21.5 - bob;
+    c.fillStyle = p.skinColor;
+    c.beginPath();
+    c.arc(0, headY, 6.0, 0, Math.PI * 2);
+    c.fill();
+
+    // Cabelo desalinhado
+    c.fillStyle = p.hairColor;
+    c.beginPath();
+    c.arc(0, headY - 1.8, 6.2, Math.PI * 0.9, Math.PI * 0.1);
+    c.fill();
+
+    if (w !== "up") {
+      // Barba por fazer em alguns prisioneiros
+      if (p.hasBeard) {
+        c.fillStyle = "rgba(28, 25, 23, 0.45)";
+        c.fillRect(-3.5, headY + 2.2, 7.0, 2.4);
+      }
+      // Olhos cansados
+      c.fillStyle = "#1e293b";
+      if (w === "down") {
+        c.fillRect(-3.0, headY - 0.5, 1.8, 1.8);
+        c.fillRect(1.2, headY - 0.5, 1.8, 1.8);
+      } else if (w === "left") {
+        c.fillRect(-4.0, headY - 0.5, 1.8, 1.8);
+      } else if (w === "right") {
+        c.fillRect(2.2, headY - 0.5, 1.8, 1.8);
+      }
+    } else {
+      c.fillStyle = p.hairColor;
+      c.beginPath();
+      c.arc(0, headY - 0.5, 6.1, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    // Balão de fala se estiver conversando na aglomeração ou interagindo perto do jogador
+    if (p.chatText && player && Math.hypot(player.x - p.x, player.y - p.y) < 220) {
+      c.font = "bold 7px sans-serif";
+      const tw = Math.min(185, Math.max(54, c.measureText(p.chatText).width + 12));
+      const bx = -tw / 2;
+      const by = headY - 21;
+      c.fillStyle = "rgba(15, 23, 42, 0.88)";
+      c.strokeStyle = "#94a3b8";
+      c.lineWidth = 1.0;
+      c.beginPath();
+      c.roundRect(bx, by, tw, 12.5, 3.5);
+      c.fill();
+      c.stroke();
+      c.fillStyle = "#e2e8f0";
+      c.textAlign = "center";
+      c.fillText(p.chatText, 0, by + 9);
+    }
+
+    c.restore();
+  }
+
+  // Renderiza Soldados, Carcereiros, Tenentes, Capitão e Coronel:
+  // - Tons de pele variados (sol.skinColor)
+  // - TODOS com UNIFORME PRETO E DETALHES VERMELHOS IDÊNTICOS!
+  function _renderSoldier(c, sol, timeOfDay, animTimer, player) {
+    c.save();
+    c.translate(sol.x, sol.y);
+
+    const w = sol.facing || "down";
+    const isMoving = !!sol.isMoving;
+    const walkSin = isMoving ? Math.sin(sol.walkPhase) : 0;
+    const bob = isMoving
+      ? Math.abs(Math.sin(sol.walkPhase)) * 1.7
+      : Math.sin(animTimer * 2.2 + sol.id) * 0.3;
+
+    // Cores padronizadas do Uniforme Militar Preto com Detalhes Vermelhos Idênticos
+    const uniBlack = "#0f172a";
+    const uniDark = "#09090b";
+    const uniRed = "#dc2626";
+    const uniRedBright = "#ef4444";
+    const isOfficer = sol.rank === "Coronel" || sol.rank === "Capitão" || sol.rank === "Tenente";
+
+    // 1. Sombra no chão
+    c.fillStyle = "rgba(15, 23, 42, 0.4)";
+    c.beginPath();
+    c.ellipse(0, 2.5, 8.0, 4.3, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // 2. Capa Militar Preta com Forro/Borda Vermelha para o Coronel e Capitão
+    if (sol.rank === "Coronel" || sol.rank === "Capitão") {
+      const sway = isMoving ? Math.cos(sol.walkPhase) * 1.8 : 0;
+      c.fillStyle = uniDark;
+      c.fillRect(-7.8 + sway * 0.3, -15.5 - bob, 15.6, 15.5);
+      c.fillStyle = uniRed;
+      c.fillRect(-7.8 + sway * 0.3, -1.5 - bob, 15.6, 1.8);
+    }
+
+    // 3. Calças Pretas com Listra Vermelha e Botas Pretas com Debruado Vermelho Idêntico
+    const legL = walkSin * 3.3;
+    const legR = -walkSin * 3.3;
+    if (w === "up" || w === "down") {
+      // Calça preta
+      c.fillStyle = uniDark;
+      c.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
+      c.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
+      // Botas pretas com borda vermelha idêntica
+      c.fillStyle = "#18181b";
+      c.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
+      c.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
+      c.fillStyle = uniRed;
+      c.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
+      c.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
+    } else {
+      c.fillStyle = uniDark;
+      c.fillRect(-2.6 + legL * 0.5, -3.5, 4.0, 5.0);
+      c.fillRect(-1.0 + legR * 0.5, -3.5, 4.0, 5.0);
+      // Listra lateral vermelha na calça preta
+      c.fillStyle = uniRed;
+      c.fillRect(-1.0 + legL * 0.5, -3.5, 1.1, 5.0);
+      c.fillStyle = "#18181b";
+      c.fillRect(-2.6 + legL, 1.0, 4.0, 4.5);
+      c.fillRect(-1.0 + legR, 1.0, 4.0, 4.5);
+      c.fillStyle = uniRed;
+      c.fillRect(-2.6 + legL, 1.0, 4.0, 1.3);
+      c.fillRect(-1.0 + legR, 1.0, 4.0, 1.3);
+    }
+
+    // 4. Casaco / Túnica Militar Preta Padronizada + Detalhes Vermelhos Idênticos
+    c.fillStyle = uniBlack;
+    c.fillRect(-6.8, -16.2 - bob, 13.6, 13.2);
+
+    // Ombreiras (Dragonas) Vermelhas Idênticas em todos os uniformes
+    c.fillStyle = uniRed;
+    c.fillRect(-8.4, -16.5 - bob, 3.4, 2.2);
+    c.fillRect(5.0, -16.5 - bob, 3.4, 2.2);
+    if (sol.rank === "Coronel") {
+      // Friso dourado extra na ombreira vermelha do Coronel (Chefe de todos)
+      c.fillStyle = "#facc15";
+      c.fillRect(-8.4, -16.5 - bob, 1.2, 2.2);
+      c.fillRect(7.2, -16.5 - bob, 1.2, 2.2);
+    }
+
+    // Gola Alta Vermelha + Lapelas/Faixas Peitorais Vermelhas Idênticas
+    c.fillStyle = uniRed;
+    c.fillRect(-5.5, -17.2 - bob, 11.0, 2.0);
+    if (w !== "up") {
+      const fOffX = w === "left" ? -1.5 : w === "right" ? 1.5 : 0;
+      // Faixa vertical central e lapelas vermelhas idênticas no peito do uniforme preto
+      c.fillStyle = uniRed;
+      c.fillRect(-1.3 + fOffX, -15.5 - bob, 2.6, 11.5);
+      // Costuras horizontais vermelhas no peito (estilo hussardo/guarda imperial)
+      c.fillStyle = uniRedBright;
+      c.fillRect(-4.8 + fOffX, -14.2 - bob, 9.6, 1.2);
+      c.fillRect(-4.4 + fOffX, -11.6 - bob, 8.8, 1.2);
+      c.fillRect(-4.0 + fOffX, -9.0 - bob, 8.0, 1.2);
+    } else {
+      // Costas do uniforme preto com costura central e barra vermelha idêntica
+      c.fillStyle = uniRed;
+      c.fillRect(-1.0, -15.5 - bob, 2.0, 11.5);
+    }
+
+    // Barra inferior vermelha do casaco preto + Cinto Militar Vermelho com Fivela
+    c.fillStyle = uniRed;
+    c.fillRect(-6.8, -4.2 - bob, 13.6, 1.3);
+    c.fillStyle = uniRedBright;
+    c.fillRect(-7.0, -7.0 - bob, 14.0, 2.2);
+    if (w !== "up") {
+      c.fillStyle = isOfficer ? "#facc15" : "#e2e8f0";
+      c.fillRect(-1.6, -7.2 - bob, 3.2, 2.6);
+    }
+
+    // Se for Carcereiro, exibe o molho de chaves pendurado no cinto
+    if (sol.rank === "Carcereiro" && w !== "up") {
+      c.strokeStyle = "#eab308";
+      c.lineWidth = 1.1;
+      c.beginPath();
+      c.arc(4.8, -4.2 - bob, 1.8, 0, Math.PI * 2);
+      c.stroke();
+    }
+
+    // 5. Braços com Mangas Pretas e Punhos Vermelhos Idênticos + Arma Militar
+    const armSwing = walkSin * 2.8;
+    if (w === "down" || w === "up") {
+      c.fillStyle = uniBlack;
+      c.fillRect(-8.8, -15.0 - bob + armSwing * 0.4, 2.5, 7.5);
+      c.fillRect(6.3, -15.0 - bob - armSwing * 0.4, 2.5, 7.5);
+      c.fillStyle = uniRed;
+      c.fillRect(-8.8, -9.0 - bob + armSwing * 0.4, 2.5, 1.8);
+      c.fillRect(6.3, -9.0 - bob - armSwing * 0.4, 2.5, 1.8);
+      c.fillStyle = sol.skinColor;
+      c.fillRect(-8.6, -7.2 - bob + armSwing * 0.4, 2.1, 2.0);
+      c.fillRect(6.5, -7.2 - bob - armSwing * 0.4, 2.1, 2.0);
+    } else {
+      const sideX = w === "left" ? -1.4 : -1.0;
+      c.fillStyle = uniBlack;
+      c.fillRect(sideX + armSwing * 0.35, -14.8 - bob, 2.7, 7.5);
+      c.fillStyle = uniRed;
+      c.fillRect(sideX + armSwing * 0.35, -8.8 - bob, 2.7, 1.8);
+      c.fillStyle = sol.skinColor;
+      c.fillRect(sideX + armSwing * 0.35, -7.0 - bob, 2.3, 2.0);
+    }
+
+    // Lança / Alabarda Militar (para Soldados e Tenentes) ou Espada no Cinto (para Coronel e Capitão)
+    if (sol.rank === "Soldado" || sol.rank === "Tenente") {
+      const spX = w === "left" ? -6.5 : 7.8;
+      c.fillStyle = "#451a03";
+      c.fillRect(spX, -26 - bob, 1.6, 28);
+      // Flâmula vermelha abaixo da ponta da lança
+      c.fillStyle = uniRedBright;
+      c.beginPath();
+      c.moveTo(spX + 1.6, -24 - bob);
+      c.lineTo(spX + 6.2, -22.5 - bob);
+      c.lineTo(spX + 1.6, -20.5 - bob);
+      c.closePath();
+      c.fill();
+      // Ponta de aço da lança
+      c.fillStyle = "#cbd5e1";
+      c.beginPath();
+      c.moveTo(spX - 1.2, -25.5 - bob);
+      c.lineTo(spX + 0.8, -31.5 - bob);
+      c.lineTo(spX + 2.8, -25.5 - bob);
+      c.closePath();
+      c.fill();
+    } else {
+      // Bainha preta e vermelha de espada na cintura do Oficial / Carcereiro
+      c.fillStyle = "#18181b";
+      c.fillRect(-8.5, -6.0 - bob, 2.0, 9.5);
+      c.fillStyle = uniRedBright;
+      c.fillRect(-9.2, -7.2 - bob, 3.4, 1.6);
+    }
+
+    // 6. Cabeça (Tom de Pele Variado!) + Quepe/Capacete Militar Preto com Faixa Vermelha Idêntica
+    const headY = -22.0 - bob;
+    c.fillStyle = sol.skinColor;
+    c.beginPath();
+    c.arc(0, headY, 6.1, 0, Math.PI * 2);
+    c.fill();
+
+    if (w !== "up") {
+      c.fillStyle = "#0f172a";
+      if (w === "down") {
+        c.fillRect(-3.2, headY - 0.4, 1.9, 1.9);
+        c.fillRect(1.3, headY - 0.4, 1.9, 1.9);
+      } else if (w === "left") {
+        c.fillRect(-4.2, headY - 0.4, 1.9, 1.9);
+      } else if (w === "right") {
+        c.fillRect(2.3, headY - 0.4, 1.9, 1.9);
+      }
+    }
+
+    // Quepe / Capacete Militar Preto com Faixa e Insígnia Vermelha Idêntica em todos
+    c.fillStyle = uniDark;
+    c.fillRect(-6.6, headY - 6.8, 13.2, 4.6);
+    c.beginPath();
+    c.arc(0, headY - 6.5, 6.6, Math.PI, 0);
+    c.fill();
+    // Faixa vermelha idêntica no quepe/capacete
+    c.fillStyle = uniRedBright;
+    c.fillRect(-6.6, headY - 3.6, 13.2, 1.8);
+    // Topete/insígnia frontal vermelha (com estrela dourada para Coronel/Capitão)
+    c.fillStyle = sol.rank === "Coronel" ? "#facc15" : uniRedBright;
+    c.fillRect(-1.4, headY - 7.8, 2.8, 2.8);
+
+    // 7. Etiqueta discreta da Patente (para Coronel, Capitão, Tenente e Carcereiro quando perto do jogador) + Balão de fala
+    if (player && Math.hypot(player.x - sol.x, player.y - sol.y) < 175) {
+      c.font = "bold 6.5px sans-serif";
+      c.textAlign = "center";
+      c.fillStyle = sol.rank === "Coronel" ? "#facc15" : "#f87171";
+      c.fillText(`[${sol.rank.toUpperCase()}]`, 0, headY - 10.5);
+    }
+
+    if (sol.chatText && player && Math.hypot(player.x - sol.x, player.y - sol.y) < 250) {
+      c.font = "bold 7.2px sans-serif";
+      const tw = Math.min(210, Math.max(60, c.measureText(sol.chatText).width + 12));
+      const bx = -tw / 2;
+      const by = headY - 25;
+      c.fillStyle = "rgba(9, 9, 11, 0.92)";
+      c.strokeStyle = "#dc2626";
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.roundRect(bx, by, tw, 13, 4);
+      c.fill();
+      c.stroke();
+      c.fillStyle = "#f8fafc";
+      c.textAlign = "center";
+      c.fillText(sol.chatText, 0, by + 9.2);
+    }
+
+    c.restore();
   }
 
   // Renderiza uma moradora da Vila Glacial com cores variadas e trajes alpinos com DETALHES VERMELHOS obrigatórios
