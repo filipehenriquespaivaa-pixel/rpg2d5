@@ -323,6 +323,17 @@
       );
     }
     getNearbyCampfire(t, l, o = 85) {
+      const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      if (
+        this._cachedCampfireTime &&
+        now - this._cachedCampfireTime < 150 &&
+        Math.abs(t - (this._cachedCampfirePx || 0)) < 18 &&
+        Math.abs(l - (this._cachedCampfirePy || 0)) < 18 &&
+        this._cachedCampfireRad === o &&
+        this._cachedCampfireUnderground === !!this.isUnderground
+      ) {
+        return this._cachedCampfireResult;
+      }
       const u = Math.round(t / this.tileSize),
         m = Math.round(l / this.tileSize),
         c = Math.ceil(o / this.tileSize) + 2;
@@ -349,6 +360,12 @@
               (f = { tx: w, ty: v, prop: S, dist: P });
           }
         }
+      this._cachedCampfireTime = now;
+      this._cachedCampfirePx = t;
+      this._cachedCampfirePy = l;
+      this._cachedCampfireRad = o;
+      this._cachedCampfireUnderground = !!this.isUnderground;
+      this._cachedCampfireResult = f;
       return f;
     }
     feedCampfire(t, l, o = 10) {
@@ -1203,7 +1220,11 @@
     getTile(t, l) {
       const o = this._tk(t, l, this.undergroundLevel || (this.isUnderground ? 1 : 0)),
         u = this.tileCache.get(o);
-      if (u) return this.isUnderground ? u : this._syncBluePlantProp(t, l, u);
+      if (u) {
+        return !this.isUnderground && u.biome.id === BiomeId.MOUNTAIN_25D
+          ? this._syncBluePlantProp(t, l, u)
+          : u;
+      }
       if (this.isUnderground) {
         if (this.undergroundLevel === 2) {
           const ue = this.getDungeonTile(t, l);

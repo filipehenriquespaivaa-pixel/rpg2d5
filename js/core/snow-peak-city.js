@@ -3913,6 +3913,16 @@ window.Game = window.Game || {};
       ) {
         continue;
       }
+      // [PERF] Se o prisioneiro está dentro da sua cela coletiva coberta pelo telhado e o jogador não está na mesma cela,
+      // pula o desenho (o telhado cobre toda a cela!)
+      if (
+        !isUnderground &&
+        (p.mode === "cell_explore" || p.mode === "cell_cluster") &&
+        p.cellZone &&
+        activePlayerHouseId !== p.cellZone.roofId
+      ) {
+        continue;
+      }
       items.push({
         y: p.y,
         draw: () => _renderPrisoner(ctx, p, timeOfDay, animTimer, player),
@@ -3933,6 +3943,18 @@ window.Game = window.Game || {};
       }
       if (!isUnderground && s.isInsideHouse && activePlayerHouseId !== s.homeHouseId) {
         continue;
+      }
+      // [PERF] Se o Coronel ou Capitão está dentro da Sala de Administração (barracks_west) e o telhado dessa ala está fechado, pula o desenho
+      if (
+        !isUnderground &&
+        (s.role === "colonel" || s.role === "captain") &&
+        activePlayerHouseId !== "barracks_west"
+      ) {
+        const srx = s.x / ts - 0.5 - CITY_CX;
+        const sry = s.y / ts - 0.5 - CITY_CY;
+        if (srx > -34 && srx < -14 && sry > 29 && sry < 45) {
+          continue;
+        }
       }
       items.push({
         y: s.y,

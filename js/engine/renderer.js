@@ -230,10 +230,29 @@
         }
         const Ee = this.renderQueue;
         Ee.length = 0;
+        const activeSnowRoofId =
+          !this.engine.isUnderground &&
+          typeof window !== "undefined" &&
+          window.SnowPeakCity &&
+          typeof window.SnowPeakCity.getActiveHouseForPlayer === "function"
+            ? window.SnowPeakCity.getActiveHouseForPlayer(t.x, t.y, f)
+            : null;
         for (const ne of z) {
           if (ne.prop) {
-            const ke = ne.prop,
-              offX = (typeof ke.offsetX === "number" && isFinite(ke.offsetX)) ? ke.offsetX : 0,
+            const ke = ne.prop;
+            // [PERF] Se o objeto é mobília interna de uma casa ou ala coberta pelo telhado (onde o jogador NÃO está dentro),
+            // pula seu desenho e suas luzes internas, pois o telhado 2.5D cobre 100% do interior!
+            if (
+              ne.snowCityHouseIndex !== void 0 &&
+              ne.snowCityHouseIndex !== activeSnowRoofId &&
+              ke.kind !== "snow_city_wall" &&
+              ke.kind !== "snow_city_door" &&
+              ke.kind !== "snow_city_chimney" &&
+              ke.kind !== "iron_bars_gate"
+            ) {
+              continue;
+            }
+            const offX = (typeof ke.offsetX === "number" && isFinite(ke.offsetX)) ? ke.offsetX : 0,
               offY = (typeof ke.offsetY === "number" && isFinite(ke.offsetY)) ? ke.offsetY : 0,
               G = ne.tx * f + f / 2 + offX,
               de = ne.ty * f + f / 2 + offY;
@@ -1708,15 +1727,18 @@
             pg(c, f, t.opened, this.animTimer);
             break;
           case "dungeon_wall": {
-            const eng = this.engine,
-              tx = u.tx,
-              ty = u.ty,
-              nb = {
+            let nb = u._dwNb;
+            if (!nb) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty;
+              nb = u._dwNb = {
                 left: !!eng.getTile(tx - 1, ty).isDungeonWall,
                 right: !!eng.getTile(tx + 1, ty).isDungeonWall,
                 top: !!eng.getTile(tx, ty - 1).isDungeonWall,
                 bottom: !!eng.getTile(tx, ty + 1).isDungeonWall,
               };
+            }
             drawDungeonWall25D(c, f, nb);
             break;
           }
@@ -1787,15 +1809,18 @@
             gg(c, f, t.subType);
             break;
           case "snow_city_wall": {
-            const eng = this.engine,
-              tx = u.tx,
-              ty = u.ty,
-              nb = {
+            let nb = u._scwNb;
+            if (!nb) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty;
+              nb = u._scwNb = {
                 left: !!(eng.getTile(tx - 1, ty) && eng.getTile(tx - 1, ty).isSnowCityWall),
                 right: !!(eng.getTile(tx + 1, ty) && eng.getTile(tx + 1, ty).isSnowCityWall),
                 top: !!(eng.getTile(tx, ty - 1) && eng.getTile(tx, ty - 1).isSnowCityWall),
                 bottom: !!(eng.getTile(tx, ty + 1) && eng.getTile(tx, ty + 1).isSnowCityWall),
               };
+            }
             drawSnowCityWall(c, f, t.subType || 0, nb);
             break;
           }
@@ -1859,15 +1884,18 @@
             drawExcavatedDirtMound(c, f, t.subType || 0);
             break;
           case "greek_wall": {
-            const eng = this.engine,
-              tx = u.tx,
-              ty = u.ty,
-              nb = {
+            let nb = u._gwNb;
+            if (!nb) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty;
+              nb = u._gwNb = {
                 left: !!eng.getTile(tx - 1, ty).isGreekWall,
                 right: !!eng.getTile(tx + 1, ty).isGreekWall,
                 top: !!eng.getTile(tx, ty - 1).isGreekWall,
                 bottom: !!eng.getTile(tx, ty + 1).isGreekWall,
               };
+            }
             drawGreekRuinWall25D(c, f, t.subType || 0, nb, t.wallHeightState ?? 0);
             break;
           }
@@ -1887,17 +1915,20 @@
             drawGreekFurniture(c, f, t.subType || 0);
             break;
           case "greek_door": {
-            const eng = this.engine,
-              tx = u.tx,
-              ty = u.ty,
-              hasVertWalls =
-                !!eng.getTile(tx, ty - 1).isGreekWall ||
-                !!eng.getTile(tx, ty + 1).isGreekWall,
-              hasHorizWalls =
-                !!eng.getTile(tx - 1, ty).isGreekWall ||
-                !!eng.getTile(tx + 1, ty).isGreekWall,
-              isVertDoor =
+            let isVertDoor = u._gdVert;
+            if (isVertDoor === void 0) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty,
+                hasVertWalls =
+                  !!eng.getTile(tx, ty - 1).isGreekWall ||
+                  !!eng.getTile(tx, ty + 1).isGreekWall,
+                hasHorizWalls =
+                  !!eng.getTile(tx - 1, ty).isGreekWall ||
+                  !!eng.getTile(tx + 1, ty).isGreekWall;
+              isVertDoor = u._gdVert =
                 t.subType === 1 || (hasVertWalls && !hasHorizWalls);
+            }
             drawGreekDoor(c, f, isVertDoor, !!t.opened);
             break;
           }
@@ -3754,13 +3785,17 @@
           }
         }
         if (v > 0.002) {
+          const lScale = 0.5,
+            lw = Math.max(1, Math.ceil(l * lScale)),
+            lh = Math.max(1, Math.ceil(o * lScale));
           (this.lightCanvas ||
             ((this.lightCanvas = document.createElement("canvas")),
             (this.lightCtx = this.lightCanvas.getContext("2d"))),
-            (this.lightCanvas.width !== l || this.lightCanvas.height !== o) &&
-              ((this.lightCanvas.width = l), (this.lightCanvas.height = o)));
+            (this.lightCanvas.width !== lw || this.lightCanvas.height !== lh) &&
+              ((this.lightCanvas.width = lw), (this.lightCanvas.height = lh)));
           const P = this.lightCtx;
           if (!P) return;
+          P.setTransform(lScale, 0, 0, lScale, 0, 0);
           P.clearRect(0, 0, l, o);
           const A = this.engine.isUnderground
             ? `rgba(5, 7, 14, ${v})`
@@ -3813,7 +3848,7 @@
           }
           if (
             ((P.globalCompositeOperation = "source-over"),
-            y.drawImage(this.lightCanvas, 0, 0),
+            y.drawImage(this.lightCanvas, 0, 0, lw, lh, 0, 0, l, o),
             x && v > 0.15 && isFinite(M) && isFinite($))
           ) {
             const z = (this.engine.isUnderground ? 220 : 160) * safeU,
@@ -3870,29 +3905,30 @@
         const S = Math.max(l, o),
           p = Math.min(l, o);
         if (isFinite(l) && isFinite(o) && isFinite(S) && isFinite(p) && S > 0 && p > 0) {
-          const j = y.createRadialGradient(
-            l / 2,
-            o / 2,
-            Math.max(1, p * 0.38),
-            l / 2,
-            o / 2,
-            Math.max(2, S * 0.72),
-          );
-          (j.addColorStop(0, "rgba(0, 0, 0, 0)"),
-            j.addColorStop(1, "rgba(5, 10, 20, 0.36)"),
-            (y.fillStyle = j),
-            y.fillRect(0, 0, l, o));
+          if (!this._vigGrad || this._vigW !== l || this._vigH !== o) {
+            this._vigW = l;
+            this._vigH = o;
+            const j = y.createRadialGradient(
+              l / 2,
+              o / 2,
+              Math.max(1, p * 0.38),
+              l / 2,
+              o / 2,
+              Math.max(2, S * 0.72),
+            );
+            j.addColorStop(0, "rgba(0, 0, 0, 0)");
+            j.addColorStop(1, "rgba(5, 10, 20, 0.36)");
+            this._vigGrad = j;
+          }
+          y.fillStyle = this._vigGrad;
+          y.fillRect(0, 0, l, o);
         }
       }
     };
   ((WorldRenderer.GROUND_CHUNK_TILES = 8),
-    (WorldRenderer.GROUND_BAKE_TILE_PX = 48),
-    (WorldRenderer.MAX_CACHED_GROUND_CHUNKS = 96),
+    (WorldRenderer.GROUND_BAKE_TILE_PX = 40),
+    (WorldRenderer.MAX_CACHED_GROUND_CHUNKS = 192),
     (WorldRenderer.ANIMATED_GROUND_BIOMES = new Set([
-      BiomeId.GLACIER,
-      BiomeId.SNOW_TAIGA,
-      BiomeId.SNOW_PEAK,
       BiomeId.VOLCANIC,
-      BiomeId.CAVE_CRYSTAL,
     ])));
   let Ws = WorldRenderer;

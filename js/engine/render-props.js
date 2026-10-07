@@ -5690,78 +5690,101 @@
 
   // 2. Parede 2.5D de Pedra da Montanha com Vigas de Madeira e Telhado Nevado
   function drawSnowCityWall(e, t, subType = 0, neighbors = null) {
-    e.save();
     const nL = !!(neighbors && neighbors.left);
     const nR = !!(neighbors && neighbors.right);
     const nB = !!(neighbors && neighbors.bottom);
-    const half = 18 * t;
-    const leftX = nL ? -half - 1 * t : -half + 1 * t;
-    const rightX = nR ? half + 1 * t : half - 1 * t;
-    const w = rightX - leftX;
-    const wallH = 26 * t;
-    const baseY = 18 * t;
-    const topFrontY = baseY - wallH;
 
-    // Sombra projetada no piso ao sul
-    if (!nB) {
-      e.fillStyle = "rgba(15, 23, 42, 0.65)";
-      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 9 * t);
+    // [PERF] Cacheia os 8 estados possíveis de parede 2.5D em offscreen canvas (transforma ~15 comandos vetoriais/gradientes por parede em 1 drawImage!)
+    if (!drawSnowCityWall._cache) {
+      drawSnowCityWall._cache = new Map();
+    }
+    const mask = (nL ? 1 : 0) | (nR ? 2 : 0) | (nB ? 4 : 0);
+    const key = `${t.toFixed(3)}_${mask}`;
+    let cached = drawSnowCityWall._cache.get(key);
+
+    if (!cached) {
+      const padX = Math.ceil(24 * t);
+      const padTop = Math.ceil(16 * t);
+      const padBot = Math.ceil(30 * t);
+      const can = document.createElement("canvas");
+      can.width = Math.max(1, padX * 2);
+      can.height = Math.max(1, padTop + padBot);
+      const wc = can.getContext("2d");
+
+      if (wc) {
+        wc.translate(padX, padTop);
+        const half = 18 * t;
+        const leftX = nL ? -half - 1 * t : -half + 1 * t;
+        const rightX = nR ? half + 1 * t : half - 1 * t;
+        const w = rightX - leftX;
+        const wallH = 26 * t;
+        const baseY = 18 * t;
+        const topFrontY = baseY - wallH;
+
+        // Sombra projetada no piso ao sul
+        if (!nB) {
+          wc.fillStyle = "rgba(15, 23, 42, 0.65)";
+          wc.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 9 * t);
+        }
+
+        // Face frontal da parede: Blocos de pedra de cantaria cinza ardósia
+        const wallGrad = wc.createLinearGradient(0, topFrontY, 0, baseY);
+        wallGrad.addColorStop(0, "#475569");
+        wallGrad.addColorStop(0.5, "#334155");
+        wallGrad.addColorStop(1, "#1e293b");
+        wc.fillStyle = wallGrad;
+        wc.fillRect(leftX, topFrontY, w, wallH);
+
+        // Linhas de assentamento de cantaria
+        wc.strokeStyle = "rgba(15, 23, 42, 0.75)";
+        wc.lineWidth = 1.2 * t;
+        wc.beginPath();
+        wc.moveTo(leftX, topFrontY + 8 * t);
+        wc.lineTo(rightX, topFrontY + 8 * t);
+        wc.moveTo(leftX, topFrontY + 17 * t);
+        wc.lineTo(rightX, topFrontY + 17 * t);
+        // Juntas verticais
+        wc.moveTo(leftX + w * 0.45, topFrontY);
+        wc.lineTo(leftX + w * 0.45, topFrontY + 8 * t);
+        wc.moveTo(leftX + w * 0.75, topFrontY + 8 * t);
+        wc.lineTo(leftX + w * 0.75, topFrontY + 17 * t);
+        wc.moveTo(leftX + w * 0.25, topFrontY + 8 * t);
+        wc.lineTo(leftX + w * 0.25, topFrontY + 17 * t);
+        wc.moveTo(leftX + w * 0.55, topFrontY + 17 * t);
+        wc.lineTo(leftX + w * 0.55, baseY);
+        wc.stroke();
+
+        // Vigas verticais e horizontais de carvalho nórdico (enxaimel alpino)
+        wc.fillStyle = "#78350f";
+        wc.fillRect(leftX, topFrontY, 2.5 * t, wallH);
+        wc.fillRect(rightX - 2.5 * t, topFrontY, 2.5 * t, wallH);
+        wc.fillRect(leftX, baseY - 3.5 * t, w, 3.5 * t);
+
+        // Beiral superior do telhado: Tábuas de pinheiro
+        wc.fillStyle = "#451a03";
+        wc.fillRect(leftX - 1.5 * t, topFrontY - 2 * t, w + 3 * t, 3.5 * t);
+
+        // Camada espessa de NEVE BRANCA acumulada no topo da parede
+        wc.fillStyle = "#f8fafc";
+        wc.beginPath();
+        wc.moveTo(leftX - 2 * t, topFrontY - 2 * t);
+        wc.lineTo(rightX + 2 * t, topFrontY - 2 * t);
+        wc.lineTo(rightX + 2 * t, topFrontY + 2.5 * t);
+        wc.quadraticCurveTo(leftX + w * 0.5, topFrontY + 4 * t, leftX - 2 * t, topFrontY + 2.5 * t);
+        wc.closePath();
+        wc.fill();
+
+        // Sombra suave sob a neve
+        wc.strokeStyle = "rgba(203, 213, 225, 0.85)";
+        wc.lineWidth = 1 * t;
+        wc.stroke();
+      }
+
+      cached = { canvas: can, padX, padTop };
+      drawSnowCityWall._cache.set(key, cached);
     }
 
-    // Face frontal da parede: Blocos de pedra de cantaria cinza ardósia
-    const wallGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
-    wallGrad.addColorStop(0, "#475569");
-    wallGrad.addColorStop(0.5, "#334155");
-    wallGrad.addColorStop(1, "#1e293b");
-    e.fillStyle = wallGrad;
-    e.fillRect(leftX, topFrontY, w, wallH);
-
-    // Linhas de assentamento de cantaria
-    e.strokeStyle = "rgba(15, 23, 42, 0.75)";
-    e.lineWidth = 1.2 * t;
-    e.beginPath();
-    e.moveTo(leftX, topFrontY + 8 * t);
-    e.lineTo(rightX, topFrontY + 8 * t);
-    e.moveTo(leftX, topFrontY + 17 * t);
-    e.lineTo(rightX, topFrontY + 17 * t);
-    // Juntas verticais
-    e.moveTo(leftX + w * 0.45, topFrontY);
-    e.lineTo(leftX + w * 0.45, topFrontY + 8 * t);
-    e.moveTo(leftX + w * 0.75, topFrontY + 8 * t);
-    e.lineTo(leftX + w * 0.75, topFrontY + 17 * t);
-    e.moveTo(leftX + w * 0.25, topFrontY + 8 * t);
-    e.lineTo(leftX + w * 0.25, topFrontY + 17 * t);
-    e.moveTo(leftX + w * 0.55, topFrontY + 17 * t);
-    e.lineTo(leftX + w * 0.55, baseY);
-    e.stroke();
-
-    // Vigas verticais e horizontais de carvalho nórdico (enxaimel alpino)
-    e.fillStyle = "#78350f";
-    e.fillRect(leftX, topFrontY, 2.5 * t, wallH);
-    e.fillRect(rightX - 2.5 * t, topFrontY, 2.5 * t, wallH);
-    e.fillRect(leftX, baseY - 3.5 * t, w, 3.5 * t);
-
-    // Beiral superior do telhado: Tábuas de pinheiro
-    e.fillStyle = "#451a03";
-    e.fillRect(leftX - 1.5 * t, topFrontY - 2 * t, w + 3 * t, 3.5 * t);
-
-    // Camada espessa de NEVE BRANCA acumulada no topo da parede
-    e.fillStyle = "#f8fafc";
-    e.beginPath();
-    e.moveTo(leftX - 2 * t, topFrontY - 2 * t);
-    e.lineTo(rightX + 2 * t, topFrontY - 2 * t);
-    e.lineTo(rightX + 2 * t, topFrontY + 2.5 * t);
-    // Ondulação suave da neve caída
-    e.quadraticCurveTo(leftX + w * 0.5, topFrontY + 4 * t, leftX - 2 * t, topFrontY + 2.5 * t);
-    e.closePath();
-    e.fill();
-
-    // Sombra suave sob a neve
-    e.strokeStyle = "rgba(203, 213, 225, 0.85)";
-    e.lineWidth = 1 * t;
-    e.stroke();
-
-    e.restore();
+    e.drawImage(cached.canvas, -cached.padX, -cached.padTop);
   }
 
   // 3. Porta da Casa / Quartel: Carvalho com Ferragens e Batente de Pedra (Abre e Fecha, Horizontal ou Vertical)
@@ -6655,14 +6678,6 @@
       ctx.save();
       ctx.globalAlpha = nextAlpha;
 
-      // =====================================================================
-      // GEOMETRIA 2.5D DO TELHADO ALPINO:
-      // - Frontão (recuo acima da porta) com altura moderada de ~1.8 a 2.2 quadrados
-      //   (não um triângulo pontudo exagerado: tem topo chanfrado/trapezoidal 2.5D!).
-      // - Paleta 100% dentro do tema alpino rústico (madeira de pinheiro, carvalho escuro e
-      //   ardósia cinza-pedra com neve branca — ZERO azul vibrante fora do tema!).
-      // - Nunca cobre a porta da casa e desaparece ao entrar na casa.
-      // =====================================================================
       const overhangX = 4;
       const roofLeft = houseLeftPx - overhangX;
       const roofRight = houseRightPx + overhangX;
@@ -6677,323 +6692,342 @@
         : houseBottomPx - tileSize * 0.22;
       const roofH = roofBottom - roofTop;
 
-      // Cumeeira horizontal 2.5D
-      const ridgeY = roofTop + roofH * 0.48;
-      // Recuo lateral 2.5D da cumeeira (abas trapezoidais nos lados)
-      const ridgeInsetX = Math.min(roofW * 0.14, tileSize * 1.25);
-      const ridgeLeftX = roofLeft + ridgeInsetX;
-      const ridgeRightX = roofRight - ridgeInsetX;
-
-      // FRONTÃO 2.5D ACIMA DA PORTA:
-      // - Altura contida entre 1.8 e 2.2 quadrados (tileSize * 2.0) acima da base da fachada!
-      // - Formato trapezoidal/chanfrado no topo (não precisa ser um triângulo pontudo perfeito),
-      //   dando a impressão natural de telhado inclinado 2.5D sobre a entrada!
-      const doorCenterX = (h.cx + 0.5) * tileSize;
-      const gableHalfBaseW = Math.min(roofW * 0.30, tileSize * 1.85);
-      const gableHalfTopW = tileSize * 0.42; // Topo chanfrado 2.5D (não pontudo!)
-      const gableLeftX = Math.max(roofLeft + 12, doorCenterX - gableHalfBaseW);
-      const gableRightX = Math.min(roofRight - 12, doorCenterX + gableHalfBaseW);
-      const gableTopLeftX = doorCenterX - gableHalfTopW;
-      const gableTopRightX = doorCenterX + gableHalfTopW;
-
-      // Altura de ~2 quadrados (entre 1 e 3 quadrados, como pedido!)
-      const gableHeightPx = Math.min(roofH * 0.44, tileSize * 2.15);
-      const gableBaseY = h.doorOnSouth ? roofBottom : roofTop;
-      const gablePeakY = h.doorOnSouth
-        ? gableBaseY - gableHeightPx
-        : gableBaseY + gableHeightPx;
-
-      // Paleta 100% no tema da Vila Glacial (Madeira de Carvalho, Pinheiro Escuro e Ardósia Cinza-Rocha; sem azul!)
-      const roofStyle = h.id % 3;
-      const northSlopeTopCol = roofStyle === 0 ? "#1e293b" : roofStyle === 1 ? "#2a1205" : "#292524";
-      const northSlopeBotCol = roofStyle === 0 ? "#334155" : roofStyle === 1 ? "#451a03" : "#44403c";
-      const southSlopeTopCol = roofStyle === 0 ? "#475569" : roofStyle === 1 ? "#78350f" : "#57534e";
-      const southSlopeBotCol = roofStyle === 0 ? "#334155" : roofStyle === 1 ? "#451a03" : "#292524";
-      const sideSlopeCol = roofStyle === 0 ? "#334155" : roofStyle === 1 ? "#5c2808" : "#44403c";
-
-      // 1. Sombra 2.5D projetada pelos beirais sobre as paredes
-      ctx.fillStyle = "rgba(15, 23, 42, 0.42)";
-      ctx.fillRect(roofLeft + 2, roofTop + 5, roofW, roofH + 3);
-
-      // 2. PAREDE FRONTAL DE MADEIRA/PEDRA DENTRO DO FRONTÃO ACIMA DA PORTA (1.8 a 2.2 blocos de altura)
-      const gableWallGrad = ctx.createLinearGradient(0, Math.min(gablePeakY, gableBaseY), 0, Math.max(gablePeakY, gableBaseY));
-      gableWallGrad.addColorStop(0, "#451a03");
-      gableWallGrad.addColorStop(0.6, "#78350f");
-      gableWallGrad.addColorStop(1, "#334155");
-      ctx.fillStyle = gableWallGrad;
-      ctx.beginPath();
-      ctx.moveTo(gableLeftX, gableBaseY);
-      ctx.lineTo(gableTopLeftX, gablePeakY);
-      ctx.lineTo(gableTopRightX, gablePeakY);
-      ctx.lineTo(gableRightX, gableBaseY);
-      ctx.closePath();
-      ctx.fill();
-
-      // Tábuas verticais e viga de madeira dentro do frontão acima da porta
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(gableLeftX, gableBaseY);
-      ctx.lineTo(gableTopLeftX, gablePeakY);
-      ctx.lineTo(gableTopRightX, gablePeakY);
-      ctx.lineTo(gableRightX, gableBaseY);
-      ctx.closePath();
-      ctx.clip();
-
-      ctx.strokeStyle = "rgba(28, 25, 23, 0.5)";
-      ctx.lineWidth = 1.1;
-      for (let gx = gableLeftX + 7; gx < gableRightX; gx += 7) {
-        ctx.beginPath();
-        ctx.moveTo(gx, Math.min(gablePeakY, gableBaseY));
-        ctx.lineTo(gx, Math.max(gablePeakY, gableBaseY));
-        ctx.stroke();
+      // [PERF] Cacheia o telhado 2.5D estático de cada casa em um canvas offscreen (reduz ~80 comandos vetoriais/gradientes para 1 drawImage!)
+      if (!drawSnowCityHouseRoofs._houseRoofCache) {
+        drawSnowCityHouseRoofs._houseRoofCache = new Map();
       }
-      // Viga horizontal de enxaimel
-      const midGableY = (gablePeakY + gableBaseY) * 0.52;
-      ctx.fillStyle = "#451a03";
-      ctx.fillRect(gableLeftX, midGableY - 2, gableRightX - gableLeftX, 4);
+      const hCacheKey = `h_${h.id}_${tileSize}`;
+      let hCached = drawSnowCityHouseRoofs._houseRoofCache.get(hCacheKey);
 
-      // Fresta/janelinha rústica de madeira aquecida no sótão acima da porta
-      const atticWinY = gablePeakY + (gableBaseY - gablePeakY) * 0.42;
-      ctx.fillStyle = "rgba(251, 191, 36, 0.75)";
-      ctx.fillRect(doorCenterX - 5, atticWinY - 4, 10, 8);
-      ctx.strokeStyle = "#451a03";
-      ctx.lineWidth = 1.8;
-      ctx.strokeRect(doorCenterX - 5, atticWinY - 4, 10, 8);
-      ctx.restore();
+      if (!hCached) {
+        const pad = 16;
+        const canW = Math.max(1, Math.ceil(roofW + pad * 2));
+        const canH = Math.max(1, Math.ceil(roofH + pad * 2));
+        const offCan = document.createElement("canvas");
+        offCan.width = canW;
+        offCan.height = canH;
+        const rc = offCan.getContext("2d");
 
-      // 3. ÁGUAS LATERAIS ESQUERDA E DIREITA EM PERSPECTIVA 2.5D (Trapézios inclinados)
-      ctx.fillStyle = sideSlopeCol;
-      ctx.beginPath();
-      ctx.moveTo(roofLeft, roofTop);
-      ctx.lineTo(ridgeLeftX, ridgeY);
-      ctx.lineTo(roofLeft, roofBottom);
-      ctx.closePath();
-      ctx.fill();
+        if (rc) {
+          rc.translate(-roofLeft + pad, -roofTop + pad);
+          const origCtx = ctx;
+          ctx = rc;
 
-      ctx.beginPath();
-      ctx.moveTo(roofRight, roofTop);
-      ctx.lineTo(ridgeRightX, ridgeY);
-      ctx.lineTo(roofRight, roofBottom);
-      ctx.closePath();
-      ctx.fill();
+          // Cumeeira horizontal 2.5D
+          const ridgeY = roofTop + roofH * 0.48;
+          // Recuo lateral 2.5D da cumeeira (abas trapezoidais nos lados)
+          const ridgeInsetX = Math.min(roofW * 0.14, tileSize * 1.25);
+          const ridgeLeftX = roofLeft + ridgeInsetX;
+          const ridgeRightX = roofRight - ridgeInsetX;
 
-      // 4. ÁGUA NORTE DO TELHADO 2.5D (inclinada da cumeeira para o norte)
-      const northGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
-      northGrad.addColorStop(0, northSlopeTopCol);
-      northGrad.addColorStop(1, northSlopeBotCol);
-      ctx.fillStyle = northGrad;
-      ctx.beginPath();
-      if (!h.doorOnSouth) {
-        ctx.moveTo(roofLeft, roofTop);
-        ctx.lineTo(gableLeftX, roofTop);
-        ctx.lineTo(gableTopLeftX, gablePeakY);
-        ctx.lineTo(gableTopRightX, gablePeakY);
-        ctx.lineTo(gableRightX, roofTop);
-        ctx.lineTo(roofRight, roofTop);
-      } else {
-        ctx.moveTo(roofLeft, roofTop);
-        ctx.lineTo(roofRight, roofTop);
-      }
-      ctx.lineTo(ridgeRightX, ridgeY);
-      ctx.lineTo(ridgeLeftX, ridgeY);
-      ctx.closePath();
-      ctx.fill();
+          const doorCenterX = (h.cx + 0.5) * tileSize;
+          const gableHalfBaseW = Math.min(roofW * 0.30, tileSize * 1.85);
+          const gableHalfTopW = tileSize * 0.42;
+          const gableLeftX = Math.max(roofLeft + 12, doorCenterX - gableHalfBaseW);
+          const gableRightX = Math.min(roofRight - 12, doorCenterX + gableHalfBaseW);
+          const gableTopLeftX = doorCenterX - gableHalfTopW;
+          const gableTopRightX = doorCenterX + gableHalfTopW;
 
-      // 5. ÁGUA SUL DO TELHADO 2.5D (inclinada da cumeeira para o sul)
-      const southGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
-      southGrad.addColorStop(0, southSlopeTopCol);
-      southGrad.addColorStop(1, southSlopeBotCol);
-      ctx.fillStyle = southGrad;
-      ctx.beginPath();
-      ctx.moveTo(ridgeLeftX, ridgeY);
-      ctx.lineTo(ridgeRightX, ridgeY);
-      if (h.doorOnSouth) {
-        ctx.lineTo(roofRight, roofBottom);
-        ctx.lineTo(gableRightX, roofBottom);
-        ctx.lineTo(gableTopRightX, gablePeakY);
-        ctx.lineTo(gableTopLeftX, gablePeakY);
-        ctx.lineTo(gableLeftX, roofBottom);
-        ctx.lineTo(roofLeft, roofBottom);
-      } else {
-        ctx.lineTo(roofRight, roofBottom);
-        ctx.lineTo(roofLeft, roofBottom);
-      }
-      ctx.closePath();
-      ctx.fill();
+          const gableHeightPx = Math.min(roofH * 0.44, tileSize * 2.15);
+          const gableBaseY = h.doorOnSouth ? roofBottom : roofTop;
+          const gablePeakY = h.doorOnSouth
+            ? gableBaseY - gableHeightPx
+            : gableBaseY + gableHeightPx;
 
-      // 6. Caibros e Telhas em perspectiva 2.5D
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.34)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      const numRafters = Math.max(6, Math.floor(roofW / 16));
-      for (let r = 1; r < numRafters; r++) {
-        const tFrac = r / numRafters;
-        const topX = roofLeft + roofW * tFrac;
-        const midX = ridgeLeftX + (ridgeRightX - ridgeLeftX) * tFrac;
-        const botX = roofLeft + roofW * tFrac;
+          const roofStyle = h.id % 3;
+          const northSlopeTopCol = roofStyle === 0 ? "#1e293b" : roofStyle === 1 ? "#2a1205" : "#292524";
+          const northSlopeBotCol = roofStyle === 0 ? "#334155" : roofStyle === 1 ? "#451a03" : "#44403c";
+          const southSlopeTopCol = roofStyle === 0 ? "#475569" : roofStyle === 1 ? "#78350f" : "#57534e";
+          const southSlopeBotCol = roofStyle === 0 ? "#334155" : roofStyle === 1 ? "#451a03" : "#292524";
+          const sideSlopeCol = roofStyle === 0 ? "#334155" : roofStyle === 1 ? "#5c2808" : "#44403c";
 
-        const inGableX = topX > gableLeftX + 2 && topX < gableRightX - 2;
-        if (!inGableX || h.doorOnSouth) {
-          ctx.moveTo(topX, roofTop + 2);
-          ctx.lineTo(midX, ridgeY);
+          // 1. Sombra 2.5D projetada pelos beirais sobre as paredes
+          ctx.fillStyle = "rgba(15, 23, 42, 0.42)";
+          ctx.fillRect(roofLeft + 2, roofTop + 5, roofW, roofH + 3);
+
+          // 2. PAREDE FRONTAL DE MADEIRA/PEDRA DENTRO DO FRONTÃO ACIMA DA PORTA
+          const gableWallGrad = ctx.createLinearGradient(0, Math.min(gablePeakY, gableBaseY), 0, Math.max(gablePeakY, gableBaseY));
+          gableWallGrad.addColorStop(0, "#451a03");
+          gableWallGrad.addColorStop(0.6, "#78350f");
+          gableWallGrad.addColorStop(1, "#334155");
+          ctx.fillStyle = gableWallGrad;
+          ctx.beginPath();
+          ctx.moveTo(gableLeftX, gableBaseY);
+          ctx.lineTo(gableTopLeftX, gablePeakY);
+          ctx.lineTo(gableTopRightX, gablePeakY);
+          ctx.lineTo(gableRightX, gableBaseY);
+          ctx.closePath();
+          ctx.fill();
+
+          // Tábuas verticais e viga de madeira dentro do frontão acima da porta
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(gableLeftX, gableBaseY);
+          ctx.lineTo(gableTopLeftX, gablePeakY);
+          ctx.lineTo(gableTopRightX, gablePeakY);
+          ctx.lineTo(gableRightX, gableBaseY);
+          ctx.closePath();
+          ctx.clip();
+
+          ctx.strokeStyle = "rgba(28, 25, 23, 0.5)";
+          ctx.lineWidth = 1.1;
+          for (let gx = gableLeftX + 7; gx < gableRightX; gx += 7) {
+            ctx.beginPath();
+            ctx.moveTo(gx, Math.min(gablePeakY, gableBaseY));
+            ctx.lineTo(gx, Math.max(gablePeakY, gableBaseY));
+            ctx.stroke();
+          }
+          const midGableY = (gablePeakY + gableBaseY) * 0.52;
+          ctx.fillStyle = "#451a03";
+          ctx.fillRect(gableLeftX, midGableY - 2, gableRightX - gableLeftX, 4);
+
+          const atticWinY = gablePeakY + (gableBaseY - gablePeakY) * 0.42;
+          ctx.fillStyle = "rgba(251, 191, 36, 0.75)";
+          ctx.fillRect(doorCenterX - 5, atticWinY - 4, 10, 8);
+          ctx.strokeStyle = "#451a03";
+          ctx.lineWidth = 1.8;
+          ctx.strokeRect(doorCenterX - 5, atticWinY - 4, 10, 8);
+          ctx.restore();
+
+          // 3. ÁGUAS LATERAIS ESQUERDA E DIREITA EM PERSPECTIVA 2.5D
+          ctx.fillStyle = sideSlopeCol;
+          ctx.beginPath();
+          ctx.moveTo(roofLeft, roofTop);
+          ctx.lineTo(ridgeLeftX, ridgeY);
+          ctx.lineTo(roofLeft, roofBottom);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(roofRight, roofTop);
+          ctx.lineTo(ridgeRightX, ridgeY);
+          ctx.lineTo(roofRight, roofBottom);
+          ctx.closePath();
+          ctx.fill();
+
+          // 4. ÁGUA NORTE DO TELHADO 2.5D
+          const northGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+          northGrad.addColorStop(0, northSlopeTopCol);
+          northGrad.addColorStop(1, northSlopeBotCol);
+          ctx.fillStyle = northGrad;
+          ctx.beginPath();
+          if (!h.doorOnSouth) {
+            ctx.moveTo(roofLeft, roofTop);
+            ctx.lineTo(gableLeftX, roofTop);
+            ctx.lineTo(gableTopLeftX, gablePeakY);
+            ctx.lineTo(gableTopRightX, gablePeakY);
+            ctx.lineTo(gableRightX, roofTop);
+            ctx.lineTo(roofRight, roofTop);
+          } else {
+            ctx.moveTo(roofLeft, roofTop);
+            ctx.lineTo(roofRight, roofTop);
+          }
+          ctx.lineTo(ridgeRightX, ridgeY);
+          ctx.lineTo(ridgeLeftX, ridgeY);
+          ctx.closePath();
+          ctx.fill();
+
+          // 5. ÁGUA SUL DO TELHADO 2.5D
+          const southGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+          southGrad.addColorStop(0, southSlopeTopCol);
+          southGrad.addColorStop(1, southSlopeBotCol);
+          ctx.fillStyle = southGrad;
+          ctx.beginPath();
+          ctx.moveTo(ridgeLeftX, ridgeY);
+          ctx.lineTo(ridgeRightX, ridgeY);
+          if (h.doorOnSouth) {
+            ctx.lineTo(roofRight, roofBottom);
+            ctx.lineTo(gableRightX, roofBottom);
+            ctx.lineTo(gableTopRightX, gablePeakY);
+            ctx.lineTo(gableTopLeftX, gablePeakY);
+            ctx.lineTo(gableLeftX, roofBottom);
+            ctx.lineTo(roofLeft, roofBottom);
+          } else {
+            ctx.lineTo(roofRight, roofBottom);
+            ctx.lineTo(roofLeft, roofBottom);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          // 6. Caibros e Telhas em perspectiva 2.5D
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.34)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          const numRafters = Math.max(6, Math.floor(roofW / 16));
+          for (let r = 1; r < numRafters; r++) {
+            const tFrac = r / numRafters;
+            const topX = roofLeft + roofW * tFrac;
+            const midX = ridgeLeftX + (ridgeRightX - ridgeLeftX) * tFrac;
+            const botX = roofLeft + roofW * tFrac;
+
+            const inGableX = topX > gableLeftX + 2 && topX < gableRightX - 2;
+            if (!inGableX || h.doorOnSouth) {
+              ctx.moveTo(topX, roofTop + 2);
+              ctx.lineTo(midX, ridgeY);
+            }
+            if (!inGableX || !h.doorOnSouth) {
+              ctx.moveTo(midX, ridgeY);
+              ctx.lineTo(botX, roofBottom - 2);
+            }
+          }
+          for (let sy = roofTop + 12; sy < roofBottom - 8; sy += 12) {
+            if (h.doorOnSouth && sy > gablePeakY) {
+              const prog = (sy - gablePeakY) / Math.max(1, roofBottom - gablePeakY);
+              const curHalf = gableHalfTopW + prog * (gableHalfBaseW - gableHalfTopW);
+              ctx.moveTo(roofLeft + 4, sy);
+              ctx.lineTo(Math.max(roofLeft + 4, doorCenterX - curHalf - 4), sy);
+              ctx.moveTo(Math.min(roofRight - 4, doorCenterX + curHalf + 4), sy);
+              ctx.lineTo(roofRight - 4, sy);
+            } else if (!h.doorOnSouth && sy < gablePeakY) {
+              const prog = (gablePeakY - sy) / Math.max(1, gablePeakY - roofTop);
+              const curHalf = gableHalfTopW + prog * (gableHalfBaseW - gableHalfTopW);
+              ctx.moveTo(roofLeft + 4, sy);
+              ctx.lineTo(Math.max(roofLeft + 4, doorCenterX - curHalf - 4), sy);
+              ctx.moveTo(Math.min(roofRight - 4, doorCenterX + curHalf + 4), sy);
+              ctx.lineTo(roofRight - 4, sy);
+            } else {
+              ctx.moveTo(roofLeft + 4, sy);
+              ctx.lineTo(roofRight - 4, sy);
+            }
+          }
+          ctx.stroke();
+
+          // 7. CAMADA DE NEVE BRANCA ACUMULADA EM CIMA DO TELHADO 2.5D
+          const snowPad = 6;
+          const snowNorthGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+          snowNorthGrad.addColorStop(0, "#cbd5e1");
+          snowNorthGrad.addColorStop(0.5, "#f1f5f9");
+          snowNorthGrad.addColorStop(1, "#ffffff");
+          ctx.fillStyle = snowNorthGrad;
+          ctx.beginPath();
+          if (!h.doorOnSouth) {
+            ctx.moveTo(roofLeft + snowPad, roofTop + 4);
+            ctx.lineTo(gableLeftX - 4, roofTop + 4);
+            ctx.lineTo(gableTopLeftX - 2, gablePeakY + 3);
+            ctx.lineTo(gableTopRightX + 2, gablePeakY + 3);
+            ctx.lineTo(gableRightX + 4, roofTop + 4);
+            ctx.lineTo(roofRight - snowPad, roofTop + 4);
+          } else {
+            ctx.moveTo(roofLeft + snowPad, roofTop + 4);
+            ctx.lineTo(roofRight - snowPad, roofTop + 4);
+          }
+          ctx.lineTo(ridgeRightX - 2, ridgeY - 2);
+          ctx.lineTo(ridgeLeftX + 2, ridgeY - 2);
+          ctx.closePath();
+          ctx.fill();
+
+          const snowSouthGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+          snowSouthGrad.addColorStop(0, "#ffffff");
+          snowSouthGrad.addColorStop(0.65, "#f8fafc");
+          snowSouthGrad.addColorStop(1, "#e2e8f0");
+          ctx.fillStyle = snowSouthGrad;
+          ctx.beginPath();
+          ctx.moveTo(ridgeLeftX + 2, ridgeY + 2);
+          ctx.lineTo(ridgeRightX - 2, ridgeY + 2);
+          if (h.doorOnSouth) {
+            ctx.lineTo(roofRight - snowPad, roofBottom - 5);
+            ctx.lineTo(gableRightX + 4, roofBottom - 5);
+            ctx.lineTo(gableTopRightX + 2, gablePeakY - 3);
+            ctx.lineTo(gableTopLeftX - 2, gablePeakY - 3);
+            ctx.lineTo(gableLeftX - 4, roofBottom - 5);
+            ctx.lineTo(roofLeft + snowPad, roofBottom - 5);
+          } else {
+            ctx.lineTo(roofRight - snowPad, roofBottom - 5);
+            ctx.lineTo(roofLeft + snowPad, roofBottom - 5);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          // 8. VIGAS DE MADEIRA E NEVE DO FRONTÃO ACIMA DA PORTA
+          ctx.strokeStyle = "#3b1d0a";
+          ctx.lineWidth = 5.5;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(gableLeftX - 2, gableBaseY);
+          ctx.lineTo(gableTopLeftX, gablePeakY);
+          ctx.lineTo(gableTopRightX, gablePeakY);
+          ctx.lineTo(gableRightX + 2, gableBaseY);
+          ctx.stroke();
+
+          ctx.strokeStyle = "#78350f";
+          ctx.lineWidth = 3.2;
+          ctx.beginPath();
+          ctx.moveTo(gableLeftX - 2, gableBaseY);
+          ctx.lineTo(gableTopLeftX, gablePeakY);
+          ctx.lineTo(gableTopRightX, gablePeakY);
+          ctx.lineTo(gableRightX + 2, gableBaseY);
+          ctx.stroke();
+
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2.6;
+          ctx.beginPath();
+          ctx.moveTo(gableLeftX, gableBaseY - 2);
+          ctx.lineTo(gableTopLeftX, gablePeakY - 2);
+          ctx.lineTo(gableTopRightX, gablePeakY - 2);
+          ctx.lineTo(gableRightX, gableBaseY - 2);
+          ctx.stroke();
+
+          // 9. CUMEEIRA CENTRAL E ARESTAS 2.5D DO TELHADO
+          ctx.strokeStyle = "#451a03";
+          ctx.lineWidth = 2.8;
+          ctx.beginPath();
+          ctx.moveTo(roofLeft, roofTop);
+          ctx.lineTo(ridgeLeftX, ridgeY);
+          ctx.lineTo(roofLeft, roofBottom);
+          ctx.moveTo(roofRight, roofTop);
+          ctx.lineTo(ridgeRightX, ridgeY);
+          ctx.lineTo(roofRight, roofBottom);
+          ctx.stroke();
+
+          ctx.fillStyle = "#451a03";
+          ctx.fillRect(ridgeLeftX - 2, ridgeY - 3.5, ridgeRightX - ridgeLeftX + 4, 7);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(ridgeLeftX + 2, ridgeY - 2, ridgeRightX - ridgeLeftX - 4, 3.5);
+
+          ctx.strokeStyle = "#3b1d0a";
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          if (h.doorOnSouth) {
+            ctx.moveTo(roofLeft, roofTop);
+            ctx.lineTo(roofRight, roofTop);
+            ctx.lineTo(roofRight, roofBottom);
+            ctx.lineTo(gableRightX, roofBottom);
+            ctx.moveTo(gableLeftX, roofBottom);
+            ctx.lineTo(roofLeft, roofBottom);
+            ctx.lineTo(roofLeft, roofTop);
+          } else {
+            ctx.moveTo(roofLeft, roofBottom);
+            ctx.lineTo(roofRight, roofBottom);
+            ctx.lineTo(roofRight, roofTop);
+            ctx.lineTo(gableRightX, roofTop);
+            ctx.moveTo(gableLeftX, roofTop);
+            ctx.lineTo(roofLeft, roofTop);
+            ctx.lineTo(roofLeft, roofBottom);
+          }
+          ctx.stroke();
+
+          // 10. PINGENTES DE GELO DISCRETOS NO BEIRAL
+          ctx.fillStyle = "rgba(241, 245, 249, 0.9)";
+          for (let ix = roofLeft + 8; ix < roofRight - 8; ix += 11) {
+            if (h.doorOnSouth && ix > gableLeftX - 4 && ix < gableRightX + 4) continue;
+            const icicleLen = 4 + ((Math.abs(ix * 7 + h.id * 13) % 5));
+            ctx.beginPath();
+            ctx.moveTo(ix - 1.8, roofBottom);
+            ctx.lineTo(ix, roofBottom + icicleLen);
+            ctx.lineTo(ix + 1.8, roofBottom);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          ctx = origCtx;
         }
-        if (!inGableX || !h.doorOnSouth) {
-          ctx.moveTo(midX, ridgeY);
-          ctx.lineTo(botX, roofBottom - 2);
-        }
+
+        hCached = { canvas: offCan, pad };
+        drawSnowCityHouseRoofs._houseRoofCache.set(hCacheKey, hCached);
       }
-      for (let sy = roofTop + 12; sy < roofBottom - 8; sy += 12) {
-        if (h.doorOnSouth && sy > gablePeakY) {
-          const prog = (sy - gablePeakY) / Math.max(1, roofBottom - gablePeakY);
-          const curHalf = gableHalfTopW + prog * (gableHalfBaseW - gableHalfTopW);
-          ctx.moveTo(roofLeft + 4, sy);
-          ctx.lineTo(Math.max(roofLeft + 4, doorCenterX - curHalf - 4), sy);
-          ctx.moveTo(Math.min(roofRight - 4, doorCenterX + curHalf + 4), sy);
-          ctx.lineTo(roofRight - 4, sy);
-        } else if (!h.doorOnSouth && sy < gablePeakY) {
-          const prog = (gablePeakY - sy) / Math.max(1, gablePeakY - roofTop);
-          const curHalf = gableHalfTopW + prog * (gableHalfBaseW - gableHalfTopW);
-          ctx.moveTo(roofLeft + 4, sy);
-          ctx.lineTo(Math.max(roofLeft + 4, doorCenterX - curHalf - 4), sy);
-          ctx.moveTo(Math.min(roofRight - 4, doorCenterX + curHalf + 4), sy);
-          ctx.lineTo(roofRight - 4, sy);
-        } else {
-          ctx.moveTo(roofLeft + 4, sy);
-          ctx.lineTo(roofRight - 4, sy);
-        }
-      }
-      ctx.stroke();
 
-      // 7. CAMADA DE NEVE BRANCA ACUMULADA EM CIMA DO TELHADO 2.5D
-      const snowPad = 6;
-      const snowNorthGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
-      snowNorthGrad.addColorStop(0, "#cbd5e1");
-      snowNorthGrad.addColorStop(0.5, "#f1f5f9");
-      snowNorthGrad.addColorStop(1, "#ffffff");
-      ctx.fillStyle = snowNorthGrad;
-      ctx.beginPath();
-      if (!h.doorOnSouth) {
-        ctx.moveTo(roofLeft + snowPad, roofTop + 4);
-        ctx.lineTo(gableLeftX - 4, roofTop + 4);
-        ctx.lineTo(gableTopLeftX - 2, gablePeakY + 3);
-        ctx.lineTo(gableTopRightX + 2, gablePeakY + 3);
-        ctx.lineTo(gableRightX + 4, roofTop + 4);
-        ctx.lineTo(roofRight - snowPad, roofTop + 4);
-      } else {
-        ctx.moveTo(roofLeft + snowPad, roofTop + 4);
-        ctx.lineTo(roofRight - snowPad, roofTop + 4);
-      }
-      ctx.lineTo(ridgeRightX - 2, ridgeY - 2);
-      ctx.lineTo(ridgeLeftX + 2, ridgeY - 2);
-      ctx.closePath();
-      ctx.fill();
-
-      const snowSouthGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
-      snowSouthGrad.addColorStop(0, "#ffffff");
-      snowSouthGrad.addColorStop(0.65, "#f8fafc");
-      snowSouthGrad.addColorStop(1, "#e2e8f0");
-      ctx.fillStyle = snowSouthGrad;
-      ctx.beginPath();
-      ctx.moveTo(ridgeLeftX + 2, ridgeY + 2);
-      ctx.lineTo(ridgeRightX - 2, ridgeY + 2);
-      if (h.doorOnSouth) {
-        ctx.lineTo(roofRight - snowPad, roofBottom - 5);
-        ctx.lineTo(gableRightX + 4, roofBottom - 5);
-        ctx.lineTo(gableTopRightX + 2, gablePeakY - 3);
-        ctx.lineTo(gableTopLeftX - 2, gablePeakY - 3);
-        ctx.lineTo(gableLeftX - 4, roofBottom - 5);
-        ctx.lineTo(roofLeft + snowPad, roofBottom - 5);
-      } else {
-        ctx.lineTo(roofRight - snowPad, roofBottom - 5);
-        ctx.lineTo(roofLeft + snowPad, roofBottom - 5);
-      }
-      ctx.closePath();
-      ctx.fill();
-
-      // 8. VIGAS DE MADEIRA E NEVE DO FRONTÃO ACIMA DA PORTA (Formato Trapezoidal/Inclinado 2.5D)
-      ctx.strokeStyle = "#3b1d0a";
-      ctx.lineWidth = 5.5;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(gableLeftX - 2, gableBaseY);
-      ctx.lineTo(gableTopLeftX, gablePeakY);
-      ctx.lineTo(gableTopRightX, gablePeakY);
-      ctx.lineTo(gableRightX + 2, gableBaseY);
-      ctx.stroke();
-
-      ctx.strokeStyle = "#78350f";
-      ctx.lineWidth = 3.2;
-      ctx.beginPath();
-      ctx.moveTo(gableLeftX - 2, gableBaseY);
-      ctx.lineTo(gableTopLeftX, gablePeakY);
-      ctx.lineTo(gableTopRightX, gablePeakY);
-      ctx.lineTo(gableRightX + 2, gableBaseY);
-      ctx.stroke();
-
-      // Neve acumulada sobre a borda do frontão da porta
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      ctx.moveTo(gableLeftX, gableBaseY - 2);
-      ctx.lineTo(gableTopLeftX, gablePeakY - 2);
-      ctx.lineTo(gableTopRightX, gablePeakY - 2);
-      ctx.lineTo(gableRightX, gableBaseY - 2);
-      ctx.stroke();
-
-      // 9. CUMEEIRA CENTRAL E ARESTAS 2.5D DO TELHADO
-      ctx.strokeStyle = "#451a03";
-      ctx.lineWidth = 2.8;
-      ctx.beginPath();
-      ctx.moveTo(roofLeft, roofTop);
-      ctx.lineTo(ridgeLeftX, ridgeY);
-      ctx.lineTo(roofLeft, roofBottom);
-      ctx.moveTo(roofRight, roofTop);
-      ctx.lineTo(ridgeRightX, ridgeY);
-      ctx.lineTo(roofRight, roofBottom);
-      ctx.stroke();
-
-      // Viga mestra da cumeeira no topo
-      ctx.fillStyle = "#451a03";
-      ctx.fillRect(ridgeLeftX - 2, ridgeY - 3.5, ridgeRightX - ridgeLeftX + 4, 7);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(ridgeLeftX + 2, ridgeY - 2, ridgeRightX - ridgeLeftX - 4, 3.5);
-
-      // Contorno de madeira dos beirais do telhado
-      ctx.strokeStyle = "#3b1d0a";
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      if (h.doorOnSouth) {
-        ctx.moveTo(roofLeft, roofTop);
-        ctx.lineTo(roofRight, roofTop);
-        ctx.lineTo(roofRight, roofBottom);
-        ctx.lineTo(gableRightX, roofBottom);
-        ctx.moveTo(gableLeftX, roofBottom);
-        ctx.lineTo(roofLeft, roofBottom);
-        ctx.lineTo(roofLeft, roofTop);
-      } else {
-        ctx.moveTo(roofLeft, roofBottom);
-        ctx.lineTo(roofRight, roofBottom);
-        ctx.lineTo(roofRight, roofTop);
-        ctx.lineTo(gableRightX, roofTop);
-        ctx.moveTo(gableLeftX, roofTop);
-        ctx.lineTo(roofLeft, roofTop);
-        ctx.lineTo(roofLeft, roofBottom);
-      }
-      ctx.stroke();
-
-      // 10. PINGENTES DE GELO DISCRETOS NO BEIRAL (Branco-gelo suave, sem azul forte)
-      ctx.fillStyle = "rgba(241, 245, 249, 0.9)";
-      for (let ix = roofLeft + 8; ix < roofRight - 8; ix += 11) {
-        if (h.doorOnSouth && ix > gableLeftX - 4 && ix < gableRightX + 4) continue;
-        const icicleLen = 4 + ((Math.abs(ix * 7 + h.id * 13) % 5));
-        ctx.beginPath();
-        ctx.moveTo(ix - 1.8, roofBottom);
-        ctx.lineTo(ix, roofBottom + icicleLen);
-        ctx.lineTo(ix + 1.8, roofBottom);
-        ctx.closePath();
-        ctx.fill();
-      }
+      ctx.drawImage(hCached.canvas, roofLeft - hCached.pad, roofTop - hCached.pad);
 
       // 8. CHAMINÉ FUMEGANTE ACIMA DO TELHADO (para continuar visível sobre a neve do telhado!)
       const chimTileX = h.cx + 3;
@@ -7062,207 +7096,236 @@
 
       const roofW = roofRight - roofLeft;
       const roofH = roofBottom - roofTop;
-      const ridgeY = roofTop + roofH * 0.48;
-      const ridgeInsetX = Math.min(roofW * 0.12, tileSize * 1.6);
-      const ridgeLeftX = roofLeft + ridgeInsetX;
-      const ridgeRightX = roofRight - ridgeInsetX;
 
-      // Paleta Militar Glacial (Ardósia Cinza-Rocha, Carvalho Escuro e Pinheiro com Neve Branca; sem azul!)
-      const rStyle = br.roofStyle || 0;
-      const northSlopeTopCol = rStyle === 0 ? "#1e293b" : rStyle === 1 ? "#2a1205" : "#292524";
-      const northSlopeBotCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#451a03" : "#44403c";
-      const southSlopeTopCol = rStyle === 0 ? "#475569" : rStyle === 1 ? "#78350f" : "#57534e";
-      const southSlopeBotCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#451a03" : "#292524";
-      const sideSlopeCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#5c2808" : "#44403c";
-
-      // 1. Sombra 2.5D projetada pelos beirais do quartel
-      ctx.fillStyle = "rgba(15, 23, 42, 0.44)";
-      ctx.fillRect(roofLeft + 2, roofTop + 5, roofW, roofH + 3);
-
-      // 2. Águas laterais Esquerda e Direita em perspectiva 2.5D (Trapézios inclinados)
-      ctx.fillStyle = sideSlopeCol;
-      ctx.beginPath();
-      ctx.moveTo(roofLeft, roofTop);
-      ctx.lineTo(ridgeLeftX, ridgeY);
-      ctx.lineTo(roofLeft, roofBottom);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(roofRight, roofTop);
-      ctx.lineTo(ridgeRightX, ridgeY);
-      ctx.lineTo(roofRight, roofBottom);
-      ctx.closePath();
-      ctx.fill();
-
-      // 3. Água Norte do Telhado 2.5D
-      const northGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
-      northGrad.addColorStop(0, northSlopeTopCol);
-      northGrad.addColorStop(1, northSlopeBotCol);
-      ctx.fillStyle = northGrad;
-      ctx.beginPath();
-      if (br.doorSide === "north" && br.doorTileX !== undefined) {
-        const dCenterX = (br.doorTileX + 0.5) * tileSize;
-        const gHalfBase = Math.min(roofW * 0.34, tileSize * 1.9);
-        const gHalfTop = tileSize * 0.48;
-        const gPeakY = roofTop + Math.min(roofH * 0.25, tileSize * 2.1);
-        ctx.moveTo(roofLeft, roofTop);
-        ctx.lineTo(dCenterX - gHalfBase, roofTop);
-        ctx.lineTo(dCenterX - gHalfTop, gPeakY);
-        ctx.lineTo(dCenterX + gHalfTop, gPeakY);
-        ctx.lineTo(dCenterX + gHalfBase, roofTop);
-        ctx.lineTo(roofRight, roofTop);
-      } else {
-        ctx.moveTo(roofLeft, roofTop);
-        ctx.lineTo(roofRight, roofTop);
+      // [PERF] Cacheia o telhado 2.5D estático de cada ala do Quartel/Prisão em um canvas offscreen!
+      if (!drawSnowCityHouseRoofs._barracksRoofCache) {
+        drawSnowCityHouseRoofs._barracksRoofCache = new Map();
       }
-      ctx.lineTo(ridgeRightX, ridgeY);
-      ctx.lineTo(ridgeLeftX, ridgeY);
-      ctx.closePath();
-      ctx.fill();
+      const bCacheKey = `br_${br.id}_${tileSize}`;
+      let bCached = drawSnowCityHouseRoofs._barracksRoofCache.get(bCacheKey);
 
-      // 4. Água Sul do Telhado 2.5D
-      const southGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
-      southGrad.addColorStop(0, southSlopeTopCol);
-      southGrad.addColorStop(1, southSlopeBotCol);
-      ctx.fillStyle = southGrad;
-      ctx.beginPath();
-      ctx.moveTo(ridgeLeftX, ridgeY);
-      ctx.lineTo(ridgeRightX, ridgeY);
-      ctx.lineTo(roofRight, roofBottom);
-      ctx.lineTo(roofLeft, roofBottom);
-      ctx.closePath();
-      ctx.fill();
+      if (!bCached) {
+        const pad = 16;
+        const canW = Math.max(1, Math.ceil(roofW + pad * 2));
+        const canH = Math.max(1, Math.ceil(roofH + pad * 2));
+        const offCan = document.createElement("canvas");
+        offCan.width = canW;
+        offCan.height = canH;
+        const rc = offCan.getContext("2d");
 
-      // 5. Caibros e Telhas em perspectiva 2.5D
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      const numRafters = Math.max(8, Math.floor(roofW / 18));
-      for (let r = 1; r < numRafters; r++) {
-        const tFrac = r / numRafters;
-        const topX = roofLeft + roofW * tFrac;
-        const midX = ridgeLeftX + (ridgeRightX - ridgeLeftX) * tFrac;
-        const botX = roofLeft + roofW * tFrac;
-        ctx.moveTo(topX, roofTop + 3);
-        ctx.lineTo(midX, ridgeY);
-        ctx.moveTo(midX, ridgeY);
-        ctx.lineTo(botX, roofBottom - 3);
-      }
-      for (let sy = roofTop + 14; sy < roofBottom - 8; sy += 14) {
-        ctx.moveTo(roofLeft + 5, sy);
-        ctx.lineTo(roofRight - 5, sy);
-      }
-      ctx.stroke();
+        if (rc) {
+          rc.translate(-roofLeft + pad, -roofTop + pad);
+          const origCtx = ctx;
+          ctx = rc;
 
-      // 6. CAMADA ESPESSA DE NEVE BRANCA ACUMULADA EM CIMA DO TELHADO DO QUARTEL E PRISÃO
-      const snowPad = 7;
-      const snowNorthGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
-      snowNorthGrad.addColorStop(0, "#cbd5e1");
-      snowNorthGrad.addColorStop(0.5, "#f1f5f9");
-      snowNorthGrad.addColorStop(1, "#ffffff");
-      ctx.fillStyle = snowNorthGrad;
-      ctx.beginPath();
-      ctx.moveTo(roofLeft + snowPad, roofTop + 5);
-      ctx.lineTo(roofRight - snowPad, roofTop + 5);
-      ctx.lineTo(ridgeRightX - 2, ridgeY - 2);
-      ctx.lineTo(ridgeLeftX + 2, ridgeY - 2);
-      ctx.closePath();
-      ctx.fill();
+          const ridgeY = roofTop + roofH * 0.48;
+          const ridgeInsetX = Math.min(roofW * 0.12, tileSize * 1.6);
+          const ridgeLeftX = roofLeft + ridgeInsetX;
+          const ridgeRightX = roofRight - ridgeInsetX;
 
-      const snowSouthGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
-      snowSouthGrad.addColorStop(0, "#ffffff");
-      snowSouthGrad.addColorStop(0.65, "#f8fafc");
-      snowSouthGrad.addColorStop(1, "#e2e8f0");
-      ctx.fillStyle = snowSouthGrad;
-      ctx.beginPath();
-      ctx.moveTo(ridgeLeftX + 2, ridgeY + 2);
-      ctx.lineTo(ridgeRightX - 2, ridgeY + 2);
-      ctx.lineTo(roofRight - snowPad, roofBottom - 6);
-      ctx.lineTo(roofLeft + snowPad, roofBottom - 6);
-      ctx.closePath();
-      ctx.fill();
+          // Paleta Militar Glacial (Ardósia Cinza-Rocha, Carvalho Escuro e Pinheiro com Neve Branca; sem azul!)
+          const rStyle = br.roofStyle || 0;
+          const northSlopeTopCol = rStyle === 0 ? "#1e293b" : rStyle === 1 ? "#2a1205" : "#292524";
+          const northSlopeBotCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#451a03" : "#44403c";
+          const southSlopeTopCol = rStyle === 0 ? "#475569" : rStyle === 1 ? "#78350f" : "#57534e";
+          const southSlopeBotCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#451a03" : "#292524";
+          const sideSlopeCol = rStyle === 0 ? "#334155" : rStyle === 1 ? "#5c2808" : "#44403c";
 
-      // 7. FRONTÕES 2.5D INCLINADOS SOBRE AS PORTAS E PORTÕES LATERAIS (1.8 a 2.2 quadrados, como nas casas!)
-      if ((br.doorSide === "east" || br.doorSide === "west") && br.doorTilesY) {
-        const isEast = br.doorSide === "east";
-        const edgeX = isEast ? roofRight : roofLeft;
-        const dirIn = isEast ? -1 : 1;
-        const gableDepthPx = tileSize * 2.0; // 2 quadrados de projeção 2.5D!
-        const gHalfBaseY = tileSize * 1.45;
-        const gHalfTopY = tileSize * 0.42;
+          // 1. Sombra 2.5D projetada pelos beirais do quartel
+          ctx.fillStyle = "rgba(15, 23, 42, 0.44)";
+          ctx.fillRect(roofLeft + 2, roofTop + 5, roofW, roofH + 3);
 
-        for (let d = 0; d < br.doorTilesY.length; d++) {
-          const doorCY = (br.doorTilesY[d] + 0.5) * tileSize;
-          const by1 = Math.max(roofTop + 8, doorCY - gHalfBaseY);
-          const by2 = Math.min(roofBottom - 8, doorCY + gHalfBaseY);
-          const ty1 = doorCY - gHalfTopY;
-          const ty2 = doorCY + gHalfTopY;
-          const peakX = edgeX + dirIn * gableDepthPx;
-
-          // Interior de madeira/pedra do frontão sobre a porta
-          ctx.fillStyle = "#451a03";
+          // 2. Águas laterais Esquerda e Direita em perspectiva 2.5D (Trapézios inclinados)
+          ctx.fillStyle = sideSlopeCol;
           ctx.beginPath();
-          ctx.moveTo(edgeX, by1);
-          ctx.lineTo(peakX, ty1);
-          ctx.lineTo(peakX, ty2);
-          ctx.lineTo(edgeX, by2);
+          ctx.moveTo(roofLeft, roofTop);
+          ctx.lineTo(ridgeLeftX, ridgeY);
+          ctx.lineTo(roofLeft, roofBottom);
           ctx.closePath();
           ctx.fill();
 
-          // Moldura de vigas de carvalho e neve branca no frontão
-          ctx.strokeStyle = "#78350f";
-          ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.moveTo(edgeX, by1);
-          ctx.lineTo(peakX, ty1);
-          ctx.lineTo(peakX, ty2);
-          ctx.lineTo(edgeX, by2);
+          ctx.moveTo(roofRight, roofTop);
+          ctx.lineTo(ridgeRightX, ridgeY);
+          ctx.lineTo(roofRight, roofBottom);
+          ctx.closePath();
+          ctx.fill();
+
+          // 3. Água Norte do Telhado 2.5D
+          const northGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+          northGrad.addColorStop(0, northSlopeTopCol);
+          northGrad.addColorStop(1, northSlopeBotCol);
+          ctx.fillStyle = northGrad;
+          ctx.beginPath();
+          if (br.doorSide === "north" && br.doorTileX !== undefined) {
+            const dCenterX = (br.doorTileX + 0.5) * tileSize;
+            const gHalfBase = Math.min(roofW * 0.34, tileSize * 1.9);
+            const gHalfTop = tileSize * 0.48;
+            const gPeakY = roofTop + Math.min(roofH * 0.25, tileSize * 2.1);
+            ctx.moveTo(roofLeft, roofTop);
+            ctx.lineTo(dCenterX - gHalfBase, roofTop);
+            ctx.lineTo(dCenterX - gHalfTop, gPeakY);
+            ctx.lineTo(dCenterX + gHalfTop, gPeakY);
+            ctx.lineTo(dCenterX + gHalfBase, roofTop);
+            ctx.lineTo(roofRight, roofTop);
+          } else {
+            ctx.moveTo(roofLeft, roofTop);
+            ctx.lineTo(roofRight, roofTop);
+          }
+          ctx.lineTo(ridgeRightX, ridgeY);
+          ctx.lineTo(ridgeLeftX, ridgeY);
+          ctx.closePath();
+          ctx.fill();
+
+          // 4. Água Sul do Telhado 2.5D
+          const southGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+          southGrad.addColorStop(0, southSlopeTopCol);
+          southGrad.addColorStop(1, southSlopeBotCol);
+          ctx.fillStyle = southGrad;
+          ctx.beginPath();
+          ctx.moveTo(ridgeLeftX, ridgeY);
+          ctx.lineTo(ridgeRightX, ridgeY);
+          ctx.lineTo(roofRight, roofBottom);
+          ctx.lineTo(roofLeft, roofBottom);
+          ctx.closePath();
+          ctx.fill();
+
+          // 5. Caibros e Telhas em perspectiva 2.5D
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
+          ctx.lineWidth = 1.1;
+          ctx.beginPath();
+          const numRafters = Math.max(8, Math.floor(roofW / 18));
+          for (let r = 1; r < numRafters; r++) {
+            const tFrac = r / numRafters;
+            const topX = roofLeft + roofW * tFrac;
+            const midX = ridgeLeftX + (ridgeRightX - ridgeLeftX) * tFrac;
+            const botX = roofLeft + roofW * tFrac;
+            ctx.moveTo(topX, roofTop + 3);
+            ctx.lineTo(midX, ridgeY);
+            ctx.moveTo(midX, ridgeY);
+            ctx.lineTo(botX, roofBottom - 3);
+          }
+          for (let sy = roofTop + 14; sy < roofBottom - 8; sy += 14) {
+            ctx.moveTo(roofLeft + 5, sy);
+            ctx.lineTo(roofRight - 5, sy);
+          }
           ctx.stroke();
 
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 2.4;
+          // 6. CAMADA ESPESSA DE NEVE BRANCA ACUMULADA EM CIMA DO TELHADO DO QUARTEL E PRISÃO
+          const snowPad = 7;
+          const snowNorthGrad = ctx.createLinearGradient(0, roofTop, 0, ridgeY);
+          snowNorthGrad.addColorStop(0, "#cbd5e1");
+          snowNorthGrad.addColorStop(0.5, "#f1f5f9");
+          snowNorthGrad.addColorStop(1, "#ffffff");
+          ctx.fillStyle = snowNorthGrad;
           ctx.beginPath();
-          ctx.moveTo(edgeX, by1 - 1.5);
-          ctx.lineTo(peakX, ty1 - 1.5);
-          ctx.lineTo(peakX, ty2 - 1.5);
-          ctx.lineTo(edgeX, by2 - 1.5);
+          ctx.moveTo(roofLeft + snowPad, roofTop + 5);
+          ctx.lineTo(roofRight - snowPad, roofTop + 5);
+          ctx.lineTo(ridgeRightX - 2, ridgeY - 2);
+          ctx.lineTo(ridgeLeftX + 2, ridgeY - 2);
+          ctx.closePath();
+          ctx.fill();
+
+          const snowSouthGrad = ctx.createLinearGradient(0, ridgeY, 0, roofBottom);
+          snowSouthGrad.addColorStop(0, "#ffffff");
+          snowSouthGrad.addColorStop(0.65, "#f8fafc");
+          snowSouthGrad.addColorStop(1, "#e2e8f0");
+          ctx.fillStyle = snowSouthGrad;
+          ctx.beginPath();
+          ctx.moveTo(ridgeLeftX + 2, ridgeY + 2);
+          ctx.lineTo(ridgeRightX - 2, ridgeY + 2);
+          ctx.lineTo(roofRight - snowPad, roofBottom - 6);
+          ctx.lineTo(roofLeft + snowPad, roofBottom - 6);
+          ctx.closePath();
+          ctx.fill();
+
+          // 7. FRONTÕES 2.5D INCLINADOS SOBRE AS PORTAS E PORTÕES LATERAIS
+          if ((br.doorSide === "east" || br.doorSide === "west") && br.doorTilesY) {
+            const isEast = br.doorSide === "east";
+            const edgeX = isEast ? roofRight : roofLeft;
+            const dirIn = isEast ? -1 : 1;
+            const gableDepthPx = tileSize * 2.0;
+            const gHalfBaseY = tileSize * 1.45;
+            const gHalfTopY = tileSize * 0.42;
+
+            for (let d = 0; d < br.doorTilesY.length; d++) {
+              const doorCY = (br.doorTilesY[d] + 0.5) * tileSize;
+              const by1 = Math.max(roofTop + 8, doorCY - gHalfBaseY);
+              const by2 = Math.min(roofBottom - 8, doorCY + gHalfBaseY);
+              const ty1 = doorCY - gHalfTopY;
+              const ty2 = doorCY + gHalfTopY;
+              const peakX = edgeX + dirIn * gableDepthPx;
+
+              ctx.fillStyle = "#451a03";
+              ctx.beginPath();
+              ctx.moveTo(edgeX, by1);
+              ctx.lineTo(peakX, ty1);
+              ctx.lineTo(peakX, ty2);
+              ctx.lineTo(edgeX, by2);
+              ctx.closePath();
+              ctx.fill();
+
+              ctx.strokeStyle = "#78350f";
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(edgeX, by1);
+              ctx.lineTo(peakX, ty1);
+              ctx.lineTo(peakX, ty2);
+              ctx.lineTo(edgeX, by2);
+              ctx.stroke();
+
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 2.4;
+              ctx.beginPath();
+              ctx.moveTo(edgeX, by1 - 1.5);
+              ctx.lineTo(peakX, ty1 - 1.5);
+              ctx.lineTo(peakX, ty2 - 1.5);
+              ctx.lineTo(edgeX, by2 - 1.5);
+              ctx.stroke();
+            }
+          }
+
+          // 8. Cumeeira central de madeira maciça e neve no topo
+          ctx.strokeStyle = "#451a03";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(roofLeft, roofTop);
+          ctx.lineTo(ridgeLeftX, ridgeY);
+          ctx.lineTo(roofLeft, roofBottom);
+          ctx.moveTo(roofRight, roofTop);
+          ctx.lineTo(ridgeRightX, ridgeY);
+          ctx.lineTo(roofRight, roofBottom);
           ctx.stroke();
+
+          ctx.fillStyle = "#451a03";
+          ctx.fillRect(ridgeLeftX - 2, ridgeY - 4, ridgeRightX - ridgeLeftX + 4, 8);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(ridgeLeftX + 2, ridgeY - 2, ridgeRightX - ridgeLeftX - 4, 4);
+
+          ctx.strokeStyle = "#3b1d0a";
+          ctx.lineWidth = 2.6;
+          ctx.strokeRect(roofLeft, roofTop, roofW, roofH);
+
+          // 9. Pingentes de gelo discretos no beiral sul
+          ctx.fillStyle = "rgba(241, 245, 249, 0.9)";
+          for (let ix = roofLeft + 10; ix < roofRight - 10; ix += 12) {
+            const icicleLen = 4 + ((Math.abs(ix * 7 + b * 13) % 5));
+            ctx.beginPath();
+            ctx.moveTo(ix - 1.8, roofBottom);
+            ctx.lineTo(ix, roofBottom + icicleLen);
+            ctx.lineTo(ix + 1.8, roofBottom);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          ctx = origCtx;
         }
+
+        bCached = { canvas: offCan, pad };
+        drawSnowCityHouseRoofs._barracksRoofCache.set(bCacheKey, bCached);
       }
 
-      // 8. Cumeeira central de madeira maciça e neve no topo
-      ctx.strokeStyle = "#451a03";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(roofLeft, roofTop);
-      ctx.lineTo(ridgeLeftX, ridgeY);
-      ctx.lineTo(roofLeft, roofBottom);
-      ctx.moveTo(roofRight, roofTop);
-      ctx.lineTo(ridgeRightX, ridgeY);
-      ctx.lineTo(roofRight, roofBottom);
-      ctx.stroke();
-
-      ctx.fillStyle = "#451a03";
-      ctx.fillRect(ridgeLeftX - 2, ridgeY - 4, ridgeRightX - ridgeLeftX + 4, 8);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(ridgeLeftX + 2, ridgeY - 2, ridgeRightX - ridgeLeftX - 4, 4);
-
-      ctx.strokeStyle = "#3b1d0a";
-      ctx.lineWidth = 2.6;
-      ctx.strokeRect(roofLeft, roofTop, roofW, roofH);
-
-      // 9. Pingentes de gelo discretos no beiral sul
-      ctx.fillStyle = "rgba(241, 245, 249, 0.9)";
-      for (let ix = roofLeft + 10; ix < roofRight - 10; ix += 12) {
-        const icicleLen = 4 + ((Math.abs(ix * 7 + b * 13) % 5));
-        ctx.beginPath();
-        ctx.moveTo(ix - 1.8, roofBottom);
-        ctx.lineTo(ix, roofBottom + icicleLen);
-        ctx.lineTo(ix + 1.8, roofBottom);
-        ctx.closePath();
-        ctx.fill();
-      }
+      ctx.drawImage(bCached.canvas, roofLeft - bCached.pad, roofTop - bCached.pad);
 
       // 10. Chaminé fumegante acima do telhado nas Alas de Oficiais e Descanso
       if (br.chimneyTileX !== undefined && br.chimneyTileY !== undefined) {
