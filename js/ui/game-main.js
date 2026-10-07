@@ -2318,6 +2318,19 @@
           ut(re.tx, re.ty);
           return;
         }
+        if (
+          !E.isUnderground &&
+          typeof window !== "undefined" &&
+          window.SnowPeakCity &&
+          typeof window.SnowPeakCity.interactWithNearbyCitizen === "function"
+        ) {
+          const npcChat = window.SnowPeakCity.interactWithNearbyCitizen(D.x, D.y);
+          if (npcChat && npcChat.success) {
+            m.current.playChestChime && m.current.playChestChime();
+            ve(npcChat.message);
+            return;
+          }
+        }
         const me = [
           { tx: q, ty: F },
           { tx: q + 1, ty: F },

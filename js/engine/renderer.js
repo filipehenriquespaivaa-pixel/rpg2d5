@@ -335,6 +335,25 @@
           const ne = u.combatManager.getRenderItems(c, S, p, j, P);
           for (const ke of ne) Ee.push(ke);
         }
+        if (
+          !this.engine.isUnderground &&
+          typeof window !== "undefined" &&
+          window.SnowPeakCity &&
+          typeof window.SnowPeakCity.updateAndGetCitizenRenderItems === "function"
+        ) {
+          const citItems = window.SnowPeakCity.updateAndGetCitizenRenderItems(
+            c,
+            f,
+            t,
+            u.timeOfDay,
+            this.animTimer,
+            S,
+            p,
+            j,
+            P,
+          );
+          for (const ci of citItems) Ee.push(ci);
+        }
         Ee.sort((ne, ke) => ne.y - ke.y);
         for (const ne of Ee) ne.draw();
         if (!this.engine.isUnderground && typeof drawSnowCityHouseRoofs === "function") {
@@ -1768,9 +1787,16 @@
             drawSnowCityWall(c, f, t.subType || 0, nb);
             break;
           }
-          case "snow_city_door":
-            drawSnowCityDoor(c, f, !!t.opened, !!t.doorVertical);
+          case "snow_city_door": {
+            const isDoorOpenByNpc = !!(
+              typeof window !== "undefined" &&
+              window.SnowPeakCity &&
+              typeof window.SnowPeakCity.isDoorwayUsedByCitizen === "function" &&
+              window.SnowPeakCity.isDoorwayUsedByCitizen(u.tx, u.ty)
+            );
+            drawSnowCityDoor(c, f, !!t.opened || isDoorOpenByNpc, !!t.doorVertical);
             break;
+          }
           case "snow_city_chimney":
             drawSnowCityChimney(c, f, this.animTimer);
             break;

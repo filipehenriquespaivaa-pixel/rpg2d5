@@ -2233,6 +2233,911 @@ window.Game = window.Game || {};
     return mx >= -36 && mx <= 36 && my >= -8 && my <= 165;
   }
 
+  // =========================================================================
+  // POPULAÇÃO DA VILA GLACIAL DAS ALTURAS (MORADORAS DAS 24 CASAS):
+  // - 1 ou 2 mulheres em cada uma das 24 casas (total: 38 moradoras).
+  // - Cores variadas (tons de pele variados: clara, rosada, oliva, morena, parda, negra;
+  //   cabelos variados: preto, castanho, ruivo acobreado, loiro, grisalho; 5 penteados).
+  // - Todos usando trajes alpinos com variedade (6 estilos e cores base diferentes)
+  //   e DETALHES VERMELHOS EM TODOS (xale/cachecol vermelho, faixa/cinto vermelho,
+  //   barra da saia e punhos bordados em vermelho, fitas/laços vermelhos).
+  // - Rotina viva de RPG:
+  //   * Entram e saem de suas casas (abrindo a porta ao passar);
+  //   * Passeiam pelas ruas de paralelepípedo, becos e Praça Central;
+  //   * Interagem e conversam entre si quando se encontram nas ruas/praça;
+  //   * Ao anoitecer, todas voltam para suas respectivas casas para passar a noite!
+  // =========================================================================
+  const SKIN_TONES = [
+    "#fde68a", // Clara dourada
+    "#fbcfe8", // Clara rosada
+    "#f3d5b5", // Pêssego suave
+    "#e6b89c", // Morena clara
+    "#d4a373", // Trigueira / Bronzeada
+    "#b07d62", // Parda / Morena média
+    "#8d5524", // Morena escura
+    "#582f0e", // Negra retinta
+  ];
+
+  const HAIR_COLORS = [
+    "#1c1917", // Preto azeviche
+    "#3b1d0a", // Castanho café
+    "#78350f", // Castanho amendoado
+    "#b45309", // Ruivo acobreado
+    "#9a3412", // Ruivo intenso
+    "#eab308", // Loiro dourado
+    "#cbd5e1", // Grisalho trançado
+  ];
+
+  // Trajes alpinos variados — TODOS combinados com detalhes vermelhos (#dc2626, #ef4444, #b91c1c)
+  const OUTFIT_PALETTES = [
+    { name: "Casaco Azul-Noite com Xale e Barra Vermelha", coat: "#1e3a8a", skirt: "#172554", apron: "#f8fafc", redMain: "#dc2626", redLight: "#ef4444", redDark: "#991b1b" },
+    { name: "Traje Verde-Pinheiro com Corpete e Faixa Vermelha", coat: "#14532d", skirt: "#052e16", apron: "#e2e8f0", redMain: "#dc2626", redLight: "#f87171", redDark: "#b91c1c" },
+    { name: "Túnica de Camurça Marrom com Manto e Punhos Vermelhos", coat: "#5c2808", skirt: "#3b1d0a", apron: "#fef3c7", redMain: "#ef4444", redLight: "#f87171", redDark: "#991b1b" },
+    { name: "Vestido de Lã Cinza-Ardósia com Cachecol e Bordado Vermelho", coat: "#334155", skirt: "#1e293b", apron: "#f1f5f9", redMain: "#dc2626", redLight: "#ef4444", redDark: "#991b1b" },
+    { name: "Traje de Lã Creme da Montanha com Colete e Saia Debruada em Vermelho", coat: "#78716c", skirt: "#44403c", apron: "#fafaf9", redMain: "#b91c1c", redLight: "#ef4444", redDark: "#7f1d1d" },
+    { name: "Casaco Ameixa Escuro com Capuz e Faixa Carmesim", coat: "#3b0764", skirt: "#2e1065", apron: "#f5f3ff", redMain: "#ef4444", redLight: "#f87171", redDark: "#b91c1c" },
+    { name: "Traje Carvão Alpino com Xale Vermelho Vivo", coat: "#27272a", skirt: "#18181b", apron: "#e4e4e7", redMain: "#dc2626", redLight: "#ef4444", redDark: "#991b1b" },
+  ];
+
+  const FEMALE_NAMES = [
+    "Helena", "Clara", "Lívia", "Aurora", "Freya", "Beatriz", "Astrid", "Mirela",
+    "Sofia", "Ingrid", "Elisa", "Valéria", "Camila", "Bianca", "Aline", "Diana",
+    "Lorena", "Nádia", "Olívia", "Cecília", "Marina", "Celeste", "Íris", "Érica",
+    "Lara", "Greta", "Marta", "Sílvia", "Regina", "Tânia", "Luciana", "Estela",
+    "Alba", "Noêmia", "Catarina", "Rosa", "Violeta", "Ágata", "Bárbara", "Dora"
+  ];
+
+  const CHAT_PHRASES = [
+    "Bom dia, vizinha! O fogo da praça está ótimo!",
+    "Que vento gelado hoje nos picos!",
+    "Gostei dos detalhes vermelhos do seu traje!",
+    "Acabei de colocar mais lenha na lareira.",
+    "O ensopado no fogão a lenha ficou uma delícia!",
+    "Vou passear até a praça antes de anoitecer.",
+    "Como está sua irmã lá em casa?",
+    "Precisamos nos recolher cedo quando a noite cair.",
+    "Ouviu os morcegos perto da mina ontem?",
+    "Esse xale vermelho esquenta bastante no inverno!",
+    "As ruas de pedra estão tranquilas hoje.",
+    "Vou buscar temperos e já volto para casa!"
+  ];
+
+  let _citizensInitialized = false;
+  const CITIZENS = [];
+  const _activeDoorwayTimers = new Map(); // key: "tx,ty" -> timestamp/remaining frames
+
+  function _initCitizens(tileSize) {
+    if (_citizensInitialized) return;
+    _citizensInitialized = true;
+    const ts = tileSize || 36;
+    let nameIdx = 0;
+
+    for (let i = 0; i < HOUSES.length; i++) {
+      const h = HOUSES[i];
+      // 1 ou 2 mulheres em cada casa (2 nas casas de 2 quartos ou pares, 1 nas demais)
+      const count = h.twoBedrooms || h.id % 2 === 0 ? 2 : 1;
+
+      for (let r = 0; r < count; r++) {
+        const id = CITIZENS.length + 1;
+        const name = FEMALE_NAMES[nameIdx % FEMALE_NAMES.length];
+        nameIdx++;
+
+        // Coordenadas chave da casa desta moradora (em tiles)
+        const doorTx = h.cx;
+        const doorTy = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
+        const streetRelY = h.relY < 0 ? -11.15 : 11.15;
+        const streetTy = CITY_CY + streetRelY;
+
+        // Pontos internos da casa (Quarto, Sala com Lareira, Cozinha e Hall da Porta)
+        const northSide = h.doorOnSouth;
+        const bedTx = r === 0 ? h.cx - 2.1 : h.twoBedrooms ? h.cx + 2.1 : h.cx - 2.1;
+        const bedTy = r === 0
+          ? h.cy + (northSide ? -2.2 : 2.2)
+          : h.twoBedrooms
+            ? h.cy + (northSide ? -2.2 : 2.2)
+            : h.cy + (northSide ? -1.2 : 1.2);
+        const livingTx = h.cx + (r === 0 ? 1.1 : 2.1);
+        const livingTy = h.cy + (northSide ? 1.8 : -1.8);
+        const kitchenTx = h.cx + 1.5;
+        const kitchenTy = h.cy + (northSide ? -1.8 : 1.8);
+        const hallTx = h.cx + 0.2;
+        const hallTy = h.cy + (northSide ? h.halfH - 1.2 : -h.halfH + 1.2);
+
+        // Variedade garantida de tons de pele, cabelos, penteados e trajes com detalhes vermelhos
+        const skinColor = SKIN_TONES[(id * 3 + r * 5 + i) % SKIN_TONES.length];
+        const hairColor = HAIR_COLORS[(id * 5 + r * 2 + i) % HAIR_COLORS.length];
+        const hairStyle = (id + r * 2 + i) % 5; // 0: longo solto, 1: tranças com fitas vermelhas, 2: coque com laço vermelho, 3: ondulado com tiara vermelha, 4: capuz com borda vermelha
+        const outfitStyle = (id + r + i * 2) % 6; // 6 cortes/modelos de trajes de inverno com detalhes vermelhos
+        const palette = OUTFIT_PALETTES[(id * 2 + r + i) % OUTFIT_PALETTES.length];
+        const propInHand = (id + i) % 4 === 0 ? "basket" : (id + i) % 7 === 0 ? "pot" : null;
+
+        // Algumas começam já passeando na rua/praça durante o dia e outras saindo de casa
+        const startOutside = (id + r) % 3 !== 0;
+        const startX = startOutside
+          ? (h.cx + ((r === 0 ? -1 : 1) * 1.5) + 0.5) * ts
+          : (livingTx + 0.5) * ts;
+        const startY = startOutside
+          ? (streetTy + 0.5) * ts
+          : (livingTy + 0.5) * ts;
+
+        const cit = {
+          id,
+          name: `${name} (Casa #${h.id})`,
+          shortName: name,
+          houseId: h.id,
+          house: h,
+          residentIndex: r,
+          skinColor,
+          hairColor,
+          hairStyle,
+          outfitStyle,
+          palette,
+          propInHand,
+          x: startX,
+          y: startY,
+          facing: h.doorOnSouth ? "down" : "up",
+          isMoving: false,
+          walkPhase: id * 1.7,
+          speed: 0.92 + ((id * 7) % 5) * 0.04,
+          // Waypoints e estado da rotina
+          doorTx,
+          doorTy,
+          streetTy,
+          streetRelY,
+          bedTx,
+          bedTy,
+          livingTx,
+          livingTy,
+          kitchenTx,
+          kitchenTy,
+          hallTx,
+          hallTy,
+          isInsideHouse: !startOutside,
+          state: startOutside ? "strolling" : "inside_home",
+          stateTimer: startOutside ? 12 + (id % 20) : 2 + (id % 6),
+          pauseTimer: 0,
+          chatCooldown: 2 + (id % 5),
+          chatPartnerId: null,
+          chatText: "",
+          waypoints: [],
+        };
+
+        if (startOutside) {
+          _assignStrollDestination(cit, ts);
+        }
+        CITIZENS.push(cit);
+      }
+    }
+  }
+
+  // Constrói uma rota limpa pelas ruas de paralelepípedo e Praça Central (evitando paredes, casas e a fogueira central)
+  function _buildStreetRoute(fromX, fromY, targetRelX, targetRelY, ts) {
+    const curRelX = fromX / ts - 0.5 - CITY_CX;
+    const curRelY = fromY / ts - 0.5 - CITY_CY;
+    const pts = [];
+    const pushTile = (rx, ry) => {
+      pts.push({ x: (CITY_CX + rx + 0.5) * ts, y: (CITY_CY + ry + 0.5) * ts });
+    };
+
+    const curStreetY = curRelY < 0 ? -11.15 : 11.15;
+    const targetStreetY = targetRelY < -5 ? -11.15 : targetRelY > 5 ? 11.15 : 0;
+
+    // 1. Se não estiver alinhada na rua nem na praça, vai primeiro para a rua mais próxima
+    if (Math.abs(curRelX) > 3.9 && Math.abs(curRelY - curStreetY) > 0.8) {
+      pushTile(curRelX, curStreetY);
+    }
+
+    // 2. Se o destino for na Praça Central (targetStreetY === 0)
+    if (targetStreetY === 0) {
+      if (Math.abs(curRelX) > 3.9) {
+        pushTile(0, curStreetY);
+      }
+      const entryY = curRelY < 0 ? -4.1 : 4.1;
+      pushTile(0, entryY);
+      pushTile(targetRelX, targetRelY);
+      return pts;
+    }
+
+    // 3. Se estiver na Praça Central e quiser ir para uma das ruas
+    if (Math.abs(curRelX) <= 3.9 && Math.abs(curRelY) < 9.5) {
+      const exitX = Math.abs(curRelX) > 1.5 ? (curRelX < 0 ? -3.6 : 3.6) : 0;
+      pushTile(exitX, targetStreetY < 0 ? -4.1 : 4.1);
+      pushTile(0, targetStreetY);
+      pushTile(targetRelX, targetStreetY);
+      if (Math.abs(targetRelY - targetStreetY) > 0.3) {
+        pushTile(targetRelX, targetRelY);
+      }
+      return pts;
+    }
+
+    // 4. Se precisar trocar entre a Rua Norte (-11.15) e a Rua Sul (+11.15), atravessa pela Praça Central
+    if (Math.sign(curStreetY) !== Math.sign(targetStreetY)) {
+      pushTile(0, curStreetY);
+      pushTile(0, curStreetY < 0 ? -4.2 : 4.2);
+      // Contorna a fogueira e os bancos da praça por X = -3.6 ou +3.6
+      const sideX = (Math.round(Math.abs(fromX + fromY)) % 2 === 0) ? -3.6 : 3.6;
+      pushTile(sideX, curStreetY < 0 ? -4.2 : 4.2);
+      pushTile(sideX, targetStreetY < 0 ? -4.2 : 4.2);
+      pushTile(0, targetStreetY);
+    }
+
+    // 5. Caminha pela rua alvo até o X de destino
+    pushTile(targetRelX, targetStreetY);
+    if (Math.abs(targetRelY - targetStreetY) > 0.25) {
+      pushTile(targetRelX, targetRelY);
+    }
+    return pts;
+  }
+
+  // Escolhe um novo destino de passeio pela cidade (Rua Norte, Rua Sul, Praça Central, Becos ou frente de casas vizinhas)
+  function _assignStrollDestination(cit, ts) {
+    const roll = Math.random();
+    if (roll < 0.32) {
+      // Passear até a Praça Central (ao redor da Grande Fogueira e bancos)
+      const plazaSpots = [
+        { rx: -3.5, ry: -3.8 },
+        { rx: 3.5, ry: -3.8 },
+        { rx: -3.5, ry: 3.8 },
+        { rx: 3.5, ry: 3.8 },
+        { rx: -1.4, ry: -3.1 },
+        { rx: 1.4, ry: -3.1 },
+        { rx: -1.4, ry: 3.1 },
+        { rx: 1.4, ry: 3.1 },
+        { rx: -3.2, ry: 0 },
+        { rx: 3.2, ry: 0 },
+      ];
+      const sp = plazaSpots[Math.floor(Math.random() * plazaSpots.length)];
+      cit.waypoints = _buildStreetRoute(cit.x, cit.y, sp.rx, sp.ry, ts);
+    } else if (roll < 0.52) {
+      // Passear por um dos becos (com ou sem saída)
+      const alleySpots = [
+        { rx: -30.5, ry: -16.5 },
+        { rx: -8.0, ry: -17.5 },
+        { rx: 29.0, ry: -16.5 },
+        { rx: -32.5, ry: -4.5 },
+        { rx: 16.5, ry: -7.5 },
+        { rx: 27.5, ry: 4.5 },
+        { rx: -28.5, ry: 17.0 },
+        { rx: 16.5, ry: 18.0 },
+      ];
+      const sp = alleySpots[Math.floor(Math.random() * alleySpots.length)];
+      cit.waypoints = _buildStreetRoute(cit.x, cit.y, sp.rx, sp.ry, ts);
+    } else {
+      // Passear ao longo da Rua Norte ou Rua Sul visitando a calçada de outras casas
+      const targetHouse = HOUSES[Math.floor(Math.random() * HOUSES.length)];
+      const rx = targetHouse.relX + (Math.random() * 4 - 2);
+      const ry = targetHouse.relY < 0 ? -11.15 + (Math.random() * 0.7 - 0.35) : 11.15 + (Math.random() * 0.7 - 0.35);
+      cit.waypoints = _buildStreetRoute(cit.x, cit.y, rx, ry, ts);
+    }
+  }
+
+  // Envia a moradora de volta para entrar na casa dela (para passar a noite ou descansar um pouco durante o dia)
+  function _sendCitizenHome(cit, ts, forNight) {
+    cit.state = forNight ? "returning_home_night" : "entering_house";
+    cit.chatPartnerId = null;
+    cit.chatText = "";
+    cit.pauseTimer = 0;
+
+    if (cit.isInsideHouse) {
+      // Já está dentro de casa: vai para a cama (à noite) ou para a sala/cozinha
+      const destTx = forNight ? cit.bedTx : cit.livingTx;
+      const destTy = forNight ? cit.bedTy : cit.livingTy;
+      cit.waypoints = [
+        { x: (cit.hallTx + 0.5) * ts, y: (cit.hallTy + 0.5) * ts },
+        { x: (destTx + 0.5) * ts, y: (destTy + 0.5) * ts },
+      ];
+      return;
+    }
+
+    // Constrói rota pelas ruas até a calçada da própria casa, depois atravessa a porta e entra!
+    const streetPts = _buildStreetRoute(cit.x, cit.y, cit.house.relX, cit.streetRelY, ts);
+    const doorStepY = cit.doorTy + (cit.house.doorOnSouth ? 1.1 : -1.1);
+    streetPts.push({ x: (cit.doorTx + 0.5) * ts, y: (doorStepY + 0.5) * ts });
+    streetPts.push({ x: (cit.doorTx + 0.5) * ts, y: (cit.doorTy + 0.5) * ts, isDoorCrossing: true, EnterHouse: true });
+    streetPts.push({ x: (cit.hallTx + 0.5) * ts, y: (cit.hallTy + 0.5) * ts, markInside: true });
+    if (forNight) {
+      streetPts.push({ x: (cit.bedTx + 0.5) * ts, y: (cit.bedTy + 0.5) * ts });
+    } else {
+      const goKitchen = Math.random() < 0.5;
+      streetPts.push({
+        x: ((goKitchen ? cit.kitchenTx : cit.livingTx) + 0.5) * ts,
+        y: ((goKitchen ? cit.kitchenTy : cit.livingTy) + 0.5) * ts,
+      });
+    }
+    cit.waypoints = streetPts;
+  }
+
+  // Faz a moradora sair de dentro de casa pela porta para passear na cidade
+  function _sendCitizenOutside(cit, ts) {
+    cit.state = "exiting_house";
+    cit.chatPartnerId = null;
+    cit.chatText = "";
+    cit.pauseTimer = 0;
+    const doorStepY = cit.doorTy + (cit.house.doorOnSouth ? 1.15 : -1.15);
+    cit.waypoints = [
+      { x: (cit.hallTx + 0.5) * ts, y: (cit.hallTy + 0.5) * ts },
+      { x: (cit.doorTx + 0.5) * ts, y: (cit.doorTy + 0.5) * ts, isDoorCrossing: true },
+      { x: (cit.doorTx + 0.5) * ts, y: (doorStepY + 0.5) * ts, markOutside: true },
+      { x: (cit.doorTx + 0.5) * ts, y: (cit.streetTy + 0.5) * ts, markOutside: true },
+    ];
+  }
+
+  // Verifica se uma moradora está atravessando a porta de uma casa neste instante (para abrir a porta visualmente!)
+  function isDoorwayUsedByCitizen(tx, ty) {
+    const exp = _activeDoorwayTimers.get(`${tx},${ty}`);
+    return exp !== undefined && exp > 0;
+  }
+
+  // Interação do jogador [F] com uma moradora próxima
+  function interactWithNearbyCitizen(playerX, playerY) {
+    let best = null;
+    let bestDist = 52;
+    for (let i = 0; i < CITIZENS.length; i++) {
+      const c = CITIZENS[i];
+      const d = Math.hypot(playerX - c.x, playerY - c.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = c;
+      }
+    }
+    if (!best) return null;
+
+    // Vira para o jogador e responde com simpatia
+    const dx = playerX - best.x;
+    const dy = playerY - best.y;
+    best.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
+    best.pauseTimer = 3.5;
+    const greetings = [
+      `Olá, viajante! Sou ${best.shortName}, moro na Casa #${best.houseId}.`,
+      `Que bom ver você nos Picos Gelados! A fogueira da praça está bem quentinha.`,
+      `Todas nós usamos detalhes vermelhos nos trajes — é a tradição da nossa vila na neve!`,
+      `Durante o dia passeamos e conversamos pela vila, mas à noite sempre voltamos para casa.`,
+    ];
+    const line = greetings[Math.floor(Math.random() * greetings.length)];
+    best.chatText = line;
+    best.state = best.isInsideHouse ? best.state : "interacting";
+    best.stateTimer = 4.0;
+    return {
+      success: true,
+      citizen: best,
+      message: `💬 ${best.name}: "${line}"`,
+    };
+  }
+
+  // Atualiza a rotina de todas as moradoras e retorna os itens de renderização ordenados por Y
+  function updateAndGetCitizenRenderItems(ctx, tileSize, player, timeOfDay, animTimer, viewLeft, viewRight, viewTop, viewBottom) {
+    const ts = tileSize || 36;
+    _initCitizens(ts);
+
+    // Só processa se o jogador estiver próximo do território da Vila Glacial
+    if (player) {
+      const distToCity = Math.hypot(player.x - CITY_CX * ts, player.y - CITY_CY * ts);
+      if (distToCity > (CITY_RADIUS + 80) * ts) return [];
+    }
+
+    // Decrementa timers de portas abertas pelas moradoras
+    for (const [k, v] of _activeDoorwayTimers.entries()) {
+      if (v <= 1) _activeDoorwayTimers.delete(k);
+      else _activeDoorwayTimers.set(k, v - 1);
+    }
+
+    const dt = 0.016;
+    const isNight = timeOfDay < 0.24 || timeOfDay > 0.76;
+    const activePlayerHouseId = player ? getActiveHouseForPlayer(player.x, player.y, ts) : null;
+
+    for (let i = 0; i < CITIZENS.length; i++) {
+      const c = CITIZENS[i];
+      if (c.chatCooldown > 0) c.chatCooldown = Math.max(0, c.chatCooldown - dt);
+
+      // 1. REGRA DA NOITE: Ao anoitecer, todas voltam para passar a noite em sua casa!
+      if (isNight) {
+        if (c.state !== "returning_home_night" && c.state !== "night_at_home") {
+          _sendCitizenHome(c, ts, true);
+        }
+      } else {
+        // Quando amanhece, quem estava dormindo acorda e inicia a rotina do dia
+        if (c.state === "night_at_home" || c.state === "returning_home_night") {
+          c.state = c.isInsideHouse ? "inside_home" : "strolling";
+          c.stateTimer = 1.5 + (c.id % 6) * 0.8;
+          if (!c.isInsideHouse) _assignStrollDestination(c, ts);
+        }
+      }
+
+      // 2. Se estiver conversando / interagindo com outra moradora (ou com o jogador)
+      if (c.state === "interacting") {
+        c.isMoving = false;
+        c.stateTimer -= dt;
+        if (c.stateTimer <= 0) {
+          c.state = "strolling";
+          c.chatPartnerId = null;
+          c.chatText = "";
+          c.chatCooldown = 10 + Math.random() * 10;
+          if (!c.waypoints || c.waypoints.length === 0) {
+            _assignStrollDestination(c, ts);
+          }
+        }
+        continue;
+      }
+
+      // 3. Pausa breve contemplando a praça/rua ou dentro de casa
+      if (c.pauseTimer > 0) {
+        c.pauseTimer -= dt;
+        c.isMoving = false;
+        continue;
+      }
+
+      // 4. Movimentação ao longo dos waypoints atuais
+      if (c.waypoints && c.waypoints.length > 0) {
+        const wp = c.waypoints[0];
+        const dx = wp.x - c.x;
+        const dy = wp.y - c.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Se estiver perto da porta da própria casa, mantém a porta aberta para passar
+        const doorWorldX = (c.doorTx + 0.5) * ts;
+        const doorWorldY = (c.doorTy + 0.5) * ts;
+        if (Math.hypot(c.x - doorWorldX, c.y - doorWorldY) < ts * 1.15) {
+          _activeDoorwayTimers.set(`${c.doorTx},${c.doorTy}`, 12);
+        }
+
+        if (dist <= c.speed * 1.4) {
+          c.x = wp.x;
+          c.y = wp.y;
+          if (wp.markInside) c.isInsideHouse = true;
+          if (wp.markOutside) c.isInsideHouse = false;
+          c.waypoints.shift();
+
+          // Ao concluir a rota de entrada/saída:
+          if (c.waypoints.length === 0) {
+            c.isMoving = false;
+            if (c.state === "returning_home_night") {
+              c.isInsideHouse = true;
+              c.state = "night_at_home";
+              c.facing = "down";
+            } else if (c.state === "entering_house") {
+              c.isInsideHouse = true;
+              c.state = "inside_home";
+              c.stateTimer = 8 + Math.random() * 10;
+              c.pauseTimer = 1.5;
+            } else if (c.state === "exiting_house") {
+              c.isInsideHouse = false;
+              c.state = "strolling";
+              c.stateTimer = 25 + Math.random() * 30;
+              _assignStrollDestination(c, ts);
+            } else if (c.state === "strolling") {
+              c.pauseTimer = 1.2 + Math.random() * 2.5;
+            } else if (c.state === "inside_home") {
+              c.pauseTimer = 1.8 + Math.random() * 2.2;
+            }
+          }
+        } else {
+          const step = c.speed;
+          c.x += (dx / dist) * step;
+          c.y += (dy / dist) * step;
+          c.isMoving = true;
+          c.walkPhase += 0.16;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            c.facing = dx < 0 ? "left" : "right";
+          } else {
+            c.facing = dy < 0 ? "up" : "down";
+          }
+        }
+      } else {
+        c.isMoving = false;
+      }
+
+      // 5. Gerenciamento dos estados durante o DIA
+      if (!isNight) {
+        if (c.state === "inside_home") {
+          c.stateTimer -= dt;
+          if (c.stateTimer <= 0) {
+            // Sai de casa para passear na cidade!
+            _sendCitizenOutside(c, ts);
+          } else if (!c.waypoints || c.waypoints.length === 0) {
+            // Caminha entre os cômodos da casa (Quarto, Sala da Lareira, Cozinha)
+            const spots = [
+              { tx: c.livingTx, ty: c.livingTy },
+              { tx: c.kitchenTx, ty: c.kitchenTy },
+              { tx: c.bedTx, ty: c.bedTy },
+            ];
+            const pick = spots[Math.floor(Math.random() * spots.length)];
+            c.waypoints = [
+              { x: (c.hallTx + 0.5) * ts, y: (c.hallTy + 0.5) * ts },
+              { x: (pick.tx + 0.5) * ts, y: (pick.ty + 0.5) * ts },
+            ];
+          }
+        } else if (c.state === "strolling") {
+          c.stateTimer -= dt;
+          if (c.stateTimer <= 0) {
+            // Volta para entrar um pouco em casa antes de sair de novo!
+            _sendCitizenHome(c, ts, false);
+          } else if (!c.waypoints || c.waypoints.length === 0) {
+            _assignStrollDestination(c, ts);
+          }
+
+          // Verifica se encontrou outra moradora na rua/praça para interagir e conversar!
+          if (c.chatCooldown <= 0 && !c.isInsideHouse) {
+            for (let j = i + 1; j < CITIZENS.length; j++) {
+              const other = CITIZENS[j];
+              if (
+                !other.isInsideHouse &&
+                other.state === "strolling" &&
+                other.chatCooldown <= 0
+              ) {
+                const d = Math.hypot(c.x - other.x, c.y - other.y);
+                if (d >= 16 && d <= 42) {
+                  const chatDur = 4.5 + Math.random() * 2.5;
+                  c.state = "interacting";
+                  other.state = "interacting";
+                  c.stateTimer = chatDur;
+                  other.stateTimer = chatDur;
+                  c.chatPartnerId = other.id;
+                  other.chatPartnerId = c.id;
+                  c.isMoving = false;
+                  other.isMoving = false;
+
+                  const cdx = other.x - c.x;
+                  const cdy = other.y - c.y;
+                  if (Math.abs(cdx) >= Math.abs(cdy)) {
+                    c.facing = cdx >= 0 ? "right" : "left";
+                    other.facing = cdx >= 0 ? "left" : "right";
+                  } else {
+                    c.facing = cdy >= 0 ? "down" : "up";
+                    other.facing = cdy >= 0 ? "up" : "down";
+                  }
+
+                  c.chatText = CHAT_PHRASES[(c.id + other.id + Math.floor(animTimer)) % CHAT_PHRASES.length];
+                  other.chatText = "";
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Monta os itens de renderização para as moradoras visíveis na câmera
+    const items = [];
+    for (let i = 0; i < CITIZENS.length; i++) {
+      const c = CITIZENS[i];
+      if (
+        c.x < viewLeft - 48 ||
+        c.x > viewRight + 48 ||
+        c.y < viewTop - 48 ||
+        c.y > viewBottom + 48
+      ) {
+        continue;
+      }
+
+      // Se a moradora estiver lá dentro da casa (longe da porta) e o jogador estiver FORA da casa (telhado visível),
+      // não desenha a moradora por cima/através do telhado; assim que o jogador entra na casa (ou ela passa pela porta), ela aparece!
+      if (c.isInsideHouse && activePlayerHouseId !== c.houseId) {
+        const doorWorldY = (c.doorTy + 0.5) * ts;
+        if (Math.abs(c.y - doorWorldY) > ts * 0.85) {
+          continue;
+        }
+      }
+
+      items.push({
+        y: c.y,
+        draw: () => _renderCitizen(ctx, c, timeOfDay, animTimer, player),
+      });
+    }
+
+    return items;
+  }
+
+  // Renderiza uma moradora da Vila Glacial com cores variadas e trajes alpinos com DETALHES VERMELHOS obrigatórios
+  function _renderCitizen(c, npc, timeOfDay, animTimer, player) {
+    c.save();
+    c.translate(npc.x, npc.y);
+
+    const w = npc.facing || "down";
+    const isMoving = !!npc.isMoving;
+    const isSleeping = npc.state === "night_at_home" && npc.isInsideHouse;
+    const isInteracting = npc.state === "interacting";
+    const walkSin = isMoving ? Math.sin(npc.walkPhase) : 0;
+    const bob = isMoving
+      ? Math.abs(Math.sin(npc.walkPhase)) * 1.8
+      : isInteracting
+        ? Math.sin(animTimer * 4 + npc.id) * 0.7
+        : Math.sin(animTimer * 2 + npc.id) * 0.35;
+
+    const pal = npc.palette;
+    const redMain = pal.redMain;   // #dc2626 / #ef4444 / #b91c1c
+    const redLight = pal.redLight; // #ef4444 / #f87171
+    const redDark = pal.redDark;   // #991b1b / #7f1d1d
+
+    // 1. Sombra no chão
+    c.fillStyle = "rgba(15, 23, 42, 0.35)";
+    c.beginPath();
+    c.ellipse(0, 2.5, 7.8, 4.2, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // 2. Manto / Xale Vermelho nas costas (quando olhando para baixo/lados)
+    const capeSway = isMoving ? Math.cos(npc.walkPhase) * 1.8 : 0;
+    if (w !== "up") {
+      c.fillStyle = redDark;
+      c.fillRect(-7.5 + capeSway * 0.3, -15 - bob, 15, 14);
+      c.fillStyle = redMain;
+      c.fillRect(-6.5 + capeSway * 0.3, -15 - bob, 13, 6);
+    }
+
+    // 3. Botas de Inverno com cadarço/borda vermelha
+    const legL = walkSin * 3.2;
+    const legR = -walkSin * 3.2;
+    c.fillStyle = "#292524";
+    if (w === "up" || w === "down") {
+      c.fillRect(-5, 1 + legL, 3.6, 4.5);
+      c.fillRect(1.4, 1 + legR, 3.6, 4.5);
+      // Detalhe vermelho nas botas
+      c.fillStyle = redMain;
+      c.fillRect(-5, 1 + legL, 3.6, 1.3);
+      c.fillRect(1.4, 1 + legR, 3.6, 1.3);
+    } else {
+      c.fillRect(-2.5 + legL, 1, 3.8, 4.5);
+      c.fillRect(-1 + legR, 1, 3.8, 4.5);
+      c.fillStyle = redMain;
+      c.fillRect(-2.5 + legL, 1, 3.8, 1.3);
+      c.fillRect(-1 + legR, 1, 3.8, 1.3);
+    }
+
+    // 4. Saia Longa de Inverno Acinturada + BARRA VERMELHA BORDADA EM TODAS
+    const skirtSway = walkSin * 1.1;
+    c.fillStyle = pal.skirt;
+    c.beginPath();
+    c.moveTo(-6.5, -6 - bob);
+    c.lineTo(6.5, -6 - bob);
+    c.lineTo(8.2 + skirtSway, 2.2 - bob * 0.3);
+    c.lineTo(-8.2 + skirtSway, 2.2 - bob * 0.3);
+    c.closePath();
+    c.fill();
+
+    // Faixa Vermelha Dupla na Barra da Saia (Detalhe Vermelho Obrigatório #1)
+    c.fillStyle = redMain;
+    c.fillRect(-7.8 + skirtSway * 0.8, -0.5 - bob * 0.3, 15.6, 2.2);
+    c.fillStyle = redLight;
+    c.fillRect(-7.5 + skirtSway * 0.8, 0.2 - bob * 0.3, 15.0, 0.8);
+
+    // Avental / Sobressaia frontal com friso vermelho (em alguns modelos de traje para dar variedade)
+    if (npc.outfitStyle % 2 === 0 && w !== "up") {
+      const apOffX = w === "left" ? -1.8 : w === "right" ? 1.8 : 0;
+      c.fillStyle = pal.apron;
+      c.fillRect(-4.2 + apOffX, -5.5 - bob, 8.4, 6.2);
+      // Bordado vermelho no avental
+      c.fillStyle = redMain;
+      c.fillRect(-4.2 + apOffX, -0.6 - bob, 8.4, 1.3);
+    }
+
+    // 5. Casaco / Corpete de Inverno Variado + FAIXA E DETALHES VERMELHOS
+    c.fillStyle = pal.coat;
+    c.fillRect(-6.5, -16 - bob, 13, 10.5);
+
+    // Detalhe Vermelho no Corpete / Peito (varia conforme outfitStyle, mas sempre vermelho!)
+    if (w !== "up") {
+      const fOffX = w === "left" ? -1.5 : w === "right" ? 1.5 : 0;
+      if (npc.outfitStyle === 0 || npc.outfitStyle === 3) {
+        // Lapelas e frente vermelha no casaco
+        c.fillStyle = redMain;
+        c.fillRect(-2.5 + fOffX, -15.5 - bob, 5, 9.5);
+        c.fillStyle = "#fde047";
+        c.fillRect(-0.6 + fOffX, -13.5 - bob, 1.2, 1.2);
+        c.fillRect(-0.6 + fOffX, -10.5 - bob, 1.2, 1.2);
+      } else if (npc.outfitStyle === 1 || npc.outfitStyle === 4) {
+        // Corpete trançado com fitas vermelhas
+        c.fillStyle = redDark;
+        c.fillRect(-3.5 + fOffX, -15 - bob, 7, 8.5);
+        c.strokeStyle = redLight;
+        c.lineWidth = 1.1;
+        c.beginPath();
+        c.moveTo(-2.5 + fOffX, -14.5 - bob);
+        c.lineTo(2.5 + fOffX, -11.5 - bob);
+        c.moveTo(2.5 + fOffX, -14.5 - bob);
+        c.lineTo(-2.5 + fOffX, -11.5 - bob);
+        c.stroke();
+      } else {
+        // Xale em V vermelho sobre o peito
+        c.fillStyle = redMain;
+        c.beginPath();
+        c.moveTo(-6 + fOffX, -16 - bob);
+        c.lineTo(6 + fOffX, -16 - bob);
+        c.lineTo(0 + fOffX, -8 - bob);
+        c.closePath();
+        c.fill();
+      }
+    }
+
+    // Cinto / Faixa Vermelha na Cintura (Detalhe Vermelho Obrigatório #2)
+    c.fillStyle = redMain;
+    c.fillRect(-6.8, -7.2 - bob, 13.6, 2.4);
+    if (w !== "up") {
+      // Laço/faixa caída vermelha na cintura
+      c.fillStyle = redLight;
+      c.fillRect(1.5, -6.5 - bob, 2.2, 4.8);
+    }
+
+    // Cachecol / Gola Vermelha Quente no Pescoço (Detalhe Vermelho Obrigatório #3)
+    c.fillStyle = redMain;
+    c.fillRect(-6.2, -17.2 - bob, 12.4, 2.8);
+    c.fillStyle = redLight;
+    c.fillRect(-5.5, -16.8 - bob, 11.0, 1.1);
+    if (w !== "up") {
+      // Ponta do cachecol vermelho no peito
+      c.fillStyle = redMain;
+      c.fillRect(2.2, -15.2 - bob, 2.6, 5.5);
+      c.fillStyle = redLight;
+      c.fillRect(2.2, -10.5 - bob, 2.6, 1.0);
+    } else {
+      // Quando vista de costas (w === "up"), mostra o Xale/Manto Vermelho nas costas
+      c.fillStyle = redMain;
+      c.fillRect(-7, -16 - bob, 14, 12);
+      c.fillStyle = redDark;
+      c.fillRect(-5, -15 - bob, 10, 9);
+      c.fillStyle = redLight;
+      c.fillRect(-7, -5.2 - bob, 14, 1.5);
+    }
+
+    // 6. Braços com Mangas e PUNHOS VERMELHOS + Mãos com tom de pele variado
+    const armSwing = isMoving
+      ? walkSin * 3.0
+      : isInteracting
+        ? Math.sin(animTimer * 6 + npc.id) * 1.8
+        : 0;
+    if (w === "down" || w === "up") {
+      // Braço esquerdo
+      c.fillStyle = pal.coat;
+      c.fillRect(-8.8, -15 - bob + armSwing * 0.5, 2.6, 7.5);
+      c.fillStyle = redMain; // Punho vermelho
+      c.fillRect(-8.8, -9 - bob + armSwing * 0.5, 2.6, 1.8);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(-8.6, -7.2 - bob + armSwing * 0.5, 2.2, 2.0);
+
+      // Braço direito
+      c.fillStyle = pal.coat;
+      c.fillRect(6.2, -15 - bob - armSwing * 0.5, 2.6, 7.5);
+      c.fillStyle = redMain; // Punho vermelho
+      c.fillRect(6.2, -9 - bob - armSwing * 0.5, 2.6, 1.8);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(6.4, -7.2 - bob - armSwing * 0.5, 2.2, 2.0);
+    } else {
+      const sideArmX = w === "left" ? -1.5 : -1.0;
+      c.fillStyle = pal.coat;
+      c.fillRect(sideArmX + armSwing * 0.4, -14.5 - bob, 2.8, 7.5);
+      c.fillStyle = redMain; // Punho vermelho
+      c.fillRect(sideArmX + armSwing * 0.4, -8.5 - bob, 2.8, 1.8);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(sideArmX + armSwing * 0.4, -6.7 - bob, 2.4, 2.0);
+    }
+
+    // Cesto ou pote rústico na mão durante o passeio (para algumas moradoras)
+    if (npc.propInHand === "basket" && !isSleeping && w !== "up") {
+      const bx = w === "left" ? -8.5 : 7.5;
+      const by = -6.5 - bob;
+      c.fillStyle = "#b45309";
+      c.fillRect(bx - 3, by, 6, 4.5);
+      c.fillStyle = redMain; // Pano vermelho cobrindo o cesto!
+      c.fillRect(bx - 3.2, by - 1, 6.4, 1.6);
+    }
+
+    // 7. Cabeça, Cabelos Variados e Fitas/Adornos Vermelhos
+    const headY = -22 - bob;
+
+    // Cabelo atrás da cabeça (para cabelos longos/soltos)
+    if (npc.hairStyle === 0 || npc.hairStyle === 1 || npc.hairStyle === 3) {
+      c.fillStyle = npc.hairColor;
+      c.fillRect(-6.8, headY - 2, 13.6, 9.5);
+    }
+
+    // Rosto (com tom de pele variado!)
+    c.fillStyle = npc.skinColor;
+    c.beginPath();
+    c.arc(0, headY, 6.2, 0, Math.PI * 2);
+    c.fill();
+
+    // Topo do Cabelo / Franja Feminina
+    c.fillStyle = npc.hairColor;
+    c.beginPath();
+    c.arc(0, headY - 1.8, 6.4, Math.PI * 0.92, Math.PI * 0.08);
+    c.fill();
+
+    // Penteados específicos com DETALHES VERMELHOS na cabeça:
+    if (npc.hairStyle === 1) {
+      // Duas tranças compridas com laços vermelhos nas pontas
+      c.fillStyle = npc.hairColor;
+      c.fillRect(-6.8, headY + 1, 2.3, 8.5);
+      c.fillRect(4.5, headY + 1, 2.3, 8.5);
+      c.fillStyle = redLight;
+      c.fillRect(-7.1, headY + 7.5, 2.9, 1.8);
+      c.fillRect(4.2, headY + 7.5, 2.9, 1.8);
+    } else if (npc.hairStyle === 2) {
+      // Coque alto elegante com fita vermelha ao redor
+      c.fillStyle = npc.hairColor;
+      c.beginPath();
+      c.arc(0, headY - 7.2, 3.6, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = redMain;
+      c.fillRect(-3.8, headY - 6.2, 7.6, 1.8);
+    } else if (npc.hairStyle === 4) {
+      // Capuz de inverno com borda vermelha e pele clara
+      c.strokeStyle = redMain;
+      c.lineWidth = 2.2;
+      c.beginPath();
+      c.arc(0, headY - 0.5, 6.6, Math.PI * 0.85, Math.PI * 0.15);
+      c.stroke();
+    } else {
+      // Tiara / Fita Vermelha no cabelo (para hairStyle 0 e 3)
+      c.fillStyle = redMain;
+      c.fillRect(-6.0, headY - 4.8, 12.0, 1.7);
+      c.fillStyle = redLight;
+      c.fillRect(3.5, headY - 5.4, 2.6, 2.6);
+    }
+
+    // Se vista de costas (w === "up"), preenche a parte de trás do cabelo + laço vermelho
+    if (w === "up") {
+      c.fillStyle = npc.hairColor;
+      c.beginPath();
+      c.arc(0, headY - 0.5, 6.3, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = redMain;
+      c.fillRect(-4.5, headY - 2, 9, 1.8);
+      c.fillStyle = redLight;
+      c.fillRect(-1.5, headY - 2.5, 3, 4);
+    } else {
+      // Olhos e expressão facial
+      c.fillStyle = "#1e293b";
+      if (isSleeping) {
+        // Olhos fechados descansando em casa à noite
+        c.fillRect(-3.2, headY + 0.2, 2.2, 0.9);
+        c.fillRect(1.0, headY + 0.2, 2.2, 0.9);
+      } else if (w === "down") {
+        c.fillRect(-3.2, headY - 0.4, 1.9, 2.0);
+        c.fillRect(1.3, headY - 0.4, 1.9, 2.0);
+        // Leve rubor nas bochechas pelo frio
+        c.fillStyle = "rgba(244, 63, 94, 0.32)";
+        c.fillRect(-4.4, headY + 1.4, 1.8, 1.1);
+        c.fillRect(2.6, headY + 1.4, 1.8, 1.1);
+      } else if (w === "left") {
+        c.fillRect(-4.2, headY - 0.4, 1.9, 2.0);
+        c.fillStyle = "rgba(244, 63, 94, 0.32)";
+        c.fillRect(-3.2, headY + 1.4, 1.8, 1.1);
+      } else if (w === "right") {
+        c.fillRect(2.3, headY - 0.4, 1.9, 2.0);
+        c.fillStyle = "rgba(244, 63, 94, 0.32)";
+        c.fillRect(1.4, headY + 1.4, 1.8, 1.1);
+      }
+    }
+
+    // 8. Indicador de sono ("Zzz") quando estão passando a noite em casa, ou Balão de Conversa quando interagem!
+    if (isSleeping) {
+      const zFloat = (animTimer * 1.5 + npc.id) % 1;
+      c.fillStyle = `rgba(226, 232, 240, ${0.85 - zFloat * 0.6})`;
+      c.font = "bold 7.5px sans-serif";
+      c.textAlign = "center";
+      c.fillText("Zzz", 6 + zFloat * 4, headY - 8 - zFloat * 6);
+    } else if (isInteracting && npc.chatText && player && Math.hypot(player.x - npc.x, player.y - npc.y) < 260) {
+      c.font = "bold 7.5px sans-serif";
+      const text = npc.chatText;
+      const tw = Math.min(180, Math.max(54, c.measureText(text).width + 12));
+      const bx = -tw / 2;
+      const by = headY - 22;
+
+      c.fillStyle = "rgba(15, 23, 42, 0.88)";
+      c.strokeStyle = "#ef4444";
+      c.lineWidth = 1.1;
+      c.beginPath();
+      c.roundRect(bx, by, tw, 13, 4);
+      c.fill();
+      c.stroke();
+
+      c.fillStyle = "#f8fafc";
+      c.textAlign = "center";
+      c.fillText(text, 0, by + 9.2);
+    }
+
+    c.restore();
+  }
+
   // Exporta a definição
   const SnowPeakCity = {
     centerX: CITY_CX,
@@ -2244,6 +3149,7 @@ window.Game = window.Game || {};
     prisonMineTy: PRISON_MINE_TY,
     houses: HOUSES,
     barracksRoofs: BARRACKS_ROOFS,
+    citizens: CITIZENS,
     isCityTerritory,
     isCityBiomeArea,
     isPrisonMineArea,
@@ -2251,6 +3157,9 @@ window.Game = window.Game || {};
     getActiveHouseForPlayer,
     getCellAt,
     getUndergroundCellAt,
+    isDoorwayUsedByCitizen,
+    interactWithNearbyCitizen,
+    updateAndGetCitizenRenderItems,
   };
 
   G.SnowPeakCity = SnowPeakCity;
