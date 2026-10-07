@@ -3987,24 +3987,139 @@ window.Game = window.Game || {};
     c.ellipse(0, 2.5, 7.5, 4.0, 0, 0, Math.PI * 2);
     c.fill();
 
-    // 2. Pernas com calças brancas rasgadas na canela e pés descalços/enfaixados
-    const legL = isMoving ? walkSin * 3.0 : 0;
-    const legR = isMoving ? -walkSin * 3.0 : 0;
-    // Pés (tom de pele variado + atadura suja)
-    c.fillStyle = p.skinColor;
-    if (w === "up" || w === "down") {
-      c.fillRect(-5, 1 + legL, 3.5, 4.2);
-      c.fillRect(1.5, 1 + legR, 3.5, 4.2);
-      // Calça branca rasgada acima do tornozelo
+    // 2. Pernas anatômicas com balanço pendular idêntico ao do player
+    const legMult = 2.8,
+      legSwingL = isMoving ? -walkSin * legMult : 0,
+      legSwingR = isMoving ? walkSin * legMult : 0;
+
+    if (w === "up") {
+      // VISTA TRASEIRA (COSTAS): Passada vertical alternada idêntica ao player
+      // Perna Esquerda
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.18)";
+      c.fillRect(-3.2, -3.5 + legSwingL, 0.9, 4.6);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
       c.fillStyle = "#e2e8f0";
-      c.fillRect(-5.2, -3 + legL * 0.6, 3.9, 4.6);
-      c.fillRect(1.3, -3 + legR * 0.6, 3.9, 4.6);
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.18)";
+      c.fillRect(3.4, -3.5 + legSwingR, 0.9, 4.6);
+      c.fillStyle = p.skinColor;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "down") {
+      // VISTA FRONTAL: Passada vertical alternada idêntica ao player
+      // Perna Esquerda
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.3)";
+      c.fillRect(-4.5, -1.7 + legSwingL, 2.4, 2.2);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
+      c.fillStyle = "rgba(120, 53, 15, 0.4)";
+      c.fillRect(-5.0, 3.1 + legSwingL, 3.4, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.3)";
+      c.fillRect(2.1, -1.7 + legSwingR, 2.4, 2.2);
+      c.fillStyle = p.skinColor;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+      c.fillStyle = "rgba(120, 53, 15, 0.4)";
+      c.fillRect(1.6, 3.1 + legSwingR, 3.4, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "left") {
+      // VISTA LATERAL ESQUERDA: Pêndulo anatômico com pivôs fixos no quadril (y = -3.5) idêntico ao player
+      const strideRange = 0.48,
+        frontAngle = -walkSin * strideRange,
+        backAngle = walkSin * strideRange;
+
+      // Perna de trás (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.22)";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(-3.0, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = "#f1f5f9";
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.35)";
+      c.fillRect(-1.4, 1.8, 2.8, 2.0);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(-3.3, 6.8, 5.2, 1.2);
+      c.restore();
     } else {
-      c.fillRect(-2.4 + legL, 1, 3.6, 4.2);
-      c.fillRect(-0.8 + legR, 1, 3.6, 4.2);
+      // VISTA LATERAL DIREITA: Pêndulo anatômico com pivôs fixos no quadril (y = -3.5) idêntico ao player
+      const strideRange = 0.48,
+        frontAngle = walkSin * strideRange,
+        backAngle = -walkSin * strideRange;
+
+      // Perna de trás (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.22)";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
       c.fillStyle = "#e2e8f0";
-      c.fillRect(-2.6 + legL * 0.6, -3, 3.9, 4.6);
-      c.fillRect(-1.0 + legR * 0.6, -3, 3.9, 4.6);
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(-1.8, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = "#f1f5f9";
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.35)";
+      c.fillRect(-1.4, 1.8, 2.8, 2.0);
+      c.fillStyle = p.skinColor;
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = "#cbd5e1";
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(-1.9, 6.8, 5.2, 1.2);
+      c.restore();
     }
 
     // 3. Túnica/Camisa Branca Rasgada (com pontas desfiadas, rasgos e manchas de terra da escavação)
@@ -4186,34 +4301,151 @@ window.Game = window.Game || {};
       c.fillRect(-7.8 + sway * 0.3, -1.5 - bob, 15.6, 1.8);
     }
 
-    // 3. Calças Pretas com Listra Vermelha e Botas Pretas com Debruado Vermelho Idêntico
-    const legL = walkSin * 3.3;
-    const legR = -walkSin * 3.3;
-    if (w === "up" || w === "down") {
-      // Calça preta
+    // 3. Pernas e Botas Anatômicas com Balanço Pendular Idêntico ao Player
+    const legMult = 2.8,
+      legSwingL = isMoving ? -walkSin * legMult : 0,
+      legSwingR = isMoving ? walkSin * legMult : 0;
+
+    if (w === "up") {
+      // VISTA TRASEIRA (COSTAS): Passada vertical alternada idêntica ao player
+      // Perna Esquerda
       c.fillStyle = uniDark;
-      c.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
-      c.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
-      // Botas pretas com borda vermelha idêntica
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.35)";
+      c.fillRect(-3.2, -3.5 + legSwingL, 0.9, 4.6);
       c.fillStyle = "#18181b";
-      c.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
-      c.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
       c.fillStyle = uniRed;
-      c.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
-      c.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.3);
+      c.fillStyle = "rgba(0, 0, 0, 0.28)";
+      c.fillRect(-3.5, 1.5 + legSwingL, 1.0, 2.8);
+      c.fillStyle = "#09090b";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = uniDark;
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.35)";
+      c.fillRect(3.4, -3.5 + legSwingR, 0.9, 4.6);
+      c.fillStyle = "#18181b";
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = uniRed;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.3);
+      c.fillStyle = "rgba(0, 0, 0, 0.28)";
+      c.fillRect(3.1, 1.5 + legSwingR, 1.0, 2.8);
+      c.fillStyle = "#09090b";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "down") {
+      // VISTA FRONTAL: Passada vertical alternada idêntica ao player
+      // Perna Esquerda
+      c.fillStyle = uniDark;
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.1)";
+      c.fillRect(-4.5, -1.7 + legSwingL, 2.4, 2.2);
+      c.fillStyle = "#18181b";
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+      c.fillStyle = uniRed;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.3);
+      c.fillStyle = "#27272a";
+      c.fillRect(-5.0, 3.1 + legSwingL, 3.4, 1.2);
+      c.fillStyle = "#09090b";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = uniDark;
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.1)";
+      c.fillRect(2.1, -1.7 + legSwingR, 2.4, 2.2);
+      c.fillStyle = "#18181b";
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = uniRed;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.3);
+      c.fillStyle = "#27272a";
+      c.fillRect(1.6, 3.1 + legSwingR, 3.4, 1.2);
+      c.fillStyle = "#09090b";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "left") {
+      // VISTA LATERAL ESQUERDA: Pêndulo anatômico com pivô fixo no quadril (y = -3.5) idêntico ao player
+      const strideRange = 0.48,
+        frontAngle = -walkSin * strideRange,
+        backAngle = walkSin * strideRange;
+
+      // Perna de trás (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = uniDark;
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = uniRed;
+      c.fillRect(-0.4, 0, 1.0, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.35)";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = "#18181b";
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
+      c.fillStyle = uniRed;
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#09090b";
+      c.fillRect(-3.0, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = uniDark;
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = uniRed;
+      c.fillRect(-0.5, 0, 1.0, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.1)";
+      c.fillRect(-1.4, 1.8, 2.8, 2.0);
+      c.fillStyle = "#18181b";
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = uniRed;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#09090b";
+      c.fillRect(-3.3, 6.8, 5.2, 1.2);
+      c.restore();
     } else {
+      // VISTA LATERAL DIREITA: Pêndulo anatômico com pivô fixo no quadril (y = -3.5) idêntico ao player
+      const strideRange = 0.48,
+        frontAngle = walkSin * strideRange,
+        backAngle = -walkSin * strideRange;
+
+      // Perna de trás (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(backAngle);
       c.fillStyle = uniDark;
-      c.fillRect(-2.6 + legL * 0.5, -3.5, 4.0, 5.0);
-      c.fillRect(-1.0 + legR * 0.5, -3.5, 4.0, 5.0);
-      // Listra lateral vermelha na calça preta
+      c.fillRect(-1.8, 0, 3.6, 4.6);
       c.fillStyle = uniRed;
-      c.fillRect(-1.0 + legL * 0.5, -3.5, 1.1, 5.0);
+      c.fillRect(-0.6, 0, 1.0, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.35)";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
       c.fillStyle = "#18181b";
-      c.fillRect(-2.6 + legL, 1.0, 4.0, 4.5);
-      c.fillRect(-1.0 + legR, 1.0, 4.0, 4.5);
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
       c.fillStyle = uniRed;
-      c.fillRect(-2.6 + legL, 1.0, 4.0, 1.3);
-      c.fillRect(-1.0 + legR, 1.0, 4.0, 1.3);
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#09090b";
+      c.fillRect(-1.8, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = uniDark;
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = uniRed;
+      c.fillRect(-0.5, 0, 1.0, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.1)";
+      c.fillRect(-1.4, 1.8, 2.8, 2.0);
+      c.fillStyle = "#18181b";
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = uniRed;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#09090b";
+      c.fillRect(-1.9, 6.8, 5.2, 1.2);
+      c.restore();
     }
 
     // 4. Casaco / Túnica Militar Preta Padronizada + Detalhes Vermelhos Idênticos
@@ -4270,25 +4502,42 @@ window.Game = window.Game || {};
     }
 
     // 5. Braços com Mangas Pretas e Punhos Vermelhos Idênticos + Arma Militar
-    const armSwing = walkSin * 2.8;
+    const swingL = walkSin * 0.75,
+      swingR = -walkSin * 0.75,
+      shoulderTopY = -15.2 - bob;
+
     if (w === "down" || w === "up") {
+      // Braço Esquerdo (topo fixo no ombro)
+      const wristYL = shoulderTopY + 5.0 + swingL;
       c.fillStyle = uniBlack;
-      c.fillRect(-8.8, -15.0 - bob + armSwing * 0.4, 2.5, 7.5);
-      c.fillRect(6.3, -15.0 - bob - armSwing * 0.4, 2.5, 7.5);
+      c.fillRect(-8.4, shoulderTopY, 2.6, 6.2 + swingL);
       c.fillStyle = uniRed;
-      c.fillRect(-8.8, -9.0 - bob + armSwing * 0.4, 2.5, 1.8);
-      c.fillRect(6.3, -9.0 - bob - armSwing * 0.4, 2.5, 1.8);
+      c.fillRect(-8.4, wristYL, 2.6, 1.6);
       c.fillStyle = sol.skinColor;
-      c.fillRect(-8.6, -7.2 - bob + armSwing * 0.4, 2.1, 2.0);
-      c.fillRect(6.5, -7.2 - bob - armSwing * 0.4, 2.1, 2.0);
+      c.fillRect(-8.3, wristYL + 1.5, 2.4, 2.0);
+
+      // Braço Direito (topo fixo no ombro)
+      const wristYR = shoulderTopY + 5.0 + swingR;
+      c.fillStyle = uniBlack;
+      c.fillRect(5.8, shoulderTopY, 2.6, 6.2 + swingR);
+      c.fillStyle = uniRed;
+      c.fillRect(5.8, wristYR, 2.6, 1.6);
+      c.fillStyle = sol.skinColor;
+      c.fillRect(5.9, wristYR + 1.5, 2.4, 2.0);
     } else {
-      const sideX = w === "left" ? -1.4 : -1.0;
+      const isLeft = w === "left",
+        shoulderPivotX = isLeft ? -1.0 : 0.8,
+        armAngle = (isLeft ? 1 : -1) * walkSin * 0.45;
+      c.save();
+      c.translate(shoulderPivotX, shoulderTopY);
+      c.rotate(armAngle);
       c.fillStyle = uniBlack;
-      c.fillRect(sideX + armSwing * 0.35, -14.8 - bob, 2.7, 7.5);
+      c.fillRect(-1.3, 0, 2.6, 6.2);
       c.fillStyle = uniRed;
-      c.fillRect(sideX + armSwing * 0.35, -8.8 - bob, 2.7, 1.8);
+      c.fillRect(-1.3, 4.8, 2.6, 1.6);
       c.fillStyle = sol.skinColor;
-      c.fillRect(sideX + armSwing * 0.35, -7.0 - bob, 2.3, 2.0);
+      c.fillRect(-1.2, 6.4, 2.4, 2.0);
+      c.restore();
     }
 
     // Lança / Alabarda Militar (para Soldados e Tenentes) ou Espada no Cinto (para Coronel e Capitão)
@@ -4416,23 +4665,127 @@ window.Game = window.Game || {};
       c.fillRect(-6.5 + capeSway * 0.3, -15 - bob, 13, 6);
     }
 
-    // 3. Botas de Inverno com cadarço/borda vermelha
-    const legL = walkSin * 3.2;
-    const legR = -walkSin * 3.2;
-    c.fillStyle = "#292524";
-    if (w === "up" || w === "down") {
-      c.fillRect(-5, 1 + legL, 3.6, 4.5);
-      c.fillRect(1.4, 1 + legR, 3.6, 4.5);
-      // Detalhe vermelho nas botas
+    // 3. Pernas e Botas de Inverno Anatômicas com Balanço Pendular Idêntico ao Player
+    const legMult = 2.8,
+      legSwingL = isMoving ? -walkSin * legMult : 0,
+      legSwingR = isMoving ? walkSin * legMult : 0;
+
+    if (w === "up") {
+      // VISTA TRASEIRA (COSTAS): Passada vertical alternada
+      // Perna Esquerda
+      c.fillStyle = "#1e293b";
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.25)";
+      c.fillRect(-3.2, -3.5 + legSwingL, 0.9, 4.6);
+      c.fillStyle = "#292524";
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
       c.fillStyle = redMain;
-      c.fillRect(-5, 1 + legL, 3.6, 1.3);
-      c.fillRect(1.4, 1 + legR, 3.6, 1.3);
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.3);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = "#1e293b";
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.25)";
+      c.fillRect(3.4, -3.5 + legSwingR, 0.9, 4.6);
+      c.fillStyle = "#292524";
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = redMain;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.3);
+      c.fillStyle = "#1c1917";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "down") {
+      // VISTA FRONTAL: Passada vertical alternada
+      // Perna Esquerda
+      c.fillStyle = "#334155";
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.12)";
+      c.fillRect(-4.5, -1.7 + legSwingL, 2.4, 2.2);
+      c.fillStyle = "#292524";
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+      c.fillStyle = redMain;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.3);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = "#334155";
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.12)";
+      c.fillRect(2.1, -1.7 + legSwingR, 2.4, 2.2);
+      c.fillStyle = "#292524";
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = redMain;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.3);
+      c.fillStyle = "#1c1917";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "left") {
+      // VISTA LATERAL ESQUERDA: Pêndulo anatômico com pivô em y = -3.5
+      const strideRange = 0.48,
+        frontAngle = -walkSin * strideRange,
+        backAngle = walkSin * strideRange;
+
+      // Perna de trás (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = "#1e293b";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = "#292524";
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
+      c.fillStyle = redMain;
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-3.0, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = "#334155";
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = "#292524";
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = redMain;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-3.3, 6.8, 5.2, 1.2);
+      c.restore();
     } else {
-      c.fillRect(-2.5 + legL, 1, 3.8, 4.5);
-      c.fillRect(-1 + legR, 1, 3.8, 4.5);
+      // VISTA LATERAL DIREITA: Pêndulo anatômico com pivô em y = -3.5
+      const strideRange = 0.48,
+        frontAngle = walkSin * strideRange,
+        backAngle = -walkSin * strideRange;
+
+      // Perna de trás (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = "#1e293b";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = "#292524";
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
       c.fillStyle = redMain;
-      c.fillRect(-2.5 + legL, 1, 3.8, 1.3);
-      c.fillRect(-1 + legR, 1, 3.8, 1.3);
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-1.8, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = "#334155";
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = "#292524";
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = redMain;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-1.9, 6.8, 5.2, 1.2);
+      c.restore();
     }
 
     // 4. Saia Longa de Inverno Acinturada + BARRA VERMELHA BORDADA EM TODAS
@@ -4531,35 +4884,43 @@ window.Game = window.Game || {};
     }
 
     // 6. Braços com Mangas e PUNHOS VERMELHOS + Mãos com tom de pele variado
-    const armSwing = isMoving
-      ? walkSin * 3.0
-      : isInteracting
-        ? Math.sin(animTimer * 6 + npc.id) * 1.8
-        : 0;
-    if (w === "down" || w === "up") {
-      // Braço esquerdo
-      c.fillStyle = pal.coat;
-      c.fillRect(-8.8, -15 - bob + armSwing * 0.5, 2.6, 7.5);
-      c.fillStyle = redMain; // Punho vermelho
-      c.fillRect(-8.8, -9 - bob + armSwing * 0.5, 2.6, 1.8);
-      c.fillStyle = npc.skinColor;
-      c.fillRect(-8.6, -7.2 - bob + armSwing * 0.5, 2.2, 2.0);
+    const walkSwing = isMoving ? walkSin : (isInteracting ? Math.sin(animTimer * 6 + npc.id) * 0.5 : 0),
+      swingL = walkSwing * 0.75,
+      swingR = -walkSwing * 0.75,
+      shoulderTopY = -15.2 - bob;
 
-      // Braço direito
+    if (w === "down" || w === "up") {
+      // Braço esquerdo (topo fixo no ombro)
+      const wristYL = shoulderTopY + 5.0 + swingL;
       c.fillStyle = pal.coat;
-      c.fillRect(6.2, -15 - bob - armSwing * 0.5, 2.6, 7.5);
+      c.fillRect(-8.4, shoulderTopY, 2.6, 6.2 + swingL);
       c.fillStyle = redMain; // Punho vermelho
-      c.fillRect(6.2, -9 - bob - armSwing * 0.5, 2.6, 1.8);
+      c.fillRect(-8.4, wristYL, 2.6, 1.6);
       c.fillStyle = npc.skinColor;
-      c.fillRect(6.4, -7.2 - bob - armSwing * 0.5, 2.2, 2.0);
+      c.fillRect(-8.3, wristYL + 1.5, 2.4, 2.0);
+
+      // Braço direito (topo fixo no ombro)
+      const wristYR = shoulderTopY + 5.0 + swingR;
+      c.fillStyle = pal.coat;
+      c.fillRect(5.8, shoulderTopY, 2.6, 6.2 + swingR);
+      c.fillStyle = redMain; // Punho vermelho
+      c.fillRect(5.8, wristYR, 2.6, 1.6);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(5.9, wristYR + 1.5, 2.4, 2.0);
     } else {
-      const sideArmX = w === "left" ? -1.5 : -1.0;
+      const isLeft = w === "left",
+        shoulderPivotX = isLeft ? -1.0 : 0.8,
+        armAngle = (isLeft ? 1 : -1) * walkSwing * 0.45;
+      c.save();
+      c.translate(shoulderPivotX, shoulderTopY);
+      c.rotate(armAngle);
       c.fillStyle = pal.coat;
-      c.fillRect(sideArmX + armSwing * 0.4, -14.5 - bob, 2.8, 7.5);
+      c.fillRect(-1.3, 0, 2.6, 6.2);
       c.fillStyle = redMain; // Punho vermelho
-      c.fillRect(sideArmX + armSwing * 0.4, -8.5 - bob, 2.8, 1.8);
+      c.fillRect(-1.3, 4.8, 2.6, 1.6);
       c.fillStyle = npc.skinColor;
-      c.fillRect(sideArmX + armSwing * 0.4, -6.7 - bob, 2.4, 2.0);
+      c.fillRect(-1.2, 6.4, 2.4, 2.0);
+      c.restore();
     }
 
     // Cesto ou pote rústico na mão durante o passeio (para algumas moradoras)
