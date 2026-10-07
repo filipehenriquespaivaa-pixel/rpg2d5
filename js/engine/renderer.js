@@ -2090,6 +2090,7 @@
         }
         this._currentShirtColor = shirtColor;
         this._currentSkinColor = skinColor;
+        this._isPlayerRunning = !!t.sprinting;
         if (typeof window !== "undefined") window.__currentPlayerSkinColor = skinColor;
 
         const isRangedHandItem = (it) => {
@@ -2221,10 +2222,11 @@
         w !== "up" &&
           (this.drawCape(w, T, y, ne, x), this.drawBackpack(w, T, M));
 
-        // Proporções anatômicas das pernas e botas idênticas aos soldados (altura 9px)
-        const walkSin = v,
-          legL = walkSin * 3.3,
-          legR = -walkSin * 3.3;
+        // PERNAS E BOTAS ANATÔMICAS COM PIVÔ FIXO NO QUADRIL (balanço pendular real)
+        // O quadril (y = -3.5) é o ponto de ancoragem estático fixo na pelve do personagem.
+        // As pernas giram por rotação pendular sobre esse pivô, sem deslizar horizontalmente.
+        const isRun = !!t.sprinting,
+          walkNorm = y ? Math.sin(t.walkCycle || 0) : 0;
         let X = "#3b4252";
         P && (X = P.color || "#334155");
         let C = "#5c3a21",
@@ -2245,101 +2247,157 @@
           }
         }
         if (w === "up") {
-          // VISTA TRASEIRA (COSTAS): Panturrilhas, costuras traseiras e calcanhares firmes
-          // Calças traseiras
+          // VISTA TRASEIRA (COSTAS): Estilo vertical clássico (passada alternada vertical por offset)
+          const legMult = isRun ? 3.6 : 2.8,
+            legSwingL = y ? -walkNorm * legMult : 0,
+            legSwingR = y ? walkNorm * legMult : 0;
+
+          // Perna Esquerda
           c.fillStyle = X;
-          c.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
-          c.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
-          // Costura traseira das pernas
+          c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
           c.fillStyle = "rgba(0, 0, 0, 0.22)";
-          c.fillRect(-3.4, -3.5 + legL * 0.5, 0.9, 5.0);
-          c.fillRect(3.2, -3.5 + legR * 0.5, 0.9, 5.0);
-          // Botas vistas por trás (contraforte do calcanhar)
+          c.fillRect(-3.2, -3.5 + legSwingL, 0.9, 4.6);
           c.fillStyle = C;
-          c.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
-          c.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
-          // Cano superior / debruado da bota
+          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
           c.fillStyle = I;
-          c.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
-          c.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
-          // Tira traseira do calcanhar
+          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
           c.fillStyle = "rgba(0, 0, 0, 0.28)";
-          c.fillRect(-3.5, 2.0 + legL, 1.0, 3.0);
-          c.fillRect(3.1, 2.0 + legR, 1.0, 3.0);
-          // Salto / sola traseira reta
+          c.fillRect(-3.5, 1.5 + legSwingL, 1.0, 2.8);
           c.fillStyle = "#18181b";
-          c.fillRect(-5.2, 4.3 + legL, 3.8, 1.3);
-          c.fillRect(1.4, 4.3 + legR, 3.8, 1.3);
+          c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+          // Perna Direita
+          c.fillStyle = X;
+          c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+          c.fillStyle = "rgba(0, 0, 0, 0.22)";
+          c.fillRect(3.4, -3.5 + legSwingR, 0.9, 4.6);
+          c.fillStyle = C;
+          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+          c.fillStyle = I;
+          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+          c.fillStyle = "rgba(0, 0, 0, 0.28)";
+          c.fillRect(3.1, 1.5 + legSwingR, 1.0, 2.8);
+          c.fillStyle = "#18181b";
+          c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
         } else if (w === "down") {
-          // VISTA FRONTAL: Joelhos anatômicos, bico frontal das botas e cadarços
-          // Calças frontais
+          // VISTA FRONTAL: Estilo vertical clássico (passada alternada vertical por offset)
+          const legMult = isRun ? 3.6 : 2.8,
+            legSwingL = y ? -walkNorm * legMult : 0,
+            legSwingR = y ? walkNorm * legMult : 0;
+
+          // Perna Esquerda
           c.fillStyle = X;
-          c.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
-          c.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
-          // Joelheiras / realce frontal
+          c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
           c.fillStyle = "rgba(255, 255, 255, 0.12)";
-          c.fillRect(-4.5, -2.0 + legL * 0.5, 2.4, 2.2);
-          c.fillRect(2.1, -2.0 + legR * 0.5, 2.4, 2.2);
-          // Botas
+          c.fillRect(-4.5, -1.7 + legSwingL, 2.4, 2.2);
           c.fillStyle = C;
-          c.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
-          c.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
-          // Cano superior / debruado
+          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
           c.fillStyle = I;
-          c.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
-          c.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
-          // Biqueira frontal das botas arredondada para baixo
+          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
           c.fillStyle = C;
-          c.fillRect(-5.0, 4.0 + legL, 3.4, 1.2);
-          c.fillRect(1.6, 4.0 + legR, 3.4, 1.2);
-          // Sola
+          c.fillRect(-5.0, 3.1 + legSwingL, 3.4, 1.2);
           c.fillStyle = "#18181b";
-          c.fillRect(-5.2, 4.5 + legL, 3.8, 1.2);
-          c.fillRect(1.4, 4.5 + legR, 3.8, 1.2);
+          c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+          // Perna Direita
+          c.fillStyle = X;
+          c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+          c.fillStyle = "rgba(255, 255, 255, 0.12)";
+          c.fillRect(2.1, -1.7 + legSwingR, 2.4, 2.2);
+          c.fillStyle = C;
+          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+          c.fillStyle = I;
+          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+          c.fillStyle = C;
+          c.fillRect(1.6, 3.1 + legSwingR, 3.4, 1.2);
+          c.fillStyle = "#18181b";
+          c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
         } else if (w === "left") {
-          // VISTA LATERAL ESQUERDA: Perna esquerda na frente com bico virado para a ESQUERDA
-          // Perna de trás (direita, mais escura / sombra)
-          c.fillStyle = "rgba(15, 23, 42, 0.28)";
-          c.fillRect(0.2 + legR * 0.5, -3.5, 3.8, 5.0);
-          c.fillStyle = C;
-          c.fillRect(0.2 + legR, 1.0, 3.8, 4.5);
-          c.fillStyle = "#18181b";
-          c.fillRect(-0.4 + legR, 4.3, 4.4, 1.2);
+          // VISTA LATERAL ESQUERDA: Pêndulo com pivôs fixos no quadril (y = -3.5)
+          const strideRange = isRun ? 0.65 : 0.48,
+            frontAngle = -walkNorm * strideRange,
+            backAngle = walkNorm * strideRange;
 
-          // Perna da frente (esquerda, em primeiro plano apontando para a esquerda)
+          // Perna de trás (direita, pivô em 1.6, -3.5)
+          c.save();
+          c.translate(1.6, -3.5);
+          c.rotate(backAngle);
           c.fillStyle = X;
-          c.fillRect(-3.6 + legL * 0.5, -3.5, 4.0, 5.0);
+          c.fillRect(-1.8, 0, 3.6, 4.6);
+          c.fillStyle = "rgba(0, 0, 0, 0.28)";
+          c.fillRect(-1.8, 0, 3.6, 4.6);
           c.fillStyle = C;
-          c.fillRect(-3.6 + legL, 1.0, 4.0, 4.5);
+          c.fillRect(-1.8, 4.0, 3.6, 3.2);
           c.fillStyle = I;
-          c.fillRect(-3.6 + legL, 1.0, 4.0, 1.3);
-          // Ponta do pé / biqueira estendida para a ESQUERDA
+          c.fillRect(-1.8, 4.0, 3.6, 1.2);
           c.fillStyle = C;
-          c.fillRect(-5.2 + legL, 3.2, 2.0, 2.2);
+          c.fillRect(-3.0, 5.4, 2.0, 1.8);
           c.fillStyle = "#18181b";
-          c.fillRect(-5.4 + legL, 4.3, 5.8, 1.2);
+          c.fillRect(-3.0, 6.8, 4.8, 1.2);
+          c.fillStyle = "rgba(0, 0, 0, 0.22)";
+          c.fillRect(-3.0, 4.0, 4.8, 4.0);
+          c.restore();
+
+          // Perna da frente (esquerda, pivô em -1.6, -3.5)
+          c.save();
+          c.translate(-1.6, -3.5);
+          c.rotate(frontAngle);
+          c.fillStyle = X;
+          c.fillRect(-1.9, 0, 3.8, 4.6);
+          c.fillStyle = "rgba(255, 255, 255, 0.12)";
+          c.fillRect(-1.4, 1.8, 2.8, 2.0);
+          c.fillStyle = C;
+          c.fillRect(-1.9, 4.0, 3.8, 3.2);
+          c.fillStyle = I;
+          c.fillRect(-1.9, 4.0, 3.8, 1.2);
+          c.fillStyle = C;
+          c.fillRect(-3.3, 5.4, 2.2, 1.8);
+          c.fillStyle = "#18181b";
+          c.fillRect(-3.3, 6.8, 5.2, 1.2);
+          c.restore();
         } else {
-          // VISTA LATERAL DIREITA: Perna direita na frente com bico virado para a DIREITA
-          // Perna de trás (esquerda, mais escura / sombra)
-          c.fillStyle = "rgba(15, 23, 42, 0.28)";
-          c.fillRect(-4.0 + legL * 0.5, -3.5, 3.8, 5.0);
-          c.fillStyle = C;
-          c.fillRect(-4.0 + legL, 1.0, 3.8, 4.5);
-          c.fillStyle = "#18181b";
-          c.fillRect(-4.0 + legL, 4.3, 4.4, 1.2);
+          // VISTA LATERAL DIREITA: Pêndulo com pivôs fixos no quadril (y = -3.5)
+          const strideRange = isRun ? 0.65 : 0.48,
+            frontAngle = walkNorm * strideRange,
+            backAngle = -walkNorm * strideRange;
 
-          // Perna da frente (direita, em primeiro plano apontando para a direita)
+          // Perna de trás (esquerda, pivô em -1.6, -3.5)
+          c.save();
+          c.translate(-1.6, -3.5);
+          c.rotate(backAngle);
           c.fillStyle = X;
-          c.fillRect(-0.4 + legR * 0.5, -3.5, 4.0, 5.0);
+          c.fillRect(-1.8, 0, 3.6, 4.6);
+          c.fillStyle = "rgba(0, 0, 0, 0.28)";
+          c.fillRect(-1.8, 0, 3.6, 4.6);
           c.fillStyle = C;
-          c.fillRect(-0.4 + legR, 1.0, 4.0, 4.5);
+          c.fillRect(-1.8, 4.0, 3.6, 3.2);
           c.fillStyle = I;
-          c.fillRect(-0.4 + legR, 1.0, 4.0, 1.3);
-          // Ponta do pé / biqueira estendida para a DIREITA
+          c.fillRect(-1.8, 4.0, 3.6, 1.2);
           c.fillStyle = C;
-          c.fillRect(3.2 + legR, 3.2, 2.0, 2.2);
+          c.fillRect(1.0, 5.4, 2.0, 1.8);
           c.fillStyle = "#18181b";
-          c.fillRect(-0.4 + legR, 4.3, 5.8, 1.2);
+          c.fillRect(-1.8, 6.8, 4.8, 1.2);
+          c.fillStyle = "rgba(0, 0, 0, 0.22)";
+          c.fillRect(-1.8, 4.0, 4.8, 4.0);
+          c.restore();
+
+          // Perna da frente (direita, pivô em 1.6, -3.5)
+          c.save();
+          c.translate(1.6, -3.5);
+          c.rotate(frontAngle);
+          c.fillStyle = X;
+          c.fillRect(-1.9, 0, 3.8, 4.6);
+          c.fillStyle = "rgba(255, 255, 255, 0.12)";
+          c.fillRect(-1.4, 1.8, 2.8, 2.0);
+          c.fillStyle = C;
+          c.fillRect(-1.9, 4.0, 3.8, 3.2);
+          c.fillStyle = I;
+          c.fillRect(-1.9, 4.0, 3.8, 1.2);
+          c.fillStyle = C;
+          c.fillRect(1.1, 5.4, 2.2, 1.8);
+          c.fillStyle = "#18181b";
+          c.fillRect(-1.9, 6.8, 5.2, 1.2);
+          c.restore();
         }
 
         if (te) {
@@ -3467,90 +3525,100 @@
           return;
         }
 
-        // BRAÇOS E MÃOS ANATÔMICAS EM REPOUSO / CAMINHADA (balanço natural e fluido)
-        // v = balanço esquerdo (de), T = balanço direito (W, oposto ao esquerdo)
-        const armSwingL = v,
-          armSwingR = T;
+        // BRAÇOS E MÃOS ANATÔMICAS COM PIVÔ FIXO NOS OMBROS (balanço pendular real)
+        // Os ombros são pontos de ancoragem 100% fixos no topo do tórax (-14.2 - l + u).
+        // Os braços giram em arco pendular a partir do ombro com marcha cruzada perfeita.
+        const isRun = this._isPlayerRunning || false,
+          walkNorm = v ? v / 2.8 : 0;
+
         if (t === "down" || t === "up") {
-          // 1. Braço Esquerdo (ombro fixo com leve pêndulo e deslocamento natural)
-          const leftShoulderX = -7.5 + o,
-            leftShoulderY = -15.0 - l + u,
-            leftHandY = -7.2 - l + u + armSwingL,
-            leftHandX = -8.0 + o + (armSwingL * 0.2);
+          // VISTA FRONTAL / TRASEIRA: Estilo clássico vertical com oscilação harmônica
+          const armSwingL = v,
+            armSwingR = T;
 
+          // Braço Esquerdo
           M.fillStyle = shirtColor;
-          M.fillRect(-8.8 + o + (armSwingL * 0.15), -15.0 - l + u + (armSwingL * 0.35), 2.5, 7.5);
+          M.fillRect(-8.8 + o, -14.2 - l + u + armSwingL, 2.6, 6.4);
           M.fillStyle = P ? (P.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(-8.8 + o + (armSwingL * 0.15), -9.0 - l + u + (armSwingL * 0.7), 2.5, 1.8);
+          M.fillRect(-8.8 + o, -9.2 - l + u + armSwingL, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(leftHandX, leftHandY, 2.3, 2.3);
+          M.fillRect(-8.7 + o, -7.6 - l + u + armSwingL, 2.4, 2.4);
 
-          // Item na mão esquerda (tocha, escudo ou seixo/estilingue)
-          if (S) {
-            this.drawHeldTorch(t, l, armSwingL);
-          } else if ($) {
-            this.drawHeldShield(t, l, o, p, armSwingL);
-          } else if (isPebble(p)) {
+          // Item leve / seixo na mão esquerda
+          if (isPebble(p)) {
             M.save();
-            M.translate(leftHandX + 1.1, leftHandY + 1.1);
+            M.translate(-7.5 + o, -6.6 - l + u + armSwingL);
             this.drawWeaponItem(p);
             M.restore();
           }
 
-          // 2. Braço Direito (balanço harmônico contraposto ao braço esquerdo)
-          const rightHandY = -7.2 - l + u + armSwingR,
-            rightHandX = 6.0 + o + (armSwingR * 0.2);
+          // Tocha / Escudo na mão esquerda
+          if (S) {
+            this.drawHeldTorch(t, o, armSwingL);
+          } else if ($) {
+            this.drawHeldShield(t, o, armSwingL, p);
+          }
 
+          // Braço Direito
           M.fillStyle = shirtColor;
-          M.fillRect(6.3 + o + (armSwingR * 0.15), -15.0 - l + u + (armSwingR * 0.35), 2.5, 7.5);
+          M.fillRect(6.2 + o, -14.2 - l + u + armSwingR, 2.6, 6.4);
           M.fillStyle = A ? (A.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(6.3 + o + (armSwingR * 0.15), -9.0 - l + u + (armSwingR * 0.7), 2.5, 1.8);
+          M.fillRect(6.2 + o, -9.2 - l + u + armSwingR, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(rightHandX, rightHandY, 2.3, 2.3);
+          M.fillRect(6.3 + o, -7.6 - l + u + armSwingR, 2.4, 2.4);
 
-          // Arma equipada na mão direita (acompanha o pêndulo e oscilação da caminhada)
+          // Arma equipada na mão direita
           if (j) {
             M.save();
-            M.translate(rightHandX + 1.2, rightHandY + 0.4);
-            const walkWeaponAngle = (t === "up" ? -0.2 : 0.35) + (armSwingR * 0.08);
+            M.translate(7.5 + o, -6.6 - l + u + armSwingR);
+            const walkWeaponAngle = (t === "up" ? -0.2 : 0.35);
             M.rotate(walkWeaponAngle);
             this.drawWeaponItem(j);
             M.restore();
           }
         } else {
-          // Vista lateral em perfil: balanço de arco natural para frente e para trás
+          // VISTA LATERAL EM PERFIL: Pêndulo com pivô fixo no ombro superior
           const isLeft = t === "left",
-            sideX = (isLeft ? -1.4 : -1.0) + o,
-            profileSwing = armSwingL * 1.1,
-            forearmSwing = armSwingL * 1.5;
+            shoulderPivotX = (isLeft ? -1.0 : 0.8) + o,
+            shoulderPivotY = -14.2 - l + u,
+            // Marcha cruzada: braço balança para trás quando perna avança para frente
+            armAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45);
 
-          // Braço superior
+          M.save();
+          M.translate(shoulderPivotX, shoulderPivotY);
+          M.rotate(armAngle);
+          // O ponto (0, 0) é o ombro e fica 100% fixo no tronco!
           M.fillStyle = shirtColor;
-          M.fillRect(sideX + profileSwing * 0.4, -14.8 - l + u, 2.7, 7.5);
-          // Punho / Bracelete
+          M.fillRect(-1.3, 0, 2.6, 6.2);
           const brColor = (isLeft ? P : A) ? ((isLeft ? P : A).color || "#d97706") : "rgba(15, 23, 42, 0.25)";
           M.fillStyle = brColor;
-          M.fillRect(sideX + profileSwing * 0.75, -8.8 - l + u, 2.7, 1.8);
-          // Mão
+          M.fillRect(-1.3, 4.8, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(sideX + forearmSwing, -7.0 - l + u + (Math.abs(profileSwing) * 0.2), 2.4, 2.3);
+          M.fillRect(-1.2, 6.4, 2.4, 2.4);
 
+          // Arma / Item segurado na mão (rotaciona com o arco do braço)
           if (j) {
             M.save();
-            M.translate(sideX + forearmSwing + (isLeft ? -2 : 2), -6.8 - l + u);
-            const profileWeaponAngle = (isLeft ? -0.35 : 0.35) + (forearmSwing * 0.07);
+            M.translate(isLeft ? -1.5 : 1.5, 7.4);
+            const profileWeaponAngle = (isLeft ? -0.35 : 0.35);
             M.rotate(profileWeaponAngle);
             this.drawWeaponItem(j);
             M.restore();
-          } else if (S) {
-            this.drawHeldTorch(t, l, forearmSwing);
-          } else if ($) {
-            this.drawHeldShield(t, l, o, p, forearmSwing);
           } else if (isPebble(p)) {
             M.save();
-            M.translate(sideX + forearmSwing + (isLeft ? -2 : 2), -6.8 - l + u);
+            M.translate(isLeft ? -1.5 : 1.5, 7.4);
             this.drawWeaponItem(p);
             M.restore();
+          }
+          M.restore();
+
+          // Se tiver tocha ou escudo na mão em perfil
+          const handWorldX = shoulderPivotX - Math.sin(armAngle) * 7.4,
+            handWorldY = shoulderPivotY + Math.cos(armAngle) * 7.4;
+          if (S) {
+            this.drawHeldTorch(t, 0, 0, handWorldX, handWorldY);
+          } else if ($) {
+            this.drawHeldShield(t, 0, 0, p, 0, handWorldX, handWorldY);
           }
         }
       }
@@ -3806,16 +3874,18 @@
                   (l.fillStyle = "#f59e0b"),
                   l.fillRect(-1, 2, 2, 2));
       }
-      drawHeldShield(t, l, o, u, swingOffset = 0) {
+      drawHeldShield(t, l, o, u, swingOffset = 0, overrideX, overrideY) {
         const m = this.ctx,
           c = ((u == null ? void 0 : u.name) || "").toLowerCase(),
           f = c.includes("ferro") || c.includes("aço"),
           skin = this._currentSkinColor || "#e6b89c";
-        let g = -8.6 + o,
-          y = -7.2 - l + swingOffset;
-        if (t === "left") g = -6.5 + o;
-        else if (t === "right") g = -4.5 + o;
-        else if (t === "up") g = -8.6 + o;
+        let g = overrideX !== undefined ? overrideX : (-8.6 + o),
+          y = overrideY !== undefined ? overrideY : (-7.2 - l + swingOffset);
+        if (overrideX === undefined) {
+          if (t === "left") g = -6.5 + o;
+          else if (t === "right") g = -4.5 + o;
+          else if (t === "up") g = -8.6 + o;
+        }
         m.save();
         m.translate(g, y);
         m.fillStyle = skin;
@@ -3835,28 +3905,30 @@
         m.fill();
         m.restore();
       }
-      drawHeldTorch(t, l, swingOffset = 0) {
+      drawHeldTorch(t, l, swingOffset = 0, overrideX, overrideY) {
         const o = this.ctx,
           skin = this._currentSkinColor || "#e6b89c";
-        let u = -8.6,
-          m = -7.2 - l + swingOffset,
+        let u = overrideX !== undefined ? overrideX : -8.6,
+          m = overrideY !== undefined ? overrideY : (-7.2 - l + swingOffset),
           c = -0.2;
-        if (t === "left") {
-          u = -6.5;
-          m = -7.2 - l + swingOffset;
-          c = -0.32;
-        } else if (t === "right") {
-          u = -4.5;
-          m = -7.2 - l + swingOffset;
-          c = -0.15;
-        } else if (t === "up") {
-          u = -8.6;
-          m = -10.5 - l + swingOffset;
-          c = -0.12;
-        } else {
-          u = -8.6;
-          m = -7.2 - l + swingOffset;
-          c = -0.22;
+        if (overrideX === undefined) {
+          if (t === "left") {
+            u = -6.5;
+            m = -7.2 - l + swingOffset;
+            c = -0.32;
+          } else if (t === "right") {
+            u = -4.5;
+            m = -7.2 - l + swingOffset;
+            c = -0.15;
+          } else if (t === "up") {
+            u = -8.6;
+            m = -10.5 - l + swingOffset;
+            c = -0.12;
+          } else {
+            u = -8.6;
+            m = -7.2 - l + swingOffset;
+            c = -0.22;
+          }
         }
         o.save();
         o.translate(u, m);
