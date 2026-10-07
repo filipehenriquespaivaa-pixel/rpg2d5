@@ -3544,47 +3544,52 @@
         const walkNorm = player.isMoving ? walkPhase : 0;
 
         if (dir === 'down' || dir === 'up') {
-          // VISTA FRONTAL / TRASEIRA: Estilo vertical clássico
-          const armSwingL = walkPhase * 2.8;
-          const armSwingR = -walkPhase * 2.8;
+          // VISTA FRONTAL / TRASEIRA: Ombros firmemente ancorados ao corpo com oscilação pendular suave
+          const swingL = walkPhase * (isRun ? 1.0 : 0.65);
+          const swingR = -walkPhase * (isRun ? 1.0 : 0.65);
+          const shoulderTopY = -15.2 - walkBob + leanY;
 
-          // 1. Braço Esquerdo
+          // 1. Braço Esquerdo (topo fixo no ombro do tórax para nunca descolar do corpo)
+          const wristYL = shoulderTopY + 5.0 + swingL;
+          const handYL = wristYL + 1.5;
           ctx.fillStyle = shirtColor;
-          ctx.fillRect(-8.8 + leanX, -14.2 - walkBob + leanY + armSwingL, 2.6, 6.4);
+          ctx.fillRect(-8.4 + leanX, shoulderTopY, 2.6, 6.2 + swingL);
           ctx.fillStyle = equipment.bracelete_esquerdo ? (equipment.bracelete_esquerdo.color || '#d97706') : 'rgba(15, 23, 42, 0.25)';
-          ctx.fillRect(-8.8 + leanX, -9.2 - walkBob + leanY + armSwingL, 2.6, 1.6);
+          ctx.fillRect(-8.4 + leanX, wristYL, 2.6, 1.6);
           ctx.fillStyle = playerSkin;
-          ctx.fillRect(-8.7 + leanX, -7.6 - walkBob + leanY + armSwingL, 2.4, 2.4);
+          ctx.fillRect(-8.3 + leanX, handYL, 2.4, 2.2);
 
           if (lanternActive) {
             ctx.fillStyle = '#78350f';
-            ctx.fillRect(-9 + leanX, -12 - walkBob + leanY + armSwingL, 3, 12);
+            ctx.fillRect(-8.4 + leanX, -12 - walkBob + leanY + swingL, 3, 12);
             ctx.fillStyle = '#ea580c';
             ctx.beginPath();
-            ctx.arc(-7.5 + leanX, -14 - walkBob + leanY + armSwingL + Math.sin(animTimer * 12), 3.5, 0, Math.PI * 2);
+            ctx.arc(-7.1 + leanX, -14 - walkBob + leanY + swingL + Math.sin(animTimer * 12), 3.5, 0, Math.PI * 2);
             ctx.fill();
           } else if (equipment.mao_esquerda && equipment.mao_esquerda.name && equipment.mao_esquerda.name.toLowerCase().includes('escudo')) {
             ctx.fillStyle = '#78350f';
             ctx.beginPath();
-            ctx.ellipse(-7.5 + leanX, -6.5 - walkBob + leanY + armSwingL, 5, 8, 0, 0, Math.PI * 2);
+            ctx.ellipse(-7.1 + leanX, handYL + 1.0, 5, 8, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#cbd5e1';
             ctx.lineWidth = 1.4;
             ctx.stroke();
           }
 
-          // 2. Braço Direito
+          // 2. Braço Direito (topo fixo no ombro do tórax para nunca descolar do corpo)
+          const wristYR = shoulderTopY + 5.0 + swingR;
+          const handYR = wristYR + 1.5;
           ctx.fillStyle = shirtColor;
-          ctx.fillRect(6.2 + leanX, -14.2 - walkBob + leanY + armSwingR, 2.6, 6.4);
+          ctx.fillRect(5.8 + leanX, shoulderTopY, 2.6, 6.2 + swingR);
           ctx.fillStyle = equipment.bracelete_direito ? (equipment.bracelete_direito.color || '#d97706') : 'rgba(15, 23, 42, 0.25)';
-          ctx.fillRect(6.2 + leanX, -9.2 - walkBob + leanY + armSwingR, 2.6, 1.6);
+          ctx.fillRect(5.8 + leanX, wristYR, 2.6, 1.6);
           ctx.fillStyle = playerSkin;
-          ctx.fillRect(6.3 + leanX, -7.6 - walkBob + leanY + armSwingR, 2.4, 2.4);
+          ctx.fillRect(5.9 + leanX, handYR, 2.4, 2.2);
 
           if (equipment.mao_direita) {
             ctx.save();
-            ctx.translate(7.5 + leanX, -6.6 - walkBob + leanY + armSwingR);
-            const walkWeaponAngle = (dir === 'up' ? -0.2 : 0.35);
+            ctx.translate(7.1 + leanX, handYR + 1.0);
+            const walkWeaponAngle = (dir === 'up' ? -0.18 : 0.28) + swingR * 0.08;
             ctx.rotate(walkWeaponAngle);
             drawHeldWeaponItem();
             ctx.restore();

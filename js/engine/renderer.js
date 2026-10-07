@@ -3529,49 +3529,54 @@
         // Os ombros são pontos de ancoragem 100% fixos no topo do tórax (-14.2 - l + u).
         // Os braços giram em arco pendular a partir do ombro com marcha cruzada perfeita.
         const isRun = this._isPlayerRunning || false,
-          walkNorm = v ? v / 2.8 : 0;
+          walkNorm = v ? Math.max(-1, Math.min(1, v / 2.8)) : 0;
 
         if (t === "down" || t === "up") {
-          // VISTA FRONTAL / TRASEIRA: Estilo clássico vertical com oscilação harmônica
-          const armSwingL = v,
-            armSwingR = T;
+          // VISTA FRONTAL / TRASEIRA: Ombros firmemente ancorados ao corpo com oscilação pendular suave
+          const swingL = walkNorm * (isRun ? 1.0 : 0.65),
+            swingR = -walkNorm * (isRun ? 1.0 : 0.65),
+            shoulderTopY = -15.2 - l + u;
 
-          // Braço Esquerdo
+          // 1. Braço Esquerdo (topo fixo no ombro do tórax para nunca descolar do corpo)
+          const wristYL = shoulderTopY + 5.0 + swingL,
+            handYL = wristYL + 1.5;
           M.fillStyle = shirtColor;
-          M.fillRect(-8.8 + o, -14.2 - l + u + armSwingL, 2.6, 6.4);
+          M.fillRect(-8.4 + o, shoulderTopY, 2.6, 6.2 + swingL);
           M.fillStyle = P ? (P.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(-8.8 + o, -9.2 - l + u + armSwingL, 2.6, 1.6);
+          M.fillRect(-8.4 + o, wristYL, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(-8.7 + o, -7.6 - l + u + armSwingL, 2.4, 2.4);
+          M.fillRect(-8.3 + o, handYL, 2.4, 2.2);
 
           // Item leve / seixo na mão esquerda
           if (isPebble(p)) {
             M.save();
-            M.translate(-7.5 + o, -6.6 - l + u + armSwingL);
+            M.translate(-7.1 + o, handYL + 1.0);
             this.drawWeaponItem(p);
             M.restore();
           }
 
-          // Tocha / Escudo na mão esquerda
+          // Tocha / Escudo na mão esquerda (ancorados diretamente na posição da mão)
           if (S) {
-            this.drawHeldTorch(t, o, armSwingL);
+            this.drawHeldTorch(t, l, swingL, -7.1 + o, handYL + 1.0);
           } else if ($) {
-            this.drawHeldShield(t, o, armSwingL, p);
+            this.drawHeldShield(t, l, o, p, swingL, -7.1 + o, handYL + 1.0);
           }
 
-          // Braço Direito
+          // 2. Braço Direito (topo fixo no ombro do tórax para nunca descolar do corpo)
+          const wristYR = shoulderTopY + 5.0 + swingR,
+            handYR = wristYR + 1.5;
           M.fillStyle = shirtColor;
-          M.fillRect(6.2 + o, -14.2 - l + u + armSwingR, 2.6, 6.4);
+          M.fillRect(5.8 + o, shoulderTopY, 2.6, 6.2 + swingR);
           M.fillStyle = A ? (A.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(6.2 + o, -9.2 - l + u + armSwingR, 2.6, 1.6);
+          M.fillRect(5.8 + o, wristYR, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(6.3 + o, -7.6 - l + u + armSwingR, 2.4, 2.4);
+          M.fillRect(5.9 + o, handYR, 2.4, 2.2);
 
-          // Arma equipada na mão direita
+          // Arma equipada na mão direita (rotaciona suavemente com a mão)
           if (j) {
             M.save();
-            M.translate(7.5 + o, -6.6 - l + u + armSwingR);
-            const walkWeaponAngle = (t === "up" ? -0.2 : 0.35);
+            M.translate(7.1 + o, handYR + 1.0);
+            const walkWeaponAngle = (t === "up" ? -0.18 : 0.28) + swingR * 0.08;
             M.rotate(walkWeaponAngle);
             this.drawWeaponItem(j);
             M.restore();
