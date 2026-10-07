@@ -1171,6 +1171,28 @@
         e.lineTo(_e - 1.2 * l, xe + 1 * l),
         e.stroke());
     }
+    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const stingerProg = isStingerAtk
+      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      : 0;
+    let stingerThrust = 0;
+    let stingerDown = 0;
+    if (isStingerAtk) {
+      if (stingerProg < 0.25) {
+        const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
+        stingerThrust = -prep * 3 * l;
+        stingerDown = -prep * 1.5 * l;
+      } else if (stingerProg < 0.6) {
+        const snap = Math.sin(((stingerProg - 0.25) / 0.35) * Math.PI);
+        stingerThrust = -3 * l * (1 - (stingerProg - 0.25) / 0.35) + snap * 13 * l;
+        stingerDown = snap * 5.5 * l;
+      } else {
+        const ret = Math.sin(((1 - stingerProg) / 0.4) * Math.PI * 0.5);
+        stingerThrust = ret * 5 * l;
+        stingerDown = ret * 1.5 * l;
+      }
+    }
+
     const j = Math.sin(t.animTimer * 2.8) * 1.8 * l,
       P = -7 * l,
       A = -5 * l + g,
@@ -1178,12 +1200,12 @@
       M = A - 2.8 * l,
       $ = P - 5.8 * l,
       z = A - 7.5 * l,
-      K = P - 4.8 * l + j * 0.3,
-      V = A - 13 * l,
-      O = P - 1.2 * l + j * 0.6,
-      _ = A - 17 * l,
-      se = P + 3.8 * l + j,
-      ue = A - 18.2 * l,
+      K = P - 4.8 * l + j * 0.3 + stingerThrust * 0.25,
+      V = A - 13 * l - stingerDown * 0.2,
+      O = P - 1.2 * l + j * 0.6 + stingerThrust * 0.6,
+      _ = A - 17 * l + stingerDown * 0.2,
+      se = P + 3.8 * l + j + stingerThrust,
+      ue = A - 18.2 * l + stingerDown * 0.6,
       N = [
         { x1: P, y1: A, x2: x, y2: M, width: 3.8 * l },
         { x1: x, y1: M, x2: $, y2: z, width: 3.4 * l },
@@ -1276,6 +1298,15 @@
           Math.PI * 2,
         ),
         e.fill());
+      if (isStingerAtk && stingerProg >= 0.28 && stingerProg <= 0.65) {
+        ((e.fillStyle = "#4ade80"),
+          (e.shadowColor = "#22c55e"),
+          (e.shadowBlur = 10 * l),
+          e.beginPath(),
+          e.arc(Ee + 3.8 * l, ne + 4.4 * l, 2.2 * l, 0, Math.PI * 2),
+          e.fill(),
+          (e.shadowBlur = 0));
+      }
     }
     const ke = 0,
       G = -4.5 * l + g;
@@ -1386,10 +1417,10 @@
         e.lineTo(_e - 1.2 * l, xe + 1.2 * l),
         e.stroke());
     }
-    const isAtk = !!(t.attackTimer && t.attackTimer > 0);
+    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
     const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
     const activeSide = t.attackClawSide || -1;
-    const baseOe = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const baseOe = isStingerAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const clawSide of [1, -1]) {
       const isThisClaw = isAtk && activeSide === clawSide;
       let thrustX = 0;
@@ -1607,10 +1638,28 @@
       e.arc(-3 * l, A + 1.2 * l, 0.55 * l, 0, Math.PI * 2),
       e.arc(3 * l, A + 1.2 * l, 0.55 * l, 0, Math.PI * 2),
       e.fill());
-    const isAtk = !!(t.attackTimer && t.attackTimer > 0);
+    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const stingerProg = isStingerAtk
+      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      : 0;
+    let stingerThrustY = 0;
+    if (isStingerAtk) {
+      if (stingerProg < 0.25) {
+        const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
+        stingerThrustY = -prep * 3 * l;
+      } else if (stingerProg < 0.6) {
+        const snap = Math.sin(((stingerProg - 0.25) / 0.35) * Math.PI);
+        stingerThrustY = -3 * l * (1 - (stingerProg - 0.25) / 0.35) + snap * 14 * l;
+      } else {
+        const ret = Math.sin(((1 - stingerProg) / 0.4) * Math.PI * 0.5);
+        stingerThrustY = ret * 5 * l;
+      }
+    }
+
+    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
     const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
     const activeSide = t.attackClawSide || -1;
-    const baseM = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const baseM = isStingerAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
       const isThisClaw = isAtk && activeSide === te;
       let thrustY = 0;
@@ -1702,13 +1751,13 @@
       V = z + $ * 0.2,
       O = K - 4.2 * l,
       _ = z + $ * 0.45,
-      se = K - 8 * l,
+      se = K - 8 * l - stingerThrustY * 0.15,
       ue = z + $ * 0.7,
-      N = K - 10.5 * l,
+      N = K - 10.5 * l - stingerThrustY * 0.1,
       Ee = z + $ * 0.85,
-      ne = K - 7 * l,
+      ne = K - 7 * l + stingerThrustY * 0.45,
       ke = z + $,
-      G = K - 2.5 * l,
+      G = K - 2.5 * l + stingerThrustY,
       de = [
         { x1: z, y1: K, x2: V, y2: O, w: 4 * l },
         { x1: V, y1: O, x2: _, y2: se, w: 3.6 * l },
@@ -1782,6 +1831,15 @@
         e.beginPath(),
         e.arc(W, le + 6.2 * l + oe * 7 * l, 0.8 * l * (1 - oe), 0, Math.PI * 2),
         e.fill());
+      if (isStingerAtk && stingerProg >= 0.28 && stingerProg <= 0.65) {
+        ((e.fillStyle = "#4ade80"),
+          (e.shadowColor = "#22c55e"),
+          (e.shadowBlur = 10 * l),
+          e.beginPath(),
+          e.arc(W, le + 6 * l, 2.2 * l, 0, Math.PI * 2),
+          e.fill(),
+          (e.shadowBlur = 0));
+      }
     }
     e.restore();
   }
@@ -1896,10 +1954,28 @@
       e.lineTo(0.2 * l, A - 3.8 * l),
       e.closePath(),
       e.fill());
-    const isAtk = !!(t.attackTimer && t.attackTimer > 0);
+    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const stingerProg = isStingerAtk
+      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      : 0;
+    let stingerThrustY = 0;
+    if (isStingerAtk) {
+      if (stingerProg < 0.25) {
+        const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
+        stingerThrustY = prep * 3 * l;
+      } else if (stingerProg < 0.6) {
+        const snap = Math.sin(((stingerProg - 0.25) / 0.35) * Math.PI);
+        stingerThrustY = 3 * l * (1 - (stingerProg - 0.25) / 0.35) - snap * 14 * l;
+      } else {
+        const ret = Math.sin(((1 - stingerProg) / 0.4) * Math.PI * 0.5);
+        stingerThrustY = -ret * 5 * l;
+      }
+    }
+
+    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
     const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
     const activeSide = t.attackClawSide || -1;
-    const baseM = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const baseM = isStingerAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
       const isThisClaw = isAtk && activeSide === te;
       let thrustY = 0;
@@ -1991,13 +2067,13 @@
       V = z + $ * 0.2,
       O = K + 4.2 * l,
       _ = z + $ * 0.45,
-      se = K + 8 * l,
+      se = K + 8 * l - stingerThrustY * 0.15,
       ue = z + $ * 0.7,
-      N = K + 10.5 * l,
+      N = K + 10.5 * l - stingerThrustY * 0.1,
       Ee = z + $ * 0.85,
-      ne = K + 7 * l,
+      ne = K + 7 * l + stingerThrustY * 0.45,
       ke = z + $,
-      G = K + 2.5 * l,
+      G = K + 2.5 * l + stingerThrustY,
       de = [
         { x1: z, y1: K, x2: V, y2: O, w: 4 * l },
         { x1: V, y1: O, x2: _, y2: se, w: 3.6 * l },
@@ -2071,6 +2147,15 @@
         e.beginPath(),
         e.arc(W, le - 6.2 * l - oe * 7 * l, 0.8 * l * (1 - oe), 0, Math.PI * 2),
         e.fill());
+      if (isStingerAtk && stingerProg >= 0.28 && stingerProg <= 0.65) {
+        ((e.fillStyle = "#4ade80"),
+          (e.shadowColor = "#22c55e"),
+          (e.shadowBlur = 10 * l),
+          e.beginPath(),
+          e.arc(W, le - 6 * l, 2.2 * l, 0, Math.PI * 2),
+          e.fill(),
+          (e.shadowBlur = 0));
+      }
     }
     e.restore();
   }

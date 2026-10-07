@@ -504,37 +504,51 @@
       )
         return;
 
+      let isStinger = false;
       if (t.type === "scorpion") {
-        t.attackDuration = 0.32;
-        t.attackTimer = t.attackDuration;
-        t.attackClawSide = t.attackClawSide === 1 ? -1 : 1;
+        t.attackCombo = ((t.attackCombo || 0) % 3) + 1;
+        if (t.attackCombo === 3) {
+          t.attackType = "stinger";
+          t.attackDuration = 0.38;
+          t.attackTimer = t.attackDuration;
+          isStinger = true;
+        } else {
+          t.attackType = "claw";
+          t.attackDuration = 0.32;
+          t.attackTimer = t.attackDuration;
+          t.attackClawSide = t.attackCombo === 1 ? -1 : 1;
+        }
       }
 
-      const m = t.attack + (Math.random() * 2.5 - 1.2),
+      const extraDmg = isStinger ? 2.5 : 0;
+      const m = t.attack + (Math.random() * 2.5 - 1.2) + extraDmg,
         c = Math.max(1, Math.round(m - o * 0.45));
       ((l.hp = Math.max(0, (l.hp ?? 100) - c)),
         (f = this.audio) == null || f.playPlayerHurt(),
+        isStinger && (l.poisonTimer = Math.max(l.poisonTimer || 0, 5.5)),
         this.floatingTexts.push({
           id: `dmg_${this.nextId++}`,
           x: l.x + (Math.random() - 0.5) * 10,
           y: l.y - 20,
-          text: `-${c}`,
-          color: "#ef4444",
-          isCrit: !1,
+          text: isStinger ? `-${c} ☠` : `-${c}`,
+          color: isStinger ? "#22c55e" : "#ef4444",
+          isCrit: isStinger,
           life: 0.85,
         }));
-      for (let g = 0; g < 4; g++) {
+      const particleCount = isStinger ? 7 : 4;
+      for (let g = 0; g < particleCount; g++) {
         const y = Math.random() * Math.PI * 2;
+        const spd = isStinger ? 3.5 : 4;
         this.slimeParticles.push({
           x: l.x,
           y: l.y - 8,
-          vx: Math.cos(y) * 4,
-          vy: Math.sin(y) * 4,
-          life: 0.35,
-          maxLife: 0.35,
-          type: "bubble",
-          color: "#f87171",
-          size: 1.8,
+          vx: Math.cos(y) * spd,
+          vy: Math.sin(y) * spd,
+          life: 0.4,
+          maxLife: 0.4,
+          type: isStinger ? "poison" : "bubble",
+          color: isStinger ? "#4ade80" : "#f87171",
+          size: isStinger ? 2.2 : 1.8,
         });
       }
       l.hp <= 0 && !l.isDead && this.handlePlayerDeath(l);
