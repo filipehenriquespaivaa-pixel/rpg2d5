@@ -2050,7 +2050,7 @@
           y = t.isMoving,
           w = t.direction,
           v = y ? Math.sin(t.walkCycle) : 0,
-          T = y ? Math.abs(v) * 1.5 : 0,
+          T = y ? Math.abs(v) * 1.5 : Math.sin(this.animTimer * 2.2) * 0.3,
           S = m || {},
           p = S.chapeu,
           j = S.camisa,
@@ -2063,8 +2063,36 @@
           K = S.bracelete_esquerdo,
           V = S.bracelete_direito,
           O = S.mao_esquerda,
-          _ = S.mao_direita,
-          isRangedHandItem = (it) => {
+          _ = S.mao_direita;
+
+        const skinColor = t.skinColor || "#e6b89c";
+        let shirtColor = "#2563eb";
+        if (j) {
+          const cName = (j.name || "").toLowerCase();
+          if (
+            cName.includes("armadura") ||
+            cName.includes("ferro") ||
+            cName.includes("aço") ||
+            cName.includes("cota")
+          ) {
+            shirtColor = "#64748b";
+          } else if (cName.includes("couro")) {
+            shirtColor = "#854d0e";
+          } else if (
+            cName.includes("arcano") ||
+            cName.includes("mago") ||
+            cName.includes("linho")
+          ) {
+            shirtColor = "#7c3aed";
+          } else {
+            shirtColor = j.color || "#2563eb";
+          }
+        }
+        this._currentShirtColor = shirtColor;
+        this._currentSkinColor = skinColor;
+        if (typeof window !== "undefined") window.__currentPlayerSkinColor = skinColor;
+
+        const isRangedHandItem = (it) => {
             if (!it) return !1;
             const nm = (it.name || "").toLowerCase(),
               idv = (it.id || "").toLowerCase();
@@ -2157,7 +2185,7 @@
           if (
             ((c.fillStyle = ga.shadowColor),
             c.beginPath(),
-            c.ellipse(0, 2, 8, 4.5, 0, 0, Math.PI * 2),
+            c.ellipse(0, 2.5, 8.0, 4.3, 0, 0, Math.PI * 2),
             c.fill(),
             ga.length > 0.15)
           ) {
@@ -2192,90 +2220,217 @@
         }
         w !== "up" &&
           (this.drawCape(w, T, y, ne, x), this.drawBackpack(w, T, M));
-        const oe = v * 4,
-          Ne = -v * 4;
-        let X = "#475569";
+
+        // Proporções anatômicas das pernas e botas idênticas aos soldados (altura 9px)
+        const walkSin = v,
+          legL = walkSin * 3.3,
+          legR = -walkSin * 3.3;
+        let X = "#3b4252";
         P && (X = P.color || "#334155");
-        let C = "#292524",
-          I = "#1c1917";
-        (A &&
-          ((C = A.color || "#92400e"),
-          A.name.toLowerCase().includes("ágeis") ||
-          A.name.toLowerCase().includes("veloz")
-            ? (I = "#10b981")
-            : (A.name.toLowerCase().includes("ferro") ||
-                A.name.toLowerCase().includes("aço")) &&
-              ((C = "#64748b"), (I = "#cbd5e1"))),
-          (c.fillStyle = X),
-          w === "up" || w === "down"
-            ? (c.fillRect(-6, 0 + oe, 4, 4),
-              c.fillRect(2, 0 + Ne, 4, 4),
-              (c.fillStyle = C),
-              c.fillRect(-6, 3 + oe, 4, 3),
-              c.fillRect(2, 3 + Ne, 4, 3),
-              I !== "#1c1917" &&
-                ((c.fillStyle = I),
-                c.fillRect(-6, 5 + oe, 4, 1.2),
-                c.fillRect(2, 5 + Ne, 4, 1.2)))
-            : w === "left"
-              ? (c.fillRect(-4 + oe, 0, 4, 4),
-                c.fillRect(0 + Ne, 0, 4, 4),
-                (c.fillStyle = C),
-                c.fillRect(-4 + oe, 3, 4, 3),
-                c.fillRect(0 + Ne, 3, 4, 3))
-              : (c.fillRect(-2 + oe, 0, 4, 4),
-                c.fillRect(2 + Ne, 0, 4, 4),
-                (c.fillStyle = C),
-                c.fillRect(-2 + oe, 3, 4, 3),
-                c.fillRect(2 + Ne, 3, 4, 3)),
-          te &&
-            ((c.fillStyle = "rgba(2, 132, 199, 0.55)"),
-            c.fillRect(-7, -2 - (y ? Math.abs(v) * 1.5 : 0), 14, 9),
-            (c.fillStyle = "rgba(255, 255, 255, 0.85)"),
-            c.fillRect(-8, -3 - (y ? Math.abs(v) * 1.5 : 0), 16, 2)));
+        let C = "#5c3a21",
+          I = "#18181b";
+        if (A) {
+          C = A.color || "#78350f";
+          if (
+            A.name.toLowerCase().includes("ágeis") ||
+            A.name.toLowerCase().includes("veloz")
+          ) {
+            I = "#10b981";
+          } else if (
+            A.name.toLowerCase().includes("ferro") ||
+            A.name.toLowerCase().includes("aço")
+          ) {
+            C = "#64748b";
+            I = "#cbd5e1";
+          }
+        }
+        if (w === "up") {
+          // VISTA TRASEIRA (COSTAS): Panturrilhas, costuras traseiras e calcanhares firmes
+          // Calças traseiras
+          c.fillStyle = X;
+          c.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
+          c.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
+          // Costura traseira das pernas
+          c.fillStyle = "rgba(0, 0, 0, 0.22)";
+          c.fillRect(-3.4, -3.5 + legL * 0.5, 0.9, 5.0);
+          c.fillRect(3.2, -3.5 + legR * 0.5, 0.9, 5.0);
+          // Botas vistas por trás (contraforte do calcanhar)
+          c.fillStyle = C;
+          c.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
+          c.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
+          // Cano superior / debruado da bota
+          c.fillStyle = I;
+          c.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
+          c.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
+          // Tira traseira do calcanhar
+          c.fillStyle = "rgba(0, 0, 0, 0.28)";
+          c.fillRect(-3.5, 2.0 + legL, 1.0, 3.0);
+          c.fillRect(3.1, 2.0 + legR, 1.0, 3.0);
+          // Salto / sola traseira reta
+          c.fillStyle = "#18181b";
+          c.fillRect(-5.2, 4.3 + legL, 3.8, 1.3);
+          c.fillRect(1.4, 4.3 + legR, 3.8, 1.3);
+        } else if (w === "down") {
+          // VISTA FRONTAL: Joelhos anatômicos, bico frontal das botas e cadarços
+          // Calças frontais
+          c.fillStyle = X;
+          c.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
+          c.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
+          // Joelheiras / realce frontal
+          c.fillStyle = "rgba(255, 255, 255, 0.12)";
+          c.fillRect(-4.5, -2.0 + legL * 0.5, 2.4, 2.2);
+          c.fillRect(2.1, -2.0 + legR * 0.5, 2.4, 2.2);
+          // Botas
+          c.fillStyle = C;
+          c.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
+          c.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
+          // Cano superior / debruado
+          c.fillStyle = I;
+          c.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
+          c.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
+          // Biqueira frontal das botas arredondada para baixo
+          c.fillStyle = C;
+          c.fillRect(-5.0, 4.0 + legL, 3.4, 1.2);
+          c.fillRect(1.6, 4.0 + legR, 3.4, 1.2);
+          // Sola
+          c.fillStyle = "#18181b";
+          c.fillRect(-5.2, 4.5 + legL, 3.8, 1.2);
+          c.fillRect(1.4, 4.5 + legR, 3.8, 1.2);
+        } else if (w === "left") {
+          // VISTA LATERAL ESQUERDA: Perna esquerda na frente com bico virado para a ESQUERDA
+          // Perna de trás (direita, mais escura / sombra)
+          c.fillStyle = "rgba(15, 23, 42, 0.28)";
+          c.fillRect(0.2 + legR * 0.5, -3.5, 3.8, 5.0);
+          c.fillStyle = C;
+          c.fillRect(0.2 + legR, 1.0, 3.8, 4.5);
+          c.fillStyle = "#18181b";
+          c.fillRect(-0.4 + legR, 4.3, 4.4, 1.2);
+
+          // Perna da frente (esquerda, em primeiro plano apontando para a esquerda)
+          c.fillStyle = X;
+          c.fillRect(-3.6 + legL * 0.5, -3.5, 4.0, 5.0);
+          c.fillStyle = C;
+          c.fillRect(-3.6 + legL, 1.0, 4.0, 4.5);
+          c.fillStyle = I;
+          c.fillRect(-3.6 + legL, 1.0, 4.0, 1.3);
+          // Ponta do pé / biqueira estendida para a ESQUERDA
+          c.fillStyle = C;
+          c.fillRect(-5.2 + legL, 3.2, 2.0, 2.2);
+          c.fillStyle = "#18181b";
+          c.fillRect(-5.4 + legL, 4.3, 5.8, 1.2);
+        } else {
+          // VISTA LATERAL DIREITA: Perna direita na frente com bico virado para a DIREITA
+          // Perna de trás (esquerda, mais escura / sombra)
+          c.fillStyle = "rgba(15, 23, 42, 0.28)";
+          c.fillRect(-4.0 + legL * 0.5, -3.5, 3.8, 5.0);
+          c.fillStyle = C;
+          c.fillRect(-4.0 + legL, 1.0, 3.8, 4.5);
+          c.fillStyle = "#18181b";
+          c.fillRect(-4.0 + legL, 4.3, 4.4, 1.2);
+
+          // Perna da frente (direita, em primeiro plano apontando para a direita)
+          c.fillStyle = X;
+          c.fillRect(-0.4 + legR * 0.5, -3.5, 4.0, 5.0);
+          c.fillStyle = C;
+          c.fillRect(-0.4 + legR, 1.0, 4.0, 4.5);
+          c.fillStyle = I;
+          c.fillRect(-0.4 + legR, 1.0, 4.0, 1.3);
+          // Ponta do pé / biqueira estendida para a DIREITA
+          c.fillStyle = C;
+          c.fillRect(3.2 + legR, 3.2, 2.0, 2.2);
+          c.fillStyle = "#18181b";
+          c.fillRect(-0.4 + legR, 4.3, 5.8, 1.2);
+        }
+
+        if (te) {
+          c.fillStyle = "rgba(2, 132, 199, 0.55)";
+          c.fillRect(-7, -2 - T, 14, 9);
+          c.fillStyle = "rgba(255, 255, 255, 0.85)";
+          c.fillRect(-8, -3 - T, 16, 2);
+        }
+
         let be = 0,
           Me = 0;
-        (ue &&
-          (w === "left"
-            ? (be = -ne * 2)
-            : w === "right"
-              ? (be = ne * 2)
-              : w === "up"
-                ? (Me = -ne * 2)
-                : (Me = ne * 2)),
-          this.drawTorsoArmor(w, T + Me, be, j),
-          this.drawBelt(w, T + Me, be, $, S.cinto_slot1, S.cinto_slot2),
-          z && w !== "up" && this.drawPendant(T + Me, be, z),
-          w === "up" &&
-            (this.drawCape(w, T, y, ne, x), this.drawBackpack(w, T, M)));
+        if (ue) {
+          if (w === "left") be = -ne * 2;
+          else if (w === "right") be = ne * 2;
+          else if (w === "up") Me = -ne * 2;
+          else Me = ne * 2;
+        }
+
+        this.drawTorsoArmor(w, T + Me, be, j);
+        this.drawBelt(w, T + Me, be, $, S.cinto_slot1, S.cinto_slot2);
+        if (z && w !== "up") this.drawPendant(w, T + Me, be, z);
+        if (w === "up") {
+          this.drawCape(w, T, y, ne, x);
+          this.drawBackpack(w, T, M);
+        }
+
+        // Cabeça, pescoço e traços faciais proporcionais idênticos aos soldados (raio 6.1 a Y = -22)
         const Te = -22 - T + Me * 0.5,
           Fe = be * 0.5;
-        if (
-          ((c.fillStyle = "#fbcfe8"),
-          c.beginPath(),
-          c.arc(Fe, Te, 6.5, 0, Math.PI * 2),
-          c.fill(),
-          (c.fillStyle = "#78350f"),
-          c.beginPath(),
-          c.arc(Fe, Te - 2, 6.5, Math.PI, 0),
-          c.fill(),
-          w === "down"
-            ? ((c.fillStyle = "#1e293b"),
-              c.fillRect(Fe - 3, Te, 2, 2),
-              c.fillRect(Fe + 1, Te, 2, 2))
-            : w === "left"
-              ? ((c.fillStyle = "#1e293b"), c.fillRect(Fe - 4, Te, 2, 2))
-              : w === "right" &&
-                ((c.fillStyle = "#1e293b"), c.fillRect(Fe + 2, Te, 2, 2)),
-          t.isExhausted)
-        ) {
-          const ga = (this.animTimer * 3.5) % 1,
-            we = Te - 4 + ga * 8,
-            je = Math.max(0, 1 - ga);
-          ((c.fillStyle = `rgba(56, 189, 248, ${je * 0.9})`),
-            c.beginPath(),
-            c.arc(Fe + (w === "left" ? -6.5 : 6.5), we, 1.4, 0, Math.PI * 2),
-            c.fill());
+
+        // Pescoço de ligação anatômica com o colarinho
+        c.fillStyle = skinColor;
+        c.fillRect(-2.2 + Fe, Te + 3.2, 4.4, 3.0);
+
+        // Cabeça proporcional
+        c.fillStyle = skinColor;
+        c.beginPath();
+        c.arc(Fe, Te, 6.1, 0, Math.PI * 2);
+        c.fill();
+
+        // Cabelo volumoso de aventureiro sobrevivente (desenhado antes dos olhos para não obstruir o olhar)
+        c.fillStyle = t.hairColor || "#5c2c16";
+        c.beginPath();
+        c.arc(Fe, Te - 1.2, 6.2, Math.PI, 0);
+        c.fill();
+        if (w === "down") {
+          // Mechas laterais nas têmporas e franja frontal acima dos olhos
+          c.fillRect(Fe - 6.2, Te - 4.0, 2.2, 5.0);
+          c.fillRect(Fe + 4.0, Te - 4.0, 2.2, 5.0);
+          c.fillRect(Fe - 3.0, Te - 4.8, 3.0, 2.0);
+        } else if (w === "up") {
+          c.beginPath();
+          c.arc(Fe, Te, 6.2, 0, Math.PI * 2);
+          c.fill();
+        } else if (w === "left") {
+          // VISTA LATERAL ESQUERDA: Cabelo na nuca (atrás, à direita) e franja na testa acima da sobrancelha (sem tampar o olho)
+          c.fillRect(Fe + 1.8, Te - 3.2, 4.4, 6.8); // Nuca / cabelo traseiro
+          c.fillRect(Fe - 5.6, Te - 4.6, 2.8, 2.3); // Franja na testa (acima da sobrancelha, livre do olho)
+          c.fillRect(Fe - 0.4, Te - 1.8, 1.8, 3.4); // Costeleta junto à orelha (atrás do olho)
+        } else if (w === "right") {
+          // VISTA LATERAL DIREITA: Cabelo na nuca (atrás, à esquerda) e franja na testa acima da sobrancelha (sem tampar o olho)
+          c.fillRect(Fe - 6.2, Te - 3.2, 4.4, 6.8); // Nuca / cabelo traseiro
+          c.fillRect(Fe + 2.8, Te - 4.6, 2.8, 2.3); // Franja na testa (acima da sobrancelha, livre do olho)
+          c.fillRect(Fe - 1.4, Te - 1.8, 1.8, 3.4); // Costeleta junto à orelha (atrás do olho)
+        }
+
+        // Olhos e traços definidos no estilo soldado (desenhados em primeiro plano com visão nítida)
+        if (w !== "up") {
+          c.fillStyle = "#0f172a";
+          if (w === "down") {
+            c.fillRect(Fe - 3.2, Te - 0.4, 1.9, 1.9);
+            c.fillRect(Fe + 1.3, Te - 0.4, 1.9, 1.9);
+            c.fillStyle = "#ffffff";
+            c.fillRect(Fe - 2.8, Te - 0.4, 0.9, 0.9);
+            c.fillRect(Fe + 1.7, Te - 0.4, 0.9, 0.9);
+            c.fillStyle = "#5c2c16";
+            c.fillRect(Fe - 3.4, Te - 2.0, 2.3, 0.9);
+            c.fillRect(Fe + 1.1, Te - 2.0, 2.3, 0.9);
+          } else if (w === "left") {
+            c.fillRect(Fe - 4.2, Te - 0.4, 1.9, 1.9);
+            c.fillStyle = "#ffffff";
+            c.fillRect(Fe - 3.9, Te - 0.4, 0.9, 0.9);
+            c.fillStyle = "#5c2c16";
+            c.fillRect(Fe - 4.4, Te - 2.0, 2.3, 0.9);
+          } else if (w === "right") {
+            c.fillRect(Fe + 2.3, Te - 0.4, 1.9, 1.9);
+            c.fillStyle = "#ffffff";
+            c.fillRect(Fe + 2.6, Te - 0.4, 0.9, 0.9);
+            c.fillStyle = "#5c2c16";
+            c.fillRect(Fe + 2.1, Te - 2.0, 2.3, 0.9);
+          }
         }
         (p && this.drawHeadgear(w, Fe, Te, p),
           this.drawArmsAndCombat(
@@ -2325,7 +2480,9 @@
           Sa = !!t.isExhausted,
           oa = He || Sa || Ie < ee - 2;
         if (Ue < $a || _e || xe > 0 || oa) {
-          let je = -27;
+          // Posicionamento acima da cabeça e do chapéu/capacete (sem sobrepor a cabeça)
+          const headTopY = Te - (p ? 13.5 : 8.5);
+          let je = Math.round(headTopY - 7);
           if (Ue < $a || _e || xe > 0) {
             ((c.fillStyle = "rgba(15, 23, 42, 0.85)"),
               c.fillRect(-28 / 2 - 1, je - 1, 30, 3.5 + 2));
@@ -2342,7 +2499,7 @@
                 (c.font = "bold 7px sans-serif"),
                 (c.textAlign = "left"),
                 c.fillText(`${xe}x LENTO`, 28 / 2 + 3, je + 3.5)),
-              (je -= 5));
+              (je -= 6));
           }
           if (oa) {
             ((c.fillStyle = "rgba(15, 23, 42, 0.85)"),
@@ -2380,7 +2537,7 @@
           ((c.strokeStyle = "rgba(56, 189, 248, 0.75)"),
             (c.lineWidth = 1.5),
             c.beginPath(),
-            c.ellipse(0, -6, 13 + ga, 18 + ga, 0, 0, Math.PI * 2),
+            c.ellipse(0, -9, 14 + ga, 20 + ga, 0, 0, Math.PI * 2),
             c.stroke());
         }
         c.restore();
@@ -2452,61 +2609,294 @@
           g = c.includes("couro"),
           y = c.includes("arcano") || c.includes("mago") || c.includes("linho");
         let w = "#2563eb";
-        (u
-          ? f
-            ? (w = "#64748b")
-            : g
-              ? (w = "#854d0e")
-              : y
-                ? (w = "#7c3aed")
-                : (w = u.color || "#2563eb")
-          : (w = "#3b82f6"),
-          (m.fillStyle = w),
-          m.fillRect(-7 + o, -16 - l, 14, 14),
-          f
-            ? ((m.fillStyle = "#94a3b8"),
-              m.fillRect(-5 + o, -14 - l, 10, 8),
-              (m.fillStyle = "#cbd5e1"),
-              m.fillRect(-3 + o, -13 - l, 2, 6),
-              (m.fillStyle = "#64748b"),
-              m.fillRect(-9 + o, -16 - l, 3, 4),
-              m.fillRect(6 + o, -16 - l, 3, 4))
-            : g
-              ? ((m.fillStyle = "#a16207"),
-                m.fillRect(-5 + o, -15 - l, 10, 4),
-                (m.strokeStyle = "#fef08a"),
-                (m.lineWidth = 1.2),
-                m.beginPath(),
-                m.moveTo(-2 + o, -14 - l),
-                m.lineTo(2 + o, -11 - l),
-                m.stroke())
-              : y &&
-                ((m.strokeStyle = "#fbbf24"),
-                (m.lineWidth = 1.2),
-                m.beginPath(),
-                m.moveTo(-4 + o, -16 - l),
-                m.lineTo(0 + o, -8 - l),
-                m.lineTo(4 + o, -16 - l),
-                m.stroke()));
+        if (u) {
+          if (f) w = "#64748b";
+          else if (g) w = "#854d0e";
+          else if (y) w = "#7c3aed";
+          else w = u.color || "#2563eb";
+        } else {
+          w = "#2563eb";
+        }
+
+        const trimColor = f ? "#475569" : g ? "#713f12" : y ? "#6d28d9" : "#1d4ed8";
+        const collarColor = f ? "#334155" : g ? "#582f0e" : y ? "#581c87" : "#1e40af";
+        const darkHemColor = f ? "#475569" : g ? "#713f12" : y ? "#581c87" : "#1e3a8a";
+        const skinColor = this._currentSkinColor || "#e6b89c";
+
+        if (t === "down") {
+          // VISTA FRONTAL (olhando para a câmera / descendo)
+          // 1. Túnica frontal larga atlética
+          m.fillStyle = w;
+          m.fillRect(-6.8 + o, -16.2 - l, 13.6, 13.2);
+
+          // 2. Ombreiras anatômicas simétricas dos dois lados
+          m.fillStyle = trimColor;
+          m.fillRect(-8.4 + o, -16.5 - l, 3.4, 2.2);
+          m.fillRect(5.0 + o, -16.5 - l, 3.4, 2.2);
+
+          // 3. Gola frontal com decote em V aberto de sobrevivente
+          m.fillStyle = collarColor;
+          m.fillRect(-5.5 + o, -17.2 - l, 11.0, 2.0);
+          m.fillStyle = skinColor;
+          m.beginPath();
+          m.moveTo(-2.2 + o, -16.8 - l);
+          m.lineTo(0 + o, -13.5 - l);
+          m.lineTo(2.2 + o, -16.8 - l);
+          m.fill();
+
+          // 4. Detalhes frontais do peitoral
+          if (f) {
+            m.fillStyle = "#94a3b8";
+            m.fillRect(-5.2 + o, -14.8 - l, 10.4, 8.5);
+            m.fillStyle = "#cbd5e1";
+            m.fillRect(-1.8 + o, -14.2 - l, 3.6, 7.5);
+            m.fillStyle = "#475569";
+            m.fillRect(-8.8 + o, -16.8 - l, 3.8, 3.0);
+            m.fillRect(5.0 + o, -16.8 - l, 3.8, 3.0);
+            m.fillStyle = "#f8fafc";
+            m.fillRect(-4.5 + o, -14.0 - l, 1.2, 1.2);
+            m.fillRect(3.3 + o, -14.0 - l, 1.2, 1.2);
+          } else if (g) {
+            m.fillStyle = "#a16207";
+            m.fillRect(-5.4 + o, -15.2 - l, 10.8, 8.8);
+            m.strokeStyle = "#fef08a";
+            m.lineWidth = 1.2;
+            m.beginPath();
+            m.moveTo(-2.5 + o, -14.0 - l);
+            m.lineTo(2.5 + o, -11.0 - l);
+            m.moveTo(2.5 + o, -14.0 - l);
+            m.lineTo(-2.5 + o, -11.0 - l);
+            m.stroke();
+          } else if (y) {
+            m.strokeStyle = "#fbbf24";
+            m.lineWidth = 1.2;
+            m.beginPath();
+            m.moveTo(-4 + o, -16 - l);
+            m.lineTo(0 + o, -9 - l);
+            m.lineTo(4 + o, -16 - l);
+            m.stroke();
+          } else {
+            m.fillStyle = "rgba(15, 23, 42, 0.2)";
+            m.fillRect(-0.9 + o, -15.2 - l, 1.8, 11.0);
+            m.strokeStyle = "#e2e8f0";
+            m.lineWidth = 1.0;
+            m.beginPath();
+            m.moveTo(-2.2 + o, -14.2 - l);
+            m.lineTo(2.2 + o, -12.0 - l);
+            m.moveTo(2.2 + o, -14.2 - l);
+            m.lineTo(-2.2 + o, -12.0 - l);
+            m.stroke();
+          }
+
+          // 5. Barra inferior da túnica frontal
+          m.fillStyle = darkHemColor;
+          m.fillRect(-6.8 + o, -4.2 - l, 13.6, 1.3);
+        } else if (t === "up") {
+          // VISTA TRASEIRA (costas do personagem / subindo)
+          // 1. Túnica traseira
+          m.fillStyle = w;
+          m.fillRect(-6.8 + o, -16.2 - l, 13.6, 13.2);
+
+          // 2. Ombreiras traseiras simétricas
+          m.fillStyle = trimColor;
+          m.fillRect(-8.4 + o, -16.5 - l, 3.4, 2.2);
+          m.fillRect(5.0 + o, -16.5 - l, 3.4, 2.2);
+
+          // 3. Gola alta fechada na nuca (sem decote frontal)
+          m.fillStyle = collarColor;
+          m.fillRect(-5.5 + o, -17.6 - l, 11.0, 2.6);
+          m.fillStyle = "rgba(0, 0, 0, 0.25)";
+          m.fillRect(-5.5 + o, -15.2 - l, 11.0, 1.0);
+
+          // 4. Costura dorsal central da coluna e relevos das costas
+          m.fillStyle = "rgba(0, 0, 0, 0.28)";
+          m.fillRect(-1.0 + o, -15.5 - l, 2.0, 11.5);
+          m.fillStyle = "rgba(0, 0, 0, 0.12)";
+          m.fillRect(-4.8 + o, -14.5 - l, 2.2, 7.0);
+          m.fillRect(2.6 + o, -14.5 - l, 2.2, 7.0);
+
+          if (f) {
+            // Placa dorsal de aço com reforço da coluna e rebites nos cantos
+            m.fillStyle = "#475569";
+            m.fillRect(-5.2 + o, -14.8 - l, 10.4, 8.5);
+            m.fillStyle = "#64748b";
+            m.fillRect(-1.6 + o, -14.5 - l, 3.2, 8.0);
+            m.fillStyle = "#94a3b8";
+            m.fillRect(-4.5 + o, -14.0 - l, 1.5, 1.5);
+            m.fillRect(3.0 + o, -14.0 - l, 1.5, 1.5);
+            m.fillRect(-4.5 + o, -8.0 - l, 1.5, 1.5);
+            m.fillRect(3.0 + o, -8.0 - l, 1.5, 1.5);
+          } else if (g) {
+            // Arnês de couro em X cruzado nas costas com anel central de latão
+            m.strokeStyle = "#582f0e";
+            m.lineWidth = 1.8;
+            m.beginPath();
+            m.moveTo(-4.5 + o, -14.5 - l);
+            m.lineTo(4.5 + o, -7.5 - l);
+            m.moveTo(4.5 + o, -14.5 - l);
+            m.lineTo(-4.5 + o, -7.5 - l);
+            m.stroke();
+            m.fillStyle = "#fbbf24";
+            m.beginPath();
+            m.arc(0 + o, -11.0 - l, 1.8, 0, Math.PI * 2);
+            m.fill();
+          } else if (y) {
+            // Capuz/manto dobrado pendurado nas costas da túnica arcana
+            m.fillStyle = "#581c87";
+            m.beginPath();
+            m.moveTo(-5.0 + o, -15.0 - l);
+            m.lineTo(0 + o, -8.0 - l);
+            m.lineTo(5.0 + o, -15.0 - l);
+            m.closePath();
+            m.fill();
+            m.strokeStyle = "#fbbf24";
+            m.lineWidth = 1.0;
+            m.stroke();
+          } else {
+            // Túnica básica com costura horizontal nos ombros
+            m.fillStyle = "rgba(15, 23, 42, 0.25)";
+            m.fillRect(-5.0 + o, -12.5 - l, 10.0, 1.0);
+          }
+
+          // 5. Barra inferior da túnica com fenda central de cavaleiro
+          m.fillStyle = darkHemColor;
+          m.fillRect(-6.8 + o, -4.2 - l, 13.6, 1.3);
+          m.fillStyle = "rgba(0, 0, 0, 0.35)";
+          m.fillRect(-0.7 + o, -4.2 - l, 1.4, 1.3);
+        } else if (t === "left") {
+          // VISTA LATERAL ESQUERDA (perfil esquerdo, peito à esquerda, costas à direita)
+          // 1. Tronco em perfil anatômico esguio (largura 9.4px)
+          m.fillStyle = w;
+          m.fillRect(-5.6 + o, -16.2 - l, 9.4, 13.2);
+          // Projeção/curvatura do peito avançando à esquerda
+          m.fillRect(-6.2 + o, -14.5 - l, 1.0, 6.0);
+
+          // 2. Ombreira esquerda em evidência (visão lateral)
+          m.fillStyle = trimColor;
+          m.fillRect(-3.8 + o, -16.8 - l, 4.8, 2.4);
+          // Ombreira direita encoberta atrás
+          m.fillStyle = "rgba(0, 0, 0, 0.2)";
+          m.fillRect(3.0 + o, -16.5 - l, 1.2, 1.8);
+
+          // 3. Gola inclinada em perfil (mais alta na nuca à direita, descendo ao peito à esquerda)
+          m.fillStyle = collarColor;
+          m.beginPath();
+          m.moveTo(3.8 + o, -17.6 - l);
+          m.lineTo(-5.6 + o, -16.4 - l);
+          m.lineTo(-5.6 + o, -15.2 - l);
+          m.lineTo(3.8 + o, -15.8 - l);
+          m.closePath();
+          m.fill();
+
+          // 4. Costura lateral do flanco (da axila à cintura)
+          m.fillStyle = "rgba(0, 0, 0, 0.24)";
+          m.fillRect(-0.8 + o, -14.5 - l, 1.6, 10.5);
+
+          if (f) {
+            // Peitoral de aço à esquerda e placa traseira à direita unidos por fivela lateral
+            m.fillStyle = "#94a3b8";
+            m.fillRect(-5.4 + o, -14.6 - l, 4.4, 8.0);
+            m.fillStyle = "#475569";
+            m.fillRect(0.8 + o, -14.6 - l, 2.8, 8.0);
+            m.fillStyle = "#1e293b";
+            m.fillRect(-1.8 + o, -11.5 - l, 3.6, 1.4);
+            m.fillStyle = "#cbd5e1";
+            m.fillRect(-0.6 + o, -11.8 - l, 1.4, 2.0);
+          } else if (g) {
+            // Amarração lateral de couro do colete
+            m.fillStyle = "#713f12";
+            m.fillRect(-1.4 + o, -12.5 - l, 2.8, 1.3);
+            m.fillRect(-1.4 + o, -9.5 - l, 2.8, 1.3);
+            m.fillStyle = "#fef08a";
+            m.fillRect(-0.4 + o, -12.5 - l, 0.9, 1.3);
+            m.fillRect(-0.4 + o, -9.5 - l, 0.9, 1.3);
+          } else if (y) {
+            // Friso lateral dourado da túnica arcana
+            m.strokeStyle = "#fbbf24";
+            m.lineWidth = 1.1;
+            m.beginPath();
+            m.moveTo(-0.6 + o, -15.0 - l);
+            m.lineTo(-0.6 + o, -4.5 - l);
+            m.stroke();
+          } else {
+            // Realce do contorno do peito
+            m.fillStyle = "rgba(255, 255, 255, 0.12)";
+            m.fillRect(-5.2 + o, -13.5 - l, 1.2, 5.0);
+          }
+
+          // 5. Barra inferior em perfil
+          m.fillStyle = darkHemColor;
+          m.fillRect(-5.6 + o, -4.2 - l, 9.4, 1.3);
+        } else {
+          // VISTA LATERAL DIREITA (perfil direito, costas à esquerda, peito à direita)
+          // 1. Tronco em perfil anatômico esguio (largura 9.4px)
+          m.fillStyle = w;
+          m.fillRect(-3.8 + o, -16.2 - l, 9.4, 13.2);
+          // Projeção/curvatura do peito avançando à direita
+          m.fillRect(5.2 + o, -14.5 - l, 1.0, 6.0);
+
+          // 2. Ombreira direita em evidência (visão lateral)
+          m.fillStyle = trimColor;
+          m.fillRect(-1.0 + o, -16.8 - l, 4.8, 2.4);
+          // Ombreira esquerda encoberta atrás
+          m.fillStyle = "rgba(0, 0, 0, 0.2)";
+          m.fillRect(-4.2 + o, -16.5 - l, 1.2, 1.8);
+
+          // 3. Gola inclinada em perfil (mais alta na nuca à esquerda, descendo ao peito à direita)
+          m.fillStyle = collarColor;
+          m.beginPath();
+          m.moveTo(-3.8 + o, -17.6 - l);
+          m.lineTo(5.6 + o, -16.4 - l);
+          m.lineTo(5.6 + o, -15.2 - l);
+          m.lineTo(-3.8 + o, -15.8 - l);
+          m.closePath();
+          m.fill();
+
+          // 4. Costura lateral do flanco (da axila à cintura)
+          m.fillStyle = "rgba(0, 0, 0, 0.24)";
+          m.fillRect(-0.8 + o, -14.5 - l, 1.6, 10.5);
+
+          if (f) {
+            // Placa traseira à esquerda e peitoral à direita unidos por fivela
+            m.fillStyle = "#475569";
+            m.fillRect(-3.6 + o, -14.6 - l, 2.8, 8.0);
+            m.fillStyle = "#94a3b8";
+            m.fillRect(1.0 + o, -14.6 - l, 4.4, 8.0);
+            m.fillStyle = "#1e293b";
+            m.fillRect(-1.8 + o, -11.5 - l, 3.6, 1.4);
+            m.fillStyle = "#cbd5e1";
+            m.fillRect(-0.6 + o, -11.8 - l, 1.4, 2.0);
+          } else if (g) {
+            // Amarração lateral de couro do colete
+            m.fillStyle = "#713f12";
+            m.fillRect(-1.4 + o, -12.5 - l, 2.8, 1.3);
+            m.fillRect(-1.4 + o, -9.5 - l, 2.8, 1.3);
+            m.fillStyle = "#fef08a";
+            m.fillRect(-0.4 + o, -12.5 - l, 0.9, 1.3);
+            m.fillRect(-0.4 + o, -9.5 - l, 0.9, 1.3);
+          } else if (y) {
+            // Friso lateral dourado da túnica arcana
+            m.strokeStyle = "#fbbf24";
+            m.lineWidth = 1.1;
+            m.beginPath();
+            m.moveTo(0.6 + o, -15.0 - l);
+            m.lineTo(0.6 + o, -4.5 - l);
+            m.stroke();
+          } else {
+            // Realce do contorno do peito
+            m.fillStyle = "rgba(255, 255, 255, 0.12)";
+            m.fillRect(4.0 + o, -13.5 - l, 1.2, 5.0);
+          }
+
+          // 5. Barra inferior em perfil
+          m.fillStyle = darkHemColor;
+          m.fillRect(-3.8 + o, -4.2 - l, 9.4, 1.3);
+        }
       }
       drawBelt(t, l, o, u, m, c) {
-        const f = this.ctx,
-          g = u ? u.color || "#78350f" : "#f59e0b";
-        ((f.fillStyle = g),
-          f.fillRect(-7 + o, -4 - l, 14, 3),
-          t !== "up" &&
-            ((f.fillStyle = "#fef08a"),
-            f.fillRect(-2 + o, -5 - l, 4, 4),
-            (f.fillStyle = "#78350f"),
-            f.fillRect(-1 + o, -4 - l, 2, 2)),
-          u &&
-            (c ||
-              ((f.fillStyle = "#78350f"),
-              f.fillRect(4 + o, -4 - l, 3.5, 4),
-              (f.fillStyle = "#fbbf24"),
-              f.fillRect(5 + o, -2 - l, 1.5, 1.5)),
-            m && this.drawBeltSlotItem(t, "left", l, o, m),
-            c && this.drawBeltSlotItem(t, "right", l, o, c)));
+        // Sem cinto a pedido do jogador
+        if (m) this.drawBeltSlotItem(t, "left", l, o, m);
+        if (c) this.drawBeltSlotItem(t, "right", l, o, c);
       }
       drawBeltSlotItem(t, l, o, u, m) {
         if (!m) return;
@@ -2515,7 +2905,7 @@
           g = (m.id || "").toLowerCase(),
           y = l === "left",
           v = (y ? -7.5 : 7.5) + u,
-          T = -3.5 - o;
+          T = -6.8 - o;
         let S = 1,
           p = 0;
         if (
@@ -2677,23 +3067,27 @@
             c.fillRect(-1, 1, 2, 2));
         c.restore();
       }
-      drawPendant(t, l, o) {
+      drawPendant(dir, t, l, o) {
+        if (typeof dir !== "string") {
+          o = l; l = t; t = dir; dir = "down";
+        }
         const u = this.ctx,
-          m = o.color || "#38bdf8",
-          c = Math.sin(this.animTimer * 5) * 0.3 + 0.7;
+          m = (o && o.color) || "#38bdf8",
+          c = Math.sin(this.animTimer * 5) * 0.3 + 0.7,
+          pX = (dir === "left" ? -2.8 : dir === "right" ? 2.8 : 0) + l;
         ((u.strokeStyle = "#f59e0b"),
           (u.lineWidth = 1.2),
           u.beginPath(),
-          u.moveTo(-3 + l, -16 - t),
-          u.quadraticCurveTo(0 + l, -11 - t, 3 + l, -16 - t),
+          u.moveTo(-3 + pX, -16 - t),
+          u.quadraticCurveTo(0 + pX, -11 - t, 3 + pX, -16 - t),
           u.stroke(),
           (u.fillStyle = m),
           u.beginPath(),
-          u.arc(0 + l, -12 - t, 2 * c, 0, Math.PI * 2),
+          u.arc(0 + pX, -12 - t, 2 * c, 0, Math.PI * 2),
           u.fill(),
           (u.fillStyle = `rgba(56, 189, 248, ${c * 0.4})`),
           u.beginPath(),
-          u.arc(0 + l, -12 - t, 4.5 * c, 0, Math.PI * 2),
+          u.arc(0 + pX, -12 - t, 4.5 * c, 0, Math.PI * 2),
           u.fill());
       }
       drawHeadgear(t, l, o, u) {
@@ -2754,6 +3148,8 @@
       }
       drawArmsAndCombat(t, l, o, u, m, c, f, g, y, w, v, T, S, p, j, P, A, x) {
         const M = this.ctx,
+          skin = this._currentSkinColor || "#e6b89c",
+          shirtColor = this._currentShirtColor || "#2563eb",
           isPebble = (item) => {
             const name = (item?.name || "").toLowerCase();
             const id = (item?.id || "").toLowerCase();
@@ -2775,7 +3171,7 @@
             K = f * 4.5,
             V = z ? 3.5 + o : -3.5 + o,
             O = -9 - l + u;
-          ((M.fillStyle = "#fbcfe8"),
+          ((M.fillStyle = skin),
             M.beginPath(),
             M.arc(V, O, 2.6, 0, Math.PI * 2),
             M.fill());
@@ -2790,7 +3186,7 @@
               : t === "left"
                 ? ((_ = -5.5 + o - K), (se = -9 - l + u))
                 : ((_ = 5.5 + o + K), (se = -9 - l + u)),
-            (M.strokeStyle = "#fbcfe8"),
+            (M.strokeStyle = skin),
             (M.lineWidth = 3.4),
             (M.lineCap = "round"),
             M.beginPath(),
@@ -2807,7 +3203,7 @@
             (M.moveTo(ne - 1, ke - 1), M.lineTo(ne + 1, ke + 1), M.stroke());
           }
           if (
-            ((M.fillStyle = "#fbcfe8"),
+            ((M.fillStyle = skin),
             M.beginPath(),
             M.arc(_, se, 3, 0, Math.PI * 2),
             M.fill(),
@@ -2886,7 +3282,7 @@
               G = 3.5 + ue,
               de = Ee + _ * G,
               W = ne + se * G;
-            ((M.strokeStyle = "#fbcfe8"),
+            ((M.strokeStyle = skin),
               (M.lineWidth = 3.4),
               (M.lineCap = "round"),
               M.beginPath(),
@@ -2905,7 +3301,7 @@
               M.save(),
               M.translate(de, W),
               M.rotate(O + Math.PI / 2),
-              (M.fillStyle = "#fbcfe8"),
+              (M.fillStyle = skin),
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
@@ -2924,7 +3320,7 @@
             ) {
               const te = (N ? 2 : -2) + o + _ * (G * 0.35),
                 oe = -9 - l + u + se * (G * 0.35);
-              ((M.fillStyle = "#fbcfe8"),
+              ((M.fillStyle = skin),
                 M.beginPath(),
                 M.arc(te, oe, 2.4, 0, Math.PI * 2),
                 M.fill());
@@ -2934,7 +3330,7 @@
               O = -11 - l + u,
               _ = 5.5 - g * 3.5 + o,
               se = -10 + Math.sin(g * Math.PI) * 7 - l + u;
-            ((M.strokeStyle = "#fbcfe8"),
+            ((M.strokeStyle = skin),
               (M.lineWidth = 3.4),
               (M.lineCap = "round"),
               M.beginPath(),
@@ -2952,7 +3348,7 @@
               M.translate(_, se));
             const ue = 0.45 + g * (Math.PI * 1.3 - 0.45);
             (M.rotate(ue),
-              (M.fillStyle = "#fbcfe8"),
+              (M.fillStyle = skin),
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
@@ -2963,7 +3359,7 @@
               O = -11 - l + u,
               _ = 5 + Math.sin(g * Math.PI) * 5 + o,
               se = -9 + g * 3 - l + u;
-            ((M.strokeStyle = "#fbcfe8"),
+            ((M.strokeStyle = skin),
               (M.lineWidth = 3.4),
               (M.lineCap = "round"),
               M.beginPath(),
@@ -2981,7 +3377,7 @@
               M.translate(_, se));
             const ue = -0.6 + g * 2.8;
             (M.rotate(ue),
-              (M.fillStyle = "#fbcfe8"),
+              (M.fillStyle = skin),
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
@@ -2992,7 +3388,7 @@
               O = -11 - l + u,
               _ = -5 - Math.sin(g * Math.PI) * 5 + o,
               se = -9 + g * 3 - l + u;
-            ((M.strokeStyle = "#fbcfe8"),
+            ((M.strokeStyle = skin),
               (M.lineWidth = 3.4),
               (M.lineCap = "round"),
               M.beginPath(),
@@ -3011,7 +3407,7 @@
               M.scale(-1, 1));
             const ue = -0.6 + g * 2.8;
             (M.rotate(ue),
-              (M.fillStyle = "#fbcfe8"),
+              (M.fillStyle = skin),
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
@@ -3022,7 +3418,7 @@
               O = -12 - l + u,
               _ = 4 - g * 2 + o,
               se = -12 - Math.sin(g * Math.PI) * 4 - l + u;
-            ((M.strokeStyle = "#fbcfe8"),
+            ((M.strokeStyle = skin),
               (M.lineWidth = 3.4),
               (M.lineCap = "round"),
               M.beginPath(),
@@ -3040,7 +3436,7 @@
               M.translate(_, se));
             const ue = 0.8 - g * 1.8;
             (M.rotate(ue),
-              (M.fillStyle = "#fbcfe8"),
+              (M.fillStyle = skin),
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
@@ -3054,7 +3450,7 @@
               O = -8 - l + u;
             M.save();
             M.translate(V, O);
-            M.fillStyle = "#fbcfe8";
+            M.fillStyle = skin;
             M.beginPath();
             M.arc(0, 0, 2.5, 0, Math.PI * 2);
             M.fill();
@@ -3063,62 +3459,99 @@
           } else {
             const V = (t === "left" ? 4 : t === "right" ? -4 : -6) + o,
               O = -8 - l + u;
-            ((M.fillStyle = "#fbcfe8"),
+            ((M.fillStyle = skin),
               M.beginPath(),
               M.arc(V, O, 2.5, 0, Math.PI * 2),
               M.fill());
           }
           return;
         }
-        if (S) this.drawHeldTorch(t, l);
-        else if ($) this.drawHeldShield(t, l, o, p);
-        else if (isPebble(p)) {
-          const z = (t === "left" ? -8 : t === "right" ? -5 : -8) + o,
-            K = -8 - l + u;
-          M.save();
-          M.translate(z, K);
-          M.fillStyle = "#fbcfe8";
-          M.beginPath();
-          M.arc(0, 0, 2.5, 0, Math.PI * 2);
-          M.fill();
-          this.drawWeaponItem(p);
-          M.restore();
+
+        // BRAÇOS E MÃOS ANATÔMICAS EM REPOUSO / CAMINHADA (balanço natural e fluido)
+        // v = balanço esquerdo (de), T = balanço direito (W, oposto ao esquerdo)
+        const armSwingL = v,
+          armSwingR = T;
+        if (t === "down" || t === "up") {
+          // 1. Braço Esquerdo (ombro fixo com leve pêndulo e deslocamento natural)
+          const leftShoulderX = -7.5 + o,
+            leftShoulderY = -15.0 - l + u,
+            leftHandY = -7.2 - l + u + armSwingL,
+            leftHandX = -8.0 + o + (armSwingL * 0.2);
+
+          M.fillStyle = shirtColor;
+          M.fillRect(-8.8 + o + (armSwingL * 0.15), -15.0 - l + u + (armSwingL * 0.35), 2.5, 7.5);
+          M.fillStyle = P ? (P.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
+          M.fillRect(-8.8 + o + (armSwingL * 0.15), -9.0 - l + u + (armSwingL * 0.7), 2.5, 1.8);
+          M.fillStyle = skin;
+          M.fillRect(leftHandX, leftHandY, 2.3, 2.3);
+
+          // Item na mão esquerda (tocha, escudo ou seixo/estilingue)
+          if (S) {
+            this.drawHeldTorch(t, l, armSwingL);
+          } else if ($) {
+            this.drawHeldShield(t, l, o, p, armSwingL);
+          } else if (isPebble(p)) {
+            M.save();
+            M.translate(leftHandX + 1.1, leftHandY + 1.1);
+            this.drawWeaponItem(p);
+            M.restore();
+          }
+
+          // 2. Braço Direito (balanço harmônico contraposto ao braço esquerdo)
+          const rightHandY = -7.2 - l + u + armSwingR,
+            rightHandX = 6.0 + o + (armSwingR * 0.2);
+
+          M.fillStyle = shirtColor;
+          M.fillRect(6.3 + o + (armSwingR * 0.15), -15.0 - l + u + (armSwingR * 0.35), 2.5, 7.5);
+          M.fillStyle = A ? (A.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
+          M.fillRect(6.3 + o + (armSwingR * 0.15), -9.0 - l + u + (armSwingR * 0.7), 2.5, 1.8);
+          M.fillStyle = skin;
+          M.fillRect(rightHandX, rightHandY, 2.3, 2.3);
+
+          // Arma equipada na mão direita (acompanha o pêndulo e oscilação da caminhada)
+          if (j) {
+            M.save();
+            M.translate(rightHandX + 1.2, rightHandY + 0.4);
+            const walkWeaponAngle = (t === "up" ? -0.2 : 0.35) + (armSwingR * 0.08);
+            M.rotate(walkWeaponAngle);
+            this.drawWeaponItem(j);
+            M.restore();
+          }
         } else {
-          const z = (t === "left" ? -7 : t === "right" ? -5 : -8) + o,
-            K = -8 - l + v;
-          ((M.fillStyle = "#fbcfe8"),
-            M.beginPath(),
-            M.arc(z, K, 2.6, 0, Math.PI * 2),
-            M.fill(),
-            P &&
-              ((M.fillStyle = P.color || "#d97706"),
-              M.fillRect(z - 1.5, K - 3, 3, 2)));
-        }
-        if (j) {
-          const z = (t === "right" ? 8 : t === "left" ? 5 : 8) + o,
-            K = -7 - l + T;
-          (M.save(),
-            M.translate(z, K),
-            M.rotate(t === "left" ? -0.4 : 0.4),
-            (M.fillStyle = "#fbcfe8"),
-            M.beginPath(),
-            M.arc(0, 0, 2.6, 0, Math.PI * 2),
-            M.fill(),
-            A &&
-              ((M.fillStyle = A.color || "#d97706"),
-              M.fillRect(-1.5, -3, 3, 2)),
-            this.drawWeaponItem(j),
-            M.restore());
-        } else {
-          const z = (t === "right" ? 8 : t === "left" ? 5 : 8) + o,
-            K = -8 - l + T;
-          ((M.fillStyle = "#fbcfe8"),
-            M.beginPath(),
-            M.arc(z, K, 2.6, 0, Math.PI * 2),
-            M.fill(),
-            A &&
-              ((M.fillStyle = A.color || "#d97706"),
-              M.fillRect(z - 1.5, K - 3, 3, 2)));
+          // Vista lateral em perfil: balanço de arco natural para frente e para trás
+          const isLeft = t === "left",
+            sideX = (isLeft ? -1.4 : -1.0) + o,
+            profileSwing = armSwingL * 1.1,
+            forearmSwing = armSwingL * 1.5;
+
+          // Braço superior
+          M.fillStyle = shirtColor;
+          M.fillRect(sideX + profileSwing * 0.4, -14.8 - l + u, 2.7, 7.5);
+          // Punho / Bracelete
+          const brColor = (isLeft ? P : A) ? ((isLeft ? P : A).color || "#d97706") : "rgba(15, 23, 42, 0.25)";
+          M.fillStyle = brColor;
+          M.fillRect(sideX + profileSwing * 0.75, -8.8 - l + u, 2.7, 1.8);
+          // Mão
+          M.fillStyle = skin;
+          M.fillRect(sideX + forearmSwing, -7.0 - l + u + (Math.abs(profileSwing) * 0.2), 2.4, 2.3);
+
+          if (j) {
+            M.save();
+            M.translate(sideX + forearmSwing + (isLeft ? -2 : 2), -6.8 - l + u);
+            const profileWeaponAngle = (isLeft ? -0.35 : 0.35) + (forearmSwing * 0.07);
+            M.rotate(profileWeaponAngle);
+            this.drawWeaponItem(j);
+            M.restore();
+          } else if (S) {
+            this.drawHeldTorch(t, l, forearmSwing);
+          } else if ($) {
+            this.drawHeldShield(t, l, o, p, forearmSwing);
+          } else if (isPebble(p)) {
+            M.save();
+            M.translate(sideX + forearmSwing + (isLeft ? -2 : 2), -6.8 - l + u);
+            this.drawWeaponItem(p);
+            M.restore();
+          }
         }
       }
       drawWeaponItem(t) {
@@ -3373,65 +3806,79 @@
                   (l.fillStyle = "#f59e0b"),
                   l.fillRect(-1, 2, 2, 2));
       }
-      drawHeldShield(t, l, o, u) {
+      drawHeldShield(t, l, o, u, swingOffset = 0) {
         const m = this.ctx,
           c = ((u == null ? void 0 : u.name) || "").toLowerCase(),
-          f = c.includes("ferro") || c.includes("aço");
-        let g = -8 + o,
-          y = -8 - l;
-        (t === "left" ? (g = -9 + o) : t === "right" && (g = -4 + o),
-          m.save(),
-          m.translate(g, y),
-          (m.fillStyle = "#fbcfe8"),
-          m.beginPath(),
-          m.arc(0, 0, 2.5, 0, Math.PI * 2),
-          m.fill(),
-          (m.fillStyle = f ? "#475569" : "#78350f"),
-          m.beginPath(),
-          m.ellipse(0, 0, 5, 8, 0, 0, Math.PI * 2),
-          m.fill(),
-          (m.strokeStyle = "#cbd5e1"),
-          (m.lineWidth = 1.4),
-          m.stroke(),
-          (m.fillStyle = "#fbbf24"),
-          m.beginPath(),
-          m.arc(0, 0, 2, 0, Math.PI * 2),
-          m.fill(),
-          m.restore());
+          f = c.includes("ferro") || c.includes("aço"),
+          skin = this._currentSkinColor || "#e6b89c";
+        let g = -8.6 + o,
+          y = -7.2 - l + swingOffset;
+        if (t === "left") g = -6.5 + o;
+        else if (t === "right") g = -4.5 + o;
+        else if (t === "up") g = -8.6 + o;
+        m.save();
+        m.translate(g, y);
+        m.fillStyle = skin;
+        m.beginPath();
+        m.arc(0, 0, 2.2, 0, Math.PI * 2);
+        m.fill();
+        m.fillStyle = f ? "#475569" : "#78350f";
+        m.beginPath();
+        m.ellipse(0, 0, 5, 8, 0, 0, Math.PI * 2);
+        m.fill();
+        m.strokeStyle = "#cbd5e1";
+        m.lineWidth = 1.4;
+        m.stroke();
+        m.fillStyle = "#fbbf24";
+        m.beginPath();
+        m.arc(0, 0, 2, 0, Math.PI * 2);
+        m.fill();
+        m.restore();
       }
-      drawHeldTorch(t, l) {
-        const o = this.ctx;
-        let u = -8,
-          m = -8 - l,
+      drawHeldTorch(t, l, swingOffset = 0) {
+        const o = this.ctx,
+          skin = this._currentSkinColor || "#e6b89c";
+        let u = -8.6,
+          m = -7.2 - l + swingOffset,
           c = -0.2;
-        (t === "left"
-          ? ((u = -9), (m = -8 - l), (c = -0.32))
-          : t === "right"
-            ? ((u = -4), (m = -8 - l), (c = -0.15))
-            : t === "up"
-              ? ((u = -8), (m = -12 - l), (c = -0.12))
-              : ((u = -8), (m = -8 - l), (c = -0.22)),
-          o.save(),
-          o.translate(u, m),
-          o.rotate(c),
-          (o.fillStyle = "#fbcfe8"),
-          o.beginPath(),
-          o.arc(0, 0, 2.4, 0, Math.PI * 2),
-          o.fill(),
-          (o.fillStyle = "#78350f"),
-          o.fillRect(-1.5, -12, 3, 16),
-          (o.fillStyle = "#451a03"),
-          o.fillRect(-0.5, -12, 1, 16),
-          (o.fillStyle = "#b45309"),
-          o.fillRect(-1.8, -10, 3.6, 2.5),
-          (o.fillStyle = "#475569"),
-          o.fillRect(-1.8, -6, 3.6, 1.5),
-          (o.fillStyle = "#1c1917"),
-          o.fillRect(-2.2, -13.5, 4.4, 3.5),
-          (o.fillStyle = "#ea580c"),
-          o.fillRect(-2, -14, 4, 1.5),
-          this.drawTorchFlame(0, -14),
-          o.restore());
+        if (t === "left") {
+          u = -6.5;
+          m = -7.2 - l + swingOffset;
+          c = -0.32;
+        } else if (t === "right") {
+          u = -4.5;
+          m = -7.2 - l + swingOffset;
+          c = -0.15;
+        } else if (t === "up") {
+          u = -8.6;
+          m = -10.5 - l + swingOffset;
+          c = -0.12;
+        } else {
+          u = -8.6;
+          m = -7.2 - l + swingOffset;
+          c = -0.22;
+        }
+        o.save();
+        o.translate(u, m);
+        o.rotate(c);
+        o.fillStyle = skin;
+        o.beginPath();
+        o.arc(0, 0, 2.2, 0, Math.PI * 2);
+        o.fill();
+        o.fillStyle = "#78350f";
+        o.fillRect(-1.5, -12, 3, 16);
+        o.fillStyle = "#451a03";
+        o.fillRect(-0.5, -12, 1, 16);
+        o.fillStyle = "#b45309";
+        o.fillRect(-1.8, -10, 3.6, 2.5);
+        o.fillStyle = "#475569";
+        o.fillRect(-1.8, -6, 3.6, 1.5);
+        o.fillStyle = "#1c1917";
+        o.fillRect(-2.2, -13.5, 4.4, 3.5);
+        o.fillStyle = "#ea580c";
+        o.fillRect(-2, -14, 4, 1.5);
+        this.drawTorchFlame(0, -14);
+        o.restore();
       }
       drawTorchFlame(t, l) {
         const o = this.ctx,

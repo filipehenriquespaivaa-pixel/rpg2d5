@@ -2769,46 +2769,264 @@
         }
       }
 
-      // 3. Legs & Boots
-      const legL = walkPhase * 4;
-      const legR = -walkPhase * 4;
-      ctx.fillStyle = equipment.calca ? (equipment.calca.color || '#475569') : '#334155';
-      if (dir === 'up' || dir === 'down') {
-        ctx.fillRect(-6, 0 + legL, 4, 4);
-        ctx.fillRect(2, 0 + legR, 4, 4);
-        ctx.fillStyle = equipment.botas ? (equipment.botas.color || '#92400e') : '#1e293b';
-        ctx.fillRect(-6, 3 + legL, 4, 3);
-        ctx.fillRect(2, 3 + legR, 4, 3);
+      // 3. Legs & Boots (Proporções anatômicas e 4 direções: frente, costas, perfis)
+      const walkSin = walkPhase;
+      const legL = walkSin * 3.3;
+      const legR = -walkSin * 3.3;
+      const pantsColor = equipment.calca ? (equipment.calca.color || '#334155') : '#3b4252';
+      const bootColor = equipment.botas ? (equipment.botas.color || '#78350f') : '#5c3a21';
+      const bootTrim = (equipment.botas && (equipment.botas.name.toLowerCase().includes('aço') || equipment.botas.name.toLowerCase().includes('ferro'))) ? '#cbd5e1' : '#18181b';
+
+      if (dir === 'up') {
+        // VISTA TRASEIRA (costas, panturrilhas e calcanhares)
+        ctx.fillStyle = pantsColor;
+        ctx.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
+        ctx.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+        ctx.fillRect(-3.4, -3.5 + legL * 0.5, 0.9, 5.0);
+        ctx.fillRect(3.2, -3.5 + legR * 0.5, 0.9, 5.0);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
+        ctx.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
+        ctx.fillStyle = bootTrim;
+        ctx.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
+        ctx.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.fillRect(-3.5, 2.0 + legL, 1.0, 3.0);
+        ctx.fillRect(3.1, 2.0 + legR, 1.0, 3.0);
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-5.2, 4.3 + legL, 3.8, 1.3);
+        ctx.fillRect(1.4, 4.3 + legR, 3.8, 1.3);
+      } else if (dir === 'down') {
+        // VISTA FRONTAL (joelhos anatômicos e bico frontal das botas)
+        ctx.fillStyle = pantsColor;
+        ctx.fillRect(-5.2, -3.5 + legL * 0.5, 3.8, 5.0);
+        ctx.fillRect(1.4, -3.5 + legR * 0.5, 3.8, 5.0);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.fillRect(-4.5, -2.0 + legL * 0.5, 2.4, 2.2);
+        ctx.fillRect(2.1, -2.0 + legR * 0.5, 2.4, 2.2);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(-5.2, 1.0 + legL, 3.8, 4.5);
+        ctx.fillRect(1.4, 1.0 + legR, 3.8, 4.5);
+        ctx.fillStyle = bootTrim;
+        ctx.fillRect(-5.2, 1.0 + legL, 3.8, 1.3);
+        ctx.fillRect(1.4, 1.0 + legR, 3.8, 1.3);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(-5.0, 4.0 + legL, 3.4, 1.2);
+        ctx.fillRect(1.6, 4.0 + legR, 3.4, 1.2);
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-5.2, 4.5 + legL, 3.8, 1.2);
+        ctx.fillRect(1.4, 4.5 + legR, 3.8, 1.2);
+      } else if (dir === 'left') {
+        // VISTA LATERAL ESQUERDA (bico do pé apontando para a esquerda)
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+        ctx.fillRect(0.2 + legR * 0.5, -3.5, 3.8, 5.0);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(0.2 + legR, 1.0, 3.8, 4.5);
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-0.4 + legR, 4.3, 4.4, 1.2);
+
+        ctx.fillStyle = pantsColor;
+        ctx.fillRect(-3.6 + legL * 0.5, -3.5, 4.0, 5.0);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(-3.6 + legL, 1.0, 4.0, 4.5);
+        ctx.fillStyle = bootTrim;
+        ctx.fillRect(-3.6 + legL, 1.0, 4.0, 1.3);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(-5.2 + legL, 3.2, 2.0, 2.2);
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-5.4 + legL, 4.3, 5.8, 1.2);
       } else {
-        ctx.fillRect(-3, 0 + legL, 4, 4);
-        ctx.fillRect(1, 0 + legR, 4, 4);
-        ctx.fillStyle = equipment.botas ? (equipment.botas.color || '#92400e') : '#1e293b';
-        ctx.fillRect(-3, 3 + legL, 4, 3);
-        ctx.fillRect(1, 3 + legR, 4, 3);
+        // VISTA LATERAL DIREITA (bico do pé apontando para a direita)
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+        ctx.fillRect(-4.0 + legL * 0.5, -3.5, 3.8, 5.0);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(-4.0 + legL, 1.0, 3.8, 4.5);
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-4.0 + legL, 4.3, 4.4, 1.2);
+
+        ctx.fillStyle = pantsColor;
+        ctx.fillRect(-0.4 + legR * 0.5, -3.5, 4.0, 5.0);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(-0.4 + legR, 1.0, 4.0, 4.5);
+        ctx.fillStyle = bootTrim;
+        ctx.fillRect(-0.4 + legR, 1.0, 4.0, 1.3);
+        ctx.fillStyle = bootColor;
+        ctx.fillRect(3.2 + legR, 3.2, 2.0, 2.2);
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(-0.4 + legR, 4.3, 5.8, 1.2);
       }
 
-      // 4. Torso & Shirt / Armor
+      // 4. Torso & Shirt / Armor (Túnica e armadura 4 direções dinâmicas)
       let shirtColor = '#2563eb';
-      if (equipment.camisa) {
-        const cName = equipment.camisa.name.toLowerCase();
-        if (cName.includes('armadura') || cName.includes('ferro') || cName.includes('aço')) shirtColor = '#64748b';
-        else if (cName.includes('couro')) shirtColor = '#854d0e';
-        else shirtColor = equipment.camisa.color || '#2563eb';
+      const cItem = equipment.camisa;
+      const cName = cItem ? (cItem.name || '').toLowerCase() : '';
+      const isIron = cName.includes('armadura') || cName.includes('ferro') || cName.includes('aço') || cName.includes('cota');
+      const isLeather = cName.includes('couro');
+      const isArcane = cName.includes('arcano') || cName.includes('mago') || cName.includes('linho');
+      if (cItem) {
+        if (isIron) shirtColor = '#64748b';
+        else if (isLeather) shirtColor = '#854d0e';
+        else if (isArcane) shirtColor = '#7c3aed';
+        else shirtColor = cItem.color || '#2563eb';
       }
-      ctx.fillStyle = shirtColor;
-      ctx.fillRect(-7 + leanX, -16 - walkBob + leanY, 14, 14);
+      const trimColor = isIron ? '#475569' : (isLeather ? '#713f12' : (isArcane ? '#6d28d9' : '#1d4ed8'));
+      const collarColor = isIron ? '#334155' : (isLeather ? '#582f0e' : (isArcane ? '#581c87' : '#1e40af'));
+      const darkHemColor = isIron ? '#475569' : (isLeather ? '#713f12' : (isArcane ? '#581c87' : '#1e3a8a'));
 
-      // Belt
-      ctx.fillStyle = equipment.cinto ? (equipment.cinto.color || '#78350f') : '#f59e0b';
-      ctx.fillRect(-7 + leanX, -4 - walkBob + leanY, 14, 3);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(-2 + leanX, -5 - walkBob + leanY, 4, 4);
+      if (dir === 'down') {
+        // VISTA FRONTAL
+        ctx.fillStyle = shirtColor;
+        ctx.fillRect(-6.8 + leanX, -16.2 - walkBob + leanY, 13.6, 13.2);
+        ctx.fillStyle = trimColor;
+        ctx.fillRect(-8.4 + leanX, -16.5 - walkBob + leanY, 3.4, 2.2);
+        ctx.fillRect(5.0 + leanX, -16.5 - walkBob + leanY, 3.4, 2.2);
+        ctx.fillStyle = collarColor;
+        ctx.fillRect(-5.5 + leanX, -17.2 - walkBob + leanY, 11.0, 2.0);
+        ctx.fillStyle = playerSkin;
+        ctx.beginPath();
+        ctx.moveTo(-2.2 + leanX, -16.8 - walkBob + leanY);
+        ctx.lineTo(0 + leanX, -13.5 - walkBob + leanY);
+        ctx.lineTo(2.2 + leanX, -16.8 - walkBob + leanY);
+        ctx.fill();
+
+        if (isIron) {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillRect(-5.2 + leanX, -14.8 - walkBob + leanY, 10.4, 8.5);
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillRect(-1.8 + leanX, -14.2 - walkBob + leanY, 3.6, 7.5);
+        } else if (isLeather) {
+          ctx.fillStyle = '#a16207';
+          ctx.fillRect(-5.4 + leanX, -15.2 - walkBob + leanY, 10.8, 8.8);
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(-2.5 + leanX, -14.0 - walkBob + leanY);
+          ctx.lineTo(2.5 + leanX, -11.0 - walkBob + leanY);
+          ctx.moveTo(2.5 + leanX, -14.0 - walkBob + leanY);
+          ctx.lineTo(-2.5 + leanX, -11.0 - walkBob + leanY);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.2)';
+          ctx.fillRect(-0.9 + leanX, -15.2 - walkBob + leanY, 1.8, 11.0);
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.moveTo(-2.2 + leanX, -14.2 - walkBob + leanY);
+          ctx.lineTo(2.2 + leanX, -12.0 - walkBob + leanY);
+          ctx.moveTo(2.2 + leanX, -14.2 - walkBob + leanY);
+          ctx.lineTo(-2.2 + leanX, -12.0 - walkBob + leanY);
+          ctx.stroke();
+        }
+        ctx.fillStyle = darkHemColor;
+        ctx.fillRect(-6.8 + leanX, -4.2 - walkBob + leanY, 13.6, 1.3);
+      } else if (dir === 'up') {
+        // VISTA TRASEIRA (costas do casaco / túnica)
+        ctx.fillStyle = shirtColor;
+        ctx.fillRect(-6.8 + leanX, -16.2 - walkBob + leanY, 13.6, 13.2);
+        ctx.fillStyle = trimColor;
+        ctx.fillRect(-8.4 + leanX, -16.5 - walkBob + leanY, 3.4, 2.2);
+        ctx.fillRect(5.0 + leanX, -16.5 - walkBob + leanY, 3.4, 2.2);
+        ctx.fillStyle = collarColor;
+        ctx.fillRect(-5.5 + leanX, -17.6 - walkBob + leanY, 11.0, 2.6);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.fillRect(-1.0 + leanX, -15.5 - walkBob + leanY, 2.0, 11.5);
+
+        if (isIron) {
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(-5.2 + leanX, -14.8 - walkBob + leanY, 10.4, 8.5);
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(-1.6 + leanX, -14.5 - walkBob + leanY, 3.2, 8.0);
+        } else if (isLeather) {
+          ctx.strokeStyle = '#582f0e';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(-4.5 + leanX, -14.5 - walkBob + leanY);
+          ctx.lineTo(4.5 + leanX, -7.5 - walkBob + leanY);
+          ctx.moveTo(4.5 + leanX, -14.5 - walkBob + leanY);
+          ctx.lineTo(-4.5 + leanX, -7.5 - walkBob + leanY);
+          ctx.stroke();
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(0 + leanX, -11.0 - walkBob + leanY, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = darkHemColor;
+        ctx.fillRect(-6.8 + leanX, -4.2 - walkBob + leanY, 13.6, 1.3);
+      } else if (dir === 'left') {
+        // VISTA LATERAL ESQUERDA (perfil esbelto de 9.4px)
+        ctx.fillStyle = shirtColor;
+        ctx.fillRect(-5.6 + leanX, -16.2 - walkBob + leanY, 9.4, 13.2);
+        ctx.fillRect(-6.2 + leanX, -14.5 - walkBob + leanY, 1.0, 6.0);
+        ctx.fillStyle = trimColor;
+        ctx.fillRect(-3.8 + leanX, -16.8 - walkBob + leanY, 4.8, 2.4);
+        ctx.fillStyle = collarColor;
+        ctx.beginPath();
+        ctx.moveTo(3.8 + leanX, -17.6 - walkBob + leanY);
+        ctx.lineTo(-5.6 + leanX, -16.4 - walkBob + leanY);
+        ctx.lineTo(-5.6 + leanX, -15.2 - walkBob + leanY);
+        ctx.lineTo(3.8 + leanX, -15.8 - walkBob + leanY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
+        ctx.fillRect(-0.8 + leanX, -14.5 - walkBob + leanY, 1.6, 10.5);
+
+        if (isIron) {
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillRect(-5.4 + leanX, -14.6 - walkBob + leanY, 4.4, 8.0);
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(0.8 + leanX, -14.6 - walkBob + leanY, 2.8, 8.0);
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillRect(-0.6 + leanX, -11.8 - walkBob + leanY, 1.4, 2.0);
+        } else if (isLeather) {
+          ctx.fillStyle = '#713f12';
+          ctx.fillRect(-1.4 + leanX, -12.5 - walkBob + leanY, 2.8, 1.3);
+          ctx.fillRect(-1.4 + leanX, -9.5 - walkBob + leanY, 2.8, 1.3);
+        }
+        ctx.fillStyle = darkHemColor;
+        ctx.fillRect(-5.6 + leanX, -4.2 - walkBob + leanY, 9.4, 1.3);
+      } else {
+        // VISTA LATERAL DIREITA (perfil esbelto de 9.4px)
+        ctx.fillStyle = shirtColor;
+        ctx.fillRect(-3.8 + leanX, -16.2 - walkBob + leanY, 9.4, 13.2);
+        ctx.fillRect(5.2 + leanX, -14.5 - walkBob + leanY, 1.0, 6.0);
+        ctx.fillStyle = trimColor;
+        ctx.fillRect(-1.0 + leanX, -16.8 - walkBob + leanY, 4.8, 2.4);
+        ctx.fillStyle = collarColor;
+        ctx.beginPath();
+        ctx.moveTo(-3.8 + leanX, -17.6 - walkBob + leanY);
+        ctx.lineTo(5.6 + leanX, -16.4 - walkBob + leanY);
+        ctx.lineTo(5.6 + leanX, -15.2 - walkBob + leanY);
+        ctx.lineTo(-3.8 + leanX, -15.8 - walkBob + leanY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
+        ctx.fillRect(-0.8 + leanX, -14.5 - walkBob + leanY, 1.6, 10.5);
+
+        if (isIron) {
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(-3.6 + leanX, -14.6 - walkBob + leanY, 2.8, 8.0);
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillRect(1.0 + leanX, -14.6 - walkBob + leanY, 4.4, 8.0);
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillRect(-0.6 + leanX, -11.8 - walkBob + leanY, 1.4, 2.0);
+        } else if (isLeather) {
+          ctx.fillStyle = '#713f12';
+          ctx.fillRect(-1.4 + leanX, -12.5 - walkBob + leanY, 2.8, 1.3);
+          ctx.fillRect(-1.4 + leanX, -9.5 - walkBob + leanY, 2.8, 1.3);
+        }
+        ctx.fillStyle = darkHemColor;
+        ctx.fillRect(-3.8 + leanX, -4.2 - walkBob + leanY, 9.4, 1.3);
+      }
+
+      // Belt removido a pedido do jogador (sem cinto)
 
       // Pendant (glowing)
       if (equipment.pingente && dir !== 'up') {
+        const pX = (dir === 'left' ? -2.8 : (dir === 'right' ? 2.8 : 0)) + leanX;
         ctx.fillStyle = equipment.pingente.color || '#38bdf8';
         ctx.beginPath();
-        ctx.arc(0 + leanX, -11 - walkBob + leanY, 2.5, 0, Math.PI * 2);
+        ctx.arc(pX, -11 - walkBob + leanY, 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -2824,31 +3042,70 @@
         }
       }
 
-      // 5. Head
+      // 5. Head & Neck (Pescoço anatômico e cabeça proporcional idênticos aos soldados)
       const headX = leanX * 0.5;
       const headY = -22 - walkBob + leanY * 0.5;
-      ctx.fillStyle = '#fbcfe8';
+      const playerSkin = player.skinColor || '#e6b89c';
+
+      // Pescoço
+      ctx.fillStyle = playerSkin;
+      ctx.fillRect(headX - 2.2, headY + 3.2, 4.4, 3.0);
+
+      // Cabeça
       ctx.beginPath();
-      ctx.arc(headX, headY, 6.5, 0, Math.PI * 2);
+      ctx.arc(headX, headY, 6.1, 0, Math.PI * 2);
       ctx.fill();
 
-      // Hair
-      ctx.fillStyle = '#78350f';
+      // Cabelo volumoso do aventureiro (desenhado antes dos olhos para não obstruir o olhar)
+      ctx.fillStyle = player.hairColor || '#5c2c16';
       ctx.beginPath();
-      ctx.arc(headX, headY - 2, 6.5, Math.PI, 0);
+      ctx.arc(headX, headY - 1.2, 6.2, Math.PI, 0);
       ctx.fill();
-
-      // Eyes
       if (dir === 'down') {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(headX - 3, headY, 2, 2);
-        ctx.fillRect(headX + 1, headY, 2, 2);
+        ctx.fillRect(headX - 6.2, headY - 4.0, 2.2, 5.0);
+        ctx.fillRect(headX + 4.0, headY - 4.0, 2.2, 5.0);
+        ctx.fillRect(headX - 3.0, headY - 4.8, 3.0, 2.0);
+      } else if (dir === 'up') {
+        ctx.beginPath();
+        ctx.arc(headX, headY, 6.2, 0, Math.PI * 2);
+        ctx.fill();
       } else if (dir === 'left') {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(headX - 4, headY, 2, 2);
+        // VISTA LATERAL ESQUERDA: Cabelo na nuca (atrás, à direita) e franja na testa acima da sobrancelha (sem tampar o olho)
+        ctx.fillRect(headX + 1.8, headY - 3.2, 4.4, 6.8); // Cabelo traseiro / nuca
+        ctx.fillRect(headX - 5.6, headY - 4.6, 2.8, 2.3); // Franja na testa (acima da sobrancelha, livre do olho)
+        ctx.fillRect(headX - 0.4, headY - 1.8, 1.8, 3.4); // Costeleta junto à orelha (atrás do olho)
       } else if (dir === 'right') {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(headX + 2, headY, 2, 2);
+        // VISTA LATERAL DIREITA: Cabelo na nuca (atrás, à esquerda) e franja na testa acima da sobrancelha (sem tampar o olho)
+        ctx.fillRect(headX - 6.2, headY - 3.2, 4.4, 6.8); // Cabelo traseiro / nuca
+        ctx.fillRect(headX + 2.8, headY - 4.6, 2.8, 2.3); // Franja na testa (acima da sobrancelha, livre do olho)
+        ctx.fillRect(headX - 1.4, headY - 1.8, 1.8, 3.4); // Costeleta junto à orelha (atrás do olho)
+      }
+
+      // Olhos nítidos estilo soldado (desenhados em primeiro plano)
+      if (dir !== 'up') {
+        ctx.fillStyle = '#0f172a';
+        if (dir === 'down') {
+          ctx.fillRect(headX - 3.2, headY - 0.4, 1.9, 1.9);
+          ctx.fillRect(headX + 1.3, headY - 0.4, 1.9, 1.9);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(headX - 2.8, headY - 0.4, 0.9, 0.9);
+          ctx.fillRect(headX + 1.7, headY - 0.4, 0.9, 0.9);
+          ctx.fillStyle = '#5c2c16';
+          ctx.fillRect(headX - 3.4, headY - 2.0, 2.3, 0.9);
+          ctx.fillRect(headX + 1.1, headY - 2.0, 2.3, 0.9);
+        } else if (dir === 'left') {
+          ctx.fillRect(headX - 4.2, headY - 0.4, 1.9, 1.9);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(headX - 3.9, headY - 0.4, 0.9, 0.9);
+          ctx.fillStyle = '#5c2c16';
+          ctx.fillRect(headX - 4.4, headY - 2.0, 2.3, 0.9);
+        } else if (dir === 'right') {
+          ctx.fillRect(headX + 2.3, headY - 0.4, 1.9, 1.9);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(headX + 2.6, headY - 0.4, 0.9, 0.9);
+          ctx.fillStyle = '#5c2c16';
+          ctx.fillRect(headX + 2.1, headY - 2.0, 2.3, 0.9);
+        }
       }
 
       // 6. Hat / Helmet
@@ -2883,7 +3140,7 @@
         // Guarding hand at chest
         const guardX = punchingLeft ? (3.5 + leanX) : (-3.5 + leanX);
         const guardY = -9 - walkBob + leanY;
-        ctx.fillStyle = '#fbcfe8';
+        ctx.fillStyle = playerSkin;
         ctx.beginPath();
         ctx.arc(guardX, guardY, 2.6, 0, Math.PI * 2);
         ctx.fill();
@@ -2908,7 +3165,7 @@
         }
 
         // Arm link
-        ctx.strokeStyle = '#fbcfe8';
+        ctx.strokeStyle = playerSkin;
         ctx.lineWidth = 3.4;
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -2927,7 +3184,7 @@
         }
 
         // Clenched fist
-        ctx.fillStyle = '#fbcfe8';
+        ctx.fillStyle = playerSkin;
         ctx.beginPath();
         ctx.arc(fistX, fistY, 3.0, 0, Math.PI * 2);
         ctx.fill();
@@ -3028,7 +3285,7 @@
           const handX = shoulderX + cosA * totalReach;
           const handY = shoulderY + sinA * totalReach;
 
-          ctx.strokeStyle = '#fbcfe8';
+          ctx.strokeStyle = playerSkin;
           ctx.lineWidth = 3.4;
           ctx.lineCap = 'round';
           ctx.beginPath();
@@ -3049,7 +3306,7 @@
           ctx.translate(handX, handY);
           ctx.rotate(thrustAngle + Math.PI / 2);
 
-          ctx.fillStyle = '#fbcfe8';
+          ctx.fillStyle = playerSkin;
           ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, Math.PI * 2); ctx.fill();
 
           if (thrustDist > 7) {
@@ -3071,7 +3328,7 @@
           const handY = (-10 + Math.sin(attackProg * Math.PI) * 7) - walkBob + leanY;
 
           // Arm connecting shoulder to hand
-          ctx.strokeStyle = '#fbcfe8';
+          ctx.strokeStyle = playerSkin;
           ctx.lineWidth = 3.4;
           ctx.lineCap = 'round';
           ctx.beginPath();
@@ -3093,7 +3350,7 @@
           const swingAngle = 0.45 + attackProg * (Math.PI * 1.3 - 0.45);
           ctx.rotate(swingAngle);
 
-          ctx.fillStyle = '#fbcfe8';
+          ctx.fillStyle = playerSkin;
           ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, Math.PI * 2); ctx.fill();
           drawHeldWeaponItem();
           ctx.restore();
@@ -3103,7 +3360,7 @@
           const handX = (5 + Math.sin(attackProg * Math.PI) * 5) + leanX;
           const handY = (-9 + attackProg * 3) - walkBob + leanY;
 
-          ctx.strokeStyle = '#fbcfe8';
+          ctx.strokeStyle = playerSkin;
           ctx.lineWidth = 3.4;
           ctx.lineCap = 'round';
           ctx.beginPath();
@@ -3125,7 +3382,7 @@
           const swingAngle = -0.6 + attackProg * 2.8;
           ctx.rotate(swingAngle);
 
-          ctx.fillStyle = '#fbcfe8';
+          ctx.fillStyle = playerSkin;
           ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, Math.PI * 2); ctx.fill();
           drawHeldWeaponItem();
           ctx.restore();
@@ -3135,7 +3392,7 @@
           const handX = (-5 - Math.sin(attackProg * Math.PI) * 5) + leanX;
           const handY = (-9 + attackProg * 3) - walkBob + leanY;
 
-          ctx.strokeStyle = '#fbcfe8';
+          ctx.strokeStyle = playerSkin;
           ctx.lineWidth = 3.4;
           ctx.lineCap = 'round';
           ctx.beginPath();
@@ -3158,7 +3415,7 @@
           const swingAngle = -0.6 + attackProg * 2.8;
           ctx.rotate(swingAngle);
 
-          ctx.fillStyle = '#fbcfe8';
+          ctx.fillStyle = playerSkin;
           ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, Math.PI * 2); ctx.fill();
           drawHeldWeaponItem();
           ctx.restore();
@@ -3168,7 +3425,7 @@
           const handX = (4 - attackProg * 2) + leanX;
           const handY = (-12 - Math.sin(attackProg * Math.PI) * 4) - walkBob + leanY;
 
-          ctx.strokeStyle = '#fbcfe8';
+          ctx.strokeStyle = playerSkin;
           ctx.lineWidth = 3.4;
           ctx.lineCap = 'round';
           ctx.beginPath();
@@ -3190,7 +3447,7 @@
           const swingAngle = 0.8 - attackProg * 1.8;
           ctx.rotate(swingAngle);
 
-          ctx.fillStyle = '#fbcfe8';
+          ctx.fillStyle = playerSkin;
           ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, Math.PI * 2); ctx.fill();
           drawHeldWeaponItem();
           ctx.restore();
@@ -3209,75 +3466,92 @@
         ctx.arc(0, -10, slashRadius, startAngle, startAngle + 1.4);
         ctx.stroke();
       } else {
-        // IDLE / WALKING
-        // Offhand: Torch, Shield, or bare hand
-        if (lanternActive) {
-          ctx.fillStyle = '#78350f';
-          ctx.fillRect(-9, -14 - walkBob, 3, 12);
-          ctx.fillStyle = '#ea580c';
-          ctx.beginPath();
-          ctx.arc(-7.5, -16 - walkBob + Math.sin(animTimer * 12), 3.5, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (equipment.mao_esquerda && equipment.mao_esquerda.name.toLowerCase().includes('escudo')) {
-          ctx.fillStyle = '#78350f';
-          ctx.beginPath();
-          ctx.ellipse(-8, -8 - walkBob, 5, 8, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#cbd5e1';
-          ctx.lineWidth = 1.4;
-          ctx.stroke();
-        } else {
-          ctx.fillStyle = '#fbcfe8';
-          ctx.beginPath();
-          ctx.arc(-8, -8 - walkBob, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        // IDLE / WALKING (Balanço harmônico, fluido e anatômico dos braços ao andar)
+        const armSwingL = walkPhase * 2.8;
+        const armSwingR = -walkPhase * 2.8;
+        if (dir === 'down' || dir === 'up') {
+          // 1. Braço Esquerdo
+          const leftHandX = -8.0 + leanX + (armSwingL * 0.2);
+          const leftHandY = -7.2 - walkBob + leanY + armSwingL;
+          ctx.fillStyle = shirtColor;
+          ctx.fillRect(-8.8 + leanX + (armSwingL * 0.15), -15.0 - walkBob + leanY + (armSwingL * 0.35), 2.5, 7.5);
+          ctx.fillStyle = equipment.bracelete_esquerdo ? (equipment.bracelete_esquerdo.color || '#d97706') : 'rgba(15, 23, 42, 0.25)';
+          ctx.fillRect(-8.8 + leanX + (armSwingL * 0.15), -9.0 - walkBob + leanY + (armSwingL * 0.7), 2.5, 1.8);
+          ctx.fillStyle = playerSkin;
+          ctx.fillRect(leftHandX, leftHandY, 2.3, 2.3);
 
-        // Main hand: Weapon or bare hand
-        if (equipment.mao_direita) {
-          ctx.save();
-          ctx.translate(8, -7 - walkBob);
-          ctx.rotate(0.35);
-          ctx.fillStyle = '#fbcfe8';
-          ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, Math.PI * 2); ctx.fill();
-          const wName = (equipment.mao_direita && equipment.mao_direita.name || '').toLowerCase();
-          const isGalho = wName.includes('galho');
-          const isMace = wName.includes('maça') || wName.includes('maca') || wName.includes('mace');
-          if (isGalho) {
-            ctx.fillStyle = '#5c3a21';
-            ctx.fillRect(-1.5, -14, 3, 18);
-            ctx.fillStyle = '#854d0e';
-            ctx.fillRect(-0.8, -13, 1.6, 16);
-            ctx.fillStyle = '#65a30d';
-            ctx.beginPath(); ctx.arc(0, -15, 1.5, 0, Math.PI * 2); ctx.fill();
-          } else if (isMace) {
-            ctx.fillStyle = '#5c3a21';
-            ctx.fillRect(-1.5, -13, 3, 16);
-            ctx.fillStyle = '#854d0e';
-            ctx.fillRect(-0.8, -12, 1.6, 14);
-            ctx.fillStyle = '#a16207';
-            ctx.fillRect(-2, -10, 4, 2);
-            ctx.fillStyle = '#64748b';
+          if (lanternActive) {
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(leftHandX - 1.5, leftHandY - 5.5, 3, 12);
+            ctx.fillStyle = '#ea580c';
             ctx.beginPath();
-            ctx.arc(0, -15, 5, 0, Math.PI * 2);
+            ctx.arc(leftHandX, leftHandY - 7.5 + Math.sin(animTimer * 12), 3.5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#94a3b8';
+          } else if (equipment.mao_esquerda && equipment.mao_esquerda.name && equipment.mao_esquerda.name.toLowerCase().includes('escudo')) {
+            ctx.fillStyle = '#78350f';
             ctx.beginPath();
-            ctx.arc(-1.2, -16.2, 2.8, 0, Math.PI * 2);
+            ctx.ellipse(leftHandX + 1.1, leftHandY + 1.1, 5, 8, 0, 0, Math.PI * 2);
             ctx.fill();
-          } else {
-            ctx.fillStyle = '#cbd5e1';
-            ctx.fillRect(-1.5, -14, 3, 12);
-            ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(-3, -2, 6, 2);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
           }
-          ctx.restore();
+
+          // 2. Braço Direito
+          const rightHandX = 6.0 + leanX + (armSwingR * 0.2);
+          const rightHandY = -7.2 - walkBob + leanY + armSwingR;
+          ctx.fillStyle = shirtColor;
+          ctx.fillRect(6.3 + leanX + (armSwingR * 0.15), -15.0 - walkBob + leanY + (armSwingR * 0.35), 2.5, 7.5);
+          ctx.fillStyle = equipment.bracelete_direito ? (equipment.bracelete_direito.color || '#d97706') : 'rgba(15, 23, 42, 0.25)';
+          ctx.fillRect(6.3 + leanX + (armSwingR * 0.15), -9.0 - walkBob + leanY + (armSwingR * 0.7), 2.5, 1.8);
+          ctx.fillStyle = playerSkin;
+          ctx.fillRect(rightHandX, rightHandY, 2.3, 2.3);
+
+          if (equipment.mao_direita) {
+            ctx.save();
+            ctx.translate(rightHandX + 1.2, rightHandY + 0.4);
+            const walkWeaponAngle = (dir === 'up' ? -0.2 : 0.35) + (armSwingR * 0.08);
+            ctx.rotate(walkWeaponAngle);
+            drawHeldWeaponItem();
+            ctx.restore();
+          }
         } else {
-          ctx.fillStyle = '#fbcfe8';
-          ctx.beginPath();
-          ctx.arc(8, -8 - walkBob, 2.5, 0, Math.PI * 2);
-          ctx.fill();
+          // Vista lateral em perfil proporcional: arco fluido para frente e para trás
+          const isLeft = dir === 'left';
+          const sideX = (isLeft ? -1.4 : -1.0) + leanX;
+          const profileSwing = armSwingL * 1.1;
+          const forearmSwing = armSwingL * 1.5;
+
+          ctx.fillStyle = shirtColor;
+          ctx.fillRect(sideX + profileSwing * 0.4, -14.8 - walkBob + leanY, 2.7, 7.5);
+          const brColor = (isLeft ? equipment.bracelete_esquerdo : equipment.bracelete_direito) ? ((isLeft ? equipment.bracelete_esquerdo : equipment.bracelete_direito).color || '#d97706') : 'rgba(15, 23, 42, 0.25)';
+          ctx.fillStyle = brColor;
+          ctx.fillRect(sideX + profileSwing * 0.75, -8.8 - walkBob + leanY, 2.7, 1.8);
+          ctx.fillStyle = playerSkin;
+          ctx.fillRect(sideX + forearmSwing, -7.0 - walkBob + leanY + (Math.abs(profileSwing) * 0.2), 2.4, 2.3);
+
+          if (equipment.mao_direita) {
+            ctx.save();
+            ctx.translate(sideX + forearmSwing + (isLeft ? -2 : 2), -6.8 - walkBob + leanY);
+            const profileWeaponAngle = (isLeft ? -0.35 : 0.35) + (forearmSwing * 0.07);
+            ctx.rotate(profileWeaponAngle);
+            drawHeldWeaponItem();
+            ctx.restore();
+          }
         }
+      }
+
+      // Barra de vida suspensa se estiver ferido (posicionada acima da cabeça e do chapéu)
+      const curHp = player.hp ?? 100;
+      const maxHp = player.maxHp ?? 100;
+      if (curHp < maxHp) {
+        const headTopY = headY - (equipment.chapeu ? 13.5 : 8.5);
+        const barY = Math.round(headTopY - 7);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(-28 / 2 - 1, barY - 1, 30, 3.5 + 2);
+        const hpPct = Math.max(0, Math.min(1, curHp / maxHp));
+        ctx.fillStyle = hpPct > 0.4 ? '#22c55e' : '#ef4444';
+        ctx.fillRect(-28 / 2, barY, 28 * hpPct, 3.5);
       }
 
       ctx.restore();

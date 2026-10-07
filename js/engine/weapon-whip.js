@@ -171,9 +171,10 @@
       thH = ang - sgn * whipSweepMagX(g),
       lx = hx + Math.cos(thH) * 6,
       ly = hy + Math.sin(thH) * 6,
-      col = (item && item.color) || "#65a30d";
+      col = (item && item.color) || "#65a30d",
+      skin = (typeof window !== "undefined" && window.__currentPlayerSkinColor) || "#e6b89c";
     // braço
-    M.strokeStyle = "#fbcfe8";
+    M.strokeStyle = skin;
     M.lineWidth = 3.4;
     M.lineCap = "round";
     M.beginPath();
@@ -213,7 +214,7 @@
     const tip = lash.pts[lash.pts.length - 1];
     drawWhipCrackX(M, tip.x, tip.y, Math.max(0, 1 - Math.abs(g - 0.68) / 0.14));
     // punho
-    M.fillStyle = "#fbcfe8";
+    M.fillStyle = skin;
     M.beginPath();
     M.arc(hx, hy, 2.8, 0, Math.PI * 2);
     M.fill();
