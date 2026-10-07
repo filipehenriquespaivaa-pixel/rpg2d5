@@ -3207,7 +3207,6 @@
       // 7. ARMS & COMBAT ANIMATION
       // UNARMED PUNCHING: Moving arm with clenched fist punching forward
       if (isAttacking && !hasWeapon) {
-        const punchDist = punchExt * 14;
         const punchingLeft = isLeftPunch;
 
         // Guarding hand at chest

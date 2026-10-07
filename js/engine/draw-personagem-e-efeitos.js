@@ -1386,17 +1386,40 @@
         e.lineTo(_e - 1.2 * l, xe + 1.2 * l),
         e.stroke());
     }
-    const oe = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
-    (e0(e, l, W, le, 1, oe, y, w, v, T, S, o),
-      e0(e, l, W, le, -1, oe, y, w, v, T, S, o),
-      e.restore());
+    const isAtk = !!(t.attackTimer && t.attackTimer > 0);
+    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const activeSide = t.attackClawSide || -1;
+    const baseOe = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    for (const clawSide of [1, -1]) {
+      const isThisClaw = isAtk && activeSide === clawSide;
+      let thrustX = 0;
+      let thrustY = 0;
+      let clawOpen = baseOe;
+      if (isThisClaw) {
+        const strikePower = Math.sin(atkProg * Math.PI);
+        thrustX = strikePower * 5.5 * l;
+        thrustY = -clawSide * strikePower * 1.2 * l;
+        if (atkProg < 0.35) {
+          clawOpen = 0.35 + (0.75 - 0.35) * (atkProg / 0.35);
+        } else if (atkProg < 0.65) {
+          clawOpen = 0.04;
+        } else {
+          clawOpen = 0.04 + (baseOe - 0.04) * ((atkProg - 0.65) / 0.35);
+        }
+      } else if (isAtk) {
+        const strikePower = Math.sin(atkProg * Math.PI);
+        thrustX = -strikePower * 0.8 * l;
+      }
+      e0(e, l, W, le, clawSide, clawOpen, y, w, v, T, S, o, thrustX, thrustY);
+    }
+    e.restore();
   }
-  function e0(e, t, l, o, u, m, c, f, g, y, w, v) {
+  function e0(e, t, l, o, u, m, c, f, g, y, w, v, thrustX = 0, thrustY = 0) {
     const T = u === 1 ? 0.35 : -0.35,
       S = l + 1.5 * t,
       p = o + u * 2.2 * t,
-      j = S + 4.5 * t,
-      P = p + u * 4.5 * t;
+      j = S + 4.5 * t + thrustX * 0.4,
+      P = p + u * 4.5 * t + thrustY * 0.4;
     ((e.strokeStyle = c),
       (e.lineWidth = 2.4 * t),
       (e.lineCap = "round"),
@@ -1408,8 +1431,8 @@
       e.beginPath(),
       e.arc(j, P, 1.8 * t, 0, Math.PI * 2),
       e.fill());
-    const A = j + 5.5 * t,
-      x = P + u * 1.5 * t;
+    const A = j + 5.5 * t + thrustX * 0.6,
+      x = P + u * 1.5 * t + thrustY * 0.6;
     ((e.strokeStyle = c),
       (e.lineWidth = 2.8 * t),
       e.beginPath(),
@@ -1584,12 +1607,34 @@
       e.arc(-3 * l, A + 1.2 * l, 0.55 * l, 0, Math.PI * 2),
       e.arc(3 * l, A + 1.2 * l, 0.55 * l, 0, Math.PI * 2),
       e.fill());
-    const M = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const isAtk = !!(t.attackTimer && t.attackTimer > 0);
+    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const activeSide = t.attackClawSide || -1;
+    const baseM = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
+      const isThisClaw = isAtk && activeSide === te;
+      let thrustY = 0;
+      let thrustX = 0;
+      let clawOpen = baseM;
+      if (isThisClaw) {
+        const strikePower = Math.sin(atkProg * Math.PI);
+        thrustY = strikePower * 6.5 * l;
+        thrustX = -te * strikePower * 1.5 * l;
+        if (atkProg < 0.35) {
+          clawOpen = 0.35 + (0.75 - 0.35) * (atkProg / 0.35);
+        } else if (atkProg < 0.65) {
+          clawOpen = 0.04;
+        } else {
+          clawOpen = 0.04 + (baseM - 0.04) * ((atkProg - 0.65) / 0.35);
+        }
+      } else if (isAtk) {
+        const strikePower = Math.sin(atkProg * Math.PI);
+        thrustY = -strikePower * 0.8 * l;
+      }
       const oe = te * 3.8 * l,
         Ne = A - 1.5 * l,
-        X = te * 8.5 * l,
-        C = A + 1.5 * l;
+        X = te * 8.5 * l + thrustX * 0.4,
+        C = A + 1.5 * l + thrustY * 0.4;
       ((e.strokeStyle = y),
         (e.lineWidth = 2.4 * l),
         (e.lineCap = "round"),
@@ -1601,14 +1646,14 @@
         e.beginPath(),
         e.arc(X, C, 1.7 * l, 0, Math.PI * 2),
         e.fill());
-      const I = te * 9.8 * l,
-        be = A + 6.5 * l;
+      const I = te * 9.8 * l + thrustX,
+        be = A + 6.5 * l + thrustY;
       ((e.strokeStyle = y),
         (e.lineWidth = 2.8 * l),
-        e.beginPath(),
+        (e.beginPath(),
         e.moveTo(X, C),
         e.lineTo(I, be),
-        e.stroke(),
+        e.stroke()),
         e.save(),
         e.translate(I, be),
         e.rotate(te * 0.35),
@@ -1631,7 +1676,7 @@
         e.quadraticCurveTo(-te * 0.5 * l, 8.5 * l, te * 0.5 * l, 5.8 * l),
         e.closePath(),
         e.fill());
-      const Me = te * -M;
+      const Me = te * -clawOpen;
       (e.save(),
         e.translate(te * 1 * l, 5.5 * l),
         e.rotate(Me),
@@ -1851,12 +1896,34 @@
       e.lineTo(0.2 * l, A - 3.8 * l),
       e.closePath(),
       e.fill());
-    const M = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const isAtk = !!(t.attackTimer && t.attackTimer > 0);
+    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const activeSide = t.attackClawSide || -1;
+    const baseM = Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
+      const isThisClaw = isAtk && activeSide === te;
+      let thrustY = 0;
+      let thrustX = 0;
+      let clawOpen = baseM;
+      if (isThisClaw) {
+        const strikePower = Math.sin(atkProg * Math.PI);
+        thrustY = -strikePower * 6.5 * l;
+        thrustX = -te * strikePower * 1.5 * l;
+        if (atkProg < 0.35) {
+          clawOpen = 0.35 + (0.75 - 0.35) * (atkProg / 0.35);
+        } else if (atkProg < 0.65) {
+          clawOpen = 0.04;
+        } else {
+          clawOpen = 0.04 + (baseM - 0.04) * ((atkProg - 0.65) / 0.35);
+        }
+      } else if (isAtk) {
+        const strikePower = Math.sin(atkProg * Math.PI);
+        thrustY = strikePower * 0.8 * l;
+      }
       const oe = te * 3.8 * l,
         Ne = A + 1.5 * l,
-        X = te * 8.5 * l,
-        C = A - 1.5 * l;
+        X = te * 8.5 * l + thrustX * 0.4,
+        C = A - 1.5 * l + thrustY * 0.4;
       ((e.strokeStyle = y),
         (e.lineWidth = 2.4 * l),
         (e.lineCap = "round"),
@@ -1868,8 +1935,8 @@
         e.beginPath(),
         e.arc(X, C, 1.7 * l, 0, Math.PI * 2),
         e.fill());
-      const I = te * 9.8 * l,
-        be = A - 6.5 * l;
+      const I = te * 9.8 * l + thrustX,
+        be = A - 6.5 * l + thrustY;
       ((e.strokeStyle = y),
         (e.lineWidth = 2.8 * l),
         e.beginPath(),
@@ -1898,7 +1965,7 @@
         e.quadraticCurveTo(-te * 0.5 * l, -8.5 * l, te * 0.5 * l, -5.8 * l),
         e.closePath(),
         e.fill());
-      const Me = te * M;
+      const Me = te * clawOpen;
       (e.save(),
         e.translate(te * 1 * l, -5.5 * l),
         e.rotate(Me),

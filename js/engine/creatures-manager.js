@@ -503,6 +503,13 @@
         !this.getAnimalFireDeterrence(t, l).canAttack
       )
         return;
+
+      if (t.type === "scorpion") {
+        t.attackDuration = 0.32;
+        t.attackTimer = t.attackDuration;
+        t.attackClawSide = t.attackClawSide === 1 ? -1 : 1;
+      }
+
       const m = t.attack + (Math.random() * 2.5 - 1.2),
         c = Math.max(1, Math.round(m - o * 0.45));
       ((l.hp = Math.max(0, (l.hp ?? 100) - c)),
@@ -782,7 +789,9 @@
         }
         ((p.animTimer += t * 3),
           p.hitFlashTimer > 0 &&
-            (p.hitFlashTimer = Math.max(0, p.hitFlashTimer - t)));
+            (p.hitFlashTimer = Math.max(0, p.hitFlashTimer - t)),
+          p.attackTimer > 0 &&
+            (p.attackTimer = Math.max(0, p.attackTimer - t)));
         const P = Math.floor(p.x / this.engine.tileSize),
           A = Math.floor(p.y / this.engine.tileSize);
         if (
