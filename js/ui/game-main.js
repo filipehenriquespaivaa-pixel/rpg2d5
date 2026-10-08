@@ -34,6 +34,8 @@
       __autoCaveTimer = J.useRef(0),
       g = J.useRef({}),
       y = J.useRef({ up: !1, down: !1, left: !1, right: !1 }),
+      [dodgeMode, setDodgeMode] = J.useState(!1),
+      dodgeModeRef = J.useRef(!1),
       [w, v] = J.useState(BIOMES[BiomeId.MEADOW]),
       [T, S] = J.useState({ tx: 0, ty: 0 }),
       [p, j] = J.useState(4289),
@@ -1292,6 +1294,8 @@
         (E.isExhausted = !1),
         (E.sprinting = !1),
         (E.paralyzedTimer = 0),
+        (dodgeModeRef.current = !1),
+        setDodgeMode(!1),
         (He.current = E.stamina),
         (oa.current = !1),
         (ga.current = !1),
@@ -1902,6 +1906,116 @@
                 ? m.current.playSwordSlash()
                 : m.current.playPunchWhoosh();
       }, [vl]),
+      handleToggleDodgeMode = J.useCallback(() => {
+        const he = f.current;
+        if (he.isDead) return;
+        const maxStamina = he.maxStamina ?? 100;
+        const staminaCost = maxStamina * 0.25;
+        if (!dodgeModeRef.current) {
+          if (he.isExhausted || (he.stamina !== undefined && he.stamina < staminaCost)) {
+            if (m.current && typeof m.current.playExhaustedSigh === "function") {
+              m.current.playExhaustedSigh();
+            }
+            ve("⚠️ Energia insuficiente para ativar o modo desvio!");
+            return;
+          }
+          dodgeModeRef.current = !0;
+          setDodgeMode(!0);
+          if (m.current && typeof m.current.playEquipItem === "function") {
+            m.current.playEquipItem();
+          }
+          ve("⚡ Modo Desvio ATIVO: Toque nas setas para saltar rapidamente!");
+        } else {
+          dodgeModeRef.current = !1;
+          setDodgeMode(!1);
+          if (m.current && typeof m.current.playUnequipItem === "function") {
+            m.current.playUnequipItem();
+          }
+          ve("🚶 Modo Desvio DESATIVADO: Movimento normal.");
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("rpg_extra_button_action", {
+              detail: { player: he, dodgeMode: dodgeModeRef.current, timestamp: Date.now() },
+            }),
+          );
+          if (window.Game && typeof window.Game.onExtraAction === "function") {
+            window.Game.onExtraAction(he, dodgeModeRef.current);
+          }
+        }
+      }, [ve]),
+      handleExtraAction = handleToggleDodgeMode,
+      handleDodge = J.useCallback((dir) => {
+        const he = f.current;
+        if (he.isDead) return;
+        const maxStamina = he.maxStamina ?? 100;
+        const staminaCost = maxStamina * 0.25;
+        if (he.isExhausted || (he.stamina !== undefined && he.stamina < staminaCost)) {
+          dodgeModeRef.current = !1;
+          setDodgeMode(!1);
+          if (m.current && typeof m.current.playExhaustedSigh === "function") {
+            m.current.playExhaustedSigh();
+          }
+          ve("⚠️ Você está exausto! Modo desvio desativado automaticamente.");
+          return;
+        }
+
+        // Gasta 1/4 da energia do personagem
+        he.stamina = Math.max(0, (he.stamina ?? maxStamina) - staminaCost);
+        fa.current = 0.55;
+        if (he.stamina <= 0) {
+          he.stamina = 0;
+          he.isExhausted = !0;
+          dodgeModeRef.current = !1;
+          setDodgeMode(!1);
+          if (m.current && typeof m.current.playExhaustedSigh === "function") {
+            m.current.playExhaustedSigh();
+          }
+          ve("⚠️ Você ficou exausto! Modo desvio desativado automaticamente.");
+        }
+        He.current = he.stamina;
+        oa.current = !!he.isExhausted;
+        oe(he.stamina);
+        I(!!he.isExhausted);
+
+        let dx = 0, dy = 0;
+        if (dir === "up") dy = -1;
+        else if (dir === "down") dy = 1;
+        else if (dir === "left") dx = -1;
+        else if (dir === "right") dx = 1;
+        if (dx === 0 && dy === 0) return;
+
+        const dodgeDist = 58;
+        const oldX = he.x;
+        const oldY = he.y;
+        const preservedDirection = he.direction; // Detalhe: sem virar o personagem!
+
+        const slide = o.current.moveWithSlide(he.x, he.y, dx * dodgeDist, dy * dodgeDist, !0);
+        he.x = slide.x;
+        he.y = slide.y;
+        he.direction = preservedDirection; // Mantém a direção em que estava olhando!
+        he.invulnerableTimer = Math.max(he.invulnerableTimer || 0, 0.35); // Desvio de ataques
+
+        if (m.current && typeof m.current.playPunchWhoosh === "function") {
+          m.current.playPunchWhoosh();
+        }
+        const cEngine = c.current;
+        if (cEngine && Array.isArray(cEngine.slimeParticles)) {
+          for (let i = 0; i < 5; i++) {
+            cEngine.slimeParticles.push({
+              x: oldX + (Math.random() - 0.5) * 12,
+              y: oldY - 4 + (Math.random() - 0.5) * 8,
+              vx: -dx * 3.2 + (Math.random() - 0.5) * 2,
+              vy: -dy * 3.2 + (Math.random() - 0.5) * 2,
+              life: 0.32,
+              maxLife: 0.32,
+              type: "bubble",
+              color: "#38bdf8",
+              size: 1.8,
+            });
+          }
+        }
+      }, [ve]),
       ic = J.useCallback(
         (E, D, Q, q) => {
           const F = s0(E, D, Q);
@@ -3374,13 +3488,19 @@
                 ? "right"
                 : null,
       Bo = J.useCallback((E, D) => {
+        if (dodgeModeRef.current) {
+          if (D) {
+            handleDodge(E);
+          }
+          return;
+        }
         if (((y.current[E] = D), D)) {
           const Q = performance.now(),
             q = Se.current[E] || 0,
             F = Q - q;
           (F > 40 && F < 360 && (Ae.current[E] = !0), (Se.current[E] = Q));
         } else Ae.current[E] = !1;
-      }, []),
+      }, [handleDodge]),
       handleReadBook = J.useCallback(() => {
         if (readerOpen) {
           setReaderOpen(!1);
@@ -3452,6 +3572,7 @@
         handleRecenterCamera: Oo,
         handleRespawn: Tl,
         handleUseBeltSlot: Ur,
+        handleExtraAction: handleExtraAction,
         setSoundEnabled: M,
         showToast: ve,
       });
@@ -3475,6 +3596,7 @@
         handleRecenterCamera: Oo,
         handleRespawn: Tl,
         handleUseBeltSlot: Ur,
+        handleExtraAction: handleExtraAction,
         setSoundEnabled: M,
         showToast: ve,
       }),
@@ -3522,6 +3644,26 @@
             }
             if (q.code === "Escape" && props && typeof props.onReturnToMenu === "function") {
               props.onReturnToMenu();
+              return;
+            }
+            if (
+              dodgeModeRef.current &&
+              (
+                ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(q.code) ||
+                ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Up", "Down", "Left", "Right"].includes(q.key)
+              )
+            ) {
+              if (!q.repeat) {
+                const dir = (q.code === "ArrowUp" || q.key === "ArrowUp" || q.key === "Up")
+                  ? "up"
+                  : (q.code === "ArrowDown" || q.key === "ArrowDown" || q.key === "Down")
+                    ? "down"
+                    : (q.code === "ArrowLeft" || q.key === "ArrowLeft" || q.key === "Left")
+                      ? "left"
+                      : "right";
+                handleDodge(dir);
+              }
+              q.preventDefault();
               return;
             }
             q.code === "Space"
@@ -3924,6 +4066,10 @@
                   he.stamina >= za * wt &&
                   (he.isExhausted = !1));
             }
+            if (he.isExhausted && dodgeModeRef.current) {
+              dodgeModeRef.current = !1;
+              setDodgeMode(!1);
+            }
             const ao = he.sprinting;
             ((Math.abs((He.current ?? 100) - he.stamina) >= 2 ||
               (he.stamina <= 0.5 && He.current > 0.5) ||
@@ -4227,6 +4373,9 @@
               na = Pe.clientY;
               ia = Oa.current.x;
               Je = Oa.current.y;
+            } else if (Pe.button === 1) {
+              Pe.preventDefault();
+              handleExtraAction();
             } else if (Pe.button === 2) {
               Pe.preventDefault();
               mouseScreenPos.current = { x: Pe.clientX, y: Pe.clientY, active: !0 };
@@ -4310,6 +4459,12 @@
               const De = Math.min(2.5, Math.max(0.25, +(Ke * aa).toFixed(2)));
               return ((Ka.current = De), De);
             });
+          },
+          handleAuxClickGlobal = (Pe) => {
+            if (Pe.button === 1) {
+              Pe.preventDefault();
+              handleExtraAction();
+            }
           };
         return (
           E.addEventListener("touchstart", ce, { passive: !1 }),
@@ -4317,9 +4472,11 @@
           E.addEventListener("touchend", Ce),
           E.addEventListener("touchcancel", Ce),
           E.addEventListener("mousedown", he),
+          E.addEventListener("auxclick", handleAuxClickGlobal),
           E.addEventListener("contextmenu", noContext),
           window.addEventListener("mousemove", $e),
           window.addEventListener("mouseup", da),
+          window.addEventListener("auxclick", handleAuxClickGlobal),
           E.addEventListener("dblclick", Ye),
           E.addEventListener("wheel", Ge, { passive: !1 }),
           () => {
@@ -4328,14 +4485,16 @@
               E.removeEventListener("touchend", Ce),
               E.removeEventListener("touchcancel", Ce),
               E.removeEventListener("mousedown", he),
+              E.removeEventListener("auxclick", handleAuxClickGlobal),
               E.removeEventListener("contextmenu", noContext),
               window.removeEventListener("mousemove", $e),
               window.removeEventListener("mouseup", da),
+              window.removeEventListener("auxclick", handleAuxClickGlobal),
               E.removeEventListener("dblclick", Ye),
               E.removeEventListener("wheel", Ge));
           }
         );
-      }, [Oo]),
+      }, [Oo, handleExtraAction]),
       h.jsxs("div", {
         ref: e,
         className: "relative w-full h-full overflow-hidden bg-slate-950",
@@ -4375,6 +4534,8 @@
             toastMessage: se,
             minimapRef: l,
             onMobileDirection: Bo,
+            dodgeMode: dodgeMode,
+            onExtraAction: handleExtraAction,
             isCameraOffset: At,
             onRecenterCamera: Oo,
             onToggleTorch: dr,

@@ -55,10 +55,35 @@
     onRoastFish: X,
     savedCampfire: C = null,
     onUseBeltSlot: I,
+    onExtraAction: onExtraActionProp,
+    dodgeMode: dodgeModeProp,
     devMode: devModeProp,
     worldEngine: worldEngineProp,
   }) => {
     var So;
+    const [extraActive, setExtraActive] = J.useState(false);
+
+    J.useEffect(() => {
+      const onExtraEvt = () => {
+        setExtraActive(true);
+        setTimeout(() => setExtraActive(false), 280);
+      };
+      window.addEventListener("rpg_extra_button_action", onExtraEvt);
+      return () => window.removeEventListener("rpg_extra_button_action", onExtraEvt);
+    }, []);
+
+    const handleExtraClick = (We) => {
+      if (We && typeof We.preventDefault === "function") We.preventDefault();
+      setExtraActive(true);
+      setTimeout(() => setExtraActive(false), 280);
+      if (typeof onExtraActionProp === "function") {
+        onExtraActionProp();
+      } else {
+        window.dispatchEvent(
+          new CustomEvent("rpg_extra_button_action", { detail: { timestamp: Date.now() } })
+        );
+      }
+    };
     const isDevMode = Boolean(
       typeof devModeProp === "boolean"
         ? devModeProp
@@ -2069,78 +2094,144 @@
         }),
         h.jsxs("div", {
           className:
-            "pointer-events-auto md:hidden absolute bottom-4 right-4 z-30 grid grid-cols-3 grid-rows-3 gap-1.5 w-32 h-32 opacity-80 hover:opacity-100 active:opacity-100 transition-opacity select-none",
+            "pointer-events-auto absolute bottom-4 right-4 z-30 flex flex-col items-center gap-2 select-none",
           children: [
-            h.jsx("div", {}),
-            h.jsx("button", {
-              id: "touch-up-btn",
-              onMouseDown: () => M("up", !0),
-              onMouseUp: () => M("up", !1),
-              onTouchStart: (We) => {
-                (We.preventDefault(), M("up", !0));
-              },
-              onTouchEnd: (We) => {
-                (We.preventDefault(), M("up", !1));
-              },
+            h.jsxs("button", {
+              id: "touch-extra-btn",
+              onClick: handleExtraClick,
+              onAuxClick: handleExtraClick,
+              onContextMenu: (We) => We.preventDefault(),
+              className: `group relative flex items-center justify-center gap-1.5 px-3 py-1.5 w-32 rounded-xl border font-bold text-xs shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer select-none ${
+                dodgeModeProp
+                  ? "bg-gradient-to-r from-cyan-500 to-sky-600 text-slate-950 border-cyan-300 shadow-cyan-500/60 ring-2 ring-cyan-400 font-black scale-105"
+                  : extraActive
+                    ? "bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/50 scale-105"
+                    : "bg-slate-900/85 hover:bg-slate-800 border-sky-400/40 text-sky-200 hover:text-white hover:border-sky-300"
+              }`,
+              title: dodgeModeProp
+                ? "Modo Desvio ATIVO: As setas fazem o personagem saltar rapidamente sem virar (Gasta 1/4 da energia)"
+                : "Modo Desvio DESATIVADO (Clique ou use a Roda do Mouse para alternar)",
+              children: [
+                h.jsx("span", { className: "text-sm", children: dodgeModeProp ? "⚡" : "🖱️" }),
+                h.jsx("span", {
+                  className: "text-[11px] font-black tracking-wider uppercase",
+                  children: dodgeModeProp ? "DESVIO ON" : "DESVIO OFF",
+                }),
+                h.jsx("span", {
+                  className: `text-[8px] font-mono px-1 py-0.2 rounded border ${
+                    dodgeModeProp
+                      ? "bg-black/80 text-cyan-300 border-cyan-400/50"
+                      : "bg-black/60 text-sky-300 border-sky-400/30"
+                  }`,
+                  children: "RODA",
+                }),
+              ],
+            }),
+            h.jsxs("div", {
               className:
-                "flex items-center justify-center rounded-xl bg-slate-800/80 border border-white/20 text-white active:bg-sky-600 text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform",
-              title: "Mover para Cima",
-              children: "▲",
+                "grid grid-cols-3 grid-rows-3 gap-1.5 w-32 h-32 opacity-80 hover:opacity-100 active:opacity-100 transition-opacity",
+              children: [
+                h.jsx("div", {}),
+                h.jsx("button", {
+                  id: "touch-up-btn",
+                  onMouseDown: () => M("up", !0),
+                  onMouseUp: () => M("up", !1),
+                  onTouchStart: (We) => {
+                    (We.preventDefault(), M("up", !0));
+                  },
+                  onTouchEnd: (We) => {
+                    (We.preventDefault(), M("up", !1));
+                  },
+                  className: `flex items-center justify-center rounded-xl border text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform ${
+                    dodgeModeProp
+                      ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
+                      : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
+                  }`,
+                  title: dodgeModeProp
+                    ? "Saltar / Desviar para Cima (Gasta 1/4 da energia)"
+                    : "Mover para Cima",
+                  children: "▲",
+                }),
+                h.jsx("div", {}),
+                h.jsx("button", {
+                  id: "touch-left-btn",
+                  onMouseDown: () => M("left", !0),
+                  onMouseUp: () => M("left", !1),
+                  onTouchStart: (We) => {
+                    (We.preventDefault(), M("left", !0));
+                  },
+                  onTouchEnd: (We) => {
+                    (We.preventDefault(), M("left", !1));
+                  },
+                  className: `flex items-center justify-center rounded-xl border text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform ${
+                    dodgeModeProp
+                      ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
+                      : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
+                  }`,
+                  title: dodgeModeProp
+                    ? "Saltar / Desviar para a Esquerda (Gasta 1/4 da energia)"
+                    : "Mover para a Esquerda",
+                  children: "◀",
+                }),
+                h.jsx("div", {
+                  className: `flex flex-col items-center justify-center rounded-xl border text-[9px] font-bold transition-all ${
+                    dodgeModeProp
+                      ? "bg-cyan-500/85 border-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/40 font-black animate-pulse"
+                      : le
+                        ? "bg-emerald-600/80 border-emerald-400 text-white shadow-lg shadow-emerald-950/40 animate-pulse"
+                        : W
+                          ? "bg-rose-900/70 border-rose-500 text-rose-300"
+                          : "bg-slate-900/60 border-white/10 text-slate-400"
+                  }`,
+                  title: dodgeModeProp
+                    ? "Modo Desvio ATIVO: Toque nas setas para saltar sem virar!"
+                    : "Dica: dê 2 toques rápidos em qualquer direção para correr!",
+                  children: dodgeModeProp ? "⚡DODGE" : le ? "⚡RUN" : W ? "EXAUSTO" : "2x",
+                }),
+                h.jsx("button", {
+                  id: "touch-right-btn",
+                  onMouseDown: () => M("right", !0),
+                  onMouseUp: () => M("right", !1),
+                  onTouchStart: (We) => {
+                    (We.preventDefault(), M("right", !0));
+                  },
+                  onTouchEnd: (We) => {
+                    (We.preventDefault(), M("right", !1));
+                  },
+                  className: `flex items-center justify-center rounded-xl border text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform ${
+                    dodgeModeProp
+                      ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
+                      : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
+                  }`,
+                  title: dodgeModeProp
+                    ? "Saltar / Desviar para a Direita (Gasta 1/4 da energia)"
+                    : "Mover para a Direita",
+                  children: "▶",
+                }),
+                h.jsx("div", {}),
+                h.jsx("button", {
+                  id: "touch-down-btn",
+                  onMouseDown: () => M("down", !0),
+                  onMouseUp: () => M("down", !1),
+                  onTouchStart: (We) => {
+                    (We.preventDefault(), M("down", !0));
+                  },
+                  onTouchEnd: (We) => {
+                    (We.preventDefault(), M("down", !1));
+                  },
+                  className: `flex items-center justify-center rounded-xl border text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform ${
+                    dodgeModeProp
+                      ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
+                      : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
+                  }`,
+                  title: dodgeModeProp
+                    ? "Saltar / Desviar para Baixo (Gasta 1/4 da energia)"
+                    : "Mover para Baixo",
+                  children: "▼",
+                }),
+                h.jsx("div", {}),
+              ],
             }),
-            h.jsx("div", {}),
-            h.jsx("button", {
-              id: "touch-left-btn",
-              onMouseDown: () => M("left", !0),
-              onMouseUp: () => M("left", !1),
-              onTouchStart: (We) => {
-                (We.preventDefault(), M("left", !0));
-              },
-              onTouchEnd: (We) => {
-                (We.preventDefault(), M("left", !1));
-              },
-              className:
-                "flex items-center justify-center rounded-xl bg-slate-800/80 border border-white/20 text-white active:bg-sky-600 text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform",
-              title: "Mover para a Esquerda",
-              children: "◀",
-            }),
-            h.jsx("div", {
-              className: `flex flex-col items-center justify-center rounded-xl border text-[9px] font-bold transition-all ${le ? "bg-emerald-600/80 border-emerald-400 text-white shadow-lg shadow-emerald-950/40 animate-pulse" : W ? "bg-rose-900/70 border-rose-500 text-rose-300" : "bg-slate-900/60 border-white/10 text-slate-400"}`,
-              title:
-                "Dica: dê 2 toques rápidos em qualquer direção para correr!",
-              children: le ? "⚡RUN" : W ? "EXAUSTO" : "2x",
-            }),
-            h.jsx("button", {
-              id: "touch-right-btn",
-              onMouseDown: () => M("right", !0),
-              onMouseUp: () => M("right", !1),
-              onTouchStart: (We) => {
-                (We.preventDefault(), M("right", !0));
-              },
-              onTouchEnd: (We) => {
-                (We.preventDefault(), M("right", !1));
-              },
-              className:
-                "flex items-center justify-center rounded-xl bg-slate-800/80 border border-white/20 text-white active:bg-sky-600 text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform",
-              title: "Mover para a Direita",
-              children: "▶",
-            }),
-            h.jsx("div", {}),
-            h.jsx("button", {
-              id: "touch-down-btn",
-              onMouseDown: () => M("down", !0),
-              onMouseUp: () => M("down", !1),
-              onTouchStart: (We) => {
-                (We.preventDefault(), M("down", !0));
-              },
-              onTouchEnd: (We) => {
-                (We.preventDefault(), M("down", !1));
-              },
-              className:
-                "flex items-center justify-center rounded-xl bg-slate-800/80 border border-white/20 text-white active:bg-sky-600 text-base shadow-lg backdrop-blur-sm active:scale-95 transition-transform",
-              title: "Mover para Baixo",
-              children: "▼",
-            }),
-            h.jsx("div", {}),
           ],
         }),
         ne &&
