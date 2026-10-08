@@ -583,13 +583,16 @@
         (t.hp = 0),
         (t.deathTimer = 0),
         (t.paralyzedTimer = 0),
+        (t.capturedByScorpionId = null),
         (l = this.audio) == null || l.playPlayerDeath());
-      for (const o of this.monsters)
+      for (const o of this.monsters) {
+        o.isCapturingPlayer && (o.isCapturingPlayer = !1);
         o.attached &&
           ((o.attached = !1),
           (o.isLeaping = !1),
           (o.vx = (Math.random() - 0.5) * 5),
           (o.vy = (Math.random() - 0.5) * 5));
+      }
       ((t.attachedSlimes = 0),
         this.floatingTexts.push({
           id: `death_${this.nextId++}`,
@@ -608,6 +611,7 @@
         (t.poisonTimer = 0),
         (t.poisonTickTimer = 0),
         (t.paralyzedTimer = 0),
+        (t.capturedByScorpionId = null),
         (t.attachedSlimes = 0),
         (t.invulnerableTimer = 3.5),
         (t.deathTimer = 0),
@@ -615,8 +619,10 @@
         (t.y = o),
         (t.vx = 0),
         (t.vy = 0));
-      for (const m of this.monsters)
+      for (const m of this.monsters) {
+        m.isCapturingPlayer && (m.isCapturingPlayer = !1);
         m.attached && ((m.attached = !1), (m.isLeaping = !1));
+      }
       ((u = this.audio) == null || u.playPlayerRespawn(),
         this.floatingTexts.push({
           id: `respawn_${this.nextId++}`,
@@ -654,9 +660,37 @@
         if (m.hp <= 0) continue;
         const dist = Math.hypot(m.x - fromX, m.y - fromY);
         const isHostile = !isPreyType(m.type);
-        const isChasing = m.attached || (isHostile && dist <= 180);
+        const isChasing = m.attached || (isHostile && dist <= (m.isGiantScorpion ? 340 : 180));
         if (isChasing) {
+          // Escorpiões Gigantes não entram na caverna! Eles ficam na entrada tentando puxar o player com a garra para fora.
+          if (m.isGiantScorpion && toUnderground) {
+            m.isUnderground = !1;
+            const e = this.engine;
+            const cCoords = e.activeCaveEntranceCoords || {
+              tx: Math.floor(toX / e.tileSize),
+              ty: Math.floor(toY / e.tileSize),
+            };
+            m.caveEntranceTx = cCoords.tx;
+            m.caveEntranceTy = cCoords.ty;
+            m.caveDoorX = cCoords.tx * e.tileSize + e.tileSize / 2;
+            m.caveDoorY = cCoords.ty * e.tileSize + e.tileSize / 2 - 2;
+            m.x = m.caveDoorX;
+            m.y = m.caveDoorY + 18;
+            m.vx = 0;
+            m.vy = 0;
+            m.facing = "up";
+            m.isWaitingOutsideCave = !0;
+            m.caveReachCooldown = 0.45;
+            m.caveReachTimer = 0;
+            m.caveReachProg = 0;
+            m.isPullingFromCave = !1;
+            continue;
+          }
           m.isUnderground = toUnderground;
+          m.isWaitingOutsideCave = !1;
+          m.isPullingFromCave = !1;
+          m.caveReachTimer = 0;
+          m.caveReachProg = 0;
           const relAngle =
             Math.atan2(m.y - fromY, m.x - fromX) || Math.random() * Math.PI * 2;
           const spawnDist = Math.max(16, Math.min(dist * 0.7, 44));
@@ -831,8 +865,148 @@
       for (let S = this.monsters.length - 1; S >= 0; S--) {
         const p = this.monsters[S];
         if (p.isUnderground !== o) {
+          // Escorpião Gigante do lado de fora da caverna: permanece vivo na entrada e enfia a garra pela abertura para tentar pegar e retirar o player da caverna!
+          if (p.isGiantScorpion && !p.isUnderground && o && this.engine.undergroundLevel === 1) {
+            if (!isNightTime) {
+              this.monsters.splice(S, 1);
+              continue;
+            }
+            p.animTimer += t * 3;
+            if (p.hitFlashTimer > 0) p.hitFlashTimer = Math.max(0, p.hitFlashTimer - t);
+            const cCoords = this.engine.activeCaveEntranceCoords;
+            const doorTx = p.caveEntranceTx !== void 0 ? p.caveEntranceTx : (cCoords ? cCoords.tx : Math.floor(p.x / this.engine.tileSize));
+            const doorTy = p.caveEntranceTy !== void 0 ? p.caveEntranceTy : (cCoords ? cCoords.ty : Math.floor(p.y / this.engine.tileSize));
+            const doorX = doorTx * this.engine.tileSize + this.engine.tileSize / 2;
+            const doorY = doorTy * this.engine.tileSize + this.engine.tileSize / 2 - 2;
+            p.caveDoorX = doorX;
+            p.caveDoorY = doorY;
+            const distPlayerToDoor = Math.hypot(l.x - doorX, l.y - doorY);
+            if (distPlayerToDoor > 680) {
+              this.monsters.splice(S, 1);
+              continue;
+            }
+            if (p.isPullingFromCave) {
+              if (l.isDead || l.capturedByScorpionId !== p.id) {
+                p.isPullingFromCave = !1;
+                p.caveReachTimer = 0;
+                p.caveReachProg = 0;
+              } else {
+                const pullDur = p.cavePullDuration || 1.15;
+                p.cavePullProgress = Math.min(1, (p.cavePullProgress || 0) + t / pullDur);
+                const startX = p.cavePullStartX ?? l.x;
+                const startY = p.cavePullStartY ?? l.y;
+                l.x = startX + (doorX - startX) * p.cavePullProgress;
+                l.y = startY + (doorY + 4 - startY) * p.cavePullProgress;
+                l.vx = 0;
+                l.vy = 0;
+                l.isMoving = !1;
+                if (p.cavePullProgress >= 1) {
+                  // Retirou o jogador da caverna para a superfície e agora o leva até a boca!
+                  p.isPullingFromCave = !1;
+                  p.caveReachTimer = 0;
+                  p.caveReachProg = 0;
+                  p.isWaitingOutsideCave = !1;
+                  p.x = doorX;
+                  p.y = doorY + 42;
+                  p.facing = "up";
+                  p.isCapturingPlayer = !0;
+                  p.captureProgress = 0;
+                  p.capturePullDuration = 2.15;
+                  p.captureStartLocalX = 0;
+                  p.captureStartLocalY = -28;
+                  l._pulledOutOfCaveByScorpion = {
+                    tx: doorTx,
+                    ty: doorTy,
+                    x: doorX,
+                    y: doorY + 14,
+                  };
+                }
+              }
+              continue;
+            }
+            const maxCaveClawReach = 108;
+            if (p.caveReachTimer && p.caveReachTimer > 0) {
+              p.caveReachTimer = Math.max(0, p.caveReachTimer - t);
+              const rDur = p.caveReachDuration || 0.72;
+              p.caveReachProg = Math.max(0, Math.min(1, 1 - p.caveReachTimer / rDur));
+              if (p.caveReachProg < 0.42 && distPlayerToDoor <= maxCaveClawReach + 24) {
+                const angToP = Math.atan2(l.y - doorY, l.x - doorX);
+                const clampedDist = Math.min(maxCaveClawReach, distPlayerToDoor);
+                const desX = doorX + Math.cos(angToP) * clampedDist;
+                const desY = doorY + Math.sin(angToP) * clampedDist;
+                p.caveReachTargetX = p.caveReachTargetX !== void 0 ? p.caveReachTargetX + (desX - p.caveReachTargetX) * 0.35 : desX;
+                p.caveReachTargetY = p.caveReachTargetY !== void 0 ? p.caveReachTargetY + (desY - p.caveReachTargetY) * 0.35 : desY;
+              }
+              const ext = Math.sin(p.caveReachProg * Math.PI);
+              const tipX = doorX + ((p.caveReachTargetX ?? doorX) - doorX) * ext;
+              const tipY = doorY + 4 + ((p.caveReachTargetY ?? (doorY + 26)) - (doorY + 4)) * ext;
+              p._caveClawTipX = tipX;
+              p._caveClawTipY = tipY;
+              const clawRad = Math.max(8, 3.8 * (p.scale || 3.4));
+              p._caveClawRadius = clawRad;
+              const playerHitRadius = Math.max(this.engine.footHX || 6, this.engine.footHY || 5) + 4;
+              if (
+                !p.caveReachHitApplied &&
+                p.caveReachProg >= 0.2 &&
+                p.caveReachProg <= 0.82 &&
+                !l.isDead &&
+                !l.capturedByScorpionId &&
+                Math.hypot(l.x - tipX, l.y - tipY) <= clawRad + playerHitRadius
+              ) {
+                p.caveReachHitApplied = !0;
+                this.applyMonsterHitToPlayer(p, l, c, !1, tipX, tipY);
+                if (!l.isDead) {
+                  // Agarrou o jogador dentro da caverna e começa a puxá-lo para fora!
+                  p.isPullingFromCave = !0;
+                  p.cavePullProgress = 0;
+                  p.cavePullDuration = 1.15;
+                  p.cavePullStartX = l.x;
+                  p.cavePullStartY = l.y;
+                  const singlePunchDmg = Math.max(1, 5 - (p.defense || 5) + 0.5);
+                  p.captureBreakDamageNeeded = Math.round(singlePunchDmg * 3);
+                  p.captureDamageTaken = 0;
+                  l.capturedByScorpionId = p.id;
+                  l.vx = 0;
+                  l.vy = 0;
+                  l.isMoving = !1;
+                }
+              }
+              if (p.caveReachTimer <= 0) {
+                p.caveReachProg = 0;
+              }
+            } else {
+              p.caveReachProg = 0;
+              p.caveReachCooldown = Math.max(0, (p.caveReachCooldown || 0) - t);
+              const fireDet = this.getAnimalFireDeterrence(p, l);
+              if (
+                p.caveReachCooldown <= 0 &&
+                !l.isDead &&
+                !l.capturedByScorpionId &&
+                distPlayerToDoor <= maxCaveClawReach &&
+                fireDet.canAttack
+              ) {
+                p.caveReachDuration = 0.72;
+                p.caveReachTimer = p.caveReachDuration;
+                p.caveReachProg = 0.01;
+                p.caveReachHitApplied = !1;
+                p.attackClawSide = l.x < doorX ? -1 : 1;
+                const angToP = Math.atan2(l.y - doorY, l.x - doorX);
+                const clampedDist = Math.min(maxCaveClawReach, Math.max(20, distPlayerToDoor));
+                p.caveReachTargetX = doorX + Math.cos(angToP) * clampedDist;
+                p.caveReachTargetY = doorY + Math.sin(angToP) * clampedDist;
+                p.caveReachCooldown = 1.25;
+              }
+            }
+            continue;
+          }
           this.monsters.splice(S, 1);
           continue;
+        }
+        if (p.isWaitingOutsideCave && !o) {
+          p.isWaitingOutsideCave = !1;
+          p.caveReachTimer = 0;
+          p.caveReachProg = 0;
+          p.isPullingFromCave = !1;
         }
         const j = Math.hypot(l.x - p.x, l.y - p.y);
         if (j > 680) {
@@ -877,6 +1051,10 @@
           }
           // Ao amanhecer, os escorpiões gigantes noturnos também retornam para debaixo da areia
           if (!p.isUnderground && !isNightTime && p.isGiantScorpion && !p.burrowing) {
+            if (p.isCapturingPlayer) {
+              p.isCapturingPlayer = !1;
+              if (l.capturedByScorpionId === p.id) l.capturedByScorpionId = null;
+            }
             p.burrowing = !0;
             p.burrowDuration = 1.1;
             p.burrowTimer = 1.1;
@@ -942,9 +1120,62 @@
             if (p.stingerAttackCooldown && p.stingerAttackCooldown > 0) {
               p.stingerAttackCooldown = Math.max(0, p.stingerAttackCooldown - t);
             }
-            // Sincroniza a velocidade do Escorpião Gigante com a velocidade do player correndo
+            // Velocidade do Escorpião Gigante: 10% mais lento que a velocidade do player correndo
             const playerBaseSpeed = l.speed || 2.15;
-            p.speed = playerBaseSpeed * 1.6 * 0.85; // 1.6x sprint no deserto (0.85x) = mesma velocidade do player correndo na areia (~2.93)
+            p.speed = playerBaseSpeed * 1.6 * 0.85 * 0.9;
+            if (p.isCapturingPlayer) {
+              if (l.isDead || l.capturedByScorpionId !== p.id) {
+                p.isCapturingPlayer = !1;
+              } else {
+                p.vx = 0;
+                p.vy = 0;
+                const pullDuration = p.capturePullDuration || 2.35;
+                p.captureProgress = Math.min(1, (p.captureProgress || 0) + t / pullDuration);
+                if (typeof getScorpionHitColliders === "function") {
+                  const cols = getScorpionHitColliders(p);
+                  const activePart = p.attackClawSide === -1 ? "claw_left" : "claw_right";
+                  const grabCol = cols.find((col) => col.part === activePart) || cols[0];
+                  if (grabCol) {
+                    l.x = grabCol.x;
+                    l.y = grabCol.y;
+                    l.vx = 0;
+                    l.vy = 0;
+                    l.isMoving = !1;
+                  }
+                }
+                if (p.captureProgress >= 1) {
+                  p.isCapturingPlayer = !1;
+                  l.capturedByScorpionId = null;
+                  l.hp = 0;
+                  this.floatingTexts.push({
+                    id: `fatal_bite_${this.nextId++}`,
+                    x: l.x,
+                    y: l.y - 26,
+                    text: "💀 DEVORADO! MORDIDA FATAL!",
+                    color: "#dc2626",
+                    isCrit: !0,
+                    life: 2.2,
+                  });
+                  for (let k = 0; k < 14; k++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const spd = 2.5 + Math.random() * 5;
+                    this.hitParticles.push({
+                      x: l.x,
+                      y: l.y - 6,
+                      vx: Math.cos(ang) * spd,
+                      vy: Math.sin(ang) * spd,
+                      life: 0.9,
+                      color: k % 2 === 0 ? "#dc2626" : "#f87171",
+                      size: 2.8 + Math.random() * 2.2,
+                    });
+                  }
+                  if (!l.isDead) {
+                    this.handlePlayerDeath(l);
+                  }
+                }
+                continue;
+              }
+            }
           }
           const hasActiveScorpionStrike = p.isGiantScorpion
             ? ((p.clawAttackTimer && p.clawAttackTimer > 0 && !p.clawHitApplied) ||
@@ -1001,6 +1232,35 @@
                   col.x,
                   col.y,
                 );
+                // 30% de chance da garra do Escorpião Gigante capturar o jogador e levá-lo até a boca!
+                if (
+                  p.isGiantScorpion &&
+                  !isSting &&
+                  !l.isDead &&
+                  !l.capturedByScorpionId &&
+                  Math.random() < 0.3
+                ) {
+                  p.isCapturingPlayer = !0;
+                  p.captureProgress = 0;
+                  p.capturePullDuration = 2.35;
+                  p.clawAttackTimer = 0;
+                  // Equivalente ao dano de 3 socos do player na defesa do escorpião gigante (5 atk - 5 def => 1~2 por soco => 4 de dano total para 3 socos)
+                  const singlePunchDmg = Math.max(1, 5 - (p.defense || 5) + 0.5);
+                  p.captureBreakDamageNeeded = Math.round(singlePunchDmg * 3);
+                  p.captureDamageTaken = 0;
+                  if (p.facing === "down" || p.facing === "up") {
+                    p.captureStartLocalX = col.x - p.x;
+                    p.captureStartLocalY = col.y - p.y;
+                  } else {
+                    const uDir = p.facing === "left" ? -1 : 1;
+                    p.captureStartLocalX = (col.x - p.x) * uDir;
+                    p.captureStartLocalY = col.y - p.y;
+                  }
+                  l.capturedByScorpionId = p.id;
+                  l.vx = 0;
+                  l.vy = 0;
+                  l.isMoving = !1;
+                }
                 break;
               }
             }
@@ -1696,7 +1956,7 @@
           maxHp: 95,
           attack: 14,
           defense: 5,
-          speed: (player.speed || 2.15) * 1.6 * 0.85,
+          speed: (player.speed || 2.15) * 1.6 * 0.85 * 0.9,
           color: "#b45309",
           accentColor: "#ef4444",
           scale: baseScale,
@@ -2266,16 +2526,53 @@
       };
       for (let S = this.monsters.length - 1; S >= 0; S--) {
         const p = this.monsters[S];
-        if (p.isUnderground !== u) continue;
-        const j = Math.hypot(p.x - f, p.y - g),
-          P = !!(p.type === "slime" && p.attached);
-        const monsterRadius = (p.size || 16) + (lockedPoint ? 14 : 0);
-        if (j <= w + monsterRadius || P) {
+        const isCaveReachActive = !!(
+          p.isGiantScorpion &&
+          !p.isUnderground &&
+          u &&
+          ((p.caveReachTimer && p.caveReachTimer > 0) || p.isPullingFromCave)
+        );
+        if (p.isUnderground !== u && !isCaveReachActive) continue;
+        const hitCheckX = isCaveReachActive ? (p._caveClawTipX ?? p.caveDoorX ?? p.x) : p.x;
+        const hitCheckY = isCaveReachActive ? (p._caveClawTipY ?? p.caveDoorY ?? p.y) : p.y;
+        const j = Math.hypot(hitCheckX - f, hitCheckY - g),
+          P = !!(p.type === "slime" && p.attached),
+          isCapturingMe = !!(
+            p.isGiantScorpion &&
+            (p.isCapturingPlayer || p.isPullingFromCave) &&
+            t.capturedByScorpionId === p.id
+          );
+        const monsterRadius = (isCaveReachActive ? (p._caveClawRadius || 14) : (p.size || 16)) + (lockedPoint ? 14 : 0);
+        if (j <= w + monsterRadius || P || isCapturingMe) {
           T.hitCount++;
           const A = Math.random() < 0.22,
             x = Math.floor(Math.random() * 3) - 1,
             M = Math.max(1, l - p.defense + x),
             $ = A ? Math.round(M * 1.6) : M;
+          let brokeCapture = !1;
+          if (isCapturingMe) {
+            p.captureDamageTaken = (p.captureDamageTaken || 0) + $;
+            const needed = p.captureBreakDamageNeeded || 4;
+            if (p.captureDamageTaken >= needed || p.hp - $ <= 0) {
+              brokeCapture = !0;
+              const wasPullingFromCave = !!p.isPullingFromCave;
+              p.isCapturingPlayer = !1;
+              p.isPullingFromCave = !1;
+              p.caveReachTimer = 0;
+              p.caveReachProg = 0;
+              p.caveReachCooldown = 1.6;
+              p.clawAttackCooldown = 1.4;
+              p.stingerAttackCooldown = Math.max(p.stingerAttackCooldown || 0, 1.1);
+              t.capturedByScorpionId = null;
+              t.invulnerableTimer = Math.max(t.invulnerableTimer || 0, 0.85);
+              const refX = wasPullingFromCave ? (p.caveDoorX ?? p.x) : p.x;
+              const refY = wasPullingFromCave ? (p.caveDoorY ?? p.y) : p.y;
+              const escAngle = Math.atan2(t.y - refY, t.x - refX) || Math.PI / 2;
+              const _esc = this.engine.moveWithSlide(t.x, t.y, Math.cos(escAngle) * 28, Math.sin(escAngle) * 28, !0);
+              t.x = _esc.x;
+              t.y = _esc.y;
+            }
+          }
           if (
             ((p.hp -= $),
             (p.hitFlashTimer = 0.22),
@@ -2287,7 +2584,7 @@
             ((p.attached = !1), (p.isLeaping = !1), (p.attackCooldown = 1.8));
             const z = Math.random() * Math.PI * 2;
             ((p.x = t.x + Math.cos(z) * 28), (p.y = t.y + Math.sin(z) * 28));
-          } else {
+          } else if (!isCapturingMe) {
             const z = A ? 14 : 9;
             m && v !== void 0
               ? ((p.x += Math.cos(v) * z), (p.y += Math.sin(v) * z))
@@ -2324,9 +2621,15 @@
             id: `dmg_${this.nextId++}`,
             x: p.x,
             y: p.y - 18,
-            text: P ? `-${$} (Soltou!)` : A ? `CRÍTICO! -${$}` : `-${$}`,
-            color: P ? "#38bdf8" : A ? "#f59e0b" : "#f87171",
-            isCrit: A,
+            text: brokeCapture
+              ? `-${$} (ESCAPOU DA GARRA!)`
+              : P
+                ? `-${$} (Soltou!)`
+                : A
+                  ? `CRÍTICO! -${$}`
+                  : `-${$}`,
+            color: brokeCapture || P ? "#38bdf8" : A ? "#f59e0b" : "#f87171",
+            isCrit: A || brokeCapture,
             life: 1,
           });
           for (let z = 0; z < (A ? 8 : 5); z++) {
@@ -2447,6 +2750,19 @@
     getRenderItems(t, l, o, u, m) {
       const c = [];
       for (const f of this.monsters) {
+        if (f.isUnderground !== this.lastIsUnderground) {
+          if (
+            f.isGiantScorpion &&
+            !f.isUnderground &&
+            this.lastIsUnderground &&
+            ((f.caveReachProg && f.caveReachProg > 0) || f.isPullingFromCave) &&
+            typeof drawGiantScorpionCaveReachClaw === "function"
+          ) {
+            const sortY = (f._caveClawTipY ?? f.caveDoorY ?? f.y) + 2;
+            c.push({ y: sortY, draw: () => drawGiantScorpionCaveReachClaw(t, f) });
+          }
+          continue;
+        }
         const pad = Math.max(60, (f.scale || 1) * 28);
         f.x < l - pad ||
           f.x > o + pad ||

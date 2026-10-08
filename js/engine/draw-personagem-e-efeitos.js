@@ -1412,7 +1412,9 @@
       (e.strokeStyle = w),
       (e.lineWidth = 1.1 * l),
       e.stroke());
-    const te = Math.sin(t.animTimer * 6) * 0.4 * l;
+    const te = t.isCapturingPlayer
+      ? Math.abs(Math.sin(t.animTimer * 18)) * 1.4 * l
+      : Math.sin(t.animTimer * 6) * 0.4 * l;
     ((e.fillStyle = v),
       e.beginPath(),
       e.moveTo(W + 3.8 * l, le - 1.2 * l),
@@ -1484,11 +1486,24 @@
     const activeSide = t.attackClawSide || -1;
     const baseOe = isStingerAtk && !isAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const clawSide of [1, -1]) {
-      const isThisClaw = isAtk && activeSide === clawSide;
+      const isThisClaw = (isAtk && activeSide === clawSide) || (t.isCapturingPlayer && activeSide === clawSide);
       let thrustX = 0;
       let thrustY = 0;
       let clawOpen = baseOe;
-      if (isThisClaw) {
+      if (t.isCapturingPlayer && activeSide === clawSide) {
+        const capProg = Math.max(0, Math.min(1, t.captureProgress || 0));
+        const restClawTipX = W + 19.5 * l,
+          restClawTipY = le + clawSide * 9.5 * l,
+          mouthLocalX = W + 4.8 * l,
+          mouthLocalY = le;
+        const startLocalX = t.captureStartLocalX !== void 0 ? t.captureStartLocalX : restClawTipX;
+        const startLocalY = t.captureStartLocalY !== void 0 ? t.captureStartLocalY : restClawTipY;
+        const curLocalX = startLocalX + (mouthLocalX - startLocalX) * capProg;
+        const curLocalY = startLocalY + (mouthLocalY - startLocalY) * capProg;
+        thrustX = curLocalX - restClawTipX;
+        thrustY = curLocalY - restClawTipY;
+        clawOpen = 0.02;
+      } else if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
         if (clawTgtX !== void 0 && clawTgtY !== void 0) {
           const restClawTipX = W + 19.5 * l,
@@ -1682,7 +1697,9 @@
       (e.strokeStyle = w),
       (e.lineWidth = 1.1 * l),
       e.stroke());
-    const x = Math.sin(t.animTimer * 6) * 0.4 * l;
+    const x = t.isCapturingPlayer
+      ? Math.abs(Math.sin(t.animTimer * 18)) * 1.4 * l
+      : Math.sin(t.animTimer * 6) * 0.4 * l;
     ((e.fillStyle = v),
       e.beginPath(),
       e.moveTo(-1.8 * l, A + 3.2 * l),
@@ -1746,11 +1763,24 @@
     const activeSide = t.attackClawSide || -1;
     const baseM = isStingerAtk && !isAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
-      const isThisClaw = isAtk && activeSide === te;
+      const isThisClaw = (isAtk && activeSide === te) || (t.isCapturingPlayer && activeSide === te);
       let thrustY = 0;
       let thrustX = 0;
       let clawOpen = baseM;
-      if (isThisClaw) {
+      if (t.isCapturingPlayer && activeSide === te) {
+        const capProg = Math.max(0, Math.min(1, t.captureProgress || 0));
+        const restClawTipX = te * 6.5 * l,
+          restClawTipY = A + 14.5 * l,
+          mouthLocalX = 0,
+          mouthLocalY = A + 4.8 * l;
+        const startLocalX = t.captureStartLocalX !== void 0 ? t.captureStartLocalX : restClawTipX;
+        const startLocalY = t.captureStartLocalY !== void 0 ? t.captureStartLocalY : restClawTipY;
+        const curLocalX = startLocalX + (mouthLocalX - startLocalX) * capProg;
+        const curLocalY = startLocalY + (mouthLocalY - startLocalY) * capProg;
+        thrustX = curLocalX - restClawTipX;
+        thrustY = curLocalY - restClawTipY;
+        clawOpen = 0.02;
+      } else if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
         if (clawTgtX !== void 0 && clawTgtY !== void 0) {
           const restClawTipX = te * 6.5 * l,
@@ -2037,7 +2067,9 @@
       (e.strokeStyle = w),
       (e.lineWidth = 1.1 * l),
       e.stroke());
-    const x = Math.sin(t.animTimer * 6) * 0.4 * l;
+    const x = t.isCapturingPlayer
+      ? Math.abs(Math.sin(t.animTimer * 18)) * 1.4 * l
+      : Math.sin(t.animTimer * 6) * 0.4 * l;
     ((e.fillStyle = v),
       e.beginPath(),
       e.moveTo(-1.8 * l, A - 3.2 * l),
@@ -2086,11 +2118,24 @@
     const activeSide = t.attackClawSide || -1;
     const baseM = isStingerAtk && !isAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
-      const isThisClaw = isAtk && activeSide === te;
+      const isThisClaw = (isAtk && activeSide === te) || (t.isCapturingPlayer && activeSide === te);
       let thrustY = 0;
       let thrustX = 0;
       let clawOpen = baseM;
-      if (isThisClaw) {
+      if (t.isCapturingPlayer && activeSide === te) {
+        const capProg = Math.max(0, Math.min(1, t.captureProgress || 0));
+        const restClawTipX = te * 6.5 * l,
+          restClawTipY = A - 14.5 * l,
+          mouthLocalX = 0,
+          mouthLocalY = A - 4.8 * l;
+        const startLocalX = t.captureStartLocalX !== void 0 ? t.captureStartLocalX : restClawTipX;
+        const startLocalY = t.captureStartLocalY !== void 0 ? t.captureStartLocalY : restClawTipY;
+        const curLocalX = startLocalX + (mouthLocalX - startLocalX) * capProg;
+        const curLocalY = startLocalY + (mouthLocalY - startLocalY) * capProg;
+        thrustX = curLocalX - restClawTipX;
+        thrustY = curLocalY - restClawTipY;
+        clawOpen = 0.02;
+      } else if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
         if (clawTgtX !== void 0 && clawTgtY !== void 0) {
           const restClawTipX = te * 6.5 * l,
@@ -2317,6 +2362,9 @@
       });
       const j = -dirY * 2.5 * l + f;
       const A = dirY * 4.2 * l + f;
+      const mouthWp = toWorld(0, A + dirY * 4.8 * l);
+      t._mouthWorldX = mouthWp.x;
+      t._mouthWorldY = mouthWp.y;
 
       for (const te of [-1, 1]) {
         const isThisClaw = isAtk && activeSide === te;
@@ -2324,7 +2372,17 @@
           thrustY = 0;
         const restClawTipX = te * 6.5 * l,
           restClawTipY = A + dirY * 14.5 * l;
-        if (isThisClaw) {
+        if (t.isCapturingPlayer && activeSide === te) {
+          const capProg = Math.max(0, Math.min(1, t.captureProgress || 0));
+          const mouthLocalX = 0,
+            mouthLocalY = A + dirY * 4.8 * l;
+          const startLocalX = t.captureStartLocalX !== void 0 ? t.captureStartLocalX : restClawTipX;
+          const startLocalY = t.captureStartLocalY !== void 0 ? t.captureStartLocalY : restClawTipY;
+          const curLocalX = startLocalX + (mouthLocalX - startLocalX) * capProg;
+          const curLocalY = startLocalY + (mouthLocalY - startLocalY) * capProg;
+          thrustX = curLocalX - restClawTipX;
+          thrustY = curLocalY - restClawTipY;
+        } else if (isThisClaw) {
           const strikePower = Math.sin(atkProg * Math.PI);
           if (clawTgtX !== void 0 && clawTgtY !== void 0) {
             const targetLocalX = clawTgtX - t.x,
@@ -2390,13 +2448,25 @@
       const u = t.facing === "left" ? -1 : 1;
       const W = 6.2 * l,
         le = -4.5 * l + f;
+      t._mouthWorldX = t.x + (W + 4.8 * l) * u;
+      t._mouthWorldY = t.y + le;
       for (const clawSide of [1, -1]) {
         const isThisClaw = isAtk && activeSide === clawSide;
         let thrustX = 0,
           thrustY = 0;
         const restClawTipX = W + 19.5 * l,
           restClawTipY = le + clawSide * 9.5 * l;
-        if (isThisClaw) {
+        if (t.isCapturingPlayer && activeSide === clawSide) {
+          const capProg = Math.max(0, Math.min(1, t.captureProgress || 0));
+          const mouthLocalX = W + 4.8 * l,
+            mouthLocalY = le;
+          const startLocalX = t.captureStartLocalX !== void 0 ? t.captureStartLocalX : restClawTipX;
+          const startLocalY = t.captureStartLocalY !== void 0 ? t.captureStartLocalY : restClawTipY;
+          const curLocalX = startLocalX + (mouthLocalX - startLocalX) * capProg;
+          const curLocalY = startLocalY + (mouthLocalY - startLocalY) * capProg;
+          thrustX = curLocalX - restClawTipX;
+          thrustY = curLocalY - restClawTipY;
+        } else if (isThisClaw) {
           const strikePower = Math.sin(atkProg * Math.PI);
           if (clawTgtX !== void 0 && clawTgtY !== void 0) {
             const targetLocalX = (clawTgtX - t.x) * u,
@@ -2462,4 +2532,133 @@
       });
     }
     return colliders;
+  }
+  function drawGiantScorpionCaveReachClaw(e, t) {
+    const l = t.scale || 3.4;
+    const baseX = t.caveDoorX ?? t.x;
+    const baseY = t.caveDoorY ?? t.y;
+    const reachProg = t.caveReachProg || 0;
+    const isPulling = !!t.isPullingFromCave;
+    const pullProg = Math.max(0, Math.min(1, t.cavePullProgress || 0));
+    if (reachProg <= 0 && !isPulling) return;
+
+    const tgtX = t.caveReachTargetX ?? baseX;
+    const tgtY = t.caveReachTargetY ?? (baseY + 26);
+    let tipX = baseX;
+    let tipY = baseY + 6;
+    if (isPulling) {
+      const startX = t.cavePullStartX ?? tgtX;
+      const startY = t.cavePullStartY ?? tgtY;
+      tipX = startX + (baseX - startX) * pullProg;
+      tipY = startY + (baseY + 2 - startY) * pullProg;
+    } else {
+      const ext = Math.sin(reachProg * Math.PI);
+      tipX = baseX + (tgtX - baseX) * ext;
+      tipY = baseY + 4 + (tgtY - (baseY + 4)) * ext;
+    }
+
+    t._caveClawTipX = tipX;
+    t._caveClawTipY = tipY;
+    t._caveClawRadius = Math.max(8, 3.8 * l);
+
+    const dx = tipX - baseX;
+    const dy = tipY - baseY;
+    const ang = Math.atan2(dy, dx) - Math.PI / 2;
+    const elbowX = baseX + dx * 0.48 + (t.attackClawSide || 1) * 5.5 * l * 0.45;
+    const elbowY = baseY + dy * 0.48;
+
+    const y = t.color || "#b45309",
+      w = t.accentColor || "#451a03",
+      v = "#140b05",
+      S = "#92400e",
+      T = "#f59e0b";
+
+    e.save();
+    // Sombra da garra projetada no piso da caverna
+    e.fillStyle = "rgba(0, 0, 0, 0.48)";
+    e.beginPath();
+    e.ellipse(tipX, tipY + 5, 4.5 * l, 2.2 * l, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Segmento 1 do braço saindo da entrada da caverna
+    e.strokeStyle = v;
+    e.lineWidth = 3.8 * l;
+    e.lineCap = "round";
+    e.lineJoin = "round";
+    e.beginPath();
+    e.moveTo(baseX, baseY);
+    e.lineTo(elbowX, elbowY);
+    e.stroke();
+    e.strokeStyle = y;
+    e.lineWidth = 2.8 * l;
+    e.stroke();
+
+    // Articulação do cotovelo
+    e.fillStyle = w;
+    e.beginPath();
+    e.arc(elbowX, elbowY, 1.8 * l, 0, Math.PI * 2);
+    e.fill();
+
+    // Segmento 2 do braço até a pinça
+    e.strokeStyle = v;
+    e.lineWidth = 3.5 * l;
+    e.beginPath();
+    e.moveTo(elbowX, elbowY);
+    e.lineTo(tipX, tipY);
+    e.stroke();
+    e.strokeStyle = S;
+    e.lineWidth = 2.5 * l;
+    e.stroke();
+
+    // Pinça / Garra gigante na ponta
+    const te = t.attackClawSide || 1;
+    e.translate(tipX, tipY);
+    e.rotate(ang);
+    e.fillStyle = S;
+    e.beginPath();
+    e.ellipse(0, -1.8 * l, 2.6 * l, 4 * l, 0, 0, Math.PI * 2);
+    e.fill();
+    e.strokeStyle = w;
+    e.lineWidth = 1 * l;
+    e.stroke();
+    e.fillStyle = T;
+    e.beginPath();
+    e.ellipse(-te * 0.8 * l, -1.5 * l, 0.7 * l, 2.1 * l, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Dedo fixo da garra
+    e.fillStyle = w;
+    e.beginPath();
+    e.moveTo(-te * 1.2 * l, 1.2 * l);
+    e.quadraticCurveTo(-te * 2.3 * l, 5.2 * l, 0, 7.6 * l);
+    e.quadraticCurveTo(-te * 0.5 * l, 4.4 * l, te * 0.5 * l, 1.2 * l);
+    e.closePath();
+    e.fill();
+
+    // Dedo móvel da garra (abre no bote e fecha ao agarrar o player)
+    const clawOpen = isPulling
+      ? 0.04
+      : reachProg < 0.55
+        ? 0.75
+        : 0.08;
+    e.save();
+    e.translate(te * 1.1 * l, 1 * l);
+    e.rotate(-te * clawOpen);
+    e.fillStyle = v;
+    e.beginPath();
+    e.moveTo(0, 0);
+    e.quadraticCurveTo(te * 2.1 * l, 3.8 * l, 0, 6.4 * l);
+    e.quadraticCurveTo(te * 0.6 * l, 3.2 * l, -te * 0.8 * l, 0);
+    e.closePath();
+    e.fill();
+    e.strokeStyle = T;
+    e.lineWidth = 0.8 * l;
+    for (let Te = 1; Te <= 3; Te++) {
+      e.beginPath();
+      e.moveTo(0, Te * 1.3 * l);
+      e.lineTo(te * 0.7 * l, Te * 1.3 * l);
+      e.stroke();
+    }
+    e.restore();
+    e.restore();
   }

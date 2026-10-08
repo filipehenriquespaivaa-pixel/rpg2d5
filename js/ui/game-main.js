@@ -1972,7 +1972,7 @@
       handleExtraAction = handleToggleDodgeMode,
       handleDodge = J.useCallback((dir) => {
         const he = f.current;
-        if (he.isDead) return;
+        if (he.isDead || he.capturedByScorpionId) return;
         const maxStamina = he.maxStamina ?? 100;
         const staminaCost = maxStamina * 0.25;
         if (he.isExhausted || (he.stamina !== undefined && he.stamina < staminaCost)) {
@@ -4094,7 +4094,7 @@
               ($e.KeyS || (allowArrowWalk && ($e.ArrowDown || $e.Down || da.down))) && (Xa += 1),
               ($e.KeyA || (allowArrowWalk && ($e.ArrowLeft || $e.Left || da.left))) && (qa -= 1),
               ($e.KeyD || (allowArrowWalk && ($e.ArrowRight || $e.Right || da.right))) && (qa += 1),
-              (he.isAiming || isCurrentlyDodging) && ((qa = 0), (Xa = 0)),
+              (he.isAiming || isCurrentlyDodging || he.capturedByScorpionId) && ((qa = 0), (Xa = 0)),
               (he.isMoving = qa !== 0 || Xa !== 0));
             const za = 100 + (De.staminaBonus || 0);
             ((he.maxStamina = za), he.stamina === void 0 && (he.stamina = za));
@@ -4179,9 +4179,26 @@
                 Je - ie > (ao ? 240 : 340) &&
                   (m.current.playFootstep(wn.biome.hasWater), (ie = Je)));
             }
-            if (__autoCaveTimer.current > 0) {
+            if (he._pulledOutOfCaveByScorpion) {
+              const pullOut = he._pulledOutOfCaveByScorpion;
+              delete he._pulledOutOfCaveByScorpion;
+              __autoCaveTimer.current = 1.4;
+              m.current.playCaveExit();
+              Q.exitCave(pullOut.tx, pullOut.ty);
+              Oa.current = { x: 0, y: 0 };
+              Et(!1);
+              he.x = pullOut.x;
+              he.y = pullOut.y;
+              he.vx = 0;
+              he.vy = 0;
+              const qe_t = Math.floor(he.x / Q.tileSize),
+                Ze_t = Math.floor(he.y / Q.tileSize),
+                sa = Q.getTile(qe_t, Ze_t);
+              v(sa.biome);
+              S({ tx: qe_t, ty: Ze_t });
+            } else if (__autoCaveTimer.current > 0) {
               __autoCaveTimer.current -= Ye;
-            } else {
+            } else if (!he.capturedByScorpionId) {
               const autoC = Q.getNearbyCaveDoorwayAt(he.x, he.y);
               if (autoC) {
                 __autoCaveTimer.current = 1.0;

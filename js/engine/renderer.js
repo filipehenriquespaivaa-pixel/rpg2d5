@@ -479,7 +479,26 @@
           c.fillRect(x - 1, y - 1, 2, 2);
         };
         if (cm && cm.monsters)
-          for (const m of cm.monsters)
+          for (const m of cm.monsters) {
+            if (
+              m.isGiantScorpion &&
+              !m.isUnderground &&
+              e.isUnderground &&
+              ((m.caveReachProg && m.caveReachProg > 0) || m.isPullingFromCave) &&
+              m._caveClawTipX !== void 0
+            ) {
+              c.save();
+              const active = m.isPullingFromCave || (m.caveReachProg >= 0.2 && m.caveReachProg <= 0.82);
+              c.fillStyle = active ? "rgba(239,68,68,0.45)" : "rgba(251,191,36,0.22)";
+              c.strokeStyle = active ? "#ef4444" : "rgba(251,191,36,0.9)";
+              c.lineWidth = active ? 2 : 1.2;
+              c.beginPath();
+              c.arc(m._caveClawTipX, m._caveClawTipY, m._caveClawRadius || 13, 0, Math.PI * 2);
+              c.fill();
+              c.stroke();
+              c.restore();
+              continue;
+            }
             if (!m.isUnderground === !e.isUnderground) {
               foot(m.x, m.y, "rgba(249,115,22,1)");
               if (m.type === "scorpion" && typeof getScorpionHitColliders === "function") {
@@ -510,6 +529,7 @@
                 }
               }
             }
+          }
         foot(pl.x, pl.y, "rgba(34,197,94,1)");
         c.restore();
       }
