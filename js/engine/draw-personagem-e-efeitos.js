@@ -1226,17 +1226,19 @@
       : 0;
     let stingerThrust = 0;
     let stingerDown = 0;
+    let stingerStrikePower = 0;
     if (isStingerAtk) {
       if (stingerProg < 0.25) {
         const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
         stingerThrust = -prep * 3 * l;
         stingerDown = -prep * 1.5 * l;
-      } else if (stingerProg < 0.6) {
-        const snap = Math.sin(((stingerProg - 0.25) / 0.35) * Math.PI);
-        stingerThrust = -3 * l * (1 - (stingerProg - 0.25) / 0.35) + snap * 13 * l;
+      } else if (stingerProg < 0.65) {
+        const snap = Math.sin(((stingerProg - 0.25) / 0.4) * Math.PI);
+        stingerStrikePower = snap;
+        stingerThrust = -3 * l * (1 - (stingerProg - 0.25) / 0.4) + snap * 13 * l;
         stingerDown = snap * 5.5 * l;
       } else {
-        const ret = Math.sin(((1 - stingerProg) / 0.4) * Math.PI * 0.5);
+        const ret = Math.sin(((1 - stingerProg) / 0.35) * Math.PI * 0.5);
         stingerThrust = ret * 5 * l;
         stingerDown = ret * 1.5 * l;
       }
@@ -1244,17 +1246,27 @@
 
     const j = Math.sin(t.animTimer * 2.8) * 1.8 * l,
       P = -7 * l,
-      A = -5 * l + g,
-      x = P - 3.2 * l,
+      A = -5 * l + g;
+    const restTipLocalX = P + 3.8 * l + j + 6.6 * l,
+      restTipLocalY = A - 18.2 * l + 4.7 * l;
+    let aimDeltaX = stingerThrust,
+      aimDeltaY = stingerDown * 0.6;
+    if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+      const targetLocalX = (t.attackTargetX - t.x) * u,
+        targetLocalY = t.attackTargetY - t.y;
+      aimDeltaX = (targetLocalX - restTipLocalX) * stingerStrikePower;
+      aimDeltaY = (targetLocalY - restTipLocalY) * stingerStrikePower;
+    }
+    const x = P - 3.2 * l,
       M = A - 2.8 * l,
       $ = P - 5.8 * l,
       z = A - 7.5 * l,
-      K = P - 4.8 * l + j * 0.3 + stingerThrust * 0.25,
-      V = A - 13 * l - stingerDown * 0.2,
-      O = P - 1.2 * l + j * 0.6 + stingerThrust * 0.6,
-      _ = A - 17 * l + stingerDown * 0.2,
-      se = P + 3.8 * l + j + stingerThrust,
-      ue = A - 18.2 * l + stingerDown * 0.6,
+      K = P - 4.8 * l + j * 0.3 + aimDeltaX * 0.25,
+      V = A - 13 * l + aimDeltaY * 0.2,
+      O = P - 1.2 * l + j * 0.6 + aimDeltaX * 0.6,
+      _ = A - 17 * l + aimDeltaY * 0.5,
+      se = P + 3.8 * l + j + aimDeltaX,
+      ue = A - 18.2 * l + aimDeltaY,
       N = [
         { x1: P, y1: A, x2: x, y2: M, width: 3.8 * l },
         { x1: x, y1: M, x2: $, y2: z, width: 3.4 * l },
@@ -1468,8 +1480,17 @@
       let clawOpen = baseOe;
       if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
-        thrustX = strikePower * 5.5 * l;
-        thrustY = -clawSide * strikePower * 1.2 * l;
+        if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+          const restClawTipX = W + 19.5 * l,
+            restClawTipY = le + clawSide * 9.5 * l,
+            targetLocalX = (t.attackTargetX - t.x) * u,
+            targetLocalY = t.attackTargetY - t.y;
+          thrustX = (targetLocalX - restClawTipX) * strikePower;
+          thrustY = (targetLocalY - restClawTipY) * strikePower;
+        } else {
+          thrustX = strikePower * 5.5 * l;
+          thrustY = -clawSide * strikePower * 1.2 * l;
+        }
         if (atkProg < 0.35) {
           clawOpen = 0.35 + (0.75 - 0.35) * (atkProg / 0.35);
         } else if (atkProg < 0.65) {
@@ -1685,15 +1706,17 @@
       ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
       : 0;
     let stingerThrustY = 0;
+    let stingerStrikePower = 0;
     if (isStingerAtk) {
       if (stingerProg < 0.25) {
         const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
         stingerThrustY = -prep * 3 * l;
-      } else if (stingerProg < 0.6) {
-        const snap = Math.sin(((stingerProg - 0.25) / 0.35) * Math.PI);
-        stingerThrustY = -3 * l * (1 - (stingerProg - 0.25) / 0.35) + snap * 14 * l;
+      } else if (stingerProg < 0.65) {
+        const snap = Math.sin(((stingerProg - 0.25) / 0.4) * Math.PI);
+        stingerStrikePower = snap;
+        stingerThrustY = -3 * l * (1 - (stingerProg - 0.25) / 0.4) + snap * 14 * l;
       } else {
-        const ret = Math.sin(((1 - stingerProg) / 0.4) * Math.PI * 0.5);
+        const ret = Math.sin(((1 - stingerProg) / 0.35) * Math.PI * 0.5);
         stingerThrustY = ret * 5 * l;
       }
     }
@@ -1709,8 +1732,17 @@
       let clawOpen = baseM;
       if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
-        thrustY = strikePower * 6.5 * l;
-        thrustX = -te * strikePower * 1.5 * l;
+        if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+          const restClawTipX = te * 6.5 * l,
+            restClawTipY = A + 14.5 * l,
+            targetLocalX = t.attackTargetX - t.x,
+            targetLocalY = t.attackTargetY - t.y;
+          thrustX = (targetLocalX - restClawTipX) * strikePower;
+          thrustY = (targetLocalY - restClawTipY) * strikePower;
+        } else {
+          thrustY = strikePower * 6.5 * l;
+          thrustX = -te * strikePower * 1.5 * l;
+        }
         if (atkProg < 0.35) {
           clawOpen = 0.35 + (0.75 - 0.35) * (atkProg / 0.35);
         } else if (atkProg < 0.65) {
@@ -1789,17 +1821,27 @@
     }
     const $ = Math.sin(t.animTimer * 2.8) * 2 * l,
       z = 0,
-      K = j - 7.5 * l,
-      V = z + $ * 0.2,
+      K = j - 7.5 * l;
+    let aimStingerX = 0,
+      aimStingerY = stingerThrustY;
+    if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+      const restTipX = z + $,
+        restTipY = K - 2.5 * l + 7.2 * l,
+        targetLocalX = t.attackTargetX - t.x,
+        targetLocalY = t.attackTargetY - t.y;
+      aimStingerX = (targetLocalX - restTipX) * stingerStrikePower;
+      aimStingerY = (targetLocalY - restTipY) * stingerStrikePower;
+    }
+    const V = z + $ * 0.2 + aimStingerX * 0.15,
       O = K - 4.2 * l,
-      _ = z + $ * 0.45,
-      se = K - 8 * l - stingerThrustY * 0.15,
-      ue = z + $ * 0.7,
-      N = K - 10.5 * l - stingerThrustY * 0.1,
-      Ee = z + $ * 0.85,
-      ne = K - 7 * l + stingerThrustY * 0.45,
-      ke = z + $,
-      G = K - 2.5 * l + stingerThrustY,
+      _ = z + $ * 0.45 + aimStingerX * 0.35,
+      se = K - 8 * l - aimStingerY * 0.15,
+      ue = z + $ * 0.7 + aimStingerX * 0.6,
+      N = K - 10.5 * l - aimStingerY * 0.1,
+      Ee = z + $ * 0.85 + aimStingerX * 0.8,
+      ne = K - 7 * l + aimStingerY * 0.45,
+      ke = z + $ + aimStingerX,
+      G = K - 2.5 * l + aimStingerY,
       de = [
         { x1: z, y1: K, x2: V, y2: O, w: 4 * l },
         { x1: V, y1: O, x2: _, y2: se, w: 3.6 * l },
@@ -1994,15 +2036,17 @@
       ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
       : 0;
     let stingerThrustY = 0;
+    let stingerStrikePower = 0;
     if (isStingerAtk) {
       if (stingerProg < 0.25) {
         const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
         stingerThrustY = prep * 3 * l;
-      } else if (stingerProg < 0.6) {
-        const snap = Math.sin(((stingerProg - 0.25) / 0.35) * Math.PI);
-        stingerThrustY = 3 * l * (1 - (stingerProg - 0.25) / 0.35) - snap * 14 * l;
+      } else if (stingerProg < 0.65) {
+        const snap = Math.sin(((stingerProg - 0.25) / 0.4) * Math.PI);
+        stingerStrikePower = snap;
+        stingerThrustY = 3 * l * (1 - (stingerProg - 0.25) / 0.4) - snap * 14 * l;
       } else {
-        const ret = Math.sin(((1 - stingerProg) / 0.4) * Math.PI * 0.5);
+        const ret = Math.sin(((1 - stingerProg) / 0.35) * Math.PI * 0.5);
         stingerThrustY = -ret * 5 * l;
       }
     }
@@ -2018,8 +2062,17 @@
       let clawOpen = baseM;
       if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
-        thrustY = -strikePower * 6.5 * l;
-        thrustX = -te * strikePower * 1.5 * l;
+        if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+          const restClawTipX = te * 6.5 * l,
+            restClawTipY = A - 14.5 * l,
+            targetLocalX = t.attackTargetX - t.x,
+            targetLocalY = t.attackTargetY - t.y;
+          thrustX = (targetLocalX - restClawTipX) * strikePower;
+          thrustY = (targetLocalY - restClawTipY) * strikePower;
+        } else {
+          thrustY = -strikePower * 6.5 * l;
+          thrustX = -te * strikePower * 1.5 * l;
+        }
         if (atkProg < 0.35) {
           clawOpen = 0.35 + (0.75 - 0.35) * (atkProg / 0.35);
         } else if (atkProg < 0.65) {
@@ -2098,17 +2151,27 @@
     }
     const $ = Math.sin(t.animTimer * 2.8) * 2 * l,
       z = 0,
-      K = j + 7.5 * l,
-      V = z + $ * 0.2,
+      K = j + 7.5 * l;
+    let aimStingerX = 0,
+      aimStingerY = stingerThrustY;
+    if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+      const restTipX = z + $,
+        restTipY = K + 2.5 * l - 7.2 * l,
+        targetLocalX = t.attackTargetX - t.x,
+        targetLocalY = t.attackTargetY - t.y;
+      aimStingerX = (targetLocalX - restTipX) * stingerStrikePower;
+      aimStingerY = (targetLocalY - restTipY) * stingerStrikePower;
+    }
+    const V = z + $ * 0.2 + aimStingerX * 0.15,
       O = K + 4.2 * l,
-      _ = z + $ * 0.45,
-      se = K + 8 * l - stingerThrustY * 0.15,
-      ue = z + $ * 0.7,
-      N = K + 10.5 * l - stingerThrustY * 0.1,
-      Ee = z + $ * 0.85,
-      ne = K + 7 * l + stingerThrustY * 0.45,
-      ke = z + $,
-      G = K + 2.5 * l + stingerThrustY,
+      _ = z + $ * 0.45 + aimStingerX * 0.35,
+      se = K + 8 * l - aimStingerY * 0.15,
+      ue = z + $ * 0.7 + aimStingerX * 0.6,
+      N = K + 10.5 * l - aimStingerY * 0.1,
+      Ee = z + $ * 0.85 + aimStingerX * 0.8,
+      ne = K + 7 * l + aimStingerY * 0.45,
+      ke = z + $ + aimStingerX,
+      G = K + 2.5 * l + aimStingerY,
       de = [
         { x1: z, y1: K, x2: V, y2: O, w: 4 * l },
         { x1: V, y1: O, x2: _, y2: se, w: 3.6 * l },
@@ -2184,4 +2247,179 @@
         e.fill());
     }
     e.restore();
+  }
+  function getScorpionHitColliders(t) {
+    const l = t.scale || 1;
+    const spd = Math.hypot(t.vx || 0, t.vy || 0),
+      m = spd > 0.04,
+      stepRate = Math.max(1.8, Math.min(4.2, (spd / Math.max(0.5, l * 0.65)) * 4.5)),
+      c = m ? t.animTimer * stepRate : t.animTimer * 1.2,
+      f = m ? Math.sin(c * 2) * 0.5 * l : Math.sin(t.animTimer * 1.5) * 0.3 * l;
+    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const stingerProg = isStingerAtk
+      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      : 0;
+    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
+    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const activeSide = t.attackClawSide || -1;
+    const clawRadius = Math.max(3.5, 3.6 * l);
+    const stingerRadius = Math.max(3.2, 3.2 * l);
+    const colliders = [];
+
+    if (t.facing === "down" || t.facing === "up") {
+      const dirY = t.facing === "down" ? 1 : -1;
+      const g = Math.max(-0.2, Math.min(0.2, (t.vx / (t.speed || 1)) * 0.18));
+      const cosG = Math.cos(g),
+        sinG = Math.sin(g);
+      const toWorld = (lx, ly) => ({
+        x: t.x + lx * cosG - ly * sinG,
+        y: t.y + lx * sinG + ly * cosG,
+      });
+      const j = -dirY * 2.5 * l + f;
+      const A = dirY * 4.2 * l + f;
+
+      for (const te of [-1, 1]) {
+        const isThisClaw = isAtk && activeSide === te;
+        let thrustX = 0,
+          thrustY = 0;
+        const restClawTipX = te * 6.5 * l,
+          restClawTipY = A + dirY * 14.5 * l;
+        if (isThisClaw) {
+          const strikePower = Math.sin(atkProg * Math.PI);
+          if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+            const targetLocalX = t.attackTargetX - t.x,
+              targetLocalY = t.attackTargetY - t.y;
+            thrustX = (targetLocalX - restClawTipX) * strikePower;
+            thrustY = (targetLocalY - restClawTipY) * strikePower;
+          } else {
+            thrustY = dirY * strikePower * 6.5 * l;
+            thrustX = -te * strikePower * 1.5 * l;
+          }
+        } else if (isAtk) {
+          const strikePower = Math.sin(atkProg * Math.PI);
+          thrustY = -dirY * strikePower * 0.8 * l;
+        }
+        const wp = toWorld(restClawTipX + thrustX, restClawTipY + thrustY);
+        colliders.push({
+          part: te === -1 ? "claw_left" : "claw_right",
+          side: te,
+          x: wp.x,
+          y: wp.y,
+          radius: clawRadius,
+          active: isThisClaw && atkProg >= 0.2 && atkProg <= 0.8,
+        });
+      }
+
+      let stingerThrustY = 0,
+        stingerStrikePower = 0;
+      if (isStingerAtk) {
+        if (stingerProg < 0.25) {
+          const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
+          stingerThrustY = -dirY * prep * 3 * l;
+        } else if (stingerProg < 0.65) {
+          const snap = Math.sin(((stingerProg - 0.25) / 0.4) * Math.PI);
+          stingerStrikePower = snap;
+          stingerThrustY = -dirY * 3 * l * (1 - (stingerProg - 0.25) / 0.4) + dirY * snap * 14 * l;
+        } else {
+          const ret = Math.sin(((1 - stingerProg) / 0.35) * Math.PI * 0.5);
+          stingerThrustY = dirY * ret * 5 * l;
+        }
+      }
+      const $ = Math.sin(t.animTimer * 2.8) * 2 * l,
+        z = 0,
+        K = j - dirY * 7.5 * l;
+      const restTipX = z + $,
+        restTipY = K - dirY * 2.5 * l + dirY * 7.2 * l;
+      let aimStingerX = 0,
+        aimStingerY = stingerThrustY;
+      if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+        const targetLocalX = t.attackTargetX - t.x,
+          targetLocalY = t.attackTargetY - t.y;
+        aimStingerX = (targetLocalX - restTipX) * stingerStrikePower;
+        aimStingerY = (targetLocalY - restTipY) * stingerStrikePower;
+      }
+      const wpStinger = toWorld(restTipX + aimStingerX, K - dirY * 2.5 * l + aimStingerY + dirY * 7.2 * l);
+      colliders.push({
+        part: "stinger",
+        x: wpStinger.x,
+        y: wpStinger.y,
+        radius: stingerRadius,
+        active: isStingerAtk && stingerProg >= 0.25 && stingerProg <= 0.75,
+      });
+    } else {
+      const u = t.facing === "left" ? -1 : 1;
+      const W = 6.2 * l,
+        le = -4.5 * l + f;
+      for (const clawSide of [1, -1]) {
+        const isThisClaw = isAtk && activeSide === clawSide;
+        let thrustX = 0,
+          thrustY = 0;
+        const restClawTipX = W + 19.5 * l,
+          restClawTipY = le + clawSide * 9.5 * l;
+        if (isThisClaw) {
+          const strikePower = Math.sin(atkProg * Math.PI);
+          if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+            const targetLocalX = (t.attackTargetX - t.x) * u,
+              targetLocalY = t.attackTargetY - t.y;
+            thrustX = (targetLocalX - restClawTipX) * strikePower;
+            thrustY = (targetLocalY - restClawTipY) * strikePower;
+          } else {
+            thrustX = strikePower * 5.5 * l;
+            thrustY = -clawSide * strikePower * 1.2 * l;
+          }
+        } else if (isAtk) {
+          const strikePower = Math.sin(atkProg * Math.PI);
+          thrustX = -strikePower * 0.8 * l;
+        }
+        colliders.push({
+          part: clawSide === -1 ? "claw_left" : "claw_right",
+          side: clawSide,
+          x: t.x + (restClawTipX + thrustX) * u,
+          y: t.y + restClawTipY + thrustY,
+          radius: clawRadius,
+          active: isThisClaw && atkProg >= 0.2 && atkProg <= 0.8,
+        });
+      }
+
+      let stingerThrust = 0,
+        stingerDown = 0,
+        stingerStrikePower = 0;
+      if (isStingerAtk) {
+        if (stingerProg < 0.25) {
+          const prep = Math.sin((stingerProg / 0.25) * Math.PI * 0.5);
+          stingerThrust = -prep * 3 * l;
+          stingerDown = -prep * 1.5 * l;
+        } else if (stingerProg < 0.65) {
+          const snap = Math.sin(((stingerProg - 0.25) / 0.4) * Math.PI);
+          stingerStrikePower = snap;
+          stingerThrust = -3 * l * (1 - (stingerProg - 0.25) / 0.4) + snap * 13 * l;
+          stingerDown = snap * 5.5 * l;
+        } else {
+          const ret = Math.sin(((1 - stingerProg) / 0.35) * Math.PI * 0.5);
+          stingerThrust = ret * 5 * l;
+          stingerDown = ret * 1.5 * l;
+        }
+      }
+      const j = Math.sin(t.animTimer * 2.8) * 1.8 * l,
+        P = -7 * l,
+        A = -5 * l + f;
+      const restTipLocalX = P + 3.8 * l + j + 6.6 * l,
+        restTipLocalY = A - 18.2 * l + 4.7 * l;
+      let aimDeltaX = stingerThrust,
+        aimDeltaY = stingerDown * 0.6;
+      if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+        const targetLocalX = (t.attackTargetX - t.x) * u,
+          targetLocalY = t.attackTargetY - t.y;
+        aimDeltaX = (targetLocalX - restTipLocalX) * stingerStrikePower;
+        aimDeltaY = (targetLocalY - restTipLocalY) * stingerStrikePower;
+      }
+      colliders.push({
+        part: "stinger",
+        x: t.x + (restTipLocalX + aimDeltaX) * u,
+        y: t.y + restTipLocalY + aimDeltaY,
+        radius: stingerRadius,
+        active: isStingerAtk && stingerProg >= 0.25 && stingerProg <= 0.75,
+      });
+    }
+    return colliders;
   }

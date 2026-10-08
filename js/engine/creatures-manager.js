@@ -498,7 +498,6 @@
       );
     }
     monsterAttackPlayer(t, l, o = 2) {
-      var f;
       if (
         l.isDead ||
         (l.invulnerableTimer && l.invulnerableTimer > 0) ||
@@ -506,22 +505,41 @@
       )
         return;
 
-      let isStinger = false;
       if (t.type === "scorpion") {
         t.attackCombo = ((t.attackCombo || 0) % 3) + 1;
+        t.attackTargetX = l.x;
+        t.attackTargetY = l.y;
+        t.attackHitApplied = !1;
+        t.attackPlayerDef = o;
         if (t.attackCombo === 3) {
           t.attackType = "stinger";
-          t.attackDuration = 0.38;
+          t.attackDuration = 0.44;
           t.attackTimer = t.attackDuration;
-          isStinger = true;
         } else {
           t.attackType = "claw";
-          t.attackDuration = 0.32;
+          t.attackDuration = 0.36;
           t.attackTimer = t.attackDuration;
-          t.attackClawSide = t.attackCombo === 1 ? -1 : 1;
+          if (t.facing === "down" || t.facing === "up") {
+            const dx = l.x - t.x;
+            t.attackClawSide = Math.abs(dx) > 6 ? (dx < 0 ? -1 : 1) : (t.attackCombo === 1 ? -1 : 1);
+          } else {
+            const dy = l.y - t.y;
+            t.attackClawSide = Math.abs(dy) > 6 ? (dy < 0 ? -1 : 1) : (t.attackCombo === 1 ? -1 : 1);
+          }
         }
+        return;
       }
 
+      this.applyMonsterHitToPlayer(t, l, o, !1);
+    }
+    applyMonsterHitToPlayer(t, l, o = 2, isStinger = !1, impactX = l.x, impactY = l.y) {
+      var f;
+      if (
+        l.isDead ||
+        (l.invulnerableTimer && l.invulnerableTimer > 0) ||
+        !this.getAnimalFireDeterrence(t, l).canAttack
+      )
+        return;
       const extraDmg = isStinger ? 2.5 : 0;
       const m = t.attack + (Math.random() * 2.5 - 1.2) + extraDmg,
         c = Math.max(1, Math.round(m - o * 0.45));
@@ -534,8 +552,8 @@
         ),
         this.floatingTexts.push({
           id: `dmg_${this.nextId++}`,
-          x: l.x + (Math.random() - 0.5) * 10,
-          y: l.y - 20,
+          x: impactX + (Math.random() - 0.5) * 10,
+          y: impactY - 20,
           text: `-${c}`,
           color: "#ef4444",
           isCrit: isStinger,
@@ -546,8 +564,8 @@
         const y = Math.random() * Math.PI * 2;
         const spd = isStinger ? 3.5 : 4;
         this.slimeParticles.push({
-          x: l.x,
-          y: l.y - 8,
+          x: impactX,
+          y: impactY - 8,
           vx: Math.cos(y) * spd,
           vy: Math.sin(y) * spd,
           life: 0.4,
@@ -911,6 +929,33 @@
             }
             continue;
           }
+          if (p.attackTimer && p.attackTimer > 0 && !p.attackHitApplied && typeof getScorpionHitColliders === "function") {
+            // Atualiza levemente o alvo durante o início do bote para mirar no jogador
+            const dur = p.attackDuration || 0.36;
+            const prog = 1 - p.attackTimer / dur;
+            if (prog < 0.35) {
+              p.attackTargetX = p.attackTargetX !== void 0 ? p.attackTargetX + (l.x - p.attackTargetX) * 0.35 : l.x;
+              p.attackTargetY = p.attackTargetY !== void 0 ? p.attackTargetY + (l.y - p.attackTargetY) * 0.35 : l.y;
+            }
+            const colliders = getScorpionHitColliders(p);
+            const playerHitRadius = Math.max(this.engine.footHX || 6, this.engine.footHY || 5) + 4;
+            for (const col of colliders) {
+              if (!col.active) continue;
+              const distToPlayer = Math.hypot(l.x - col.x, l.y - col.y);
+              if (distToPlayer <= col.radius + playerHitRadius) {
+                p.attackHitApplied = !0;
+                this.applyMonsterHitToPlayer(
+                  p,
+                  l,
+                  p.attackPlayerDef ?? c,
+                  col.part === "stinger",
+                  col.x,
+                  col.y,
+                );
+                break;
+              }
+            }
+          }
         }
         if (p.type === "slime") {
           if (p.attached) {
@@ -1165,8 +1210,8 @@
           O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
           _ = K || V || O,
           NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack);
-        const meleeAttackDist = p.isGiantScorpion ? 58 : 26,
-          chaseStopDist = p.isGiantScorpion ? 52 : 22;
+        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? 32 : 26,
+          chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? 24 : 22;
         if (_) {
           ((!p.fleeFireTimer || p.fleeFireTimer <= 0) &&
             (p.fleeFireTimer = 3.5),

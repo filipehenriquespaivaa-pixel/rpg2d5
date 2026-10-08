@@ -480,8 +480,36 @@
         };
         if (cm && cm.monsters)
           for (const m of cm.monsters)
-            if (!m.isUnderground === !e.isUnderground)
+            if (!m.isUnderground === !e.isUnderground) {
               foot(m.x, m.y, "rgba(249,115,22,1)");
+              if (m.type === "scorpion" && typeof getScorpionHitColliders === "function") {
+                const cols = getScorpionHitColliders(m);
+                for (const col of cols) {
+                  c.save();
+                  const isStinger = col.part === "stinger";
+                  const strokeCol = col.active
+                    ? "#ef4444"
+                    : isStinger
+                      ? "rgba(236,72,153,0.9)"
+                      : "rgba(251,191,36,0.9)";
+                  const fillCol = col.active
+                    ? "rgba(239,68,68,0.45)"
+                    : isStinger
+                      ? "rgba(236,72,153,0.22)"
+                      : "rgba(251,191,36,0.22)";
+                  c.fillStyle = fillCol;
+                  c.strokeStyle = strokeCol;
+                  c.lineWidth = col.active ? 2 : 1.2;
+                  c.beginPath();
+                  c.arc(col.x, col.y, col.radius, 0, Math.PI * 2);
+                  c.fill();
+                  c.stroke();
+                  c.fillStyle = strokeCol;
+                  c.fillRect(col.x - 1, col.y - 1, 2, 2);
+                  c.restore();
+                }
+              }
+            }
         foot(pl.x, pl.y, "rgba(34,197,94,1)");
         c.restore();
       }
