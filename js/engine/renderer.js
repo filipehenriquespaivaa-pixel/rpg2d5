@@ -2126,7 +2126,36 @@
         const ke = ue && (t.attackCombo || 0) % 2 === 1,
           G = ue && (t.attackCombo || 0) % 2 === 0,
           de = y ? v * 2.8 : 0,
-          W = y ? -v * 2.8 : 0;
+          W = y ? -v * 2.8 : 0,
+          isDodging = !!(t.dodgeTimer && t.dodgeTimer > 0),
+          dodgeDur = t.dodgeDuration || 0.25,
+          dodgeProg = isDodging ? Math.max(0, Math.min(1, 1 - t.dodgeTimer / dodgeDur)) : 0,
+          dodgeSin = isDodging ? Math.sin(dodgeProg * Math.PI) : 0,
+          dodgeDir = t.dodgeDir || w,
+          dodgeDX = t.dodgeDX !== void 0 ? t.dodgeDX : (dodgeDir === "left" ? -1 : dodgeDir === "right" ? 1 : 0),
+          dodgeDY = t.dodgeDY !== void 0 ? t.dodgeDY : (dodgeDir === "up" ? -1 : dodgeDir === "down" ? 1 : 0),
+          dodgeHopY = isDodging ? dodgeSin * 6.8 : 0;
+        let dodgeTilt = 0;
+        if (isDodging) {
+          if (w === "down" || w === "up") {
+            if (dodgeDir === "left") dodgeTilt = -0.21 * dodgeSin;
+            else if (dodgeDir === "right") dodgeTilt = 0.21 * dodgeSin;
+            else dodgeTilt = (dodgeDir === w ? 0.05 : -0.05) * dodgeSin;
+          } else if (w === "left") {
+            if (dodgeDir === "left") dodgeTilt = -0.24 * dodgeSin;
+            else if (dodgeDir === "right") dodgeTilt = 0.20 * dodgeSin;
+            else if (dodgeDir === "up") dodgeTilt = 0.14 * dodgeSin;
+            else dodgeTilt = -0.14 * dodgeSin;
+          } else {
+            if (dodgeDir === "right") dodgeTilt = 0.24 * dodgeSin;
+            else if (dodgeDir === "left") dodgeTilt = -0.20 * dodgeSin;
+            else if (dodgeDir === "up") dodgeTilt = -0.14 * dodgeSin;
+            else dodgeTilt = 0.14 * dodgeSin;
+          }
+        }
+        this._dodgeState = isDodging
+          ? { active: !0, prog: dodgeProg, sin: dodgeSin, dir: dodgeDir, dx: dodgeDX, dy: dodgeDY, facing: w }
+          : null;
         (c.save(),
           c.translate(f, g),
           t.isAiming && t.aimAngle !== void 0 && (() => {
@@ -2157,7 +2186,8 @@
             c.stroke();
             c.restore();
           })(),
-          t.invulnerableTimer &&
+          !isDodging &&
+            t.invulnerableTimer &&
             t.invulnerableTimer > 0 &&
             Math.sin(this.animTimer * 26) < 0 &&
             (c.globalAlpha = 0.35),
@@ -2182,11 +2212,12 @@
               c.stroke());
           }
         else {
-          const ga = this.getSunVector(u ?? 0.5);
+          const ga = this.getSunVector(u ?? 0.5),
+            shadowShrink = isDodging ? 1 - dodgeSin * 0.24 : 1;
           if (
             ((c.fillStyle = ga.shadowColor),
             c.beginPath(),
-            c.ellipse(0, 2.5, 8.0, 4.3, 0, 0, Math.PI * 2),
+            c.ellipse(0, 2.5, 8.0 * shadowShrink, 4.3 * shadowShrink, 0, 0, Math.PI * 2),
             c.fill(),
             ga.length > 0.15)
           ) {
@@ -2196,8 +2227,8 @@
               c.ellipse(
                 we,
                 je,
-                7,
-                4.2 * Math.max(0.5, ga.length),
+                7 * shadowShrink,
+                4.2 * Math.max(0.5, ga.length) * shadowShrink,
                 0,
                 0,
                 Math.PI * 2,
@@ -2218,6 +2249,86 @@
                 c.arc(Ae, fa, Be, 0, Math.PI * 2),
                 c.fill());
             }
+        }
+        if (isDodging) {
+          const startOffX = (t.dodgeStartX !== void 0 ? t.dodgeStartX : f) - f,
+            startOffY = (t.dodgeStartY !== void 0 ? t.dodgeStartY : g) - g,
+            isProfileGhost = w === "left" || w === "right",
+            torsoW = isProfileGhost ? 9.4 : 13.4,
+            torsoX = w === "left" ? -5.5 : w === "right" ? -3.9 : -6.7;
+          // 1. Anel de impulso e poeira no ponto exato de saída no chão
+          c.save();
+          const ringAlpha = Math.max(0, (1 - dodgeProg) * 0.55);
+          c.strokeStyle = `rgba(186, 230, 253, ${ringAlpha})`;
+          c.lineWidth = 1.5;
+          c.beginPath();
+          c.ellipse(startOffX, startOffY + 2.5, 6.5 + dodgeProg * 12, 3.4 + dodgeProg * 5.5, 0, 0, Math.PI * 2);
+          c.stroke();
+          for (let dp = -1; dp <= 1; dp++) {
+            const puffX = startOffX + dp * 4.5 - dodgeDX * dodgeProg * 8,
+              puffY = startOffY + 2 + Math.abs(dp) * 1.5 - dodgeDY * dodgeProg * 6;
+            c.fillStyle = `rgba(226, 232, 240, ${ringAlpha * 0.75})`;
+            c.beginPath();
+            c.arc(puffX, puffY, 2.0 + dodgeProg * 2.4, 0, Math.PI * 2);
+            c.fill();
+          }
+          // 2. Rastro de silhuetas direcionais (afterimages) acompanhando a direção para onde o personagem olha
+          for (let gi = 1; gi <= 3; gi++) {
+            const frac = gi / 4,
+              gx = startOffX * (1 - frac),
+              gy = startOffY * (1 - frac) - Math.sin(frac * Math.PI) * 5.2,
+              gAlpha = Math.max(0, (1 - dodgeProg * 0.72) * (0.11 + frac * 0.22));
+            c.save();
+            c.translate(gx, gy);
+            c.rotate(dodgeTilt * Math.sin(frac * Math.PI));
+            c.globalAlpha = gAlpha;
+            c.fillStyle = gi === 3 ? shirtColor : "#38bdf8";
+            // Silhueta da cabeça na direção atual
+            c.beginPath();
+            c.arc(0, -21.5, 5.8, 0, Math.PI * 2);
+            c.fill();
+            // Silhueta do tronco respeitando frente/costas vs perfil esquerdo/direito
+            c.fillRect(torsoX, -16, torsoW, 12.8);
+            // Silhueta das pernas em impulso
+            if (isProfileGhost) {
+              c.save();
+              c.translate(-1.5, -3.5);
+              c.rotate((dodgeDX !== 0 ? -dodgeDX * 0.55 : -0.4) * frac);
+              c.fillRect(-1.8, 0, 3.6, 7.2);
+              c.restore();
+              c.save();
+              c.translate(1.5, -3.5);
+              c.rotate((dodgeDX !== 0 ? dodgeDX * 0.55 : 0.4) * frac);
+              c.fillRect(-1.8, 0, 3.6, 7.2);
+              c.restore();
+            } else {
+              c.fillRect(-5.0 - dodgeDX * 1.8 * frac, -3.5 - frac * 1.5, 3.6, 7.2);
+              c.fillRect(1.4 + dodgeDX * 1.8 * frac, -3.5 + frac * 1.0, 3.6, 7.2);
+            }
+            c.restore();
+          }
+          // 3. Linhas de vento aerodinâmicas no sentido contrário ao deslocamento
+          c.strokeStyle = `rgba(125, 211, 252, ${Math.max(0, dodgeSin * 0.75)})`;
+          c.lineWidth = 1.35;
+          c.lineCap = "round";
+          const streakOffsets = [-21, -14, -7, -1];
+          for (let si = 0; si < streakOffsets.length; si++) {
+            const sy = streakOffsets[si] - dodgeHopY * 0.6,
+              perp = (si - 1.5) * 4.2,
+              sx = -dodgeDX * 6 + (dodgeDY !== 0 ? perp : 0),
+              by = sy - dodgeDY * 4 + (dodgeDX !== 0 ? perp * 0.35 : 0),
+              len = 11 + (si % 2) * 6;
+            c.beginPath();
+            c.moveTo(sx, by);
+            c.lineTo(sx - dodgeDX * len, by - dodgeDY * len);
+            c.stroke();
+          }
+          c.restore();
+        }
+        c.save();
+        if (isDodging) {
+          c.translate(0, -dodgeHopY);
+          c.rotate(dodgeTilt);
         }
         w !== "up" &&
           (this.drawCape(w, T, y, ne, x), this.drawBackpack(w, T, M));
@@ -2247,80 +2358,202 @@
           }
         }
         if (w === "up") {
-          // VISTA TRASEIRA (COSTAS): Estilo vertical clássico (passada alternada vertical por offset)
-          const legMult = isRun ? 3.6 : 2.8,
-            legSwingL = y ? -walkNorm * legMult : 0,
-            legSwingR = y ? walkNorm * legMult : 0;
+          // VISTA TRASEIRA (COSTAS): Estilo vertical clássico + postura de esquiva nas 4 direções
+          const legMult = isRun ? 3.6 : 2.8;
+          let legSwingL = y ? -walkNorm * legMult : 0,
+            legSwingR = y ? walkNorm * legMult : 0,
+            dodgeLegDXL = 0,
+            dodgeLegDXR = 0,
+            dodgeLegRotL = 0,
+            dodgeLegRotR = 0;
+          if (isDodging) {
+            if (dodgeDir === "left") {
+              // Esquiva lateral p/ esquerda olhando p/ cima: perna esquerda lidera aberta, direita impulsiona
+              dodgeLegDXL = -2.4 * dodgeSin;
+              legSwingL = -2.6 * dodgeSin;
+              dodgeLegRotL = 0.24 * dodgeSin;
+              dodgeLegDXR = 2.6 * dodgeSin;
+              legSwingR = 1.4 * dodgeSin;
+              dodgeLegRotR = -0.28 * dodgeSin;
+            } else if (dodgeDir === "right") {
+              // Esquiva lateral p/ direita olhando p/ cima: perna direita lidera aberta, esquerda impulsiona
+              dodgeLegDXR = 2.4 * dodgeSin;
+              legSwingR = -2.6 * dodgeSin;
+              dodgeLegRotR = -0.24 * dodgeSin;
+              dodgeLegDXL = -2.6 * dodgeSin;
+              legSwingL = 1.4 * dodgeSin;
+              dodgeLegRotL = 0.28 * dodgeSin;
+            } else if (dodgeDir === "up") {
+              // Avanço rápido p/ frente (norte) olhando p/ cima
+              legSwingL = -3.6 * dodgeSin;
+              legSwingR = 3.4 * dodgeSin;
+              dodgeLegDXL = -0.7 * dodgeSin;
+              dodgeLegDXR = 0.7 * dodgeSin;
+              dodgeLegRotL = 0.12 * dodgeSin;
+              dodgeLegRotR = -0.12 * dodgeSin;
+            } else {
+              // Salto evasivo de costas (recuo p/ sul mantendo o olhar p/ cima)
+              legSwingL = -3.0 * dodgeSin;
+              legSwingR = -1.6 * dodgeSin;
+              dodgeLegDXL = -1.3 * dodgeSin;
+              dodgeLegDXR = 1.3 * dodgeSin;
+              dodgeLegRotL = 0.16 * dodgeSin;
+              dodgeLegRotR = -0.16 * dodgeSin;
+            }
+          }
 
           // Perna Esquerda
+          c.save();
+          c.translate(-3.3 + dodgeLegDXL, -3.5 + legSwingL);
+          if (dodgeLegRotL) c.rotate(dodgeLegRotL);
           c.fillStyle = X;
-          c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+          c.fillRect(-1.9, 0, 3.8, 4.6);
           c.fillStyle = "rgba(0, 0, 0, 0.22)";
-          c.fillRect(-3.2, -3.5 + legSwingL, 0.9, 4.6);
+          c.fillRect(0.1, 0, 0.9, 4.6);
           c.fillStyle = C;
-          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+          c.fillRect(-1.9, 4.0, 3.8, 3.8);
           c.fillStyle = I;
-          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
+          c.fillRect(-1.9, 4.0, 3.8, 1.2);
           c.fillStyle = "rgba(0, 0, 0, 0.28)";
-          c.fillRect(-3.5, 1.5 + legSwingL, 1.0, 2.8);
+          c.fillRect(-0.2, 5.0, 1.0, 2.8);
           c.fillStyle = "#18181b";
-          c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+          c.fillRect(-1.9, 7.2, 3.8, 1.2);
+          c.restore();
 
           // Perna Direita
+          c.save();
+          c.translate(3.3 + dodgeLegDXR, -3.5 + legSwingR);
+          if (dodgeLegRotR) c.rotate(dodgeLegRotR);
           c.fillStyle = X;
-          c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+          c.fillRect(-1.9, 0, 3.8, 4.6);
           c.fillStyle = "rgba(0, 0, 0, 0.22)";
-          c.fillRect(3.4, -3.5 + legSwingR, 0.9, 4.6);
+          c.fillRect(0.1, 0, 0.9, 4.6);
           c.fillStyle = C;
-          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+          c.fillRect(-1.9, 4.0, 3.8, 3.8);
           c.fillStyle = I;
-          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+          c.fillRect(-1.9, 4.0, 3.8, 1.2);
           c.fillStyle = "rgba(0, 0, 0, 0.28)";
-          c.fillRect(3.1, 1.5 + legSwingR, 1.0, 2.8);
+          c.fillRect(-0.2, 5.0, 1.0, 2.8);
           c.fillStyle = "#18181b";
-          c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+          c.fillRect(-1.9, 7.2, 3.8, 1.2);
+          c.restore();
         } else if (w === "down") {
-          // VISTA FRONTAL: Estilo vertical clássico (passada alternada vertical por offset)
-          const legMult = isRun ? 3.6 : 2.8,
-            legSwingL = y ? -walkNorm * legMult : 0,
-            legSwingR = y ? walkNorm * legMult : 0;
+          // VISTA FRONTAL: Estilo vertical clássico + postura de esquiva nas 4 direções
+          const legMult = isRun ? 3.6 : 2.8;
+          let legSwingL = y ? -walkNorm * legMult : 0,
+            legSwingR = y ? walkNorm * legMult : 0,
+            dodgeLegDXL = 0,
+            dodgeLegDXR = 0,
+            dodgeLegRotL = 0,
+            dodgeLegRotR = 0;
+          if (isDodging) {
+            if (dodgeDir === "left") {
+              // Esquiva lateral p/ esquerda olhando p/ baixo: perna esquerda lidera aberta, direita impulsiona
+              dodgeLegDXL = -2.4 * dodgeSin;
+              legSwingL = -2.6 * dodgeSin;
+              dodgeLegRotL = 0.24 * dodgeSin;
+              dodgeLegDXR = 2.6 * dodgeSin;
+              legSwingR = 1.4 * dodgeSin;
+              dodgeLegRotR = -0.28 * dodgeSin;
+            } else if (dodgeDir === "right") {
+              // Esquiva lateral p/ direita olhando p/ baixo: perna direita lidera aberta, esquerda impulsiona
+              dodgeLegDXR = 2.4 * dodgeSin;
+              legSwingR = -2.6 * dodgeSin;
+              dodgeLegRotR = -0.24 * dodgeSin;
+              dodgeLegDXL = -2.6 * dodgeSin;
+              legSwingL = 1.4 * dodgeSin;
+              dodgeLegRotL = 0.28 * dodgeSin;
+            } else if (dodgeDir === "down") {
+              // Avanço rápido p/ frente (sul) olhando p/ baixo
+              legSwingL = -3.6 * dodgeSin;
+              legSwingR = 3.4 * dodgeSin;
+              dodgeLegDXL = -0.7 * dodgeSin;
+              dodgeLegDXR = 0.7 * dodgeSin;
+              dodgeLegRotL = 0.12 * dodgeSin;
+              dodgeLegRotR = -0.12 * dodgeSin;
+            } else {
+              // Salto evasivo p/ trás (norte) mantendo o olhar fixo p/ baixo
+              legSwingL = -3.0 * dodgeSin;
+              legSwingR = -1.6 * dodgeSin;
+              dodgeLegDXL = -1.3 * dodgeSin;
+              dodgeLegDXR = 1.3 * dodgeSin;
+              dodgeLegRotL = 0.16 * dodgeSin;
+              dodgeLegRotR = -0.16 * dodgeSin;
+            }
+          }
 
           // Perna Esquerda
+          c.save();
+          c.translate(-3.3 + dodgeLegDXL, -3.5 + legSwingL);
+          if (dodgeLegRotL) c.rotate(dodgeLegRotL);
           c.fillStyle = X;
-          c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+          c.fillRect(-1.9, 0, 3.8, 4.6);
           c.fillStyle = "rgba(255, 255, 255, 0.12)";
-          c.fillRect(-4.5, -1.7 + legSwingL, 2.4, 2.2);
+          c.fillRect(-1.2, 1.8, 2.4, 2.2);
           c.fillStyle = C;
-          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+          c.fillRect(-1.9, 4.0, 3.8, 3.8);
           c.fillStyle = I;
-          c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
+          c.fillRect(-1.9, 4.0, 3.8, 1.2);
           c.fillStyle = C;
-          c.fillRect(-5.0, 3.1 + legSwingL, 3.4, 1.2);
+          c.fillRect(-1.7, 6.6, 3.4, 1.2);
           c.fillStyle = "#18181b";
-          c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+          c.fillRect(-1.9, 7.2, 3.8, 1.2);
+          c.restore();
 
           // Perna Direita
+          c.save();
+          c.translate(3.3 + dodgeLegDXR, -3.5 + legSwingR);
+          if (dodgeLegRotR) c.rotate(dodgeLegRotR);
           c.fillStyle = X;
-          c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+          c.fillRect(-1.9, 0, 3.8, 4.6);
           c.fillStyle = "rgba(255, 255, 255, 0.12)";
-          c.fillRect(2.1, -1.7 + legSwingR, 2.4, 2.2);
+          c.fillRect(-1.2, 1.8, 2.4, 2.2);
           c.fillStyle = C;
-          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+          c.fillRect(-1.9, 4.0, 3.8, 3.8);
           c.fillStyle = I;
-          c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+          c.fillRect(-1.9, 4.0, 3.8, 1.2);
           c.fillStyle = C;
-          c.fillRect(1.6, 3.1 + legSwingR, 3.4, 1.2);
+          c.fillRect(-1.7, 6.6, 3.4, 1.2);
           c.fillStyle = "#18181b";
-          c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+          c.fillRect(-1.9, 7.2, 3.8, 1.2);
+          c.restore();
         } else if (w === "left") {
-          // VISTA LATERAL ESQUERDA: Pêndulo com pivôs fixos no quadril (y = -3.5)
-          const strideRange = isRun ? 0.65 : 0.48,
-            frontAngle = -walkNorm * strideRange,
-            backAngle = walkNorm * strideRange;
+          // VISTA LATERAL ESQUERDA: Pêndulo com pivôs no quadril + postura de esquiva nas 4 direções
+          const strideRange = isRun ? 0.65 : 0.48;
+          let frontAngle = -walkNorm * strideRange,
+            backAngle = walkNorm * strideRange,
+            frontDY = 0,
+            backDY = 0;
+          if (isDodging) {
+            if (dodgeDir === "left") {
+              // Dash frontal p/ esquerda: tesoura ampla de avanço
+              frontAngle = 0.78 * dodgeSin;
+              backAngle = -0.82 * dodgeSin;
+              frontDY = -1.4 * dodgeSin;
+            } else if (dodgeDir === "right") {
+              // Backstep (recuo p/ direita olhando p/ esquerda): salto reverso mantendo o olhar à esquerda
+              backAngle = -0.76 * dodgeSin;
+              frontAngle = 0.66 * dodgeSin;
+              frontDY = -2.0 * dodgeSin;
+              backDY = -0.6 * dodgeSin;
+            } else if (dodgeDir === "up") {
+              // Esquiva lateral p/ cima em perfil esquerdo: abertura 2.5D em profundidade
+              backDY = -2.8 * dodgeSin;
+              frontDY = 1.5 * dodgeSin;
+              backAngle = -0.44 * dodgeSin;
+              frontAngle = 0.48 * dodgeSin;
+            } else {
+              // Esquiva lateral p/ baixo em perfil esquerdo: abertura 2.5D em profundidade
+              frontDY = 2.6 * dodgeSin;
+              backDY = -1.8 * dodgeSin;
+              frontAngle = -0.46 * dodgeSin;
+              backAngle = 0.42 * dodgeSin;
+            }
+          }
 
           // Perna de trás (direita, pivô em 1.6, -3.5)
           c.save();
-          c.translate(1.6, -3.5);
+          c.translate(1.6, -3.5 + backDY);
           c.rotate(backAngle);
           c.fillStyle = X;
           c.fillRect(-1.8, 0, 3.6, 4.6);
@@ -2340,7 +2573,7 @@
 
           // Perna da frente (esquerda, pivô em -1.6, -3.5)
           c.save();
-          c.translate(-1.6, -3.5);
+          c.translate(-1.6, -3.5 + frontDY);
           c.rotate(frontAngle);
           c.fillStyle = X;
           c.fillRect(-1.9, 0, 3.8, 4.6);
@@ -2356,14 +2589,42 @@
           c.fillRect(-3.3, 6.8, 5.2, 1.2);
           c.restore();
         } else {
-          // VISTA LATERAL DIREITA: Pêndulo com pivôs fixos no quadril (y = -3.5)
-          const strideRange = isRun ? 0.65 : 0.48,
-            frontAngle = walkNorm * strideRange,
-            backAngle = -walkNorm * strideRange;
+          // VISTA LATERAL DIREITA: Pêndulo com pivôs no quadril + postura de esquiva nas 4 direções
+          const strideRange = isRun ? 0.65 : 0.48;
+          let frontAngle = walkNorm * strideRange,
+            backAngle = -walkNorm * strideRange,
+            frontDY = 0,
+            backDY = 0;
+          if (isDodging) {
+            if (dodgeDir === "right") {
+              // Dash frontal p/ direita: tesoura ampla de avanço
+              frontAngle = -0.78 * dodgeSin;
+              backAngle = 0.82 * dodgeSin;
+              frontDY = -1.4 * dodgeSin;
+            } else if (dodgeDir === "left") {
+              // Backstep (recuo p/ esquerda olhando p/ direita): salto reverso mantendo o olhar à direita
+              backAngle = 0.76 * dodgeSin;
+              frontAngle = -0.66 * dodgeSin;
+              frontDY = -2.0 * dodgeSin;
+              backDY = -0.6 * dodgeSin;
+            } else if (dodgeDir === "up") {
+              // Esquiva lateral p/ cima em perfil direito: abertura 2.5D em profundidade
+              backDY = -2.8 * dodgeSin;
+              frontDY = 1.5 * dodgeSin;
+              backAngle = 0.44 * dodgeSin;
+              frontAngle = -0.48 * dodgeSin;
+            } else {
+              // Esquiva lateral p/ baixo em perfil direito: abertura 2.5D em profundidade
+              frontDY = 2.6 * dodgeSin;
+              backDY = -1.8 * dodgeSin;
+              frontAngle = 0.46 * dodgeSin;
+              backAngle = -0.42 * dodgeSin;
+            }
+          }
 
           // Perna de trás (esquerda, pivô em -1.6, -3.5)
           c.save();
-          c.translate(-1.6, -3.5);
+          c.translate(-1.6, -3.5 + backDY);
           c.rotate(backAngle);
           c.fillStyle = X;
           c.fillRect(-1.8, 0, 3.6, 4.6);
@@ -2383,7 +2644,7 @@
 
           // Perna da frente (direita, pivô em 1.6, -3.5)
           c.save();
-          c.translate(1.6, -3.5);
+          c.translate(1.6, -3.5 + frontDY);
           c.rotate(frontAngle);
           c.fillStyle = X;
           c.fillRect(-1.9, 0, 3.8, 4.6);
@@ -2414,6 +2675,10 @@
           else if (w === "right") be = ne * 2;
           else if (w === "up") Me = -ne * 2;
           else Me = ne * 2;
+        }
+        if (isDodging) {
+          be += dodgeDX * 2.6 * dodgeSin;
+          Me += dodgeDY * 2.2 * dodgeSin;
         }
 
         this.drawTorsoArmor(w, T + Me, be, j);
@@ -2510,7 +2775,9 @@
             K,
             V,
             t.attackAngle,
-          ));
+          ),
+          c.restore(),
+          (this._dodgeState = null));
         const _e = !!(t.poisonTimer && t.poisonTimer > 0),
           xe = t.attachedSlimes || 0;
         if (_e) {
@@ -2604,22 +2871,25 @@
         if (!m) return;
         const c = this.ctx,
           f = m.color || "#b91c1c",
-          g = o ? Math.cos(this.animTimer * 8) * 2.5 : u * 3;
+          ds = this._dodgeState,
+          dodgeBillow = ds && ds.active ? ds.sin * 5.2 : 0,
+          dodgeShiftX = ds && ds.active ? -ds.dx * ds.sin * 3.8 : 0,
+          g = (o ? Math.cos(this.animTimer * 8) * 2.5 : u * 3) + dodgeBillow;
         ((c.fillStyle = f),
           t === "down"
-            ? (c.fillRect(-8, -15 - l, 16, 17 + g * 0.5),
+            ? (c.fillRect(-8 + dodgeShiftX * 0.5, -15 - l, 16, 17 + g * 0.5),
               (c.fillStyle = "#f59e0b"),
               c.fillRect(-8, -15 - l, 3, 3),
               c.fillRect(5, -15 - l, 3, 3))
             : t === "up"
-              ? (c.fillRect(-8, -16 - l, 16, 19 + g),
+              ? (c.fillRect(-8 + dodgeShiftX * 0.5, -16 - l, 16, 19 + g),
                 (c.fillStyle = "rgba(0, 0, 0, 0.2)"),
-                c.fillRect(-2, -15 - l, 4, 18 + g))
+                c.fillRect(-2 + dodgeShiftX * 0.35, -15 - l, 4, 18 + g))
               : t === "left"
-                ? (c.fillRect(2, -16 - l, 6 + g, 18),
+                ? (c.fillRect(2, -16 - l, 6 + Math.max(0, g + dodgeShiftX), 18),
                   (c.fillStyle = "#f59e0b"),
                   c.fillRect(1, -15 - l, 3, 3))
-                : (c.fillRect(-8 - g, -16 - l, 6 + g, 18),
+                : (c.fillRect(-8 - Math.max(0, g - dodgeShiftX), -16 - l, 6 + Math.max(0, g - dodgeShiftX), 18),
                   (c.fillStyle = "#f59e0b"),
                   c.fillRect(-4, -15 - l, 3, 3)));
       }
@@ -3529,65 +3799,72 @@
         // Os ombros são pontos de ancoragem 100% fixos no topo do tórax (-14.2 - l + u).
         // Os braços giram em arco pendular a partir do ombro com marcha cruzada perfeita.
         const isRun = this._isPlayerRunning || false,
-          walkNorm = v ? Math.max(-1, Math.min(1, v / 2.8)) : 0;
+          walkNorm = v ? Math.max(-1, Math.min(1, v / 2.8)) : 0,
+          ds = this._dodgeState,
+          dSin = ds && ds.active ? ds.sin : 0,
+          dDX = ds && ds.active ? ds.dx : 0,
+          dDY = ds && ds.active ? ds.dy : 0;
 
         if (t === "down" || t === "up") {
-          // VISTA FRONTAL / TRASEIRA: Ombros firmemente ancorados ao corpo com oscilação pendular suave
-          const swingL = walkNorm * (isRun ? 1.0 : 0.65),
-            swingR = -walkNorm * (isRun ? 1.0 : 0.65),
+          // VISTA FRONTAL / TRASEIRA: Ombros firmemente ancorados ao corpo com oscilação pendular + guarda de esquiva
+          const swingL = walkNorm * (isRun ? 1.0 : 0.65) - dSin * 1.6,
+            swingR = -walkNorm * (isRun ? 1.0 : 0.65) - dSin * 1.6,
+            armSpreadL = -dSin * 1.1 + dDX * dSin * 0.7,
+            armSpreadR = dSin * 1.1 + dDX * dSin * 0.7,
             shoulderTopY = -15.2 - l + u;
 
           // 1. Braço Esquerdo (topo fixo no ombro do tórax para nunca descolar do corpo)
           const wristYL = shoulderTopY + 5.0 + swingL,
             handYL = wristYL + 1.5;
           M.fillStyle = shirtColor;
-          M.fillRect(-8.4 + o, shoulderTopY, 2.6, 6.2 + swingL);
+          M.fillRect(-8.4 + o + armSpreadL, shoulderTopY, 2.6, 6.2 + swingL);
           M.fillStyle = P ? (P.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(-8.4 + o, wristYL, 2.6, 1.6);
+          M.fillRect(-8.4 + o + armSpreadL, wristYL, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(-8.3 + o, handYL, 2.4, 2.2);
+          M.fillRect(-8.3 + o + armSpreadL, handYL, 2.4, 2.2);
 
           // Item leve / seixo na mão esquerda
           if (isPebble(p)) {
             M.save();
-            M.translate(-7.1 + o, handYL + 1.0);
+            M.translate(-7.1 + o + armSpreadL, handYL + 1.0);
             this.drawWeaponItem(p);
             M.restore();
           }
 
           // Tocha / Escudo na mão esquerda (ancorados diretamente na posição da mão)
           if (S) {
-            this.drawHeldTorch(t, l, swingL, -7.1 + o, handYL + 1.0);
+            this.drawHeldTorch(t, l, swingL, -7.1 + o + armSpreadL, handYL + 1.0);
           } else if ($) {
-            this.drawHeldShield(t, l, o, p, swingL, -7.1 + o, handYL + 1.0);
+            this.drawHeldShield(t, l, o, p, swingL, -7.1 + o + armSpreadL, handYL + 1.0);
           }
 
           // 2. Braço Direito (topo fixo no ombro do tórax para nunca descolar do corpo)
           const wristYR = shoulderTopY + 5.0 + swingR,
             handYR = wristYR + 1.5;
           M.fillStyle = shirtColor;
-          M.fillRect(5.8 + o, shoulderTopY, 2.6, 6.2 + swingR);
+          M.fillRect(5.8 + o + armSpreadR, shoulderTopY, 2.6, 6.2 + swingR);
           M.fillStyle = A ? (A.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(5.8 + o, wristYR, 2.6, 1.6);
+          M.fillRect(5.8 + o + armSpreadR, wristYR, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(5.9 + o, handYR, 2.4, 2.2);
+          M.fillRect(5.9 + o + armSpreadR, handYR, 2.4, 2.2);
 
-          // Arma equipada na mão direita (rotaciona suavemente com a mão)
+          // Arma equipada na mão direita (rotaciona suavemente com a mão + postura de guarda na esquiva)
           if (j) {
             M.save();
-            M.translate(7.1 + o, handYR + 1.0);
-            const walkWeaponAngle = (t === "up" ? -0.18 : 0.28) + swingR * 0.08;
+            M.translate(7.1 + o + armSpreadR, handYR + 1.0);
+            const walkWeaponAngle = (t === "up" ? -0.18 : 0.28) + swingR * 0.08 + dSin * (dDX !== 0 ? dDX * 0.35 : 0.28);
             M.rotate(walkWeaponAngle);
             this.drawWeaponItem(j);
             M.restore();
           }
         } else {
-          // VISTA LATERAL EM PERFIL: Pêndulo com pivô fixo no ombro superior
+          // VISTA LATERAL EM PERFIL: Pêndulo com pivô fixo no ombro superior + contrabalanço de esquiva
           const isLeft = t === "left",
             shoulderPivotX = (isLeft ? -1.0 : 0.8) + o,
             shoulderPivotY = -14.2 - l + u,
+            dodgeArmDelta = dSin * (dDX !== 0 ? -dDX * 0.62 : (isLeft ? 1 : -1) * (dDY < 0 ? 0.52 : -0.45)),
             // Marcha cruzada: braço balança para trás quando perna avança para frente
-            armAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45);
+            armAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45) + dodgeArmDelta;
 
           M.save();
           M.translate(shoulderPivotX, shoulderPivotY);

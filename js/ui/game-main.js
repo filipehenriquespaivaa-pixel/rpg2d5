@@ -1981,32 +1981,40 @@
         if (dx === 0 && dy === 0) return;
 
         const dodgeDist = 58;
+        const dodgeDuration = 0.25;
         const oldX = he.x;
         const oldY = he.y;
-        const preservedDirection = he.direction; // Detalhe: sem virar o personagem!
+        const preservedDirection = (he.dodgeTimer && he.dodgeTimer > 0 && he.dodgeFacing) ? he.dodgeFacing : he.direction; // Detalhe: sem virar o personagem!
 
-        const slide = o.current.moveWithSlide(he.x, he.y, dx * dodgeDist, dy * dodgeDist, !0);
-        he.x = slide.x;
-        he.y = slide.y;
+        he.dodgeTimer = dodgeDuration;
+        he.dodgeDuration = dodgeDuration;
+        he.dodgeDir = dir;
+        he.dodgeDX = dx;
+        he.dodgeDY = dy;
+        he.dodgeDist = dodgeDist;
+        he.dodgeStartX = oldX;
+        he.dodgeStartY = oldY;
+        he.dodgeFacing = preservedDirection;
+        he.dodgeEasePrev = 0;
         he.direction = preservedDirection; // Mantém a direção em que estava olhando!
-        he.invulnerableTimer = Math.max(he.invulnerableTimer || 0, 0.35); // Desvio de ataques
+        he.invulnerableTimer = Math.max(he.invulnerableTimer || 0, 0.36); // Desvio de ataques
 
         if (m.current && typeof m.current.playPunchWhoosh === "function") {
           m.current.playPunchWhoosh();
         }
         const cEngine = c.current;
         if (cEngine && Array.isArray(cEngine.slimeParticles)) {
-          for (let i = 0; i < 5; i++) {
+          for (let i = 0; i < 7; i++) {
             cEngine.slimeParticles.push({
-              x: oldX + (Math.random() - 0.5) * 12,
-              y: oldY - 4 + (Math.random() - 0.5) * 8,
-              vx: -dx * 3.2 + (Math.random() - 0.5) * 2,
-              vy: -dy * 3.2 + (Math.random() - 0.5) * 2,
-              life: 0.32,
-              maxLife: 0.32,
+              x: oldX + (Math.random() - 0.5) * 14,
+              y: oldY + 1 + (Math.random() - 0.5) * 6,
+              vx: -dx * (2.6 + Math.random() * 2.2) + (Math.random() - 0.5) * 1.8,
+              vy: -dy * (2.6 + Math.random() * 2.2) + (Math.random() - 0.5) * 1.8,
+              life: 0.28 + Math.random() * 0.08,
+              maxLife: 0.34,
               type: "bubble",
-              color: "#38bdf8",
-              size: 1.8,
+              color: i % 2 === 0 ? "#38bdf8" : "#bae6fd",
+              size: 1.6 + Math.random() * 1.1,
             });
           }
         }
@@ -3597,14 +3605,19 @@
       }),
       J.useEffect(() => {
         const E = (q) => {
-            ((g.current[q.code] = !0), (g.current[q.key] = !0));
-            const F = Gr(q.code, q.key);
-            if (F && !q.repeat) {
-              const ie = performance.now(),
-                ge = Se.current[F] || 0,
-                re = ie - ge;
-              (re > 40 && re < 360 && (Ae.current[F] = !0),
-                (Se.current[F] = ie));
+            const isArrowKey =
+              ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(q.code) ||
+              ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Up", "Down", "Left", "Right"].includes(q.key);
+            if (!(dodgeModeRef.current && isArrowKey)) {
+              ((g.current[q.code] = !0), (g.current[q.key] = !0));
+              const F = Gr(q.code, q.key);
+              if (F && !q.repeat) {
+                const ie = performance.now(),
+                  ge = Se.current[F] || 0,
+                  re = ie - ge;
+                (re > 40 && re < 360 && (Ae.current[F] = !0),
+                  (Se.current[F] = ie));
+              }
             }
             if (q.code === "ShiftLeft" || q.code === "ShiftRight" || q.key === "Shift") {
               if (!q.repeat && Ga.current.startPebbleAim) {
@@ -4020,13 +4033,45 @@
           )
             ((he.isMoving = !1), (he.vx = 0), (he.vy = 0));
           else {
+            const isCurrentlyDodging = !!(he.dodgeTimer && he.dodgeTimer > 0);
+            if (isCurrentlyDodging) {
+              he.dodgeTimer = Math.max(0, he.dodgeTimer - Ye);
+              const dDur = he.dodgeDuration || 0.25,
+                dProg = Math.max(0, Math.min(1, 1 - he.dodgeTimer / dDur)),
+                dEase = 1 - Math.pow(1 - dProg, 2.45),
+                dDelta = Math.max(0, dEase - (he.dodgeEasePrev || 0));
+              he.dodgeEasePrev = dEase;
+              const stepDist = dDelta * (he.dodgeDist || 58);
+              if (stepDist > 0.001) {
+                const _dSlide = Q.moveWithSlide(
+                  he.x,
+                  he.y,
+                  (he.dodgeDX || 0) * stepDist,
+                  (he.dodgeDY || 0) * stepDist,
+                  !0,
+                );
+                he.x = _dSlide.x;
+                he.y = _dSlide.y;
+              }
+              if (he.dodgeFacing) {
+                he.direction = he.dodgeFacing;
+              }
+              if (he.dodgeTimer === 0) {
+                const landTile = Q.getTile(
+                  Math.floor(he.x / Q.tileSize),
+                  Math.floor(he.y / Q.tileSize),
+                );
+                m.current.playFootstep && m.current.playFootstep(landTile.biome.hasWater);
+              }
+            }
+            const allowArrowWalk = !dodgeModeRef.current;
             let qa = 0,
               Xa = 0;
-            (($e.KeyW || $e.ArrowUp || $e.Up || da.up) && (Xa -= 1),
-              ($e.KeyS || $e.ArrowDown || $e.Down || da.down) && (Xa += 1),
-              ($e.KeyA || $e.ArrowLeft || $e.Left || da.left) && (qa -= 1),
-              ($e.KeyD || $e.ArrowRight || $e.Right || da.right) && (qa += 1),
-              he.isAiming && ((qa = 0), (Xa = 0)),
+            (($e.KeyW || (allowArrowWalk && ($e.ArrowUp || $e.Up || da.up))) && (Xa -= 1),
+              ($e.KeyS || (allowArrowWalk && ($e.ArrowDown || $e.Down || da.down))) && (Xa += 1),
+              ($e.KeyA || (allowArrowWalk && ($e.ArrowLeft || $e.Left || da.left))) && (qa -= 1),
+              ($e.KeyD || (allowArrowWalk && ($e.ArrowRight || $e.Right || da.right))) && (qa += 1),
+              (he.isAiming || isCurrentlyDodging) && ((qa = 0), (Xa = 0)),
               (he.isMoving = qa !== 0 || Xa !== 0));
             const za = 100 + (De.staminaBonus || 0);
             ((he.maxStamina = za), he.stamina === void 0 && (he.stamina = za));
