@@ -892,6 +892,14 @@
         this._nightGiantScorpionsSpawned = !0;
         this.triggerDesertNightGiantScorpions(l, o);
       }
+      // Durante a noite no deserto, os escorpiões gigantes continuam surgindo normalmente pelo mapa respeitando o limite de até 3
+      if (isDesertSurface && isNightTime && !l.isDead) {
+        this._desertGiantRepopTimer = (this._desertGiantRepopTimer || 0) + t;
+        if (this._desertGiantRepopTimer >= 4.0) {
+          this._desertGiantRepopTimer = 0;
+          this.spawnNightGiantScorpionNearPlayer(l);
+        }
+      }
       if (
         (l.invulnerableTimer &&
           l.invulnerableTimer > 0 &&
@@ -922,7 +930,7 @@
             p.caveDoorX = doorX;
             p.caveDoorY = doorY;
             const distPlayerToDoor = Math.hypot(l.x - doorX, l.y - doorY);
-            if (distPlayerToDoor > 680) {
+            if (distPlayerToDoor > (p.isGiantScorpion ? 1600 : 680)) {
               this.monsters.splice(S, 1);
               continue;
             }
@@ -1050,7 +1058,8 @@
           p.isPullingFromCave = !1;
         }
         const j = Math.hypot(l.x - p.x, l.y - p.y);
-        if (j > 680) {
+        const maxDist = p.isGiantScorpion ? 1600 : 680;
+        if (j > maxDist) {
           this.monsters.splice(S, 1);
           continue;
         }
@@ -2007,6 +2016,82 @@
         p.life <= 0 && this.slimeParticles.splice(S, 1);
       }
     }
+    createGiantScorpion(spawnX, spawnY, player, withEmerge = true) {
+      const baseScale = 0.95 * 5; // 5 vezes maior que o escorpião normal (4.75)
+      const giant = {
+        id: `giant_scorpion_${this.nextId++}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        name: "Escorpião Gigante Noturno",
+        type: "scorpion",
+        isGiantScorpion: !0,
+        size: 56,
+        x: spawnX,
+        y: spawnY,
+        vx: 0,
+        vy: 0,
+        hp: 95,
+        maxHp: 95,
+        attack: 14,
+        defense: 5,
+        speed: (player.speed || 2.15) * 1.6 * 0.85 * 0.9,
+        color: "#b45309",
+        accentColor: "#ef4444",
+        scale: baseScale,
+        isUnderground: !1,
+        isMoving: !1,
+        hitFlashTimer: 0,
+        animTimer: Math.random() * 10,
+        wanderTimer: 0.6,
+        targetAngle: Math.atan2(player.y - spawnY, player.x - spawnX),
+        facing: this.getMonsterFacingToTarget(spawnX, spawnY, player.x, player.y, "down"),
+        emerging: !!withEmerge,
+        emergeDuration: withEmerge ? 1.25 : 0,
+        emergeTimer: withEmerge ? 1.25 : 0,
+        attackCooldown: 1.3,
+      };
+      this.monsters.push(giant);
+      if (withEmerge) {
+        for (let pIdx = 0; pIdx < 16; pIdx++) {
+          const ang = Math.random() * Math.PI * 2,
+            spd = 3 + Math.random() * 8;
+          this.slimeParticles.push({
+            x: spawnX + (Math.random() - 0.5) * 36,
+            y: spawnY + (Math.random() - 0.5) * 18,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 6,
+            life: 0.7,
+            maxLife: 0.7,
+            type: "mud",
+            color: Math.random() < 0.5 ? "#f59e0b" : "#78350f",
+            size: 3 + Math.random() * 2.5,
+          });
+        }
+      }
+      return giant;
+    }
+    spawnNightGiantScorpionNearPlayer(player) {
+      const livingGiants = this.monsters.filter(
+        (m) => m.type === "scorpion" && m.isGiantScorpion && m.hp > 0 && !m.burrowing
+      ).length;
+      if (livingGiants >= 3) return;
+
+      const baseAngle = Math.random() * Math.PI * 2;
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const tryDist = 240 + attempt * 24,
+          tryAng = baseAngle + attempt * 0.45,
+          cx = player.x + Math.cos(tryAng) * tryDist,
+          cy = player.y + Math.sin(tryAng) * tryDist,
+          tx = Math.floor(cx / this.engine.tileSize),
+          ty = Math.floor(cy / this.engine.tileSize);
+        if (
+          this.engine.isTilePassable(tx, ty) &&
+          !this.engine.isNearLitCampfire(cx, cy) &&
+          this.engine.getBiome(tx, ty) === BiomeId.DESERT
+        ) {
+          this.createGiantScorpion(cx, cy, player, Math.random() < 0.35);
+          break;
+        }
+      }
+    }
     triggerDesertNightGiantScorpions(player, isUnderground = !1) {
       if (isUnderground) return;
       // 1. Todos os escorpiões pequenos presentes se enterram na areia e somem
@@ -2019,12 +2104,11 @@
           m.vy = 0;
         }
       }
-      // 2. Cria 3 Escorpiões Gigantes (5x maiores) emergindo do chão ao cair da noite no deserto
+      // 2. Cria até 3 Escorpiões Gigantes emergindo do chão ao cair da noite no deserto
       const existingGiants = this.monsters.filter(
         (m) => m.type === "scorpion" && m.isGiantScorpion && m.hp > 0 && !m.burrowing
       ).length;
       const toSpawn = Math.max(0, 3 - existingGiants);
-      const baseScale = 0.95 * 5; // 5 vezes maior que o escorpião normal (4.75)
       for (let i = 0; i < toSpawn; i++) {
         const baseAngle = (i / 3) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
         let spawnX = player.x + Math.cos(baseAngle) * 195,
@@ -2042,59 +2126,14 @@
             break;
           }
         }
-        const giant = {
-          id: `giant_scorpion_${this.nextId++}_${Date.now()}_${i}`,
-          name: "Escorpião Gigante Noturno",
-          type: "scorpion",
-          isGiantScorpion: !0,
-          size: 56,
-          x: spawnX,
-          y: spawnY,
-          vx: 0,
-          vy: 0,
-          hp: 95,
-          maxHp: 95,
-          attack: 14,
-          defense: 5,
-          speed: (player.speed || 2.15) * 1.6 * 0.85 * 0.9,
-          color: "#b45309",
-          accentColor: "#ef4444",
-          scale: baseScale,
-          isUnderground: !1,
-          isMoving: !1,
-          hitFlashTimer: 0,
-          animTimer: Math.random() * 10,
-          wanderTimer: 0.6,
-          targetAngle: Math.atan2(player.y - spawnY, player.x - spawnX),
-          facing: this.getMonsterFacingToTarget(spawnX, spawnY, player.x, player.y, "down"),
-          emerging: !0,
-          emergeDuration: 1.25,
-          emergeTimer: 1.25,
-          attackCooldown: 1.3,
-        };
-        this.monsters.push(giant);
-        for (let pIdx = 0; pIdx < 16; pIdx++) {
-          const ang = Math.random() * Math.PI * 2,
-            spd = 3 + Math.random() * 8;
-          this.slimeParticles.push({
-            x: spawnX + (Math.random() - 0.5) * 36,
-            y: spawnY + (Math.random() - 0.5) * 18,
-            vx: Math.cos(ang) * spd,
-            vy: Math.sin(ang) * spd - 6,
-            life: 0.7,
-            maxLife: 0.7,
-            type: "mud",
-            color: Math.random() < 0.5 ? "#f59e0b" : "#78350f",
-            size: 3 + Math.random() * 2.5,
-          });
-        }
+        this.createGiantScorpion(spawnX, spawnY, player, !0);
       }
       if (toSpawn > 0) {
         this.floatingTexts.push({
           id: `giant_scorp_alert_${this.nextId++}`,
           x: player.x,
           y: player.y - 34,
-          text: "🦂 3 Escorpiões Gigantes emergiram da areia!",
+          text: `🦂 ${toSpawn === 3 ? "3 " : ""}Escorpiões Gigantes emergiram da areia!`,
           color: "#f59e0b",
           isCrit: !0,
           life: 2.2,
@@ -2382,8 +2421,17 @@
             (P = 4),
             (A = 0.75),
             (x = 0.95));
-      // No deserto à noite, os escorpiões pequenos se enterram e somem (não nascem na superfície à noite)
+      // No deserto à noite, os escorpiões pequenos se enterram e somem;
+      // em vez disso, escorpiões gigantes podem surgir normalmente pelo mapa respeitando o limite de até 3!
       if (!l && v === "scorpion" && (u < 0.22 || u > 0.78)) {
+        if (o === BiomeId.DESERT) {
+          const livingGiants = this.monsters.filter(
+            (mg) => mg.type === "scorpion" && mg.isGiantScorpion && mg.hp > 0 && !mg.burrowing
+          ).length;
+          if (livingGiants < 3) {
+            this.createGiantScorpion(f, g, t, Math.random() < 0.4);
+          }
+        }
         return;
       }
       if (v === "slime" && !l && u >= 0.22 && u <= 0.78) {
