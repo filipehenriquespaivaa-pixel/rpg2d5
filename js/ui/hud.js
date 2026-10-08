@@ -2096,36 +2096,26 @@
           className:
             "pointer-events-auto absolute bottom-4 right-4 z-30 flex flex-col items-center gap-2 select-none",
           children: [
-            h.jsxs("button", {
+            h.jsx("button", {
               id: "touch-extra-btn",
               onClick: handleExtraClick,
               onAuxClick: handleExtraClick,
               onContextMenu: (We) => We.preventDefault(),
-              className: `group relative flex items-center justify-center gap-1.5 px-3 py-1.5 w-32 rounded-xl border font-bold text-xs shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer select-none ${
+              className: `flex items-center justify-center w-10 h-10 rounded-xl border shadow-lg backdrop-blur-sm transition-all active:scale-95 cursor-pointer select-none ${
                 dodgeModeProp
-                  ? "bg-gradient-to-r from-cyan-500 to-sky-600 text-slate-950 border-cyan-300 shadow-cyan-500/60 ring-2 ring-cyan-400 font-black scale-105"
+                  ? "bg-cyan-500 border-cyan-300 shadow-cyan-500/50 ring-2 ring-cyan-400/60 scale-105"
                   : extraActive
-                    ? "bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/50 scale-105"
-                    : "bg-slate-900/85 hover:bg-slate-800 border-sky-400/40 text-sky-200 hover:text-white hover:border-sky-300"
+                    ? "bg-amber-500 border-amber-300 shadow-amber-500/50 scale-105"
+                    : "bg-slate-800/80 hover:bg-slate-700/80 border-white/20 hover:border-white/40"
               }`,
-              title: dodgeModeProp
-                ? "Modo Desvio ATIVO: As setas fazem o personagem saltar rapidamente sem virar (Gasta 1/4 da energia)"
-                : "Modo Desvio DESATIVADO (Clique ou use a Roda do Mouse para alternar)",
-              children: [
-                h.jsx("span", { className: "text-sm", children: dodgeModeProp ? "⚡" : "🖱️" }),
-                h.jsx("span", {
-                  className: "text-[11px] font-black tracking-wider uppercase",
-                  children: dodgeModeProp ? "DESVIO ON" : "DESVIO OFF",
-                }),
-                h.jsx("span", {
-                  className: `text-[8px] font-mono px-1 py-0.2 rounded border ${
-                    dodgeModeProp
-                      ? "bg-black/80 text-cyan-300 border-cyan-400/50"
-                      : "bg-black/60 text-sky-300 border-sky-400/30"
-                  }`,
-                  children: "RODA",
-                }),
-              ],
+              title: "Desvio / Esquiva (Clique ou Roda do Mouse)",
+              children: h.jsx("div", {
+                className: `w-3 h-3 rounded-full transition-all ${
+                  dodgeModeProp
+                    ? "bg-slate-950 shadow-sm"
+                    : "bg-slate-400/50"
+                }`,
+              }),
             }),
             h.jsxs("div", {
               className:
