@@ -384,13 +384,41 @@
               );
             } else {
               const q = ot(D.mochila);
-              if (Ve.length >= q)
-                return (
-                  ve(
-                    `Espaço de itens cheio (${Ve.length}/${q} slots)! Libere espaço antes de desequipar.`,
-                  ),
-                  D
+              const canStackInBp = Ve.some(
+                (ge) =>
+                  ge.name === Q.name &&
+                  (Q.stackCount !== void 0 || Q.name.toLowerCase().includes("galho")),
+              );
+              if (!canStackInBp && Ve.length >= q) {
+                const isDev = Boolean(
+                  typeof (props && props.devMode) === "boolean"
+                    ? props.devMode
+                    : window.__devMode,
                 );
+                if (isDev && (!D.mochila || D.mochila.id !== "item_mochila_reforcada") && Ve.length < 21) {
+                  const devBackpack = {
+                    id: "item_mochila_reforcada",
+                    name: "Mochila de Couro Reforçada",
+                    icon: "🎒",
+                    color: "#6366f1",
+                    slot: "mochila",
+                    categoryType: "equipment",
+                    isEquippable: true,
+                    rarity: "raro",
+                    description: "Mochila resistente com múltiplos compartimentos (+15 slots extras).",
+                    value: 120,
+                  };
+                  D = { ...D, mochila: devBackpack };
+                  Da.current.mochila = devBackpack;
+                } else {
+                  return (
+                    ve(
+                      `Espaço de itens cheio (${Ve.length}/${q} slots)! Libere espaço antes de desequipar.`,
+                    ),
+                    D
+                  );
+                }
+              }
             }
             return (
               (Q.id.includes("torch") ||
@@ -3433,33 +3461,28 @@
           })();
       }, [Ve, ve]),
       dr = J.useCallback(() => {
-        var Q, q, F, ie;
-        if (
+        const isTorchItem = (it) =>
           !!(
-            ((Q = Oe.mao_esquerda) != null && Q.id.includes("torch")) ||
-            ((q = Oe.mao_direita) != null && q.id.includes("torch")) ||
-            ((F = Oe.mao_esquerda) != null &&
-              F.name.toLowerCase().includes("tocha")) ||
-            ((ie = Oe.mao_direita) != null &&
-              ie.name.toLowerCase().includes("tocha"))
-          )
-        ) {
-          z((ge) => {
-            const re = !ge;
-            return (re && m.current.playTorchIgnite(), re);
-          });
+            it &&
+            ((it.id && it.id.toLowerCase().includes("torch")) ||
+              (it.name && it.name.toLowerCase().includes("tocha")))
+          );
+        const equippedSlot = isTorchItem(Oe.mao_esquerda)
+          ? "mao_esquerda"
+          : isTorchItem(Oe.mao_direita)
+            ? "mao_direita"
+            : null;
+        if (equippedSlot) {
+          Vr(equippedSlot);
           return;
         }
-        const D = Ve.find(
-          (ge) =>
-            ge.id.includes("torch") || ge.name.toLowerCase().includes("tocha"),
-        );
+        const D = Ve.find(isTorchItem);
         if (D) {
           (ir(D), z(!0), m.current.playTorchIgnite());
           return;
         }
         (m.current.playCaveExit(), z(!1));
-      }, [Oe, Ve, ir]),
+      }, [Oe, Ve, ir, Vr]),
       Gr = (E, D) =>
         E === "KeyW" ||
         E === "ArrowUp" ||
@@ -4682,16 +4705,36 @@
                 const newItem = {
                   ...item,
                   id: `eq_${baseId}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                  stackCount: 1,
                 };
-                Wa((prev) => ({ ...prev, [item.slot]: newItem }));
-                ra((prev) => {
-                  const maxSlots = 21;
-                  const idx = prev.findIndex((i) => i.name === item.name);
-                  if (idx >= 0) return prev;
-                  if (prev.length >= maxSlots) return [...prev.slice(1), { ...newItem, id: `inv_${newItem.id}` }];
-                  return [...prev, { ...newItem, id: `inv_${newItem.id}` }];
+                const isTorch =
+                  (newItem.id || "").toLowerCase().includes("torch") ||
+                  (newItem.name || "").toLowerCase().includes("tocha");
+                if (isTorch) {
+                  z(!0);
+                }
+                Wa((prev) => {
+                  const oldItem = prev[item.slot];
+                  if (oldItem) {
+                    const oldIsTorch =
+                      (oldItem.id || "").toLowerCase().includes("torch") ||
+                      (oldItem.name || "").toLowerCase().includes("tocha");
+                    if (oldIsTorch && !isTorch) {
+                      z(!1);
+                    }
+                    ra((bp) => {
+                      const idx = bp.findIndex((i) => i.name === oldItem.name);
+                      if (idx !== -1 && (oldItem.stackCount !== void 0 || (oldItem.name || "").toLowerCase().includes("galho"))) {
+                        const nextBp = [...bp];
+                        nextBp[idx] = { ...nextBp[idx], stackCount: (nextBp[idx].stackCount || 1) + 1 };
+                        return nextBp;
+                      }
+                      return [...bp, oldItem];
+                    });
+                  }
+                  return { ...prev, [item.slot]: newItem };
                 });
-                ve(`⚡ [DEV] Equipado e adicionado à mochila: ${item.name}!`);
+                ve(`⚡ [DEV] Equipou: ${item.name}!`);
                 m.current && m.current.playEquipItem && m.current.playEquipItem();
               }
             },

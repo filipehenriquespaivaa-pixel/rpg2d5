@@ -1917,7 +1917,7 @@
                   id: "touch-torch-btn",
                   onClick: K || (() => g(!f)),
                   className: `flex items-center justify-center w-11 h-11 rounded-xl border text-sm font-bold shadow-lg transition-all backdrop-blur-sm active:scale-90 ${f ? "bg-amber-500/90 border-amber-300 text-slate-950 shadow-amber-500/40" : "bg-slate-800/80 border-white/20 text-amber-400"}`,
-                  title: "Alternar Tocha (L)",
+                  title: f ? "Desequipar e Guardar Tocha no Inventário (L)" : "Equipar Tocha (L)",
                   children: h.jsx(Lr, { className: "h-4 w-4" }),
                 }),
                 h.jsxs("button", {
