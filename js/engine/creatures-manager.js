@@ -2173,8 +2173,12 @@
         !l &&
         typeof window !== "undefined" &&
         window.DesertCity &&
-        typeof window.DesertCity.getHouseAt === "function" &&
-        window.DesertCity.getHouseAt(y, w)
+        typeof window.DesertCity.isCityTerritory === "function" &&
+        (window.DesertCity.isCityTerritory(y, w) ||
+          window.DesertCity.isCityTerritory(
+            Math.floor(t.x / this.engine.tileSize),
+            Math.floor(t.y / this.engine.tileSize),
+          ))
       )
         return;
       let v = "slime",

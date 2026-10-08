@@ -2492,6 +2492,22 @@
             return;
           }
         }
+        if (
+          typeof window !== "undefined" &&
+          window.DesertCity &&
+          typeof window.DesertCity.interactWithNearbyCitizen === "function"
+        ) {
+          const desertChat = window.DesertCity.interactWithNearbyCitizen(
+            D.x,
+            D.y,
+            !!E.isUnderground,
+          );
+          if (desertChat && desertChat.success) {
+            m.current.playChestChime && m.current.playChestChime();
+            ve(desertChat.message);
+            return;
+          }
+        }
         const me = [
           { tx: q, ty: F },
           { tx: q + 1, ty: F },

@@ -388,6 +388,25 @@
           );
           for (const ci of citItems) Ee.push(ci);
         }
+        if (
+          typeof window !== "undefined" &&
+          window.DesertCity &&
+          typeof window.DesertCity.updateAndGetCitizenRenderItems === "function"
+        ) {
+          const dcCitItems = window.DesertCity.updateAndGetCitizenRenderItems(
+            c,
+            f,
+            t,
+            u.timeOfDay,
+            this.animTimer,
+            S,
+            p,
+            j,
+            P,
+            !!this.engine.isUnderground,
+          );
+          for (const dci of dcCitItems) Ee.push(dci);
+        }
         Ee.sort((ne, ke) => ne.y - ke.y);
         for (const ne of Ee) ne.draw();
         if (!this.engine.isUnderground && typeof drawSnowCityHouseRoofs === "function") {
@@ -1898,8 +1917,13 @@
             break;
           }
           case "desert_city_door": {
+            const isDoorOpenByNpc = !!(
+              window.DesertCity &&
+              typeof window.DesertCity.isDoorwayUsedByCitizen === "function" &&
+              window.DesertCity.isDoorwayUsedByCitizen(u.tx, u.ty)
+            );
             if (typeof drawDesertCityDoor === "function") {
-              drawDesertCityDoor(c, f, !!t.opened, !!t.doorVertical);
+              drawDesertCityDoor(c, f, !!t.opened || isDoorOpenByNpc, !!t.doorVertical);
             }
             break;
           }

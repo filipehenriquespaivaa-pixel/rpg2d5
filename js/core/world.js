@@ -5377,7 +5377,15 @@
       if (o && o.isSnowCityDoor && !o.isSnowCityDoorOpen) return !1;
       if (o && o.isDesertCityWall) return !1;
       if (o && o.isDesertCityCollider) return !1;
-      if (o && o.isDesertCityDoor && !o.isDesertCityDoorOpen) return !1;
+      if (o && o.isDesertCityDoor && !o.isDesertCityDoorOpen) {
+        const isDoorOpenByNpc = !!(
+          typeof window !== "undefined" &&
+          window.DesertCity &&
+          typeof window.DesertCity.isDoorwayUsedByCitizen === "function" &&
+          window.DesertCity.isDoorwayUsedByCitizen(t, l)
+        );
+        if (!isDoorOpenByNpc) return !1;
+      }
       if (
         o &&
         o.prop &&
