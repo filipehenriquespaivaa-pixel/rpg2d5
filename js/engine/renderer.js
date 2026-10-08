@@ -3795,113 +3795,269 @@
           return;
         }
 
-        // BRAÇOS E MÃOS ANATÔMICAS COM PIVÔ FIXO NOS OMBROS (balanço pendular real)
-        // Os ombros são pontos de ancoragem 100% fixos no topo do tórax (-14.2 - l + u).
-        // Os braços giram em arco pendular a partir do ombro com marcha cruzada perfeita.
+        // BRAÇOS E MÃOS ANATÔMICAS COM PIVÔ FIXO NOS OMBROS (balanço pendular real + impulso no salto de esquiva)
+        // Os ombros são pontos de ancoragem fixos no topo do tórax.
+        // Durante a esquiva, ambos os braços e qualquer item equipado na mão esquerda ou direita
+        // acompanham o movimento de salto (abertura aérea, balanço pendular e rotação do punho).
         const isRun = this._isPlayerRunning || false,
           walkNorm = v ? Math.max(-1, Math.min(1, v / 2.8)) : 0,
           ds = this._dodgeState,
-          dSin = ds && ds.active ? ds.sin : 0,
-          dDX = ds && ds.active ? ds.dx : 0,
-          dDY = ds && ds.active ? ds.dy : 0;
+          isDodgingArm = !!(ds && ds.active),
+          dProg = isDodgingArm ? ds.prog : 0,
+          dSin = isDodgingArm ? ds.sin : 0,
+          dWave = isDodgingArm ? Math.sin(dProg * Math.PI * 2) : 0,
+          dDir = isDodgingArm ? ds.dir : t,
+          dDX = isDodgingArm ? ds.dx : 0,
+          dDY = isDodgingArm ? ds.dy : 0,
+          isLeftTorch = !!(
+            S ||
+            (p &&
+              ((p.name || "").toLowerCase().includes("tocha") ||
+                (p.id || "").toLowerCase().includes("torch")))
+          ),
+          isRightTorch = !!(
+            j &&
+            ((j.name || "").toLowerCase().includes("tocha") ||
+              (j.id || "").toLowerCase().includes("torch"))
+          ),
+          isRightShield = !!(
+            j &&
+            ((j.name || "").toLowerCase().includes("escudo") ||
+              (j.id || "").toLowerCase().includes("shield"))
+          );
+
+        const renderEquippedHandItem = (item, isTorchItem, isShieldItem, facingDir, handRot, mirrorX) => {
+          if (!item && !isTorchItem) return;
+          M.save();
+          if (mirrorX) M.scale(-1, 1);
+          M.rotate(handRot);
+          if (isTorchItem) {
+            this.drawHeldTorch(facingDir, 0, 0, 0, 0);
+          } else if (isShieldItem) {
+            this.drawHeldShield(facingDir, 0, 0, item, 0, 0, 0);
+          } else {
+            this.drawWeaponItem(item);
+          }
+          M.restore();
+        };
 
         if (t === "down" || t === "up") {
-          // VISTA FRONTAL / TRASEIRA: Ombros firmemente ancorados ao corpo com oscilação pendular + guarda de esquiva
-          const swingL = walkNorm * (isRun ? 1.0 : 0.65) - dSin * 1.6,
-            swingR = -walkNorm * (isRun ? 1.0 : 0.65) - dSin * 1.6,
-            armSpreadL = -dSin * 1.1 + dDX * dSin * 0.7,
-            armSpreadR = dSin * 1.1 + dDX * dSin * 0.7,
-            shoulderTopY = -15.2 - l + u;
+          // VISTA FRONTAL / TRASEIRA: Ombros ancorados ao corpo com rotação real no salto + balanço de itens nas duas mãos
+          const swingL = walkNorm * (isRun ? 1.0 : 0.65),
+            swingR = -walkNorm * (isRun ? 1.0 : 0.65),
+            shoulderTopY = -15.2 - l + u,
+            shoulderLX = -7.1 + o,
+            shoulderRX = 7.1 + o;
 
-          // 1. Braço Esquerdo (topo fixo no ombro do tórax para nunca descolar do corpo)
-          const wristYL = shoulderTopY + 5.0 + swingL,
-            handYL = wristYL + 1.5;
-          M.fillStyle = shirtColor;
-          M.fillRect(-8.4 + o + armSpreadL, shoulderTopY, 2.6, 6.2 + swingL);
-          M.fillStyle = P ? (P.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(-8.4 + o + armSpreadL, wristYL, 2.6, 1.6);
-          M.fillStyle = skin;
-          M.fillRect(-8.3 + o + armSpreadL, handYL, 2.4, 2.2);
+          // Ângulos de abertura e impulso dos braços durante o salto nas 4 direções
+          let armRotL = swingL * 0.16,
+            armRotR = -swingR * 0.16,
+            armExtendL = swingL,
+            armExtendR = swingR,
+            shoulderLiftL = 0,
+            shoulderLiftR = 0;
 
-          // Item leve / seixo na mão esquerda
-          if (isPebble(p)) {
-            M.save();
-            M.translate(-7.1 + o + armSpreadL, handYL + 1.0);
-            this.drawWeaponItem(p);
-            M.restore();
+          if (isDodgingArm) {
+            const isForwardDodge = dDir === t,
+              isBackwardDodge = (t === "down" && dDir === "up") || (t === "up" && dDir === "down");
+            if (isForwardDodge) {
+              // Salto frontal: braços lançados para trás/lados no impulso + chicoteiam à frente na aterrissagem
+              armRotL = 0.72 * dSin - 0.25 * dWave;
+              armRotR = -0.72 * dSin + 0.25 * dWave;
+              armExtendL = -1.6 * dSin + 0.8 * dWave;
+              armExtendR = -1.6 * dSin + 0.8 * dWave;
+              shoulderLiftL = -1.2 * dSin;
+              shoulderLiftR = -1.2 * dSin;
+            } else if (isBackwardDodge) {
+              // Backstep (salto p/ trás): braços abrem alto para equilíbrio aéreo e guarda frontal
+              armRotL = 0.95 * dSin + 0.22 * dWave;
+              armRotR = -0.95 * dSin - 0.22 * dWave;
+              armExtendL = -2.0 * dSin;
+              armExtendR = -2.0 * dSin;
+              shoulderLiftL = -1.8 * dSin;
+              shoulderLiftR = -1.8 * dSin;
+            } else if (dDir === "left") {
+              // Esquiva lateral p/ esquerda: braço esquerdo abre guiando o salto, direito contrabalança
+              armRotL = 0.92 * dSin + 0.20 * dWave;
+              armRotR = -0.58 * dSin + 0.28 * dWave;
+              armExtendL = -1.4 * dSin;
+              armExtendR = -1.0 * dSin;
+              shoulderLiftL = -1.5 * dSin;
+              shoulderLiftR = -0.9 * dSin;
+            } else if (dDir === "right") {
+              // Esquiva lateral p/ direita: braço direito abre guiando o salto, esquerdo contrabalança
+              armRotL = 0.58 * dSin - 0.28 * dWave;
+              armRotR = -0.92 * dSin - 0.20 * dWave;
+              armExtendL = -1.0 * dSin;
+              armExtendR = -1.4 * dSin;
+              shoulderLiftL = -0.9 * dSin;
+              shoulderLiftR = -1.5 * dSin;
+            }
           }
 
-          // Tocha / Escudo na mão esquerda (ancorados diretamente na posição da mão)
-          if (S) {
-            this.drawHeldTorch(t, l, swingL, -7.1 + o + armSpreadL, handYL + 1.0);
-          } else if ($) {
-            this.drawHeldShield(t, l, o, p, swingL, -7.1 + o + armSpreadL, handYL + 1.0);
-          }
-
-          // 2. Braço Direito (topo fixo no ombro do tórax para nunca descolar do corpo)
-          const wristYR = shoulderTopY + 5.0 + swingR,
-            handYR = wristYR + 1.5;
-          M.fillStyle = shirtColor;
-          M.fillRect(5.8 + o + armSpreadR, shoulderTopY, 2.6, 6.2 + swingR);
-          M.fillStyle = A ? (A.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillRect(5.8 + o + armSpreadR, wristYR, 2.6, 1.6);
-          M.fillStyle = skin;
-          M.fillRect(5.9 + o + armSpreadR, handYR, 2.4, 2.2);
-
-          // Arma equipada na mão direita (rotaciona suavemente com a mão + postura de guarda na esquiva)
-          if (j) {
-            M.save();
-            M.translate(7.1 + o + armSpreadR, handYR + 1.0);
-            const walkWeaponAngle = (t === "up" ? -0.18 : 0.28) + swingR * 0.08 + dSin * (dDX !== 0 ? dDX * 0.35 : 0.28);
-            M.rotate(walkWeaponAngle);
-            this.drawWeaponItem(j);
-            M.restore();
-          }
-        } else {
-          // VISTA LATERAL EM PERFIL: Pêndulo com pivô fixo no ombro superior + contrabalanço de esquiva
-          const isLeft = t === "left",
-            shoulderPivotX = (isLeft ? -1.0 : 0.8) + o,
-            shoulderPivotY = -14.2 - l + u,
-            dodgeArmDelta = dSin * (dDX !== 0 ? -dDX * 0.62 : (isLeft ? 1 : -1) * (dDY < 0 ? 0.52 : -0.45)),
-            // Marcha cruzada: braço balança para trás quando perna avança para frente
-            armAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45) + dodgeArmDelta;
-
+          // 1. Braço Esquerdo (rotaciona a partir do ombro esquerdo e move qualquer item na mão esquerda)
+          const armLenL = Math.max(4.4, 6.2 + armExtendL);
           M.save();
-          M.translate(shoulderPivotX, shoulderPivotY);
-          M.rotate(armAngle);
-          // O ponto (0, 0) é o ombro e fica 100% fixo no tronco!
+          M.translate(shoulderLX, shoulderTopY + shoulderLiftL);
+          M.rotate(armRotL);
           M.fillStyle = shirtColor;
-          M.fillRect(-1.3, 0, 2.6, 6.2);
-          const brColor = (isLeft ? P : A) ? ((isLeft ? P : A).color || "#d97706") : "rgba(15, 23, 42, 0.25)";
-          M.fillStyle = brColor;
-          M.fillRect(-1.3, 4.8, 2.6, 1.6);
+          M.fillRect(-1.3, 0, 2.6, armLenL);
+          M.fillStyle = P ? (P.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
+          M.fillRect(-1.3, armLenL - 1.2, 2.6, 1.6);
           M.fillStyle = skin;
-          M.fillRect(-1.2, 6.4, 2.4, 2.4);
+          M.fillRect(-1.2, armLenL + 0.3, 2.4, 2.2);
 
-          // Arma / Item segurado na mão (rotaciona com o arco do braço)
-          if (j) {
+          if (p || isLeftTorch) {
             M.save();
-            M.translate(isLeft ? -1.5 : 1.5, 7.4);
-            const profileWeaponAngle = (isLeft ? -0.35 : 0.35);
-            M.rotate(profileWeaponAngle);
-            this.drawWeaponItem(j);
-            M.restore();
-          } else if (isPebble(p)) {
-            M.save();
-            M.translate(isLeft ? -1.5 : 1.5, 7.4);
-            this.drawWeaponItem(p);
+            M.translate(0, armLenL + 1.3);
+            const leftItemRot =
+              (isLeftTorch || $ ? 0 : (t === "up" ? 0.18 : -0.24)) +
+              (isDodgingArm ? (0.42 * dSin + 0.22 * dWave + dDX * 0.25 * dSin) : -swingL * 0.08);
+            renderEquippedHandItem(p, isLeftTorch, $, t, leftItemRot, false);
             M.restore();
           }
           M.restore();
 
-          // Se tiver tocha ou escudo na mão em perfil
-          const handWorldX = shoulderPivotX - Math.sin(armAngle) * 7.4,
-            handWorldY = shoulderPivotY + Math.cos(armAngle) * 7.4;
-          if (S) {
-            this.drawHeldTorch(t, 0, 0, handWorldX, handWorldY);
-          } else if ($) {
-            this.drawHeldShield(t, 0, 0, p, 0, handWorldX, handWorldY);
+          // 2. Braço Direito (rotaciona a partir do ombro direito e move qualquer item na mão direita)
+          const armLenR = Math.max(4.4, 6.2 + armExtendR);
+          M.save();
+          M.translate(shoulderRX, shoulderTopY + shoulderLiftR);
+          M.rotate(armRotR);
+          M.fillStyle = shirtColor;
+          M.fillRect(-1.3, 0, 2.6, armLenR);
+          M.fillStyle = A ? (A.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
+          M.fillRect(-1.3, armLenR - 1.2, 2.6, 1.6);
+          M.fillStyle = skin;
+          M.fillRect(-1.2, armLenR + 0.3, 2.4, 2.2);
+
+          if (j) {
+            M.save();
+            M.translate(0, armLenR + 1.3);
+            const rightItemRot =
+              (isRightTorch || isRightShield ? 0 : (t === "up" ? -0.18 : 0.28)) +
+              swingR * 0.08 +
+              (isDodgingArm ? (-0.45 * dSin - 0.25 * dWave + dDX * 0.32 * dSin) : 0);
+            renderEquippedHandItem(j, isRightTorch, isRightShield, t, rightItemRot, false);
+            M.restore();
           }
+          M.restore();
+        } else {
+          // VISTA LATERAL EM PERFIL (ESQUERDA / DIREITA):
+          // Desenha o braço de trás (com seu item equipado) e o braço da frente (com seu item equipado)
+          // movendo-se em tesoura/impulso durante o salto de esquiva!
+          const isLeft = t === "left",
+            frontShoulderX = (isLeft ? -1.0 : 0.8) + o,
+            backShoulderX = (isLeft ? 1.8 : -2.0) + o,
+            shoulderPivotY = -14.2 - l + u + (isDodgingArm ? -1.2 * dSin : 0),
+            baseWalkAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45);
+
+          let frontDodgeAngle = 0,
+            backDodgeAngle = 0,
+            frontItemExtraRot = 0,
+            backItemExtraRot = 0;
+
+          if (isDodgingArm) {
+            const forwardSign = isLeft ? 1 : -1;
+            if ((isLeft && dDir === "left") || (!isLeft && dDir === "right")) {
+              // Dash frontal em perfil: braço da frente lança à frente/cima e braço de trás impulsa para trás, oscilando no ar
+              frontDodgeAngle = forwardSign * (0.88 * dSin + 0.32 * dWave);
+              backDodgeAngle = -forwardSign * (0.95 * dSin - 0.30 * dWave);
+              frontItemExtraRot = forwardSign * (0.45 * dSin + 0.25 * dWave);
+              backItemExtraRot = -forwardSign * (0.38 * dSin);
+            } else if ((isLeft && dDir === "right") || (!isLeft && dDir === "left")) {
+              // Backstep em perfil: braços erguem à frente em guarda e contrapeso durante o salto para trás
+              frontDodgeAngle = forwardSign * (1.05 * dSin - 0.28 * dWave);
+              backDodgeAngle = forwardSign * (0.55 * dSin + 0.35 * dWave);
+              frontItemExtraRot = -forwardSign * (0.52 * dSin - 0.22 * dWave);
+              backItemExtraRot = forwardSign * (0.35 * dSin);
+            } else if (dDir === "up") {
+              // Esquiva lateral para cima visto de perfil: braços abrem em tesoura ampla para equilíbrio
+              frontDodgeAngle = forwardSign * (0.78 * dSin + 0.25 * dWave);
+              backDodgeAngle = -forwardSign * (0.72 * dSin + 0.25 * dWave);
+              frontItemExtraRot = forwardSign * 0.40 * dSin;
+              backItemExtraRot = -forwardSign * 0.35 * dSin;
+            } else {
+              // Esquiva lateral para baixo visto de perfil: tesoura invertida de impulso
+              frontDodgeAngle = -forwardSign * (0.72 * dSin - 0.25 * dWave);
+              backDodgeAngle = forwardSign * (0.82 * dSin - 0.25 * dWave);
+              frontItemExtraRot = -forwardSign * 0.38 * dSin;
+              backItemExtraRot = forwardSign * 0.40 * dSin;
+            }
+          }
+
+          const frontArmAngle = baseWalkAngle + frontDodgeAngle,
+            backArmAngle = -baseWalkAngle * 0.85 + backDodgeAngle;
+
+          // Define quais itens estão no braço de trás (off-hand/secundário) e no braço da frente (principal)
+          // Mantendo a mesma prioridade de mãos e garantindo que AMBAS as mãos apareçam se tiverem itens ou durante o salto
+          const hasRightItem = !!(j || isRightTorch),
+            hasLeftItem = !!(p || isLeftTorch),
+            frontItem = hasRightItem ? j : p,
+            frontIsTorch = hasRightItem ? isRightTorch : isLeftTorch,
+            frontIsShield = hasRightItem ? isRightShield : $,
+            backItem = hasRightItem && hasLeftItem ? p : null,
+            backIsTorch = hasRightItem && hasLeftItem ? isLeftTorch : false,
+            backIsShield = hasRightItem && hasLeftItem ? $ : false;
+
+          // 1. Braço de Trás (visível quando carrega item secundário como tocha/escudo ou durante o salto de esquiva)
+          if (backItem || backIsTorch || isDodgingArm || Math.abs(walkNorm) > 0.25) {
+            M.save();
+            M.translate(backShoulderX, shoulderPivotY - (isDodgingArm ? 0.6 * dSin : 0));
+            M.rotate(backArmAngle);
+            M.fillStyle = shirtColor;
+            M.fillRect(-1.2, 0, 2.4, 5.8);
+            M.fillStyle = "rgba(0, 0, 0, 0.25)";
+            M.fillRect(-1.2, 0, 2.4, 5.8);
+            const backBracer = isLeft ? A : P;
+            M.fillStyle = backBracer ? (backBracer.color || "#d97706") : "rgba(15, 23, 42, 0.3)";
+            M.fillRect(-1.2, 4.4, 2.4, 1.5);
+            M.fillStyle = skin;
+            M.fillRect(-1.1, 5.9, 2.2, 2.2);
+
+            if (backItem || backIsTorch) {
+              M.save();
+              M.translate(isLeft ? -1.2 : 1.2, 7.0);
+              const backBaseRot = backIsTorch || backIsShield ? 0 : (isLeft ? -0.30 : 0.30);
+              renderEquippedHandItem(
+                backItem,
+                backIsTorch,
+                backIsShield,
+                t,
+                backBaseRot + backItemExtraRot,
+                false
+              );
+              M.restore();
+            }
+            M.restore();
+          }
+
+          // 2. Braço da Frente (pivô fixo no ombro superior + movimento completo da mão e de qualquer item equipado)
+          M.save();
+          M.translate(frontShoulderX, shoulderPivotY);
+          M.rotate(frontArmAngle);
+          M.fillStyle = shirtColor;
+          M.fillRect(-1.3, 0, 2.6, 6.2);
+          const frontBracer = isLeft ? P : A;
+          M.fillStyle = frontBracer ? (frontBracer.color || "#d97706") : "rgba(15, 23, 42, 0.25)";
+          M.fillRect(-1.3, 4.8, 2.6, 1.6);
+          M.fillStyle = skin;
+          M.fillRect(-1.2, 6.4, 2.4, 2.4);
+
+          if (frontItem || frontIsTorch) {
+            M.save();
+            M.translate(isLeft ? -1.5 : 1.5, 7.4);
+            const frontBaseRot = frontIsTorch || frontIsShield ? 0 : (isLeft ? -0.35 : 0.35);
+            renderEquippedHandItem(
+              frontItem,
+              frontIsTorch,
+              frontIsShield,
+              t,
+              frontBaseRot + frontItemExtraRot,
+              false
+            );
+            M.restore();
+          }
+          M.restore();
         }
       }
       drawWeaponItem(t) {
