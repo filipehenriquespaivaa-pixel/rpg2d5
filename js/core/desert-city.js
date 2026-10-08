@@ -18,7 +18,7 @@
  *   * Túnicas fluidas e ajustadas (dishdasha / jalabiya / caftã) em linho branco do Saara, azul tuaregue,
  *     areia dourada/ocre, verde oásis, carmesim de caravana, terracota e açafrão solar.
  *   * Coberturas de cabeça temáticas: Turbantes bem moldados, Shemagh/Keffiyeh com agal preto,
- *     Tagelmust tuaregue cobrindo queixo e boca, lenços fluidos femininos, capuzes de areia e tiaras de couro com turquesa.
+ *     turbantes de caravaneiro, diademas solares, capuzes abertos e tiaras de couro com turquesa (rosto 100% livre e visível, sem nenhum véu tampando o rosto).
  *   * Acessórios: odres de água a tiracolo, ânforas de cerâmica, cestos de tâmaras, cajados de pastor e leques de palha.
  * - Linguagem Rúnica Ancestral (Referência ao Pergaminho Rúnico):
  *   * Os moradores NÃO conversam em português; comunicam-se exclusivamente em RUNAS SAGRADAS do Futhark Antigo,
@@ -1269,30 +1269,133 @@ window.Game = window.Game || {};
       }
     }
 
-    // 10. Cabeça, Pescoço Anatômico e Rosto Normal (headY = -22 - bob, raio 6.1px)
+    // 10. Cabeça, Pescoço Anatômico e Rosto 100% Descoberto e Visível (headY = -22 - bob, raio 6.1px)
     const headX = 0;
     const headY = -22 - bob;
 
-    // Pescoço de ligação anatômica normal (evita que a cabeça pareça colada no peito)
+    // Pescoço de ligação anatômica normal
     c.fillStyle = npc.skinColor;
     c.fillRect(-2.2, headY + 3.2, 4.4, 3.0);
 
-    // Cabelo base atrás da cabeça
-    c.fillStyle = npc.hairColor;
-    c.fillRect(-6.8, headY - 2, 13.6, 9.5);
+    // Cabelo traseiro (somente nas vistas de costas ou laterais para não sangrar atrás dos olhos no perfil frontal)
+    if (w === "up") {
+      c.fillStyle = npc.hairColor;
+      c.beginPath();
+      c.arc(headX, headY, 6.2, 0, Math.PI * 2);
+      c.fill();
+    } else if (w === "left") {
+      // Lateral esquerda: nuca e cabelo atrás da cabeça
+      c.fillStyle = npc.hairColor;
+      c.fillRect(headX + 1.2, headY - 3.2, 4.6, 7.5);
+    } else if (w === "right") {
+      // Lateral direita: nuca e cabelo atrás da cabeça
+      c.fillStyle = npc.hairColor;
+      c.fillRect(headX - 5.8, headY - 3.2, 4.6, 7.5);
+    }
 
-    // Rosto normal com o tom de pele escolhido
+    // Rosto com o tom de pele do morador (totalmente limpo e descoberto, sem cabelo escuro de fundo sob os olhos)
     c.fillStyle = npc.skinColor;
     c.beginPath();
     c.arc(headX, headY, 6.1, 0, Math.PI * 2);
     c.fill();
 
-    // Topo do cabelo / franja
+    // Topo do cabelo / franja natural (na coroa da cabeça e mechas laterais nas têmporas, acima dos olhos)
     c.fillStyle = npc.hairColor;
     c.beginPath();
-    c.arc(headX, headY - 1.8, 6.3, Math.PI * 0.92, Math.PI * 0.08);
+    c.arc(headX, headY - 1.2, 6.2, Math.PI, 0);
     c.fill();
 
+    if (w === "down") {
+      // Mechas laterais nas têmporas e franja alta bem acima dos olhos (olhar 100% limpo)
+      c.fillRect(headX - 6.2, headY - 4.0, 2.0, 5.0);
+      c.fillRect(headX + 4.2, headY - 4.0, 2.0, 5.0);
+      c.fillRect(headX - 2.8, headY - 4.8, 3.2, 1.8);
+    } else if (w === "left") {
+      c.fillRect(headX - 5.6, headY - 4.6, 2.8, 2.2);
+    } else if (w === "right") {
+      c.fillRect(headX + 2.8, headY - 4.6, 2.8, 2.2);
+    }
+
+    // 11. Coberturas de Cabeça Temáticas (sempre no topo da cabeça ou testa, NUNCA tampando o rosto)
+    const hStyle = npc.headwearStyle;
+
+    if (hStyle === 0) {
+      // Turbante enrolado clássico no topo da cabeça (rosto 100% aberto)
+      c.fillStyle = headwearColor;
+      c.beginPath();
+      c.ellipse(headX, headY - 2.6, 6.6, 4.6, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = headwearTrim;
+      c.fillRect(headX - 6.2, headY - 2.2, 12.4, 1.4);
+      c.fillStyle = "#fbbf24";
+      c.fillRect(headX - 1.0, headY - 3.8, 2.0, 2.2);
+      c.fillStyle = headwearColor;
+      c.fillRect(headX + (w === "left" ? 3.0 : -4.5), headY - 1.0, 2.2, 5.5);
+    } else if (hStyle === 1) {
+      // Shemagh / Keffiyeh com agal preto na coroa da cabeça (rosto 100% aberto)
+      c.fillStyle = headwearColor;
+      c.beginPath();
+      c.moveTo(headX - 6.4, headY - 4.5);
+      c.lineTo(headX + 6.4, headY - 4.5);
+      c.lineTo(headX + 7.0, headY + 2.0);
+      c.lineTo(headX - 7.0, headY + 2.0);
+      c.closePath();
+      c.fill();
+      c.fillStyle = "#18181b";
+      c.fillRect(headX - 5.8, headY - 3.2, 11.6, 1.4);
+      c.fillRect(headX - 5.4, headY - 1.6, 10.8, 1.2);
+      c.fillStyle = headwearColor;
+      c.fillRect(headX - 7.0, headY, 2.0, 6.5);
+      c.fillRect(headX + 5.0, headY, 2.0, 6.5);
+    } else if (hStyle === 2) {
+      // Turbante de Caravaneiro com broche de bronze (rosto 100% aberto, sem máscara nem véu)
+      c.fillStyle = headwearColor;
+      c.beginPath();
+      c.ellipse(headX, headY - 2.5, 6.5, 4.4, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = headwearTrim;
+      c.fillRect(headX - 6.0, headY - 2.2, 12.0, 1.4);
+      c.fillStyle = "#d97706";
+      c.fillRect(headX - 1.2, headY - 3.6, 2.4, 2.2);
+    } else if (hStyle === 3) {
+      // Diadema solar dourada com xale nos ombros por trás (rosto 100% aberto)
+      c.fillStyle = headwearColor;
+      c.fillRect(headX - 6.0, headY - 2.4, 12.0, 1.4);
+      c.fillStyle = headwearTrim;
+      c.fillRect(headX - 1.0, headY - 2.8, 2.0, 2.0);
+      c.fillStyle = headwearColor;
+      c.fillRect(headX - 6.5, headY - 0.5, 1.8, 7.0);
+      c.fillRect(headX + 4.7, headY - 0.5, 1.8, 7.0);
+    } else if (hStyle === 4) {
+      // Capuz aberto de viajante emoldurando o rosto (rosto 100% aberto)
+      c.fillStyle = headwearColor;
+      c.beginPath();
+      c.arc(headX, headY - 1.0, 6.6, Math.PI * 0.9, Math.PI * 0.1);
+      c.fill();
+      c.fillStyle = headwearTrim;
+      c.fillRect(headX - 5.6, headY - 2.4, 11.2, 1.4);
+    } else if (hStyle === 5) {
+      // Tiara de couro nobre com turquesa e tranças (rosto 100% aberto)
+      c.fillStyle = "#78350f";
+      c.fillRect(headX - 5.8, headY - 2.2, 11.6, 1.6);
+      c.fillStyle = "#06b6d4";
+      c.fillRect(headX - 3.0, headY - 2.0, 1.6, 1.2);
+      c.fillRect(headX + 1.4, headY - 2.0, 1.6, 1.2);
+      c.fillStyle = npc.hairColor;
+      c.fillRect(headX - 6.2, headY, 1.8, 7.0);
+      c.fillRect(headX + 4.4, headY, 1.8, 7.0);
+      c.fillStyle = "#fbbf24";
+      c.fillRect(headX - 6.2, headY + 6.0, 1.8, 1.2);
+      c.fillRect(headX + 4.4, headY + 6.0, 1.8, 1.2);
+    } else {
+      // Bandana / faixa de linho do deserto na testa (rosto 100% aberto)
+      c.fillStyle = headwearColor;
+      c.fillRect(headX - 5.6, headY - 2.2, 11.2, 1.8);
+      c.fillStyle = headwearTrim;
+      c.fillRect(headX - 5.6, headY - 0.8, 11.2, 0.8);
+    }
+
+    // 12. Traços Faciais Nítidos e Expressivos (desenhados por cima, NUNCA cobertos)
     if (w !== "up") {
       if (isSleeping) {
         c.strokeStyle = "#171412";
@@ -1305,117 +1408,46 @@ window.Game = window.Game || {};
         c.stroke();
       } else {
         const eyeOffset = w === "left" ? -1.2 : w === "right" ? 1.2 : 0;
-        // Olho esquerdo
+        // Olho esquerdo (esclera branca e pupila escura)
         c.fillStyle = "#ffffff";
         c.fillRect(headX - 3.2 + eyeOffset, headY - 0.2, 2.2, 1.8);
         c.fillStyle = "#171412";
         c.fillRect(headX - 2.6 + eyeOffset, headY + 0.1, 1.2, 1.2);
-        // Olho direito
+
+        // Olho direito (esclera branca e pupila escura)
         c.fillStyle = "#ffffff";
         c.fillRect(headX + 1.0 + eyeOffset, headY - 0.2, 2.2, 1.8);
         c.fillStyle = "#171412";
         c.fillRect(headX + 1.4 + eyeOffset, headY + 0.1, 1.2, 1.2);
 
-        // Sobrancelhas
+        // Sobrancelhas expressivas
         c.fillStyle = npc.hairColor;
         c.fillRect(headX - 3.4 + eyeOffset, headY - 1.2, 2.4, 0.7);
         c.fillRect(headX + 0.8 + eyeOffset, headY - 1.2, 2.4, 0.7);
 
-        // Barba para alguns homens
+        // Boca nítida e visível (sem nada tampando o rosto)
+        c.fillStyle = "#78350f";
+        c.fillRect(headX - 1.2 + eyeOffset * 0.5, headY + 2.4, 2.4, 0.8);
+
+        // Leve rubor facial natural para vivacidade
+        c.fillStyle = "rgba(225, 29, 72, 0.22)";
+        c.fillRect(headX - 3.8 + eyeOffset, headY + 1.2, 1.8, 1.0);
+        c.fillRect(headX + 2.0 + eyeOffset, headY + 1.2, 1.8, 1.0);
+
+        // Barba aparada para alguns homens (sob o queixo, deixando a boca e rosto limpos)
         if (npc.gender === "m" && npc.headwearStyle % 2 === 1) {
           c.fillStyle = npc.hairColor;
           c.beginPath();
-          c.arc(headX, headY + 3.8, 2.8, 0, Math.PI);
+          c.arc(headX, headY + 4.2, 2.5, 0, Math.PI);
           c.fill();
         }
       }
     } else {
-      // Vista traseira da cabeça
+      // Vista traseira da cabeça (cabelo e nuca)
       c.fillStyle = npc.hairColor;
       c.beginPath();
       c.arc(headX, headY - 0.5, 6.2, 0, Math.PI * 2);
       c.fill();
-    }
-
-    // 11. Coberturas de Cabeça Temáticas proporcionais e ajustadas
-    const hStyle = npc.headwearStyle;
-
-    if (hStyle === 0) {
-      // Turbante enrolado clássico normal
-      c.fillStyle = headwearColor;
-      c.beginPath();
-      c.ellipse(headX, headY - 2.5, 6.6, 4.6, 0, 0, Math.PI * 2);
-      c.fill();
-      c.fillStyle = headwearTrim;
-      c.fillRect(headX - 6.2, headY - 2.0, 12.4, 1.6);
-      c.fillStyle = "#fbbf24";
-      c.fillRect(headX - 1.0, headY - 3.8, 2.0, 2.2);
-      c.fillStyle = headwearColor;
-      c.fillRect(headX + (w === "left" ? 3.0 : -4.5), headY - 1.0, 2.2, 5.5);
-    } else if (hStyle === 1) {
-      // Shemagh com agal preto normal
-      c.fillStyle = headwearColor;
-      c.beginPath();
-      c.moveTo(headX - 6.4, headY - 4.5);
-      c.lineTo(headX + 6.4, headY - 4.5);
-      c.lineTo(headX + 7.0, headY + 4.5);
-      c.lineTo(headX - 7.0, headY + 4.5);
-      c.closePath();
-      c.fill();
-      c.fillStyle = "#18181b";
-      c.fillRect(headX - 5.8, headY - 3.2, 11.6, 1.4);
-      c.fillRect(headX - 5.4, headY - 1.2, 10.8, 1.4);
-      c.fillStyle = headwearColor;
-      c.fillRect(headX - 7.0, headY + 1.0, 2.2, 7.0);
-      c.fillRect(headX + 4.8, headY + 1.0, 2.2, 7.0);
-    } else if (hStyle === 2) {
-      // Tagelmust Tuaregue normal
-      c.fillStyle = headwearColor;
-      c.beginPath();
-      c.ellipse(headX, headY - 2.2, 6.4, 4.4, 0, 0, Math.PI * 2);
-      c.fill();
-      if (w !== "up") {
-        c.fillStyle = headwearColor;
-        c.fillRect(headX - 4.8, headY + 1.8, 9.6, 4.2);
-        c.fillStyle = headwearTrim;
-        c.fillRect(headX - 4.8, headY + 1.8, 9.6, 1.0);
-      }
-    } else if (hStyle === 3) {
-      // Lenço / Véu fluido de linho normal
-      c.fillStyle = headwearColor;
-      c.beginPath();
-      c.arc(headX, headY - 1.5, 6.3, Math.PI, 0);
-      c.fill();
-      c.fillRect(headX - 6.5, headY - 1.5, 13.0, 10.0);
-      c.fillStyle = headwearTrim;
-      c.fillRect(headX - 6.5, headY + 7.0, 13.0, 1.5);
-    } else if (hStyle === 4) {
-      // Capuz leve do deserto normal
-      c.fillStyle = headwearColor;
-      c.beginPath();
-      c.arc(headX, headY - 1.0, 6.5, 0, Math.PI * 2);
-      c.fill();
-      c.fillStyle = headwearTrim;
-      c.fillRect(headX - 5.5, headY + 1.8, 11.0, 1.8);
-    } else if (hStyle === 5) {
-      // Tiara de couro com turquesa e tranças normal
-      c.fillStyle = "#78350f";
-      c.fillRect(headX - 5.8, headY - 2.2, 11.6, 1.8);
-      c.fillStyle = "#06b6d4";
-      c.fillRect(headX - 3.0, headY - 2.0, 1.8, 1.4);
-      c.fillRect(headX + 1.2, headY - 2.0, 1.8, 1.4);
-      c.fillStyle = npc.hairColor;
-      c.fillRect(headX - 6.2, headY, 2.0, 7.0);
-      c.fillRect(headX + 4.2, headY, 2.0, 7.0);
-      c.fillStyle = "#fbbf24";
-      c.fillRect(headX - 6.2, headY + 6.0, 2.0, 1.2);
-      c.fillRect(headX + 4.2, headY + 6.0, 2.0, 1.2);
-    } else {
-      // Bandana / lenço de testa normal
-      c.fillStyle = headwearColor;
-      c.fillRect(headX - 5.6, headY - 2.0, 11.2, 2.0);
-      c.fillStyle = headwearTrim;
-      c.fillRect(headX - 5.6, headY - 0.5, 11.2, 0.8);
     }
 
     // 12. Efeito zZz quando descansando na esteira à noite
@@ -1429,55 +1461,27 @@ window.Game = window.Game || {};
       c.fillText("Z", 12, headY - 14 - zFloat * 12);
     }
 
-    // 13. Balão de Diálogo de RPG sobre a cabeça EXCLUSIVAMENTE EM RUNAS!
-    if (npc.chatText && ((isInteracting && player && Math.hypot(player.x - npc.x, player.y - npc.y) < 280) || isChatting)) {
+    // 13. Balão de fala idêntico aos soldados da neve (compacto, discreto e proporcional)
+    if (npc.chatText && player && Math.hypot(player.x - npc.x, player.y - npc.y) < 250) {
+      c.font = "bold 7.2px sans-serif";
       const text = npc.chatText;
-      c.font = "bold 11px 'Courier New', monospace";
-      const metrics = c.measureText(text);
-      const textWidth = Math.min(metrics.width, 260);
-      const bubbleW = textWidth + 18;
-      const bubbleH = 22;
-      const bx = -bubbleW / 2;
-      const by = headY - 18 - bob;
+      const tw = Math.min(210, Math.max(60, c.measureText(text).width + 12));
+      const bx = -tw / 2;
+      const by = headY - 25;
 
-      // Sombra
-      c.fillStyle = "rgba(0, 0, 0, 0.35)";
+      // Caixa idêntica aos soldados da neve (fundo escuro militar, borda fina, 13px de altura)
+      c.fillStyle = "rgba(9, 9, 11, 0.92)";
+      c.strokeStyle = "#d97706";
+      c.lineWidth = 1.2;
       c.beginPath();
-      c.roundRect(bx + 1, by + 1, bubbleW, bubbleH, 6);
+      c.roundRect(bx, by, tw, 13, 4);
       c.fill();
-
-      // Fundo místico púrpura/âmbar
-      c.fillStyle = "rgba(24, 15, 38, 0.94)";
-      c.beginPath();
-      c.roundRect(bx, by, bubbleW, bubbleH, 6);
-      c.fill();
-
-      // Borda rúnica dourada
-      c.strokeStyle = "#f59e0b";
-      c.lineWidth = 1.3;
-      c.beginPath();
-      c.roundRect(bx, by, bubbleW, bubbleH, 6);
       c.stroke();
 
-      // Triângulo indicador apontando para a cabeça
-      c.fillStyle = "rgba(24, 15, 38, 0.94)";
-      c.beginPath();
-      c.moveTo(-4, by + bubbleH);
-      c.lineTo(0, by + bubbleH + 4);
-      c.lineTo(4, by + bubbleH);
-      c.closePath();
-      c.fill();
-      c.strokeStyle = "#f59e0b";
-      c.beginPath();
-      c.moveTo(-4, by + bubbleH);
-      c.lineTo(0, by + bubbleH + 4);
-      c.lineTo(4, by + bubbleH);
-      c.stroke();
-
-      // Glifos rúnicos luminosos
-      c.fillStyle = "#fef08a";
+      // Texto de fala limpo e centralizado (idêntico ao dos soldados da neve)
+      c.fillStyle = "#f8fafc";
       c.textAlign = "center";
-      c.fillText(text, 0, by + 14.5);
+      c.fillText(text, 0, by + 9.2);
     }
 
     c.restore();
