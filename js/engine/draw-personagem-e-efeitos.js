@@ -1173,9 +1173,11 @@
   }
   function Ju(e, t, l, o, u) {
     (e.save(), e.scale(u, 1));
-    const c = t.vx * t.vx + t.vy * t.vy > 0.04,
-      f = c ? t.animTimer * 12 : t.animTimer * 2.5,
-      g = c ? Math.sin(f * 2) * 0.8 * l : Math.sin(t.animTimer * 2) * 0.4 * l,
+    const spd = Math.hypot(t.vx || 0, t.vy || 0),
+      c = spd > 0.04,
+      stepRate = Math.max(1.8, Math.min(4.2, (spd / Math.max(0.5, (t.scale || 1) * 0.65)) * 4.5)),
+      f = c ? t.animTimer * stepRate : t.animTimer * 1.2,
+      g = c ? Math.sin(f * 2) * 0.5 * l : Math.sin(t.animTimer * 1.5) * 0.3 * l,
       y = o ? "#ffffff" : t.color || "#d97706",
       w = o ? "#e2e8f0" : "#78350f",
       v = o ? "#cbd5e1" : "#451a03",
@@ -1193,9 +1195,9 @@
     for (let Ne = 0; Ne < 4; Ne++) {
       const X = f + Ne * 1.5,
         C = c
-          ? Math.sin(X) * 2.8 * l
-          : Math.sin(t.animTimer * 2 + Ne) * 0.6 * l,
-        I = c ? Math.max(0, -Math.cos(X)) * 2.2 * l : 0,
+          ? Math.sin(X) * 2.1 * l
+          : Math.sin(t.animTimer * 1.2 + Ne) * 0.35 * l,
+        I = c ? Math.max(0, -Math.cos(X)) * 1.6 * l : 0,
         be = -5 * l + Ne * 3.4 * l,
         Me = -5 * l + g;
       ((e.strokeStyle = w),
@@ -1426,9 +1428,9 @@
     for (let Ne = 0; Ne < 4; Ne++) {
       const X = f + Ne * 1.5 + Math.PI,
         C = c
-          ? Math.sin(X) * 3 * l
-          : Math.sin(t.animTimer * 2 + Ne + 2) * 0.6 * l,
-        I = c ? Math.max(0, -Math.cos(X)) * 2.4 * l : 0,
+          ? Math.sin(X) * 2.2 * l
+          : Math.sin(t.animTimer * 1.2 + Ne + 2) * 0.35 * l,
+        I = c ? Math.max(0, -Math.cos(X)) * 1.8 * l : 0,
         be = -5 * l + Ne * 3.4 * l,
         Me = -4 * l + g;
       ((e.strokeStyle = y),
@@ -1552,9 +1554,11 @@
   }
   function Dg(e, t, l, o) {
     e.save();
-    const m = t.vx * t.vx + t.vy * t.vy > 0.04,
-      c = m ? t.animTimer * 12 : t.animTimer * 2.5,
-      f = m ? Math.sin(c * 2) * 0.8 * l : Math.sin(t.animTimer * 2) * 0.4 * l,
+    const spd = Math.hypot(t.vx || 0, t.vy || 0),
+      m = spd > 0.04,
+      stepRate = Math.max(1.8, Math.min(4.2, (spd / Math.max(0.5, (t.scale || 1) * 0.65)) * 4.5)),
+      c = m ? t.animTimer * stepRate : t.animTimer * 1.2,
+      f = m ? Math.sin(c * 2) * 0.5 * l : Math.sin(t.animTimer * 1.5) * 0.3 * l,
       g = Math.max(-0.2, Math.min(0.2, (t.vx / (t.speed || 1)) * 0.18));
     e.rotate(g);
     const y = o ? "#ffffff" : t.color || "#d97706",
@@ -1573,9 +1577,9 @@
       for (let oe = 0; oe < 4; oe++) {
         const Ne = c + oe * 1.5 + (te === 1 ? Math.PI : 0),
           X = m
-            ? Math.sin(Ne) * 2.8 * l
-            : Math.sin(t.animTimer * 2 + oe) * 0.5 * l,
-          C = m ? Math.max(0, -Math.cos(Ne)) * 2.2 * l : 0,
+            ? Math.sin(Ne) * 2.1 * l
+            : Math.sin(t.animTimer * 1.2 + oe) * 0.35 * l,
+          C = m ? Math.max(0, -Math.cos(Ne)) * 1.6 * l : 0,
           I = te * 4.2 * l,
           be = -5 * l + oe * 2.4 * l + f,
           Me = te * (9.5 * l + Math.abs(X) * 0.3),
@@ -1874,9 +1878,11 @@
   }
   function Ig(e, t, l, o) {
     e.save();
-    const m = t.vx * t.vx + t.vy * t.vy > 0.04,
-      c = m ? t.animTimer * 12 : t.animTimer * 2.5,
-      f = m ? Math.sin(c * 2) * 0.8 * l : Math.sin(t.animTimer * 2) * 0.4 * l,
+    const spd = Math.hypot(t.vx || 0, t.vy || 0),
+      m = spd > 0.04,
+      stepRate = Math.max(1.8, Math.min(4.2, (spd / Math.max(0.5, (t.scale || 1) * 0.65)) * 4.5)),
+      c = m ? t.animTimer * stepRate : t.animTimer * 1.2,
+      f = m ? Math.sin(c * 2) * 0.5 * l : Math.sin(t.animTimer * 1.5) * 0.3 * l,
       g = Math.max(-0.2, Math.min(0.2, (t.vx / (t.speed || 1)) * 0.18));
     e.rotate(g);
     const y = o ? "#ffffff" : t.color || "#d97706",
@@ -1895,9 +1901,9 @@
       for (let oe = 0; oe < 4; oe++) {
         const Ne = c + oe * 1.5 + (te === 1 ? Math.PI : 0),
           X = m
-            ? Math.sin(Ne) * 2.8 * l
-            : Math.sin(t.animTimer * 2 + oe) * 0.5 * l,
-          C = m ? Math.max(0, -Math.cos(Ne)) * 2.2 * l : 0,
+            ? Math.sin(Ne) * 2.1 * l
+            : Math.sin(t.animTimer * 1.2 + oe) * 0.35 * l,
+          C = m ? Math.max(0, -Math.cos(Ne)) * 1.6 * l : 0,
           I = te * 4.2 * l,
           be = 5 * l - oe * 2.4 * l + f,
           Me = te * (9.5 * l + Math.abs(X) * 0.3),
