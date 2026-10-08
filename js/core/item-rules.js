@@ -25,13 +25,15 @@
       t.includes("dragao") ||
       l.includes("dragon") ||
       t.includes("golem") ||
-      l.includes("golem")
+      l.includes("golem") ||
+      ((t.includes("escorpião") || t.includes("escorpiao") || l.includes("scorpion")) &&
+        (t.includes("gigante") || l.includes("giant")))
       ? {
           allowed: !1,
           categoryName: "Criatura Grande (Não Permitida)",
           maxCapacity: 0,
           reason:
-            "Criaturas grandes como Lobos, Cervos e Dragões não cabem nos bolsos do cinto!",
+            "Criaturas grandes como Lobos, Cervos, Escorpiões Gigantes e Dragões não cabem nos bolsos do cinto!",
         }
       : t.includes("panela") ||
           l.includes("panela") ||

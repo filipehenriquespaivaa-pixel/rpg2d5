@@ -452,11 +452,13 @@
       const l = t.type === "slime";
       let o = l ? "Gosma Sem Vida" : `Corpo de ${t.name}`,
         u = l ? "Corpo de Gosma" : `Corpo de ${t.name}`,
-        m = l ? "incomum" : "raro",
-        c = l ? 28 : 35,
+        m = l ? "incomum" : t.isGiantScorpion ? "epico" : "raro",
+        c = l ? 28 : t.isGiantScorpion ? 160 : 35,
         f = l
           ? "Corpo de criatura gosma coletado no solo. Preserva a forma gelatinosa viva com núcleo e olhos vítreos, ideal para forja e alquimia."
-          : `Corpo intacto de ${t.name} recolhido após o combate.`;
+          : t.isGiantScorpion
+            ? "Carcaça colossal de um Escorpião Gigante Noturno do deserto, com carapaça quitinosa espessa e ferrão venenoso."
+            : `Corpo intacto de ${t.name} recolhido após o combate.`;
       return (
         creatureCarcass(t.type)
  ? ((o = creatureCarcass(t.type).name),
@@ -787,7 +789,16 @@
         Math.hypot(p.x - l.x, p.y - l.y) > 1800 &&
           this.droppedItems.splice(S, 1);
       }
-      const f = m >= 0.22 && m <= 0.78;
+      const f = m >= 0.22 && m <= 0.78,
+        isNightTime = !f,
+        isDesertSurface = !o && u === BiomeId.DESERT;
+      if (!isNightTime || o) {
+        this._nightGiantScorpionsSpawned = !1;
+      }
+      if (isDesertSurface && isNightTime && !this._nightGiantScorpionsSpawned && !l.isDead) {
+        this._nightGiantScorpionsSpawned = !0;
+        this.triggerDesertNightGiantScorpions(l, o);
+      }
       if (
         (l.invulnerableTimer &&
           l.invulnerableTimer > 0 &&
@@ -827,6 +838,79 @@
         ) {
           this.monsters.splice(S, 1);
           continue;
+        }
+        if (p.type === "scorpion") {
+          // À noite no deserto, os escorpiões pequenos se enterram na areia e somem!
+          if (!p.isUnderground && isNightTime && !p.isGiantScorpion && !p.burrowing) {
+            p.burrowing = !0;
+            p.burrowDuration = 0.9;
+            p.burrowTimer = 0.9;
+            p.vx = 0;
+            p.vy = 0;
+            this.floatingTexts.push({
+              id: `burrow_${this.nextId++}`,
+              x: p.x,
+              y: p.y - 14,
+              text: "Se enterrou na areia!",
+              color: "#f59e0b",
+              isCrit: !1,
+              life: 0.9,
+            });
+          }
+          // Ao amanhecer, os escorpiões gigantes noturnos também retornam para debaixo da areia
+          if (!p.isUnderground && !isNightTime && p.isGiantScorpion && !p.burrowing) {
+            p.burrowing = !0;
+            p.burrowDuration = 1.1;
+            p.burrowTimer = 1.1;
+            p.vx = 0;
+            p.vy = 0;
+          }
+          if (p.burrowing) {
+            p.burrowTimer = (p.burrowTimer || 0.9) - t;
+            p.vx = 0;
+            p.vy = 0;
+            if (Math.random() < t * 14) {
+              const sScale = p.scale || 1;
+              this.slimeParticles.push({
+                x: p.x + (Math.random() - 0.5) * 16 * sScale,
+                y: p.y + 3 * sScale,
+                vx: (Math.random() - 0.5) * 8 * Math.min(2.5, sScale),
+                vy: -5 - Math.random() * 8,
+                life: 0.5,
+                maxLife: 0.5,
+                type: "mud",
+                color: Math.random() < 0.5 ? "#d97706" : "#92400e",
+                size: (1.8 + Math.random() * 1.4) * Math.min(2.2, sScale * 0.6),
+              });
+            }
+            if (p.burrowTimer <= 0) {
+              this.monsters.splice(S, 1);
+            }
+            continue;
+          }
+          if (p.emerging) {
+            p.emergeTimer = (p.emergeTimer || 1.15) - t;
+            p.vx = 0;
+            p.vy = 0;
+            if (Math.random() < t * 16) {
+              const sScale = p.scale || 1;
+              this.slimeParticles.push({
+                x: p.x + (Math.random() - 0.5) * 20 * Math.min(3, sScale * 0.65),
+                y: p.y + 4 * Math.min(3, sScale * 0.65),
+                vx: (Math.random() - 0.5) * 14,
+                vy: -8 - Math.random() * 12,
+                life: 0.55,
+                maxLife: 0.55,
+                type: "mud",
+                color: Math.random() < 0.5 ? "#f59e0b" : "#78350f",
+                size: 2.6 + Math.random() * 2.2,
+              });
+            }
+            if (p.emergeTimer <= 0) {
+              p.emerging = !1;
+            }
+            continue;
+          }
         }
         if (p.type === "slime") {
           if (p.attached) {
@@ -1081,6 +1165,8 @@
           O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
           _ = K || V || O,
           NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack);
+        const meleeAttackDist = p.isGiantScorpion ? 58 : 26,
+          chaseStopDist = p.isGiantScorpion ? 52 : 22;
         if (_) {
           ((!p.fleeFireTimer || p.fleeFireTimer <= 0) &&
             (p.fleeFireTimer = 3.5),
@@ -1109,14 +1195,14 @@
           this.steerAnimalExploration(p, t, x, f, m);
         else if (isPreyType(p.type))
           this.updatePreyAI(p, t, l);
-        else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : 150)) && j > 22 && z.canAttack) {
+        else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.isGiantScorpion ? 260 : 150))) && j > chaseStopDist && z.canAttack) {
           const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1);
           const chaseSpeed = p.speed * de;
           const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
           ((p.vx = Math.cos(G) * chaseSpeed),
             (p.vy = Math.sin(G) * chaseSpeed),
             (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
-        } else if (!NC && !l.isDead && j <= 26 && z.canAttack)
+        } else if (!NC && !l.isDead && j <= meleeAttackDist && z.canAttack)
           ((p.vx = 0),
             (p.vy = 0),
             (p.facing = this.getMonsterFacingToTarget(
@@ -1397,6 +1483,100 @@
           (p.y += p.vy * t),
           (p.life -= t),
           p.life <= 0 && this.slimeParticles.splice(S, 1));
+      }
+    }
+    triggerDesertNightGiantScorpions(player, isUnderground = !1) {
+      if (isUnderground) return;
+      // 1. Todos os escorpiões pequenos presentes se enterram na areia e somem
+      for (const m of this.monsters) {
+        if (m.type === "scorpion" && !m.isGiantScorpion && !m.isUnderground && !m.burrowing) {
+          m.burrowing = !0;
+          m.burrowDuration = 0.9;
+          m.burrowTimer = 0.9;
+          m.vx = 0;
+          m.vy = 0;
+        }
+      }
+      // 2. Cria 3 Escorpiões Gigantes (5x maiores) emergindo do chão ao cair da noite no deserto
+      const existingGiants = this.monsters.filter(
+        (m) => m.type === "scorpion" && m.isGiantScorpion && m.hp > 0 && !m.burrowing
+      ).length;
+      const toSpawn = Math.max(0, 3 - existingGiants);
+      const baseScale = 0.95 * 5; // 5 vezes maior que o escorpião normal (4.75)
+      for (let i = 0; i < toSpawn; i++) {
+        const baseAngle = (i / 3) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
+        let spawnX = player.x + Math.cos(baseAngle) * 195,
+          spawnY = player.y + Math.sin(baseAngle) * 195;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const tryDist = 165 + attempt * 18,
+            tryAng = baseAngle + attempt * 0.35,
+            cx = player.x + Math.cos(tryAng) * tryDist,
+            cy = player.y + Math.sin(tryAng) * tryDist,
+            tx = Math.floor(cx / this.engine.tileSize),
+            ty = Math.floor(cy / this.engine.tileSize);
+          if (this.engine.isTilePassable(tx, ty) && !this.engine.isNearLitCampfire(cx, cy)) {
+            spawnX = cx;
+            spawnY = cy;
+            break;
+          }
+        }
+        const giant = {
+          id: `giant_scorpion_${this.nextId++}_${Date.now()}_${i}`,
+          name: "Escorpião Gigante Noturno",
+          type: "scorpion",
+          isGiantScorpion: !0,
+          size: 56,
+          x: spawnX,
+          y: spawnY,
+          vx: 0,
+          vy: 0,
+          hp: 95,
+          maxHp: 95,
+          attack: 14,
+          defense: 5,
+          speed: 0.78,
+          color: "#b45309",
+          accentColor: "#ef4444",
+          scale: baseScale,
+          isUnderground: !1,
+          isMoving: !1,
+          hitFlashTimer: 0,
+          animTimer: Math.random() * 10,
+          wanderTimer: 0.6,
+          targetAngle: Math.atan2(player.y - spawnY, player.x - spawnX),
+          facing: this.getMonsterFacingToTarget(spawnX, spawnY, player.x, player.y, "down"),
+          emerging: !0,
+          emergeDuration: 1.25,
+          emergeTimer: 1.25,
+          attackCooldown: 1.3,
+        };
+        this.monsters.push(giant);
+        for (let pIdx = 0; pIdx < 16; pIdx++) {
+          const ang = Math.random() * Math.PI * 2,
+            spd = 3 + Math.random() * 8;
+          this.slimeParticles.push({
+            x: spawnX + (Math.random() - 0.5) * 36,
+            y: spawnY + (Math.random() - 0.5) * 18,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 6,
+            life: 0.7,
+            maxLife: 0.7,
+            type: "mud",
+            color: Math.random() < 0.5 ? "#f59e0b" : "#78350f",
+            size: 3 + Math.random() * 2.5,
+          });
+        }
+      }
+      if (toSpawn > 0) {
+        this.floatingTexts.push({
+          id: `giant_scorp_alert_${this.nextId++}`,
+          x: player.x,
+          y: player.y - 34,
+          text: "🦂 3 Escorpiões Gigantes emergiram da areia!",
+          color: "#f59e0b",
+          isCrit: !0,
+          life: 2.2,
+        });
       }
     }
     spawnMonsterNearPlayer(t, l, o, u = 0.5) {
@@ -1680,6 +1860,10 @@
             (P = 4),
             (A = 0.75),
             (x = 0.95));
+      // No deserto à noite, os escorpiões pequenos se enterram e somem (não nascem na superfície à noite)
+      if (!l && v === "scorpion" && (u < 0.22 || u > 0.78)) {
+        return;
+      }
       if (v === "slime" && !l && u >= 0.22 && u <= 0.78) {
         const V = this.isShallowWater(y, w),
           O = this.isPositionInShade(f, g, u, l);
@@ -2014,11 +2198,13 @@
             const z = p.type === "slime";
             let K = z ? "Gosma Sem Vida" : `Corpo de ${p.name}`,
               V = z ? "Corpo de Gosma" : `Corpo de ${p.name}`,
-              O = z ? "incomum" : "raro",
-              _ = z ? 28 : 35,
+              O = z ? "incomum" : p.isGiantScorpion ? "epico" : "raro",
+              _ = z ? 28 : p.isGiantScorpion ? 160 : 35,
               se = z
                 ? "Corpo de criatura gosma coletado no solo. Preserva a forma gelatinosa viva com núcleo e olhos vítreos, ideal para forja e alquimia."
-                : `Corpo intacto de ${p.name} recolhido após o combate.`;
+                : p.isGiantScorpion
+                  ? "Carcaça colossal de um Escorpião Gigante Noturno do deserto, com carapaça quitinosa espessa e ferrão venenoso."
+                  : `Corpo intacto de ${p.name} recolhido após o combate.`;
             creatureCarcass(p.type)
  ? ((K = creatureCarcass(p.type).name),
  (V = creatureCarcass(p.type).bodyName),
@@ -2098,20 +2284,24 @@
     }
     getRenderItems(t, l, o, u, m) {
       const c = [];
-      for (const f of this.monsters)
-        f.x < l - 60 ||
-          f.x > o + 60 ||
-          f.y < u - 60 ||
-          f.y > m + 60 ||
+      for (const f of this.monsters) {
+        const pad = Math.max(60, (f.scale || 1) * 28);
+        f.x < l - pad ||
+          f.x > o + pad ||
+          f.y < u - pad ||
+          f.y > m + pad ||
           c.push({ y: f.y, draw: () => Eg(t, f) });
-      for (const f of this.carcasses)
+      }
+      for (const f of this.carcasses) {
+        const pad = Math.max(60, (f.scale || 1) * 28);
         f.collected ||
           f.isUnderground !== this.lastIsUnderground ||
-          f.x < l - 60 ||
-          f.x > o + 60 ||
-          f.y < u - 60 ||
-          f.y > m + 60 ||
+          f.x < l - pad ||
+          f.x > o + pad ||
+          f.y < u - pad ||
+          f.y > m + pad ||
           c.push({ y: f.y - 4, draw: () => Ag(t, f, this.animTimer) });
+      }
       for (const f of this.droppedItems) {
         if (
           f.isUnderground !== this.lastIsUnderground ||

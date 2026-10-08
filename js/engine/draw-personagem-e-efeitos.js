@@ -458,7 +458,54 @@
       }
       e.restore();
     } else if (t.type === "scorpion") {
-      xg(e, t, o, l);
+      const isEmergingScorpion = !!(t.emerging && (t.emergeTimer || 0) > 0),
+        isBurrowingScorpion = !!(t.burrowing && (t.burrowTimer || 0) > 0);
+      if (isEmergingScorpion || isBurrowingScorpion) {
+        const totalDur = isEmergingScorpion ? (t.emergeDuration || 1.15) : (t.burrowDuration || 0.9),
+          remTimer = isEmergingScorpion ? (t.emergeTimer || 0) : (t.burrowTimer || 0),
+          rawProg = Math.max(0, Math.min(1, 1 - remTimer / totalDur)),
+          visFrac = isEmergingScorpion ? rawProg : (1 - rawProg),
+          holePulse = Math.sin(rawProg * Math.PI);
+
+        // Cratera/monte de areia se abrindo ou fechando sob o escorpião
+        e.save();
+        e.fillStyle = "rgba(69, 26, 3, 0.72)";
+        e.beginPath();
+        e.ellipse(0, 4 * o, (11 + holePulse * 4) * o, (4.8 + holePulse * 2) * o, 0, 0, Math.PI * 2);
+        e.fill();
+
+        e.strokeStyle = "rgba(217, 119, 6, 0.85)";
+        e.lineWidth = 2.0 * o;
+        e.beginPath();
+        e.ellipse(0, 4 * o, (12.5 + holePulse * 4.5) * o, (5.5 + holePulse * 2.2) * o, 0, 0, Math.PI * 2);
+        e.stroke();
+
+        // Grãos e torrões de areia saltando ao redor da borda da cratera
+        for (let si = 0; si < 6; si++) {
+          const sAng = (si / 6) * Math.PI * 2 + rawProg * 4,
+            sDist = (9 + holePulse * 6) * o,
+            sx = Math.cos(sAng) * sDist,
+            sy = 3 * o + Math.sin(sAng) * (sDist * 0.42) - holePulse * 4 * o;
+          e.fillStyle = si % 2 === 0 ? "#f59e0b" : "#92400e";
+          e.beginPath();
+          e.arc(sx, sy, 1.5 * o, 0, Math.PI * 2);
+          e.fill();
+        }
+
+        // Recorte vertical na linha da cratera para o corpo emergir/afundar de dentro do chão
+        e.beginPath();
+        e.rect(-36 * o, -48 * o, 72 * o, 53 * o);
+        e.clip();
+
+        const sinkY = (1 - visFrac) * 20 * o,
+          scaleMod = 0.55 + visFrac * 0.45;
+        e.translate(0, sinkY);
+        e.scale(scaleMod, scaleMod);
+        xg(e, t, o, l);
+        e.restore();
+      } else {
+        xg(e, t, o, l);
+      }
     } else if (t.type === "spider") {
       e.fillStyle = l ? "#ffffff" : t.color;
       let u = 0,
