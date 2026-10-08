@@ -2101,19 +2101,19 @@
               onClick: handleExtraClick,
               onAuxClick: handleExtraClick,
               onContextMenu: (We) => We.preventDefault(),
-              className: `flex items-center justify-center w-10 h-10 rounded-xl border shadow-lg backdrop-blur-sm transition-all active:scale-95 cursor-pointer select-none ${
+              className: `flex items-center justify-center w-12 h-12 rounded-2xl border-2 shadow-xl backdrop-blur-sm transition-all active:scale-95 cursor-pointer select-none ${
                 dodgeModeProp
-                  ? "bg-cyan-500 border-cyan-300 shadow-cyan-500/50 ring-2 ring-cyan-400/60 scale-105"
+                  ? "bg-cyan-500 border-cyan-300 shadow-cyan-500/60 ring-2 ring-cyan-400/60 scale-105"
                   : extraActive
                     ? "bg-amber-500 border-amber-300 shadow-amber-500/50 scale-105"
-                    : "bg-slate-800/80 hover:bg-slate-700/80 border-white/20 hover:border-white/40"
+                    : "bg-slate-800/85 hover:bg-slate-700/85 border-white/25 hover:border-white/50"
               }`,
-              title: "Desvio / Esquiva (Clique ou Roda do Mouse)",
+              title: "Desvio",
               children: h.jsx("div", {
-                className: `w-3 h-3 rounded-full transition-all ${
+                className: `w-4 h-4 rounded-full transition-all ${
                   dodgeModeProp
-                    ? "bg-slate-950 shadow-sm"
-                    : "bg-slate-400/50"
+                    ? "bg-slate-950 shadow-sm scale-110"
+                    : "bg-slate-400/60"
                 }`,
               }),
             }),
@@ -2137,9 +2137,7 @@
                       ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
                       : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
                   }`,
-                  title: dodgeModeProp
-                    ? "Saltar / Desviar para Cima (Gasta 1/4 da energia)"
-                    : "Mover para Cima",
+                  title: "Cima",
                   children: "▲",
                 }),
                 h.jsx("div", {}),
@@ -2158,9 +2156,7 @@
                       ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
                       : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
                   }`,
-                  title: dodgeModeProp
-                    ? "Saltar / Desviar para a Esquerda (Gasta 1/4 da energia)"
-                    : "Mover para a Esquerda",
+                  title: "Esquerda",
                   children: "◀",
                 }),
                 h.jsx("div", {
@@ -2173,9 +2169,7 @@
                           ? "bg-rose-900/70 border-rose-500 text-rose-300"
                           : "bg-slate-900/60 border-white/10 text-slate-400"
                   }`,
-                  title: dodgeModeProp
-                    ? "Modo Desvio ATIVO: Toque nas setas para saltar sem virar!"
-                    : "Dica: dê 2 toques rápidos em qualquer direção para correr!",
+                  title: "2x para correr",
                   children: dodgeModeProp ? "⚡DODGE" : le ? "⚡RUN" : W ? "EXAUSTO" : "2x",
                 }),
                 h.jsx("button", {
@@ -2193,9 +2187,7 @@
                       ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
                       : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
                   }`,
-                  title: dodgeModeProp
-                    ? "Saltar / Desviar para a Direita (Gasta 1/4 da energia)"
-                    : "Mover para a Direita",
+                  title: "Direita",
                   children: "▶",
                 }),
                 h.jsx("div", {}),
@@ -2214,9 +2206,7 @@
                       ? "bg-sky-950/85 border-cyan-400/70 text-cyan-200 active:bg-cyan-500 active:text-slate-950 shadow-cyan-950/50"
                       : "bg-slate-800/80 border-white/20 text-white active:bg-sky-600"
                   }`,
-                  title: dodgeModeProp
-                    ? "Saltar / Desviar para Baixo (Gasta 1/4 da energia)"
-                    : "Mover para Baixo",
+                  title: "Baixo",
                   children: "▼",
                 }),
                 h.jsx("div", {}),

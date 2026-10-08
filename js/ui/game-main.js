@@ -1916,7 +1916,6 @@
             if (m.current && typeof m.current.playExhaustedSigh === "function") {
               m.current.playExhaustedSigh();
             }
-            ve("⚠️ Energia insuficiente para ativar o modo desvio!");
             return;
           }
           dodgeModeRef.current = !0;
@@ -1924,14 +1923,12 @@
           if (m.current && typeof m.current.playEquipItem === "function") {
             m.current.playEquipItem();
           }
-          ve("⚡ Modo Desvio ATIVO: Toque nas setas para saltar rapidamente!");
         } else {
           dodgeModeRef.current = !1;
           setDodgeMode(!1);
           if (m.current && typeof m.current.playUnequipItem === "function") {
             m.current.playUnequipItem();
           }
-          ve("🚶 Modo Desvio DESATIVADO: Movimento normal.");
         }
         if (typeof window !== "undefined") {
           window.dispatchEvent(
@@ -1956,7 +1953,6 @@
           if (m.current && typeof m.current.playExhaustedSigh === "function") {
             m.current.playExhaustedSigh();
           }
-          ve("⚠️ Você está exausto! Modo desvio desativado automaticamente.");
           return;
         }
 
@@ -1971,7 +1967,6 @@
           if (m.current && typeof m.current.playExhaustedSigh === "function") {
             m.current.playExhaustedSigh();
           }
-          ve("⚠️ Você ficou exausto! Modo desvio desativado automaticamente.");
         }
         He.current = he.stamina;
         oa.current = !!he.isExhausted;
