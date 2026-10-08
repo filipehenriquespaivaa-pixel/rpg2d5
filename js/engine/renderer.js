@@ -237,6 +237,13 @@
           typeof window.SnowPeakCity.getActiveHouseForPlayer === "function"
             ? window.SnowPeakCity.getActiveHouseForPlayer(t.x, t.y, f)
             : null;
+        const activeDesertRoofId =
+          !this.engine.isUnderground &&
+          typeof window !== "undefined" &&
+          window.DesertCity &&
+          typeof window.DesertCity.getActiveHouseForPlayer === "function"
+            ? window.DesertCity.getActiveHouseForPlayer(t.x, t.y, f)
+            : null;
         for (const ne of z) {
           if (ne.prop) {
             const ke = ne.prop;
@@ -249,6 +256,14 @@
               ke.kind !== "snow_city_door" &&
               ke.kind !== "snow_city_chimney" &&
               ke.kind !== "iron_bars_gate"
+            ) {
+              continue;
+            }
+            if (
+              ne.desertCityHouseIndex !== void 0 &&
+              ne.desertCityHouseIndex !== activeDesertRoofId &&
+              ke.kind !== "desert_city_wall" &&
+              ke.kind !== "desert_city_door"
             ) {
               continue;
             }
@@ -377,6 +392,9 @@
         for (const ne of Ee) ne.draw();
         if (!this.engine.isUnderground && typeof drawSnowCityHouseRoofs === "function") {
           drawSnowCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
+        }
+        if (!this.engine.isUnderground && typeof drawDesertCityHouseRoofs === "function") {
+          drawDesertCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
         }
         (u.combatManager && u.combatManager.renderEffects(c),
           window.__showColliders &&
@@ -1861,6 +1879,48 @@
           case "ruin_pillar":
             gg(c, f, t.subType);
             break;
+          case "desert_city_wall": {
+            let nb = u._dcwNb;
+            if (!nb) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty;
+              nb = u._dcwNb = {
+                left: !!(eng.getTile(tx - 1, ty) && eng.getTile(tx - 1, ty).isDesertCityWall),
+                right: !!(eng.getTile(tx + 1, ty) && eng.getTile(tx + 1, ty).isDesertCityWall),
+                top: !!(eng.getTile(tx, ty - 1) && eng.getTile(tx, ty - 1).isDesertCityWall),
+                bottom: !!(eng.getTile(tx, ty + 1) && eng.getTile(tx, ty + 1).isDesertCityWall),
+              };
+            }
+            if (typeof drawDesertCityWall === "function") {
+              drawDesertCityWall(c, f, t.subType || 0, nb);
+            }
+            break;
+          }
+          case "desert_city_door": {
+            if (typeof drawDesertCityDoor === "function") {
+              drawDesertCityDoor(c, f, !!t.opened, !!t.doorVertical);
+            }
+            break;
+          }
+          case "desert_city_mat": {
+            if (typeof drawDesertCityMat === "function") {
+              drawDesertCityMat(c, f);
+            }
+            break;
+          }
+          case "desert_city_pots": {
+            if (typeof drawDesertCityPots === "function") {
+              drawDesertCityPots(c, f);
+            }
+            break;
+          }
+          case "desert_city_floor": {
+            if (typeof drawDesertCityFloor === "function") {
+              drawDesertCityFloor(c, f);
+            }
+            break;
+          }
           case "snow_city_wall": {
             let nb = u._scwNb;
             if (!nb) {

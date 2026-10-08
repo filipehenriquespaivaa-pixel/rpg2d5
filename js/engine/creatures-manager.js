@@ -2085,7 +2085,8 @@
         if (
           this.engine.isTilePassable(tx, ty) &&
           !this.engine.isNearLitCampfire(cx, cy) &&
-          this.engine.getBiome(tx, ty) === BiomeId.DESERT
+          this.engine.getBiome(tx, ty) === BiomeId.DESERT &&
+          !(typeof window !== "undefined" && window.DesertCity && typeof window.DesertCity.getHouseAt === "function" && window.DesertCity.getHouseAt(tx, ty))
         ) {
           this.createGiantScorpion(cx, cy, player, Math.random() < 0.35);
           break;
@@ -2120,7 +2121,11 @@
             cy = player.y + Math.sin(tryAng) * tryDist,
             tx = Math.floor(cx / this.engine.tileSize),
             ty = Math.floor(cy / this.engine.tileSize);
-          if (this.engine.isTilePassable(tx, ty) && !this.engine.isNearLitCampfire(cx, cy)) {
+          if (
+            this.engine.isTilePassable(tx, ty) &&
+            !this.engine.isNearLitCampfire(cx, cy) &&
+            !(typeof window !== "undefined" && window.DesertCity && typeof window.DesertCity.getHouseAt === "function" && window.DesertCity.getHouseAt(tx, ty))
+          ) {
             spawnX = cx;
             spawnY = cy;
             break;
@@ -2162,6 +2167,14 @@
             Math.floor(t.x / this.engine.tileSize),
             Math.floor(t.y / this.engine.tileSize),
           ))
+      )
+        return;
+      if (
+        !l &&
+        typeof window !== "undefined" &&
+        window.DesertCity &&
+        typeof window.DesertCity.getHouseAt === "function" &&
+        window.DesertCity.getHouseAt(y, w)
       )
         return;
       let v = "slime",

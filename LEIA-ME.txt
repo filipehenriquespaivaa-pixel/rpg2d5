@@ -16,6 +16,7 @@ ESTRUTURA DE PASTAS E ARQUIVOS:
 - js/ui/: Interface do usuário (item-icon, hud, inventory, game-main, menu.js e main.js).
 - js/extras/: Ferramentas auxiliares e botões de depuração (colisores-debug.js).
 - js/core/snow-peak-city.js: Vila Glacial dos Picos Gelados (24 casas, quartos, banheiros, salas, cozinhas, chaminés com fumaça e ruas de paralelepípedo).
+- js/core/desert-city.js: Povoado das Areias Douradas (17 casas de adobe de cômodo único, sem ruas pavimentadas, esteiras de palha para dormir, potes de mantimentos e telhados com vigas 2.5D).
 - legacy/: Bundle original e histórico de código de referência.
 
 COMO EDITAR OU ADICIONAR UM MÓDULO:
@@ -43,6 +44,19 @@ CIDADE DOS PICOS GELADOS (VILA GLACIAL DAS ALTURAS):
   * Portas de carvalho maciço interativas (pressione [E] ou clique/toque para abrir e fechar).
   * Praça Central no Marco Zero [-380, -1220] com a Grande Fogueira Comunal da Cordilheira e Postes de Lampião em ferro forjado.
   * No Modo Desenvolvedor, o botão '❄️ Ir p/ Cidade Glacial' e a opção 'Picos Glaciais' na HUD teleportam direto para a praça da cidade no bioma gelado.
+
+POVOADO DO DESERTO (ALDEIA DAS AREIAS DOURADAS):
+- Localizado no coração do bioma de Deserto Dourado (DESERT), no Marco [520, 360].
+- Sem ruas pavimentadas: as casas são erguidas diretamente sobre o solo natural de areia do deserto.
+- Casas simples de cômodo único e pequeno, construídas com tijolos de adobe e argila seca ao sol.
+- Casas espalhadas organicamente pelo mapa a uma distância mínima de 4 a 8 quadrados umas das outras.
+- Total de 17 casas (superando o mínimo de 15 casas):
+  * Interior rústico e acolhedor de cômodo único.
+  * Esteira tradicional de palha trançada para dormir com travesseiro de linho enrolado (interativa com [E]: descansa e restaura HP/Vigor).
+  * Potes e ânforas de cerâmica com mantimentos frescos (água fresca na sombra, tâmaras secas doces e grãos; interativos com [E]).
+  * Sem estantes de livros, mesas de estudo ou pergaminhos, preservando a rusticidade de um acampamento/vilarejo tradicional do deserto.
+  * Telhados planos 2.5D de adobe com vigas salientes de madeira de palmeira, com transição suave de transparência (fade) ao entrar e sair da casa.
+  * Ao clicar no bioma "Deserto" no mapa/teleporte, você é levado diretamente ao povoado das areias.
 
 SISTEMA DE LIVROS, PERGAMINHOS E BIBLIOTECA:
 1. Coleta Direta e Apenas Itens Coletáveis na Biblioteca:

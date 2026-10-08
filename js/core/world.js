@@ -1314,6 +1314,9 @@
       if (typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l))) {
         return BIOMES.SNOW_PEAK;
       }
+      if (typeof window !== "undefined" && window.DesertCity && (window.DesertCity.isCityBiomeArea ? window.DesertCity.isCityBiomeArea(t, l) : window.DesertCity.isCityTerritory(t, l))) {
+        return BIOMES.DESERT;
+      }
       return Jp(T, A, P, {
         isIsland: S,
         isVolcano: p,
@@ -2101,9 +2104,12 @@
                 0.45,
               );
       const isSnowCityArea = typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l));
+      const isDesertCityArea = typeof window !== "undefined" && window.DesertCity && (window.DesertCity.isCityBiomeArea ? window.DesertCity.isCityBiomeArea(t, l) : window.DesertCity.isCityTerritory(t, l));
       let K;
       if (isSnowCityArea) {
         K = BIOMES.SNOW_PEAK;
+      } else if (isDesertCityArea) {
+        K = BIOMES.DESERT;
       } else {
         K = Jp(T, A, P, {
           isIsland: S,
@@ -2481,6 +2487,36 @@
             }
             if (scCell.prop) {
               se.prop = scCell.prop;
+            } else {
+              se.prop = null;
+            }
+          }
+        }
+      }
+      if (typeof window !== "undefined" && window.DesertCity && (window.DesertCity.isCityBiomeArea ? window.DesertCity.isCityBiomeArea(t, l) : window.DesertCity.isCityTerritory(t, l))) {
+        se.biome = BIOMES.DESERT;
+        se.isElevatedBiome = !1;
+        se.isPerimeterCliff = !1;
+        se.isSecondFloorCliff = !1;
+        se.isOuterCliffEdge = !1;
+        se.isCliffWall = !1;
+        se.isCliffRamp = !1;
+        se.mountainTier = 0;
+        if (window.DesertCity.isCityTerritory(t, l)) {
+          const dcCell = window.DesertCity.getCellAt(t, l, this.interactedProps);
+          if (dcCell) {
+            se.isDesertCity = !0;
+            se.desertCityRole = dcCell.role;
+            se.desertCityRoom = dcCell.roomName;
+            se.desertCityHouseIndex = dcCell.houseIndex;
+            if (dcCell.isWall) se.isDesertCityWall = !0;
+            if (dcCell.isCollider) se.isDesertCityCollider = !0;
+            if (dcCell.isDoor) {
+              se.isDesertCityDoor = !0;
+              se.isDesertCityDoorOpen = !!dcCell.isDoorOpen;
+            }
+            if (dcCell.prop) {
+              se.prop = dcCell.prop;
             } else {
               se.prop = null;
             }
@@ -5032,6 +5068,33 @@
           reward: "",
         };
       }
+      if (o.prop.kind === "desert_city_door") {
+        const nextOpen = !o.prop.opened;
+        this.interactedProps.set(u, { ...m, opened: nextOpen });
+        this.invalidateTile(t, l);
+        return {
+          success: !0,
+          action: "desert_city_door",
+          message: nextOpen ? "🚪 Você abriu a porta da casa de adobe." : "🚪 Você fechou a porta contra o vento e areia do deserto.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "desert_city_mat") {
+        return {
+          success: !0,
+          action: "desert_city_mat",
+          message: "🛏️ Você descansou na esteira fresca de palha trançada à sombra da casa de adobe. Vigor e energia restaurados!",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "desert_city_pots") {
+        return {
+          success: !0,
+          action: "desert_city_pots",
+          message: "🏺 Potes de cerâmica com provisões frescas: água mantida fresca na sombra, tâmaras secas doces e grãos.",
+          reward: "",
+        };
+      }
       if (o.prop.kind === "snow_city_door") {
         const nextOpen = !o.prop.opened;
         this.interactedProps.set(u, { ...m, opened: nextOpen });
@@ -5312,6 +5375,9 @@
       if (o && o.isSnowCityWall) return !1;
       if (o && o.isSnowCityCollider) return !1;
       if (o && o.isSnowCityDoor && !o.isSnowCityDoorOpen) return !1;
+      if (o && o.isDesertCityWall) return !1;
+      if (o && o.isDesertCityCollider) return !1;
+      if (o && o.isDesertCityDoor && !o.isDesertCityDoorOpen) return !1;
       if (
         o &&
         o.prop &&

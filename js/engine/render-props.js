@@ -7340,3 +7340,576 @@
       ctx.restore();
     }
   }
+
+  // =========================================================================
+  // ALDEIA DAS AREIAS DOURADAS (POVOADO DO DESERTO - CASAS DE ADOBE):
+  // 1. Telhados 2.5D de Adobe com Vigas Salientes de Madeira (desaparecem ao entrar)
+  // 2. Paredes de Adobe / Argila Cozida
+  // 3. Portas Rústicas de Madeira
+  // 4. Esteiras de Dormir de Palha Trançada
+  // 5. Potes e Ânforas de Cerâmica de Mantimentos
+  // 6. Piso Interno de Terra Batida
+  // =========================================================================
+
+  function drawDesertCityHouseRoofs(ctx, tileSize, playerX, playerY, viewLeft, viewRight, viewTop, viewBottom, animTimer = 0) {
+    if (typeof window === "undefined" || !window.DesertCity || !window.DesertCity.houses) return;
+
+    const city = window.DesertCity;
+    const houses = city.houses;
+    const activeHouseId = city.getActiveHouseForPlayer
+      ? city.getActiveHouseForPlayer(playerX, playerY, tileSize)
+      : null;
+
+    if (!window.__desertRoofAlphaMap) {
+      window.__desertRoofAlphaMap = {};
+    }
+    const alphaMap = window.__desertRoofAlphaMap;
+
+    for (let i = 0; i < houses.length; i++) {
+      const h = houses[i];
+      const minTileX = h.cx - h.halfW;
+      const maxTileX = h.cx + h.halfW;
+      const minTileY = h.cy - h.halfH;
+      const maxTileY = h.cy + h.halfH;
+
+      const houseLeftPx = minTileX * tileSize;
+      const houseRightPx = (maxTileX + 1) * tileSize;
+      const houseTopPx = minTileY * tileSize;
+      const houseBottomPx = (maxTileY + 1) * tileSize;
+
+      // Descarte rápido (frustum culling)
+      if (
+        houseRightPx + tileSize < viewLeft ||
+        houseLeftPx - tileSize > viewRight ||
+        houseBottomPx + tileSize < viewTop ||
+        houseTopPx - tileSize > viewBottom
+      ) {
+        continue;
+      }
+
+      const isInside = activeHouseId === h.id;
+      const targetAlpha = isInside ? 0 : 1;
+      const prevAlpha = alphaMap[h.id] !== undefined ? alphaMap[h.id] : targetAlpha;
+      const nextAlpha =
+        Math.abs(prevAlpha - targetAlpha) < 0.08
+          ? targetAlpha
+          : prevAlpha + (targetAlpha - prevAlpha) * 0.28;
+      alphaMap[h.id] = nextAlpha;
+
+      if (nextAlpha <= 0.02) continue;
+
+      ctx.save();
+      ctx.globalAlpha = nextAlpha;
+
+      const overhangX = 3;
+      const roofLeft = houseLeftPx - overhangX;
+      const roofRight = houseRightPx + overhangX;
+      const roofW = roofRight - roofLeft;
+
+      const isSouthDoor = h.doorSide === "south";
+      const roofTop = isSouthDoor
+        ? houseTopPx - tileSize * 0.65
+        : houseTopPx + tileSize * 0.25;
+      const roofBottom = isSouthDoor
+        ? houseBottomPx - tileSize * 0.70
+        : houseBottomPx - tileSize * 0.20;
+      const roofH = roofBottom - roofTop;
+
+      // Cache em offscreen canvas
+      if (!drawDesertCityHouseRoofs._cache) {
+        drawDesertCityHouseRoofs._cache = new Map();
+      }
+      const cacheKey = `d_roof_${h.id}_${tileSize}`;
+      let cached = drawDesertCityHouseRoofs._cache.get(cacheKey);
+
+      if (!cached) {
+        const pad = 18;
+        const canW = Math.max(1, Math.ceil(roofW + pad * 2));
+        const canH = Math.max(1, Math.ceil(roofH + pad * 2));
+        const offCan = document.createElement("canvas");
+        offCan.width = canW;
+        offCan.height = canH;
+        const rc = offCan.getContext("2d");
+
+        if (rc) {
+          rc.translate(-roofLeft + pad, -roofTop + pad);
+
+          // 1. Sombra suave do telhado de adobe projetada ao sul no solo do deserto
+          rc.fillStyle = "rgba(69, 36, 12, 0.40)";
+          rc.beginPath();
+          rc.roundRect(roofLeft + 4, roofBottom - 2, roofW - 8, 14, 6);
+          rc.fill();
+
+          // 2. Terraço / Teto plano de adobe seco ao sol
+          const roofGrad = rc.createLinearGradient(0, roofTop, 0, roofBottom);
+          roofGrad.addColorStop(0, "#c9955c");
+          roofGrad.addColorStop(0.5, "#b57e46");
+          roofGrad.addColorStop(1, "#996332");
+          rc.fillStyle = roofGrad;
+          rc.beginPath();
+          rc.roundRect(roofLeft, roofTop, roofW, roofH, 4);
+          rc.fill();
+
+          // 3. Textura de terra batida e poeira fina do deserto no topo
+          rc.fillStyle = "rgba(235, 187, 128, 0.18)";
+          rc.fillRect(roofLeft + 6, roofTop + 6, roofW - 12, roofH - 12);
+
+          // 4. Parapete / Platibanda de proteção da borda da cobertura
+          const parapetInset = 4;
+          rc.strokeStyle = "#7c4a1e";
+          rc.lineWidth = 2.4;
+          rc.strokeRect(roofLeft + parapetInset, roofTop + parapetInset, roofW - parapetInset * 2, roofH - parapetInset * 2);
+
+          // 5. Linha de destaque ensolarada (brilho do sol do deserto na borda norte/oeste)
+          rc.strokeStyle = "rgba(255, 230, 180, 0.55)";
+          rc.lineWidth = 1.6;
+          rc.beginPath();
+          rc.moveTo(roofLeft + 2, roofTop + roofH - 4);
+          rc.lineTo(roofLeft + 2, roofTop + 2);
+          rc.lineTo(roofLeft + roofW - 4, roofTop + 2);
+          rc.stroke();
+
+          // 6. Vigas salientes de madeira rústica de palmeira (vigas tradicionais de casas de adobe)
+          const beamCount = Math.max(3, Math.floor(roofW / (tileSize * 0.85)));
+          const beamStep = roofW / (beamCount + 1);
+          const beamRadius = 3.2;
+          const beamY = roofBottom - 4;
+
+          for (let b = 1; b <= beamCount; b++) {
+            const bx = roofLeft + b * beamStep;
+
+            // Sombra da ponta da viga
+            rc.fillStyle = "rgba(45, 20, 6, 0.45)";
+            rc.beginPath();
+            rc.arc(bx + 1, beamY + 2.5, beamRadius, 0, Math.PI * 2);
+            rc.fill();
+
+            // Madeira escura da viga
+            rc.fillStyle = "#4a2c11";
+            rc.beginPath();
+            rc.arc(bx, beamY, beamRadius, 0, Math.PI * 2);
+            rc.fill();
+
+            // Anéis de crescimento da madeira no corte da viga
+            rc.strokeStyle = "#825023";
+            rc.lineWidth = 1;
+            rc.beginPath();
+            rc.arc(bx, beamY, beamRadius * 0.6, 0, Math.PI * 2);
+            rc.stroke();
+          }
+
+          // 7. Borda final do telhado com acabamento suave
+          rc.strokeStyle = "#593315";
+          rc.lineWidth = 1.8;
+          rc.beginPath();
+          rc.roundRect(roofLeft, roofTop, roofW, roofH, 4);
+          rc.stroke();
+        }
+
+        cached = { canvas: offCan, pad };
+        drawDesertCityHouseRoofs._cache.set(cacheKey, cached);
+      }
+
+      ctx.drawImage(cached.canvas, roofLeft - cached.pad, roofTop - cached.pad);
+      ctx.restore();
+    }
+  }
+
+  // 2. Parede 2.5D de Tijolos de Adobe e Argila Seca ao Sol
+  function drawDesertCityWall(ctx, tileSize, subType = 0, neighbors = null) {
+    const nL = !!(neighbors && neighbors.left);
+    const nR = !!(neighbors && neighbors.right);
+    const nB = !!(neighbors && neighbors.bottom);
+
+    if (!drawDesertCityWall._cache) {
+      drawDesertCityWall._cache = new Map();
+    }
+    const mask = (nL ? 1 : 0) | (nR ? 2 : 0) | (nB ? 4 : 0);
+    const key = `${tileSize.toFixed(2)}_${mask}`;
+    let cached = drawDesertCityWall._cache.get(key);
+
+    if (!cached) {
+      const padX = Math.ceil(24 * tileSize);
+      const padTop = Math.ceil(16 * tileSize);
+      const padBot = Math.ceil(30 * tileSize);
+      const can = document.createElement("canvas");
+      can.width = Math.max(1, padX * 2);
+      can.height = Math.max(1, padTop + padBot);
+      const wc = can.getContext("2d");
+
+      if (wc) {
+        wc.translate(padX, padTop);
+        const half = 18 * tileSize;
+        const leftX = nL ? -half - 1 * tileSize : -half + 1 * tileSize;
+        const rightX = nR ? half + 1 * tileSize : half - 1 * tileSize;
+        const w = rightX - leftX;
+        const wallH = 26 * tileSize;
+        const baseY = 18 * tileSize;
+        const topFrontY = baseY - wallH;
+
+        // Sombra suave na areia ao sul
+        if (!nB) {
+          wc.fillStyle = "rgba(70, 38, 12, 0.45)";
+          wc.fillRect(leftX - 1 * tileSize, baseY - 2 * tileSize, w + 2 * tileSize, 8 * tileSize);
+        }
+
+        // Face frontal: Gradiente de tijolos de adobe dourados
+        const wallGrad = wc.createLinearGradient(0, topFrontY, 0, baseY);
+        wallGrad.addColorStop(0, "#c9955c");
+        wallGrad.addColorStop(0.4, "#b57e46");
+        wallGrad.addColorStop(1, "#8a582b");
+        wc.fillStyle = wallGrad;
+        wc.fillRect(leftX, topFrontY, w, wallH);
+
+        // Linhas de assentamento de tijolos de adobe
+        wc.strokeStyle = "rgba(74, 42, 16, 0.60)";
+        wc.lineWidth = 1.1 * tileSize;
+
+        // Linhas horizontais de adobe
+        const rows = 4;
+        const rowH = wallH / rows;
+        for (let r = 1; r < rows; r++) {
+          const ly = topFrontY + r * rowH;
+          wc.beginPath();
+          wc.moveTo(leftX + 1, ly);
+          wc.lineTo(rightX - 1, ly);
+          wc.stroke();
+        }
+
+        // Linhas verticais alternadas de tijolos
+        const brickW = 12 * tileSize;
+        for (let r = 0; r < rows; r++) {
+          const ly0 = topFrontY + r * rowH;
+          const ly1 = ly0 + rowH;
+          const xOffset = (r % 2 === 0 ? 0 : brickW * 0.5);
+          for (let bx = leftX + xOffset + brickW; bx < rightX - 2; bx += brickW) {
+            wc.beginPath();
+            wc.moveTo(bx, ly0);
+            wc.lineTo(bx, ly1);
+            wc.stroke();
+          }
+        }
+
+        // Topo da parede: destaque iluminado pelo sol do deserto
+        wc.fillStyle = "#dfa86f";
+        wc.fillRect(leftX, topFrontY - 2 * tileSize, w, 3 * tileSize);
+
+        // Borda final sutil
+        wc.strokeStyle = "#593315";
+        wc.lineWidth = 1.2 * tileSize;
+        wc.strokeRect(leftX, topFrontY - 2 * tileSize, w, wallH + 2 * tileSize);
+      }
+
+      cached = { canvas: can, padX, padTop };
+      drawDesertCityWall._cache.set(key, cached);
+    }
+
+    ctx.drawImage(cached.canvas, -cached.padX, -cached.padTop);
+  }
+
+  // 3. Porta Rústica de Madeira com Batente de Adobe
+  function drawDesertCityDoor(ctx, tileSize, isOpen = false, isVertical = false) {
+    ctx.save();
+    const w = 18 * tileSize;
+    const h = 26 * tileSize;
+    const baseY = 16 * tileSize;
+    const topY = baseY - h;
+
+    // Batente de adobe
+    ctx.fillStyle = "#7a491f";
+    ctx.fillRect(-w / 2 - 2, topY - 2, w + 4, h + 4);
+
+    if (isOpen) {
+      // Vão aberto escuro da porta (mostra o interior fresco da casa de adobe)
+      ctx.fillStyle = "#2d1b0d";
+      ctx.fillRect(-w / 2, topY, w, h);
+
+      // Folha da porta aberta inclinada para dentro
+      ctx.save();
+      ctx.translate(-w / 2 + 3, baseY - 2);
+      ctx.rotate(-0.85);
+
+      ctx.fillStyle = "#633c1d";
+      ctx.fillRect(0, -h + 2, 6 * tileSize, h - 2);
+
+      ctx.strokeStyle = "#3d210b";
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(0, -h + 2, 6 * tileSize, h - 2);
+      ctx.restore();
+    } else {
+      // Porta fechada de tábuas verticais de madeira rústica
+      const woodGrad = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+      woodGrad.addColorStop(0, "#734621");
+      woodGrad.addColorStop(0.5, "#8a5529");
+      woodGrad.addColorStop(1, "#663d1c");
+      ctx.fillStyle = woodGrad;
+      ctx.fillRect(-w / 2, topY, w, h);
+
+      // Ranhuras das tábuas verticais
+      ctx.strokeStyle = "#42240e";
+      ctx.lineWidth = 1.2;
+      const plankW = w / 3;
+      for (let p = 1; p < 3; p++) {
+        ctx.beginPath();
+        ctx.moveTo(-w / 2 + p * plankW, topY + 1);
+        ctx.lineTo(-w / 2 + p * plankW, baseY - 1);
+        ctx.stroke();
+      }
+
+      // Travessas de reforço horizontal de ferro/madeira
+      ctx.fillStyle = "#3b220d";
+      ctx.fillRect(-w / 2 + 1, topY + h * 0.22, w - 2, 3.5 * tileSize);
+      ctx.fillRect(-w / 2 + 1, topY + h * 0.72, w - 2, 3.5 * tileSize);
+
+      // Puxador rústico de ferro
+      ctx.fillStyle = "#1e293b";
+      ctx.beginPath();
+      ctx.arc(w / 2 - 4.5, topY + h * 0.52, 2.2 * tileSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Borda do batente
+      ctx.strokeStyle = "#381f0b";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-w / 2, topY, w, h);
+    }
+
+    ctx.restore();
+  }
+
+  // 4. Esteira Rústica de Dormir de Palha Trançada (com travesseiro de linho)
+  function drawDesertCityMat(ctx, tileSize) {
+    ctx.save();
+    const mw = 26 * tileSize;
+    const mh = 32 * tileSize;
+    const mx = -mw / 2;
+    const my = -mh / 2;
+
+    // Sombra suave sob a esteira no chão de terra batida
+    ctx.fillStyle = "rgba(45, 24, 8, 0.35)";
+    ctx.fillRect(mx + 2, my + 3, mw, mh);
+
+    // Corpo da esteira de palha / junco
+    const matGrad = ctx.createLinearGradient(mx, my, mx + mw, my + mh);
+    matGrad.addColorStop(0, "#d9b46e");
+    matGrad.addColorStop(0.5, "#c59f56");
+    matGrad.addColorStop(1, "#ad8841");
+    ctx.fillStyle = matGrad;
+    ctx.beginPath();
+    ctx.roundRect(mx, my, mw, mh, 2);
+    ctx.fill();
+
+    // Textura trançada com linhas finas cruzadas
+    ctx.strokeStyle = "rgba(112, 79, 28, 0.45)";
+    ctx.lineWidth = 0.9;
+    const step = 4 * tileSize;
+    for (let x = mx + step; x < mx + mw; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, my + 1);
+      ctx.lineTo(x, my + mh - 1);
+      ctx.stroke();
+    }
+    for (let y = my + step; y < my + mh; y += step) {
+      ctx.beginPath();
+      ctx.moveTo(mx + 1, y);
+      ctx.lineTo(mx + mw - 1, y);
+      ctx.stroke();
+    }
+
+    // Bordas costuradas / arremate da esteira
+    ctx.strokeStyle = "#825b20";
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(mx, my, mw, mh);
+
+    // Travesseiro de linho enrolado / dobrado na cabeceira da esteira
+    const pw = mw * 0.78;
+    const ph = 9 * tileSize;
+    const px = -pw / 2;
+    const py = my + 3 * tileSize;
+
+    // Sombra do travesseiro
+    ctx.fillStyle = "rgba(75, 48, 15, 0.35)";
+    ctx.beginPath();
+    ctx.roundRect(px + 1, py + 2, pw, ph, 3);
+    ctx.fill();
+
+    // Tecido de linho bege claro
+    const pillowGrad = ctx.createLinearGradient(0, py, 0, py + ph);
+    pillowGrad.addColorStop(0, "#f8f5ee");
+    pillowGrad.addColorStop(0.6, "#eae2ce");
+    pillowGrad.addColorStop(1, "#c8bc9e");
+    ctx.fillStyle = pillowGrad;
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, 4);
+    ctx.fill();
+
+    // Costuras e dobra do travesseiro
+    ctx.strokeStyle = "#ab9c7b";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px, py, pw, ph);
+
+    // Faixa decorativa simples de tecido do deserto no travesseiro
+    ctx.fillStyle = "#b45309";
+    ctx.fillRect(px + pw * 0.44, py, 4 * tileSize, ph);
+
+    ctx.restore();
+  }
+
+  // 5. Potes e Ânforas de Cerâmica de Mantimentos (grãos, tâmaras e água fresca)
+  function drawDesertCityPots(ctx, tileSize) {
+    ctx.save();
+
+    // 1. Pote Grande Principal (Ânfora de barro com tampa de pano amarrada)
+    const p1x = -5 * tileSize;
+    const p1y = 2 * tileSize;
+    const r1 = 9 * tileSize;
+
+    // Sombra comum no chão
+    ctx.fillStyle = "rgba(45, 24, 8, 0.40)";
+    ctx.beginPath();
+    ctx.ellipse(p1x, p1y + r1 * 0.65, r1 * 1.15, r1 * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Corpo da ânfora de cerâmica terracota
+    const grad1 = ctx.createRadialGradient(p1x - r1 * 0.35, p1y - r1 * 0.35, 1, p1x, p1y, r1);
+    grad1.addColorStop(0, "#e07a48");
+    grad1.addColorStop(0.5, "#c25e2e");
+    grad1.addColorStop(1, "#8a3514");
+    ctx.fillStyle = grad1;
+    ctx.beginPath();
+    ctx.ellipse(p1x, p1y, r1 * 0.9, r1, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Faixa decorativa incisa na cerâmica
+    ctx.strokeStyle = "#6d270c";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(p1x, p1y, r1 * 0.88, r1 * 0.28, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Boca da ânfora com tecido de linho amarrado com barbante
+    const neckY = p1y - r1 * 0.95;
+    ctx.fillStyle = "#f1ede2";
+    ctx.beginPath();
+    ctx.ellipse(p1x, neckY, r1 * 0.48, 3.5 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#854d0e";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Cordão de amarração
+    ctx.strokeStyle = "#5b3109";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(p1x - r1 * 0.4, neckY + 1);
+    ctx.lineTo(p1x + r1 * 0.4, neckY + 1);
+    ctx.stroke();
+
+    // Alça da ânfora
+    ctx.strokeStyle = "#8a3514";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(p1x - r1 * 0.82, p1y - r1 * 0.2, 3.8 * tileSize, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.stroke();
+
+    // 2. Segundo Pote Médio (Jarros de água e tâmaras ao lado)
+    const p2x = 8 * tileSize;
+    const p2y = 4 * tileSize;
+    const r2 = 6.8 * tileSize;
+
+    // Sombra do segundo pote
+    ctx.fillStyle = "rgba(45, 24, 8, 0.40)";
+    ctx.beginPath();
+    ctx.ellipse(p2x, p2y + r2 * 0.65, r2 * 1.1, r2 * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cerâmica de argila amarelada/ocre do deserto
+    const grad2 = ctx.createRadialGradient(p2x - r2 * 0.3, p2y - r2 * 0.3, 1, p2x, p2y, r2);
+    grad2.addColorStop(0, "#d99343");
+    grad2.addColorStop(0.5, "#ba7327");
+    grad2.addColorStop(1, "#7d4711");
+    ctx.fillStyle = grad2;
+    ctx.beginPath();
+    ctx.arc(p2x, p2y, r2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Abertura do segundo jarro (com tâmaras e grãos visíveis)
+    ctx.fillStyle = "#3f210a";
+    ctx.beginPath();
+    ctx.ellipse(p2x, p2y - r2 * 0.7, r2 * 0.55, 2.6 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Algumas tâmaras secas / sementes na borda
+    ctx.fillStyle = "#291307";
+    ctx.beginPath();
+    ctx.arc(p2x - 1.5, p2y - r2 * 0.68, 1.8 * tileSize, 0, Math.PI * 2);
+    ctx.arc(p2x + 2, p2y - r2 * 0.72, 1.6 * tileSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Borda da boca do jarro
+    ctx.strokeStyle = "#592e07";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(p2x, p2y - r2 * 0.7, r2 * 0.58, 2.8 * tileSize, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 3. Terceira Tigela/Pote Pequeno em primeiro plano
+    const p3x = 1 * tileSize;
+    const p3y = 10 * tileSize;
+    const r3 = 4.6 * tileSize;
+
+    ctx.fillStyle = "rgba(45, 24, 8, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(p3x, p3y + 2, r3 * 1.1, r3 * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const grad3 = ctx.createRadialGradient(p3x - 1, p3y - 1, 1, p3x, p3y, r3);
+    grad3.addColorStop(0, "#c27447");
+    grad3.addColorStop(0.6, "#9e4e24");
+    grad3.addColorStop(1, "#66280b");
+    ctx.fillStyle = grad3;
+    ctx.beginPath();
+    ctx.arc(p3x, p3y, r3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#2e1407";
+    ctx.beginPath();
+    ctx.ellipse(p3x, p3y - r3 * 0.5, r3 * 0.7, 1.8 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // 6. Piso Interno de Terra Batida / Adobe Compacto
+  function drawDesertCityFloor(ctx, tileSize) {
+    ctx.save();
+    const half = 18 * tileSize;
+
+    // Piso de terra batida nivelada suave
+    const floorGrad = ctx.createLinearGradient(-half, -half, half, half);
+    floorGrad.addColorStop(0, "#c79860");
+    floorGrad.addColorStop(0.5, "#ba8950");
+    floorGrad.addColorStop(1, "#a87840");
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(-half, -half, half * 2, half * 2);
+
+    // Suaves marcas de espátula e argila seca
+    ctx.strokeStyle = "rgba(102, 63, 23, 0.18)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-half + 4, -half + 10);
+    ctx.lineTo(half - 6, -half + 12);
+    ctx.moveTo(-half + 8, half - 10);
+    ctx.lineTo(half - 4, half - 8);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // Torna as funções acessíveis globalmente
+  window.drawDesertCityHouseRoofs = drawDesertCityHouseRoofs;
+  window.drawDesertCityWall = drawDesertCityWall;
+  window.drawDesertCityDoor = drawDesertCityDoor;
+  window.drawDesertCityMat = drawDesertCityMat;
+  window.drawDesertCityPots = drawDesertCityPots;
+  window.drawDesertCityFloor = drawDesertCityFloor;
+
