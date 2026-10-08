@@ -1408,17 +1408,30 @@ window.Game = window.Game || {};
         c.stroke();
       } else {
         const eyeOffset = w === "left" ? -1.2 : w === "right" ? 1.2 : 0;
-        // Olho esquerdo (esclera branca e pupila escura)
+        // Todos os habitantes do deserto possuem impressionantes olhos azuis (azul-celeste / especiaria do deserto)
+        const eyeIrisColor = "#0284c7"; // Azul celeste vibrante
+        const eyePupilColor = "#0369a1"; // Centro azul profundo
+        const eyeHighlight = "#38bdf8"; // Brilho luminoso azul
+
+        // Olho esquerdo (esclera branca, íris azul e brilho azul)
         c.fillStyle = "#ffffff";
         c.fillRect(headX - 3.2 + eyeOffset, headY - 0.2, 2.2, 1.8);
-        c.fillStyle = "#171412";
+        c.fillStyle = eyeIrisColor;
         c.fillRect(headX - 2.6 + eyeOffset, headY + 0.1, 1.2, 1.2);
+        c.fillStyle = eyePupilColor;
+        c.fillRect(headX - 2.4 + eyeOffset, headY + 0.3, 0.8, 0.8);
+        c.fillStyle = eyeHighlight;
+        c.fillRect(headX - 2.6 + eyeOffset, headY + 0.1, 0.5, 0.5);
 
-        // Olho direito (esclera branca e pupila escura)
+        // Olho direito (esclera branca, íris azul e brilho azul)
         c.fillStyle = "#ffffff";
         c.fillRect(headX + 1.0 + eyeOffset, headY - 0.2, 2.2, 1.8);
-        c.fillStyle = "#171412";
+        c.fillStyle = eyeIrisColor;
         c.fillRect(headX + 1.4 + eyeOffset, headY + 0.1, 1.2, 1.2);
+        c.fillStyle = eyePupilColor;
+        c.fillRect(headX + 1.6 + eyeOffset, headY + 0.3, 0.8, 0.8);
+        c.fillStyle = eyeHighlight;
+        c.fillRect(headX + 1.4 + eyeOffset, headY + 0.1, 0.5, 0.5);
 
         // Sobrancelhas expressivas
         c.fillStyle = npc.hairColor;
