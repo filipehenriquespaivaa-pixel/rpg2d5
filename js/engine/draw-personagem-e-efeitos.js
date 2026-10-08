@@ -2444,6 +2444,30 @@
         radius: stingerRadius,
         active: isStingerAtk && stingerProg >= 0.25 && stingerProg <= 0.75,
       });
+
+      // Pernas do escorpião (4 de cada lado = 8 pernas)
+      for (const te of [-1, 1]) {
+        for (let oe = 0; oe < 4; oe++) {
+          const Ne = c + oe * 1.5 + (te === 1 ? Math.PI : 0);
+          const X = m
+            ? Math.sin(Ne) * 2.1 * l
+            : Math.sin(t.animTimer * 1.2 + oe) * 0.35 * l;
+          const be = dirY === 1 ? (-5 * l + oe * 2.4 * l + f) : (5 * l - oe * 2.4 * l + f);
+          const Fe = te * 13.5 * l;
+          const _e = dirY === 1 ? (be + 3 * l + X) : (be - 3 * l - X);
+          const wpLeg = toWorld(Fe, _e);
+          colliders.push({
+            part: `leg_${te === -1 ? "left" : "right"}_${oe}`,
+            side: te,
+            index: oe,
+            x: wpLeg.x,
+            y: wpLeg.y,
+            radius: Math.max(7, 2.5 * l),
+            active: !1,
+            isLeg: !0,
+          });
+        }
+      }
     } else {
       const u = t.facing === "left" ? -1 : 1;
       const W = 6.2 * l,
@@ -2530,8 +2554,49 @@
         radius: stingerRadius,
         active: isStingerAtk && stingerProg >= 0.25 && stingerProg <= 0.75,
       });
+
+      // Pernas superiores e inferiores na visão lateral (4 no topo, 4 na base)
+      for (let Ne = 0; Ne < 4; Ne++) {
+        const X = f + Ne * 1.5;
+        const C = m ? Math.sin(X) * 2.1 * l : Math.sin(t.animTimer * 1.2 + Ne) * 0.35 * l;
+        const be = -5 * l + Ne * 3.4 * l;
+        const Te = be - 2 * l + C * 0.7;
+        const _e = Te - 3.5 * l + C;
+        const xe = -5 * l + f - 3 * l;
+        colliders.push({
+          part: `leg_top_${Ne}`,
+          side: -1,
+          index: Ne,
+          x: t.x + _e * u,
+          y: t.y + xe,
+          radius: Math.max(7, 2.5 * l),
+          active: !1,
+          isLeg: !0,
+        });
+      }
+      for (let Ne = 0; Ne < 4; Ne++) {
+        const X = f + Ne * 1.5 + Math.PI;
+        const C = m ? Math.sin(X) * 2.2 * l : Math.sin(t.animTimer * 1.2 + Ne + 2) * 0.35 * l;
+        const be = -5 * l + Ne * 3.4 * l;
+        const Te = be - 1.5 * l + C * 0.7;
+        const _e = Te - 2.5 * l + C;
+        const xe = -4 * l + f + 9.5 * l;
+        colliders.push({
+          part: `leg_bottom_${Ne}`,
+          side: 1,
+          index: Ne,
+          x: t.x + _e * u,
+          y: t.y + xe,
+          radius: Math.max(7, 2.5 * l),
+          active: !1,
+          isLeg: !0,
+        });
+      }
     }
     return colliders;
+  }
+  if (typeof window !== "undefined") {
+    window.getScorpionHitColliders = getScorpionHitColliders;
   }
   function drawGiantScorpionCaveReachClaw(e, t) {
     const l = t.scale || 3.4;

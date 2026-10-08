@@ -457,7 +457,7 @@
         f = l
           ? "Corpo de criatura gosma coletado no solo. Preserva a forma gelatinosa viva com núcleo e olhos vítreos, ideal para forja e alquimia."
           : t.isGiantScorpion
-            ? "Carcaça colossal de um Escorpião Gigante Noturno do deserto, com carapaça quitinosa espessa e ferrão venenoso."
+            ? "Carcaça colossal de um Escorpião Gigante Noturno do deserto, com carapaça quitinosa espessa e ferrão maciço e esmagador."
             : `Corpo intacto de ${t.name} recolhido após o combate.`;
       return (
         creatureCarcass(t.type)
@@ -540,12 +540,15 @@
         !this.getAnimalFireDeterrence(t, l).canAttack
       )
         return;
+      if (t.isGiantScorpion && l.poisonTimer) {
+        l.poisonTimer = 0;
+      }
       const extraDmg = isStinger ? 2.5 : 0;
       const m = t.attack + (Math.random() * 2.5 - 1.2) + extraDmg,
         c = Math.max(1, Math.round(m - o * 0.45));
       ((l.hp = Math.max(0, (l.hp ?? 100) - c)),
         (f = this.audio) == null || f.playPlayerHurt(),
-        isStinger && (
+        isStinger && !t.isGiantScorpion && (
           (l.paralyzedTimer = Math.max(l.paralyzedTimer || 0, 0.3)),
           (l.attackTimer = 0),
           (l.isAiming = !1)
@@ -556,7 +559,7 @@
           y: impactY - 20,
           text: `-${c}`,
           color: "#ef4444",
-          isCrit: isStinger,
+          isCrit: isStinger && !t.isGiantScorpion,
           life: 0.85,
         }));
       const particleCount = isStinger ? 6 : 4;
@@ -576,6 +579,44 @@
         });
       }
       l.hp <= 0 && !l.isDead && this.handlePlayerDeath(l);
+    }
+    spawnGroundDust(x, y, scale = 1) {
+      const count = Math.round(15 * Math.max(0.7, scale));
+      const colors = [
+        "rgba(217, 119, 6, 0.72)",
+        "rgba(245, 158, 11, 0.65)",
+        "rgba(180, 83, 9, 0.6)",
+        "rgba(254, 240, 138, 0.55)",
+        "rgba(202, 138, 4, 0.58)",
+      ];
+      for (let i = 0; i < count; i++) {
+        const ang = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+        const spd = (1.5 + Math.random() * 4.2) * Math.max(0.8, scale * 0.85);
+        this.slimeParticles.push({
+          x: x + (Math.random() - 0.5) * 10 * scale,
+          y: y + (Math.random() - 0.5) * 7 * scale,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * (spd * 0.45) - (1.4 + Math.random() * 2.2),
+          life: 0.7 + Math.random() * 0.4,
+          maxLife: 0.7 + Math.random() * 0.4,
+          type: "dust",
+          color: colors[i % colors.length],
+          size: (3.6 + Math.random() * 4.4) * Math.max(0.8, scale * 0.78),
+        });
+      }
+      for (let i = 0; i < 9; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 2.4 + Math.random() * 4.6;
+        this.hitParticles.push({
+          x: x + (Math.random() - 0.5) * 6,
+          y: y + (Math.random() - 0.5) * 4,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 1.2,
+          life: 0.55,
+          color: i % 2 === 0 ? "#f59e0b" : "#b45309",
+          size: 2.2 + Math.random() * 2,
+        });
+      }
     }
     handlePlayerDeath(t) {
       var l;
@@ -1109,7 +1150,18 @@
           }
           if (p.isGiantScorpion) {
             if (p.clawAttackTimer && p.clawAttackTimer > 0) {
+              const prevClawTimer = p.clawAttackTimer;
               p.clawAttackTimer = Math.max(0, p.clawAttackTimer - t);
+              if (prevClawTimer > 0.16 && p.clawAttackTimer <= 0.16 && !p.clawGroundDustSpawned) {
+                p.clawGroundDustSpawned = !0;
+                if (typeof getScorpionHitColliders === "function") {
+                  const cols = getScorpionHitColliders(p);
+                  const activeClaw = cols.find((c) => c.part === (p.attackClawSide === -1 ? "claw_left" : "claw_right"));
+                  if (activeClaw) {
+                    this.spawnGroundDust(activeClaw.x, activeClaw.y, (p.scale || 4.75) / 3.4);
+                  }
+                }
+              }
             }
             if (p.stingerAttackTimer && p.stingerAttackTimer > 0) {
               p.stingerAttackTimer = Math.max(0, p.stingerAttackTimer - t);
@@ -1233,6 +1285,7 @@
                   col.y,
                 );
                 // 30% de chance da garra do Escorpião Gigante capturar o jogador e levá-lo até a boca!
+                let wasCaptured = !1;
                 if (
                   p.isGiantScorpion &&
                   !isSting &&
@@ -1240,6 +1293,7 @@
                   !l.capturedByScorpionId &&
                   Math.random() < 0.3
                 ) {
+                  wasCaptured = !0;
                   p.isCapturingPlayer = !0;
                   p.captureProgress = 0;
                   p.capturePullDuration = 2.35;
@@ -1260,6 +1314,27 @@
                   l.vx = 0;
                   l.vy = 0;
                   l.isMoving = !1;
+                }
+                // Quando o player for atingido e NÃO for capturado:
+                // É jogado para trás, e a garra acerta o chão fazendo subir poeira!
+                if (p.isGiantScorpion && !wasCaptured && !l.isDead) {
+                  const knockAngle = Math.atan2(l.y - col.y, l.x - col.x) || Math.atan2(l.y - p.y, l.x - p.x) || (Math.PI / 2);
+                  const knockDist = 52;
+                  if (typeof this.engine?.moveWithSlide === "function") {
+                    const slid = this.engine.moveWithSlide(l.x, l.y, Math.cos(knockAngle) * knockDist, Math.sin(knockAngle) * knockDist, !0);
+                    l.x = slid.x;
+                    l.y = slid.y;
+                  } else {
+                    l.x += Math.cos(knockAngle) * knockDist;
+                    l.y += Math.sin(knockAngle) * knockDist;
+                  }
+                  l.vx = Math.cos(knockAngle) * 4.6;
+                  l.vy = Math.sin(knockAngle) * 4.6;
+
+                  // A garra acerta o chão fazendo subir poeira!
+                  this.spawnGroundDust(col.x, col.y, (p.scale || 4.75) / 3.2);
+                  var audioImpact = this.audio;
+                  audioImpact == null || audioImpact.playHitImpact();
                 }
                 break;
               }
@@ -1597,6 +1672,7 @@
               p.clawAttackDuration = 0.36;
               p.clawAttackTimer = p.clawAttackDuration;
               p.clawHitApplied = !1;
+              p.clawGroundDustSpawned = !1;
               p.attackPlayerDef = c;
               p.clawAttackCooldown = 0.85;
               // Sincroniza campos legados para compatibilidade
@@ -1858,16 +1934,33 @@
         if (p.progress > 0.08) {
           for (const m of this.monsters) {
             if (m.hp <= 0 || m.isUnderground !== p.underground) continue;
-            const dist = Math.hypot(m.x - curX, m.y - curY);
-            const mRadius = (m.size || 16) + 18;
+            let dist = Math.hypot(m.x - curX, m.y - curY);
+            let mRadius = (m.size || 16) + 18;
+            let hitLegPt = null;
+            if (m.isGiantScorpion && typeof getScorpionHitColliders === "function") {
+              const cols = getScorpionHitColliders(m);
+              for (const col of cols) {
+                if (col.isLeg || (col.part && col.part.startsWith("leg"))) {
+                  const dLeg = Math.hypot(col.x - curX, col.y - curY);
+                  if (dLeg <= (col.radius || 12) + 16) {
+                    dist = dLeg;
+                    mRadius = (col.radius || 12) + 16;
+                    hitLegPt = { x: col.x, y: col.y };
+                    break;
+                  }
+                }
+              }
+            }
             if (dist <= mRadius) {
               hitMonster = m;
+              if (hitLegPt) hitMonster._hitImpactPoint = hitLegPt;
               break;
             }
           }
         }
         if (hitMonster || p.progress >= 1) {
-          const impactPoint = hitMonster ? { x: hitMonster.x, y: hitMonster.y } : { x: p.targetX, y: p.targetY };
+          const impactPoint = hitMonster ? (hitMonster._hitImpactPoint ?? { x: hitMonster.x, y: hitMonster.y }) : { x: p.targetX, y: p.targetY };
+          if (hitMonster) delete hitMonster._hitImpactPoint;
           const result = this.performAttack(p.player, p.damage, !1, p.underground, !0, p.angle, p.distance, impactPoint);
           const audio = this.audio;
           audio?.playHitImpact?.();
@@ -1901,10 +1994,17 @@
       }
       for (let S = this.slimeParticles.length - 1; S >= 0; S--) {
         const p = this.slimeParticles[S];
-        ((p.x += p.vx * t),
-          (p.y += p.vy * t),
-          (p.life -= t),
-          p.life <= 0 && this.slimeParticles.splice(S, 1));
+        if (p.type === "dust") {
+          p.vx *= 0.95;
+          p.vy *= 0.95;
+          p.x += p.vx * t * 60;
+          p.y += p.vy * t * 60;
+        } else {
+          p.x += p.vx * t;
+          p.y += p.vy * t;
+        }
+        p.life -= t;
+        p.life <= 0 && this.slimeParticles.splice(S, 1);
       }
     }
     triggerDesertNightGiantScorpions(player, isUnderground = !1) {
@@ -2416,7 +2516,16 @@
         c = 1 / 0;
       for (const f of this.monsters) {
         if (f.hp <= 0 || f.isUnderground !== u) continue;
-        const g = Math.hypot(f.x - t, f.y - l);
+        let g = Math.hypot(f.x - t, f.y - l);
+        if (f.isGiantScorpion && typeof getScorpionHitColliders === "function") {
+          const cols = getScorpionHitColliders(f);
+          for (const col of cols) {
+            if (col.isLeg || (col.part && col.part.startsWith("leg"))) {
+              const dLeg = Math.hypot(col.x - t, col.y - l);
+              if (dLeg < g) g = dLeg;
+            }
+          }
+        }
         g <= o && g < c && ((c = g), (m = f));
       }
       return m ? { monster: m, distance: c } : null;
@@ -2449,10 +2558,21 @@
         let distance = maxRange;
         for (const target of this.monsters) {
           if (target.hp <= 0 || target.isUnderground !== underground) continue;
-          const dx = target.x - player.x, dy = target.y - player.y;
-          const along = dx * dirX + dy * dirY;
-          const perpendicular = Math.abs(dx * dirY - dy * dirX);
-          if (along >= 0 && along <= distance && perpendicular <= 28) distance = along;
+          const checkPoints = [{ x: target.x, y: target.y, rad: 28 }];
+          if (target.isGiantScorpion && typeof getScorpionHitColliders === "function") {
+            const cols = getScorpionHitColliders(target);
+            for (const col of cols) {
+              if (col.isLeg || (col.part && col.part.startsWith("leg"))) {
+                checkPoints.push({ x: col.x, y: col.y, rad: (col.radius || 12) + 12 });
+              }
+            }
+          }
+          for (const pt of checkPoints) {
+            const dx = pt.x - player.x, dy = pt.y - player.y;
+            const along = dx * dirX + dy * dirY;
+            const perpendicular = Math.abs(dx * dirY - dy * dirX);
+            if (along >= 0 && along <= distance && perpendicular <= pt.rad) distance = along;
+          }
         }
         distance = Math.max(18, distance);
         targetX = player.x + dirX * distance;
@@ -2543,7 +2663,22 @@
             t.capturedByScorpionId === p.id
           );
         const monsterRadius = (isCaveReachActive ? (p._caveClawRadius || 14) : (p.size || 16)) + (lockedPoint ? 14 : 0);
-        if (j <= w + monsterRadius || P || isCapturingMe) {
+        let hitOnLeg = null;
+        let isHit = (j <= w + monsterRadius || P || isCapturingMe);
+        if (!isHit && p.isGiantScorpion && typeof getScorpionHitColliders === "function") {
+          const cols = getScorpionHitColliders(p);
+          for (const col of cols) {
+            if (col.isLeg || (col.part && col.part.startsWith("leg"))) {
+              const dLeg = Math.hypot(col.x - f, col.y - g);
+              if (dLeg <= w + (col.radius || 12)) {
+                isHit = !0;
+                hitOnLeg = col;
+                break;
+              }
+            }
+          }
+        }
+        if (isHit) {
           T.hitCount++;
           const A = Math.random() < 0.22,
             x = Math.floor(Math.random() * 3) - 1,
@@ -2617,18 +2752,22 @@
             p.vx = Math.cos(rushAngle) * rushSpeed;
             p.vy = Math.sin(rushAngle) * rushSpeed;
           }
+          const impactPtX = hitOnLeg ? hitOnLeg.x : p.x;
+          const impactPtY = hitOnLeg ? hitOnLeg.y : p.y;
           this.floatingTexts.push({
             id: `dmg_${this.nextId++}`,
-            x: p.x,
-            y: p.y - 18,
+            x: impactPtX,
+            y: impactPtY - 18,
             text: brokeCapture
               ? `-${$} (ESCAPOU DA GARRA!)`
               : P
                 ? `-${$} (Soltou!)`
-                : A
-                  ? `CRÍTICO! -${$}`
-                  : `-${$}`,
-            color: brokeCapture || P ? "#38bdf8" : A ? "#f59e0b" : "#f87171",
+                : hitOnLeg
+                  ? (A ? `CRÍTICO! -${$} (Perna)` : `-${$} (Perna)`)
+                  : A
+                    ? `CRÍTICO! -${$}`
+                    : `-${$}`,
+            color: brokeCapture || P ? "#38bdf8" : hitOnLeg ? "#fb923c" : A ? "#f59e0b" : "#f87171",
             isCrit: A || brokeCapture,
             life: 1,
           });
@@ -2636,14 +2775,17 @@
             const K = Math.random() * Math.PI * 2,
               V = 2 + Math.random() * 4;
             this.hitParticles.push({
-              x: p.x,
-              y: p.y,
+              x: impactPtX,
+              y: impactPtY,
               vx: Math.cos(K) * V,
               vy: Math.sin(K) * V,
               life: 1,
-              color: A ? "#fbbf24" : "#ef4444",
+              color: hitOnLeg ? (z % 2 === 0 ? "#b45309" : "#f59e0b") : A ? "#fbbf24" : "#ef4444",
               size: 2.5 + Math.random() * 2,
             });
+          }
+          if (hitOnLeg) {
+            p.speed = Math.max((p.speed || 3) * 0.9, 1.4);
           }
           if (p.hp <= 0) {
             (T.defeatedCount++, T.defeatedNames.push(p.name), (T.lootGold = 0));
@@ -2668,7 +2810,7 @@
               se = z
                 ? "Corpo de criatura gosma coletado no solo. Preserva a forma gelatinosa viva com núcleo e olhos vítreos, ideal para forja e alquimia."
                 : p.isGiantScorpion
-                  ? "Carcaça colossal de um Escorpião Gigante Noturno do deserto, com carapaça quitinosa espessa e ferrão venenoso."
+                  ? "Carcaça colossal de um Escorpião Gigante Noturno do deserto, com carapaça quitinosa espessa e ferrão maciço e esmagador."
                   : `Corpo intacto de ${p.name} recolhido após o combate.`;
             creatureCarcass(p.type)
  ? ((K = creatureCarcass(p.type).name),
@@ -3079,6 +3221,13 @@
           const u = l.size;
           (t.fillRect(l.x - 0.5, l.y - u, 1.5, u * 2),
             t.fillRect(l.x - u, l.y - 0.5, u * 2, 1.5));
+        } else if (l.type === "dust") {
+          t.fillStyle = l.color || "rgba(217, 119, 6, 0.65)";
+          t.globalAlpha = Math.max(0, Math.min(1, o * 0.85));
+          const rad = l.size * (1 + (1 - o) * 1.8);
+          t.beginPath();
+          t.arc(l.x, l.y, rad, 0, Math.PI * 2);
+          t.fill();
         } else
           l.type === "poison"
             ? ((t.fillStyle = l.color),

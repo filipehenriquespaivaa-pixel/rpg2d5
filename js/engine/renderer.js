@@ -506,16 +506,21 @@
                 for (const col of cols) {
                   c.save();
                   const isStinger = col.part === "stinger";
+                  const isLeg = col.isLeg || (col.part && col.part.startsWith("leg"));
                   const strokeCol = col.active
                     ? "#ef4444"
                     : isStinger
                       ? "rgba(236,72,153,0.9)"
-                      : "rgba(251,191,36,0.9)";
+                      : isLeg
+                        ? "rgba(34,197,94,0.85)"
+                        : "rgba(251,191,36,0.9)";
                   const fillCol = col.active
                     ? "rgba(239,68,68,0.45)"
                     : isStinger
                       ? "rgba(236,72,153,0.22)"
-                      : "rgba(251,191,36,0.22)";
+                      : isLeg
+                        ? "rgba(34,197,94,0.18)"
+                        : "rgba(251,191,36,0.22)";
                   c.fillStyle = fillCol;
                   c.strokeStyle = strokeCol;
                   c.lineWidth = col.active ? 2 : 1.2;

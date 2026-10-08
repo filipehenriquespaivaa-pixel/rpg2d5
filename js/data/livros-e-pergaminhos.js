@@ -738,7 +738,7 @@ Dunas infinitas de areia dourada e ventos quentes. Durante o dia, a stamina se e
 Pontos preciosos no deserto guardam lagoas cristalinas cercadas de tamareiras e palmeiras verdes. Neles é possível saciar a sede e recuperar toda a energia.
 
 ⚠️ PONTOS DE ATENÇÃO:
-Escorpiões gigantes e serpentes das dunas camuflam-se na areia e golpeiam com cauda venenosa.`,
+Escorpiões gigantes e serpentes das dunas camuflam-se na areia e golpeiam com pinças colossais e cauda demolidora.`,
           flavor: "Carregue sempre dois recipientes cheios de água antes de entrar no deserto.",
         },
         {
