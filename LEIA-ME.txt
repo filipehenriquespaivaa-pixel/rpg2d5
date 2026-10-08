@@ -57,17 +57,21 @@ POVOADO DO DESERTO (ALDEIA DAS AREIAS DOURADAS):
   * Sem estantes de livros, mesas de estudo ou pergaminhos, preservando a rusticidade de um acampamento/vilarejo tradicional do deserto.
   * Telhados planos 2.5D de adobe com vigas salientes de madeira de palmeira, com transição suave de transparência (fade) ao entrar e sair da casa.
   * Ao clicar no bioma "Deserto" no mapa/teleporte, você é levado diretamente ao povoado das areias.
-- População da Aldeia (28 Moradores do Deserto):
+- População da Aldeia (Moradores do Deserto):
+  * Silhueta esguia e magra, com proporções esbeltas e refinadas adaptadas ao clima do deserto.
   * Moradores de cores variadas (tons de pele variados: âmbar dourada, pêssego suave, canela quente, bronzeada, trigueira, morena profunda, café e negra retinta).
   * Cabelos variados e penteados temáticos (preto azeviche, castanho cacau, henna, âmbar e grisalho experiente).
   * Roupas temáticas de deserto autênticas:
-    - Túnicas longas fluidas (dishdasha / jalabiya / caftã) em linho branco do Saara, índigo tuaregue, areia dourada/ocre, verde oásis, carmesim de caravanas e açafrão solar.
-    - Coberturas de cabeça temáticas: Turbantes volumosos enrolados, Shemaghs com agal duplo preto, Tagelmust tuaregue cobrindo o rosto inferior, lenços fluidos femininos, capuzes de areia e tiaras de couro com turquesa.
+    - Túnicas longas fluidas ajustadas (dishdasha / jalabiya / caftã) em linho branco do Saara, índigo tuaregue, areia dourada/ocre, verde oásis, carmesim de caravanas e açafrão solar.
+    - Coberturas de cabeça temáticas esbeltas: Turbantes enrolados, Shemaghs com agal duplo preto, Tagelmust tuaregue cobrindo o rosto inferior, lenços fluidos femininos, capuzes de areia e tiaras de couro com turquesa.
     - Acessórios: Odres de água de couro a tiracolo, ânforas de cerâmica nos braços, cestos de tâmaras doces, cajados de pastor e leques de palha trançada.
+  * Linguagem Rúnica Ancestral (Referência ao Pergaminho de Runas):
+    - Não conversam em português: comunicam-se 100% em RUNAS ANTIGAS do Futhark Sagrado (ex: ᚛ ᛋ ᛟ ᛚ ᛫ ᚨ ᚱ ᛖ ᚾ ᚨ ᛫ ᛏ ᛖ ᛏ ᚱ ᚨ ᛫ ᚲ ᛟ ᛋ ᛗ ᛟ ᛋ ᚜).
+    - Balões de diálogo sobre a cabeça e mensagens de interação ao apertar [F] exibem escrituras rúnicas luminosas.
   * Rotina viva de RPG:
-    - De dia passeiam pelas dunas abertas e espaços entre as casas, conversam entre si ao se cruzar e abrem as portas de madeira ao passar.
+    - De dia passeiam pelas dunas abertas e espaços entre as casas, conversam entre si em runas e abrem as portas de madeira ao passar.
     - À noite todos retornam para suas respectivas casas para descansar sobre as esteiras de junco com efeito visual "zZz".
-    - Interação completa com a tecla [F]: mostram balão de fala clássico de RPG sobre a cabeça e diálogo acolhedor sobre as areias, oásis e estrelas.
+    - Interação completa com a tecla [F] em linguagem rúnica ancestral.
 
 SISTEMA DE LIVROS, PERGAMINHOS E BIBLIOTECA:
 1. Coleta Direta e Apenas Itens Coletáveis na Biblioteca:

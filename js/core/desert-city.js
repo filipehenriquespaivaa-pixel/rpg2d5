@@ -11,18 +11,23 @@
  * - Telhados de adobe 2.5D com fade ao entrar/sair.
  *
  * População da Aldeia (Moradores do Deserto):
- * - Moradores de cores variadas (tons de pele variados: âmbar dourada, pêssego suave, canela,
- *   bronzeada, trigueira, morena profunda, castanho escuro e negra retinta).
+ * - Moradores esguios / magros, de silhueta esbelta típica de nômades das areias.
+ * - Cores variadas (tons de pele variados: âmbar dourada, pêssego suave, canela quente,
+ *   bronzeada, trigueira, morena profunda, café e negra retinta luminosa).
  * - Roupas temáticas de deserto autênticas:
- *   * Túnicas fluidas (dishdasha / jalabiya / caftã) em linho branco do Saara, azul tuaregue,
+ *   * Túnicas fluidas e ajustadas (dishdasha / jalabiya / caftã) em linho branco do Saara, azul tuaregue,
  *     areia dourada/ocre, verde oásis, carmesim de caravana, terracota e açafrão solar.
- *   * Coberturas de cabeça temáticas: Turbantes volumosos enrolados, Shemagh/Keffiyeh com agal preto,
+ *   * Coberturas de cabeça temáticas: Turbantes bem moldados, Shemagh/Keffiyeh com agal preto,
  *     Tagelmust tuaregue cobrindo queixo e boca, lenços fluidos femininos, capuzes de areia e tiaras de couro com turquesa.
  *   * Acessórios: odres de água a tiracolo, ânforas de cerâmica, cestos de tâmaras, cajados de pastor e leques de palha.
+ * - Linguagem Rúnica Ancestral (Referência ao Pergaminho Rúnico):
+ *   * Os moradores NÃO conversam em português; comunicam-se exclusivamente em RUNAS SAGRADAS do Futhark Antigo,
+ *     com glifos de poder (᚛ ᛋ ᛟ ᛚ ᛫ ᚨ ᚱ ᛖ ᚾ ᚨ ᛫ ᛏ ᛖ ᛏ ᚱ ᚨ ᛫ ᚲ ᛟ ᛋ ᛗ ᛟ ᛋ ᚜)!
+ *   * Balões de diálogo sobre a cabeça e mensagens de interação exibem escrituras rúnicas arcanas.
  * - Rotina viva de RPG:
- *   * De dia passeiam pelas dunas e espaços entre as casas, conversam entre si e abrem portas ao passar.
+ *   * De dia passeiam pelas dunas e espaços entre as casas, conversam entre si em runas e abrem portas ao passar.
  *   * À noite retornam para suas respectivas casas para descansar sobre as esteiras de junco com efeito zZz!
- *   * Interação com o jogador através da tecla [F] com diálogos ricos e temáticos sobre as areias e oásis.
+ *   * Interação com o jogador através da tecla [F].
  */
 "use strict";
 
@@ -34,6 +39,61 @@ window.Game = window.Game || {};
   const CITY_CY = 360;
   const CITY_RADIUS = 90;
   const CITY_BIOME_RADIUS = 750;
+
+  // =========================================================================
+  // SISTEMA DE RUNAS ANCESTRAIS (REFERÊNCIA AO PERGAMINHO DE RUNAS)
+  // - Transliteração direta e frases arcanas de Futhark Antigo
+  // =========================================================================
+  const RUNE_MAP = {
+    a: "ᚨ", b: "ᛒ", c: "ᚲ", d: "ᛞ", e: "ᛖ", f: "ᚠ", g: "ᚷ", h: "ᚺ",
+    i: "ᛁ", j: "ᛃ", k: "ᚲ", l: "ᛚ", m: "ᛗ", n: "ᚾ", o: "ᛟ", p: "ᛈ",
+    q: "ᚲ", r: "ᚱ", s: "ᛋ", t: "ᛏ", u: "ᚢ", v: "ᚹ", w: "ᚹ", x: "ᛉ",
+    y: "ᛇ", z: "ᛉ"
+  };
+
+  function toRunes(str) {
+    if (!str) return "";
+    const clean = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const words = clean.split(/\s+/).filter(Boolean);
+    const runicWords = words.map(w => {
+      let rw = "";
+      for (const char of w) {
+        if (RUNE_MAP[char]) {
+          rw += (rw ? " " : "") + RUNE_MAP[char];
+        }
+      }
+      return rw;
+    }).filter(Boolean);
+    return "᚛ " + runicWords.join(" ᛫ ") + " ᚜";
+  }
+
+  // Falas e saudações rúnicas místicas para interação com o jogador [F]
+  const RUNIC_GREETINGS = [
+    "᚛ ᛋ ᛟ ᛚ ᛫ ᚨ ᚱ ᛖ ᚾ ᚨ ᛫ ᛏ ᛖ ᛏ ᚱ ᚨ ᛫ ᚲ ᛟ ᛋ ᛗ ᛟ ᛋ ᚜",
+    "᚛ ᚨ ᚲ ᚢ ᚨ ᛫ ᛈ ᚢ ᚱ ᚨ ᛫ ᛟ ᚨ ᛋ ᛁ ᛋ ᛫ ᚹ ᛁ ᛏ ᚨ ᚜",
+    "᚛ ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᛫ ᚨ ᚱ ᚲ ᚨ ᚾ ᚢ ᛗ ᛫ ᛋ ᚨ ᚲ ᚱ ᚢ ᛗ ᚜",
+    "᚛ ᛟ ᛫ ᛏ ᚱ ᛁ ᚨ ᚾ ᚷ ᚢ ᛚ ᛟ ᛫ ᛞ ᛟ ᛫ ᚠ ᛟ ᚷ ᛟ ᛫ ᛖ ᛫ ᛞ ᚨ ᛫ ᚨ ᚷ ᚢ ᚨ ᚜",
+    "᚛ ᛚ ᚢ ᚾ ᚨ ᛫ ᚨ ᛋ ᛏ ᚱ ᚢ ᛗ ᛫ ᛈ ᚢ ᛚ ᛋ ᚨ ᛫ ᚾ ᚨ ᛫ ᛖ ᛋ ᚲ ᚢ ᚱ ᛁ ᛞ ᚨ ᛟ ᚜",
+    "᚛ ᛈ ᛖ ᚱ ᚷ ᚨ ᛗ ᛁ ᚾ ᚺ ᛟ ᛫ ᚨ ᚱ ᚲ ᚨ ᚾ ᛟ ᛫ ᛞ ᛟ ᛫ ᛞ ᛖ ᛋ ᛏ ᛁ ᚾ ᛟ ᚜",
+    "᚛ 🜂 ᚠ ᛟ ᚷ ᛟ ᛫ 🜄 ᚨ ᚷ ᚢ ᚨ ᛫ 🜁 ᚨ ᛖ ᚱ ᛫ 🜃 ᛏ ᛖ ᚱ ᚱ ᚨ ᚜",
+    "᚛ ᚲ ᚢ ᚨ ᛏ ᚱ ᛟ ᛫ ᛈ ᛟ ᛞ ᛖ ᚱ ᛖ ᛋ ᛫ ᚢ ᛗ ᛫ ᛋ ᛟ ᛫ ᛞ ᛖ ᛋ ᛏ ᛁ ᚾ ᛟ ᚜",
+    "᚛ ᛏ ᚱ ᛖ ᛋ ᛫ ᚲ ᚺ ᚨ ᚹ ᛖ ᛋ ᛫ ᛋ ᛟ ᛒ ᛫ ᚨ ᛋ ᛫ ᚱ ᚢ ᛁ ᚾ ᚨ ᛋ ᚜",
+    "᚛ ᚹ ᛁ ᛏ ᚨ ᛫ ᛖ ᛏ ᛖ ᚱ ᚾ ᚨ ᛫ ᛈ ᛟ ᛞ ᛖ ᚱ ᛫ ᛟ ᚲ ᚢ ᛚ ᛏ ᛟ ᚜",
+    "᚛ ᛟ ᛫ ᛟ ᛚ ᚺ ᛟ ᛫ ᛞ ᛟ ᛫ ᛖ ᛏ ᛖ ᚱ ᛫ ᛈ ᚢ ᛚ ᛋ ᚨ ᚜",
+    "᚛ ᚱ ᚢ ᚾ ᚨ ᛋ ᛫ ᛁ ᚾ ᛞ ᛖ ᚲ ᛁ ᚠ ᚱ ᚨ ᚹ ᛖ ᛁ ᛋ ᛫ ᚨ ᛟ ᛫ ᛟ ᛚ ᚺ ᚨ ᚱ ᛫ ᛗ ᛟ ᚱ ᛏ ᚨ ᛚ ᚜"
+  ];
+
+  // Conversas cotidianas em runas entre os moradores ao se cruzarem
+  const RUNIC_CHATTER = [
+    "᚛ ᛋ ᚨ ᛚ ᚨ ᛗ ᛫ ᛋ ᛟ ᛚ ᛫ ᚨ ᚱ ᛖ ᚾ ᚨ ᚜",
+    "᚛ ᚨ ᚲ ᚢ ᚨ ᛫ ᛟ ᚨ ᛋ ᛁ ᛋ ᛫ ᛈ ᚢ ᚱ ᚨ ᚜",
+    "᚛ ᛚ ᚢ ᚾ ᚨ ᛫ ᚲ ᛟ ᛋ ᛗ ᛟ ᛋ ᛫ ᚨ ᛋ ᛏ ᚱ ᚢ ᛗ ᚜",
+    "᚛ ᚹ ᛁ ᛏ ᚨ ᛫ ᛖ ᛏ ᛖ ᚱ ᚾ ᚨ ᛫ ᛋ ᚨ ᚲ ᚱ ᚨ ᚜",
+    "᚛ ᛏ ᛖ ᛏ ᚱ ᚨ ᛫ ᚲ ᛟ ᛋ ᛗ ᛟ ᛋ ᛫ ᛟ ᛚ ᚺ ᛟ ᚜",
+    "᚛ ᚱ ᚢ ᚾ ᚨ ᛫ ᚨ ᚾ ᚲ ᛖ ᛋ ᛏ ᚱ ᚨ ᛚ ᛁ ᛋ ᚜",
+    "᚛ ᛞ ᛖ ᛋ ᛖ ᚱ ᛏ ᚢ ᛗ ᛫ ᛋ ᚨ ᚲ ᚱ ᚢ ᛗ ᚜",
+    "᚛ ✦ ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᛫ ᚨ ᚱ ᚲ ᚨ ᚾ ᚢ ᛗ ✦ ᚜"
+  ];
 
   // =========================================================================
   // DISPOSIÇÃO ORGÂNICA DAS 17 CASAS DE CÔMODO ÚNICO DO DESERTO:
@@ -247,10 +307,9 @@ window.Game = window.Game || {};
 
   // =========================================================================
   // POPULAÇÃO DA ALDEIA DAS AREIAS DOURADAS (MORADORES DO DESERTO)
+  // - Silhueta esguia / magra, elegante e adaptada ao calor abrasador.
   // - Tons de pele variados de povos do deserto e caravaneiros.
-  // - Cores de cabelo variadas (preto azeviche, castanho escuro, café, henna, grisalho).
-  // - Roupas temáticas de deserto autênticas (túnicas dishdasha, jalabiya, caftãs,
-  //   turbantes, shemaghs com agal, tagelmust tuaregue, véus fluidos, faixas e odres).
+  // - Roupas temáticas de deserto autênticas com túnicas fluidas ajustadas.
   // =========================================================================
 
   const SKIN_TONES = [
@@ -274,7 +333,7 @@ window.Game = window.Game || {};
     "#cbd5e1", // Prateado sábio ancião
   ];
 
-  // Paletas temáticas de trajes do deserto (Túnica longa, manto/xale, faixa/cinto, detalhes e cobertura)
+  // Paletas temáticas de trajes do deserto
   const OUTFIT_PALETTES = [
     {
       name: "Linho Branco do Saara com Faixa Terracota e Ouro",
@@ -358,7 +417,7 @@ window.Game = window.Game || {};
     }
   ];
 
-  // Nomes e ocupações para os moradores das 17 casas (total: 28 moradores)
+  // Perfis individuais dos moradores
   const CITIZEN_PROFILES = [
     { name: "Tariq", title: "Guardião do Poço Central", gender: "m", head: 0, prop: "amphora", waterSkin: true },
     { name: "Yasmin", title: "Tecelã de Esteiras de Junco", gender: "f", head: 3, prop: "fan", waterSkin: false },
@@ -390,36 +449,8 @@ window.Game = window.Game || {};
     { name: "Jamila", title: "Perfumista das Flores do Deserto", gender: "f", head: 3, prop: "basket", waterSkin: true }
   ];
 
-  // Frases de conversa entre moradores e para o jogador
-  const CITIZEN_GREETINGS = [
-    "Que a paz do deserto acompanhe os seus passos, viajante!",
-    "O sol está ardente hoje, mas sob as paredes de adobe a sombra é sempre fresca e acolhedora.",
-    "Nossas ânforas de cerâmica guardam água pura da nascente. Beba um gole antes de cruzar as dunas!",
-    "As esteiras de junco dentro de casa são perfeitas para descansar e repor as energias.",
-    "À noite, o vento do deserto fica gelado e as estrelas cobrem todo o firmamento em silêncio.",
-    "Cuidado com as feras e escorpiões gigantes que rondam além das dunas da nossa aldeia!",
-    "As tâmaras que colhemos esta manhã estão doces como mel. Prove quando quiser!",
-    "Se sentir a poeira levantar, venha para dentro da casa de adobe e feche a porta de madeira.",
-    "Viajantes contam histórias sobre antigas relíquias soterradas sob as areias douradas...",
-    "Nossas túnicas largas protegem tanto do sol implacável quanto da areia trazida pelo vento.",
-    "Bem-vindo à Aldeia das Areias Douradas! Aqui os forasteiros de bom coração encontram repouso.",
-    "O segredo para viver no deserto é respeitar o silêncio da terra e não desperdiçar uma única gota d'água."
-  ];
-
-  const CITIZEN_CHATTER = [
-    "Salam, vizinho! O vento hoje sopra calmo nas dunas.",
-    "Já buscou sua ânfora de água fresca na nascente?",
-    "O meio-dia passou, as sombras das casas logo vão se esticar.",
-    "Gostei do tecido novo da sua túnica, muito leve e fresco!",
-    "Vou verificar os potes de tâmaras em casa e já retorno para conversar.",
-    "Que noite límpida teremos para contemplar as estrelas!",
-    "Ouvi dizer que uma caravana de mercadores cruzará o oásis amanhã.",
-    "Vou me recolher para a esteira assim que a lua despontar no céu."
-  ];
-
-  // Pontos de passeio orgânicos ao ar livre na aldeia do deserto (espaços livres entre as casas)
+  // Pontos de passeio orgânicos ao ar livre na aldeia do deserto
   const STROLL_DESTINATIONS = [
-    // Área Central Aberta da Aldeia (praça natural de areia em torno do centro 520, 360)
     { relX:  -4, relY:  -4 },
     { relX:   4, relY:  -4 },
     { relX:  -4, relY:   3 },
@@ -428,18 +459,14 @@ window.Game = window.Game || {};
     { relX:   0, relY:   2 },
     { relX:  -8, relY:   0 },
     { relX:   8, relY:   0 },
-    // Trilha Oeste (entre casas 1, 7, 11)
     { relX: -26, relY: -15 },
     { relX: -30, relY:  -2 },
     { relX: -27, relY:  14 },
-    // Trilha Leste (entre casas 5, 9, 13)
     { relX:  20, relY: -15 },
     { relX:  26, relY:  -2 },
     { relX:  18, relY:  14 },
-    // Trilha Norte (aberta nas dunas)
     { relX: -10, relY: -26 },
     { relX:  10, relY: -26 },
-    // Trilha Sul (ao ar livre nas dunas do sul)
     { relX: -12, relY:  15 },
     { relX:   2, relY:  15 },
     { relX: -14, relY:  21 },
@@ -448,9 +475,9 @@ window.Game = window.Game || {};
 
   let _citizensInitialized = false;
   const CITIZENS = [];
-  const _activeDoorwayTimers = new Map(); // key: "tx,ty" -> remaining frames
+  const _activeDoorwayTimers = new Map();
 
-  // Inicializa os 28 moradores distribuídos nas 17 casas
+  // Inicializa os 29 moradores distribuídos nas 17 casas
   function _initCitizens(tileSize) {
     if (_citizensInitialized) return;
     _citizensInitialized = true;
@@ -459,7 +486,6 @@ window.Game = window.Game || {};
 
     for (let i = 0; i < HOUSES.length; i++) {
       const h = HOUSES[i];
-      // Casas com halfW === 3 (casas 3, 6, 8, 12, 14, 17) e algumas outras têm 2 moradores; demais têm 1 ou 2
       const isTwoResidents = h.halfW === 3 || [2, 4, 7, 10, 13, 16].includes(h.id);
       const count = isTwoResidents ? 2 : 1;
 
@@ -473,17 +499,17 @@ window.Game = window.Game || {};
         const doorTy = h.cy + (isSouthDoor ? h.halfH : -h.halfH);
         const outsideTy = doorTy + (isSouthDoor ? 1.25 : -1.25);
 
-        // Pontos internos
+        // Pontos internos da casa
         const matTx = h.cx - h.halfW + 1;
         const matTy = h.cy + (isSouthDoor ? -h.halfH + 1 : h.halfH - 1);
         const potsTx = h.cx + h.halfW - 1;
         const potsTy = h.cy + (isSouthDoor ? -h.halfH + 1 : h.halfH - 1);
         const hallTx = h.cx;
         const hallTy = h.cy + (isSouthDoor ? h.halfH - 0.9 : -h.halfH + 0.9);
-        const centerTx = h.cx + (r === 0 ? -0.4 : 0.4);
+        const centerTx = h.cx + (r === 0 ? -0.35 : 0.35);
         const centerTy = h.cy;
 
-        // Variação rica de tons de pele e cabelo
+        // Variação de tons de pele e cabelo
         const skinColor = SKIN_TONES[(id * 3 + r * 5 + i) % SKIN_TONES.length];
         const hairColor = HAIR_COLORS[(id * 5 + r * 2 + i) % HAIR_COLORS.length];
         const outfit = OUTFIT_PALETTES[(id * 2 + r + i) % OUTFIT_PALETTES.length];
@@ -491,19 +517,19 @@ window.Game = window.Game || {};
         const propInHand = prof.prop !== undefined ? prof.prop : ((id + i) % 4 === 0 ? "amphora" : null);
         const hasWaterSkin = prof.waterSkin !== undefined ? prof.waterSkin : ((id + r) % 2 === 0);
 
-        // Começam parte fora passeando, parte dentro de casa descansando
         const startOutside = (id + r) % 3 !== 0;
         const startX = startOutside
-          ? (h.cx + (r === 0 ? -1.5 : 1.5) + (Math.random() * 2 - 1) + 0.5) * ts
+          ? (h.cx + (r === 0 ? -1.4 : 1.4) + (Math.random() * 1.6 - 0.8) + 0.5) * ts
           : ((r === 0 ? matTx : centerTx) + 0.5) * ts;
         const startY = startOutside
-          ? (outsideTy + (Math.random() * 1.5 - 0.75) + 0.5) * ts
+          ? (outsideTy + (Math.random() * 1.2 - 0.6) + 0.5) * ts
           : ((r === 0 ? matTy : centerTy) + 0.5) * ts;
 
         const cit = {
           id,
           name: `${prof.name}, ${prof.title}`,
           shortName: prof.name,
+          runicName: toRunes(prof.name),
           title: prof.title,
           gender: prof.gender || "m",
           houseId: h.id,
@@ -557,37 +583,33 @@ window.Game = window.Game || {};
     let targetX, targetY;
 
     if (roll < 0.45) {
-      // Passear até um dos pontos de interesse abertos da aldeia
       const pt = STROLL_DESTINATIONS[Math.floor(Math.random() * STROLL_DESTINATIONS.length)];
-      targetX = (CITY_CX + pt.relX + (Math.random() * 1.6 - 0.8) + 0.5) * ts;
-      targetY = (CITY_CY + pt.relY + (Math.random() * 1.6 - 0.8) + 0.5) * ts;
+      targetX = (CITY_CX + pt.relX + (Math.random() * 1.4 - 0.7) + 0.5) * ts;
+      targetY = (CITY_CY + pt.relY + (Math.random() * 1.4 - 0.7) + 0.5) * ts;
     } else if (roll < 0.75) {
-      // Passear perto de outra casa vizinha (na frente da porta, na sombra)
       const targetHouse = HOUSES[Math.floor(Math.random() * HOUSES.length)];
       const isSouth = targetHouse.doorSide === "south";
       const outY = targetHouse.cy + (isSouth ? targetHouse.halfH + 1.8 : -targetHouse.halfH - 1.8);
-      targetX = (targetHouse.cx + (Math.random() * 3 - 1.5) + 0.5) * ts;
-      targetY = (outY + (Math.random() * 1 - 0.5) + 0.5) * ts;
+      targetX = (targetHouse.cx + (Math.random() * 2.6 - 1.3) + 0.5) * ts;
+      targetY = (outY + (Math.random() * 0.8 - 0.4) + 0.5) * ts;
     } else {
-      // Pequeno passeio contemplativo nas dunas próximas
       const angle = Math.random() * Math.PI * 2;
-      const distTiles = 8 + Math.random() * 22;
+      const distTiles = 8 + Math.random() * 20;
       targetX = (CITY_CX + Math.cos(angle) * distTiles + 0.5) * ts;
       targetY = (CITY_CY + Math.sin(angle) * distTiles + 0.5) * ts;
     }
 
     cit.waypoints = [
-      // Ponto intermediário de transição se a rota for longa
       {
-        x: (cit.x + targetX) * 0.5 + (Math.random() * 16 - 8),
-        y: (cit.y + targetY) * 0.5 + (Math.random() * 16 - 8)
+        x: (cit.x + targetX) * 0.5 + (Math.random() * 14 - 7),
+        y: (cit.y + targetY) * 0.5 + (Math.random() * 14 - 7)
       },
       { x: targetX, y: targetY }
     ];
     cit.isMoving = true;
   }
 
-  // Envia o morador de volta para sua casa de adobe (à noite para dormir na esteira ou de dia para descansar)
+  // Envia o morador de volta para sua casa de adobe
   function _sendDesertCitizenHome(cit, ts, forNight) {
     cit.state = forNight ? "returning_home_night" : "entering_house";
     cit.chatPartnerId = null;
@@ -595,7 +617,6 @@ window.Game = window.Game || {};
     cit.pauseTimer = 0;
 
     if (cit.isInsideHouse) {
-      // Já está dentro: caminha para a esteira ou centro/potes
       const destTx = forNight ? cit.matTx : (Math.random() < 0.5 ? cit.potsTx : cit.centerTx);
       const destTy = forNight ? cit.matTy : (Math.random() < 0.5 ? cit.potsTy : cit.centerTy);
       cit.waypoints = [
@@ -606,7 +627,6 @@ window.Game = window.Game || {};
       return;
     }
 
-    // Está fora: caminha até em frente à porta, passa pela soleira, entra e vai para a esteira
     const isSouth = cit.house.doorSide === "south";
     const doorStepY = cit.doorTy + (isSouth ? 1.4 : -1.4);
     const destTx = forNight ? cit.matTx : (Math.random() < 0.5 ? cit.potsTx : cit.centerTx);
@@ -621,7 +641,7 @@ window.Game = window.Game || {};
     cit.isMoving = true;
   }
 
-  // Faz o morador sair de dentro de casa para passear nas areias
+  // Faz o morador sair de casa para passear nas areias
   function _sendDesertCitizenOutside(cit, ts) {
     cit.state = "exiting_house";
     cit.chatPartnerId = null;
@@ -629,7 +649,7 @@ window.Game = window.Game || {};
     cit.pauseTimer = 0;
     const isSouth = cit.house.doorSide === "south";
     const doorStepY = cit.doorTy + (isSouth ? 1.4 : -1.4);
-    const outsideStrollY = cit.doorTy + (isSouth ? 3.0 : -3.0);
+    const outsideStrollY = cit.doorTy + (isSouth ? 2.8 : -2.8);
 
     cit.waypoints = [
       { x: (cit.hallTx + 0.5) * ts, y: (cit.hallTy + 0.5) * ts },
@@ -640,13 +660,13 @@ window.Game = window.Game || {};
     cit.isMoving = true;
   }
 
-  // Verifica se um morador está passando pela porta neste instante (para abrir a porta visualmente)
+  // Verifica se um morador está passando pela porta neste instante
   function isDoorwayUsedByCitizen(tx, ty) {
     const exp = _activeDoorwayTimers.get(`${tx},${ty}`);
     return exp !== undefined && exp > 0;
   }
 
-  // Interação do jogador com tecla [F] com um morador próximo
+  // Interação do jogador com tecla [F] — fala exclusivamente em runas antigas!
   function interactWithNearbyCitizen(playerX, playerY, isUnderground = false) {
     if (isUnderground) return null;
     let best = null;
@@ -669,15 +689,16 @@ window.Game = window.Game || {};
     best.pauseTimer = 4.0;
     best.isMoving = false;
 
-    const greetingLine = CITIZEN_GREETINGS[Math.floor(Math.random() * CITIZEN_GREETINGS.length)];
-    best.chatText = greetingLine;
+    // Fala 100% em runas antigas como no Pergaminho de Runas!
+    const runicPhrase = RUNIC_GREETINGS[Math.floor(Math.random() * RUNIC_GREETINGS.length)];
+    best.chatText = runicPhrase;
     best.state = best.isInsideHouse ? best.state : "interacting";
     best.stateTimer = 5.0;
 
     return {
       success: true,
       citizen: best,
-      message: `💬 ${best.name} (Casa #${best.houseId}): "${greetingLine}"`,
+      message: `💬 ${best.runicName}: "${runicPhrase}"`,
     };
   }
 
@@ -686,14 +707,12 @@ window.Game = window.Game || {};
     const ts = tileSize || 36;
     _initCitizens(ts);
 
-    // Se o jogador estiver muito longe da Aldeia das Areias Douradas, não consome processamento
     if (player) {
       const distToCity = Math.hypot(player.x - CITY_CX * ts, player.y - CITY_CY * ts);
       if (distToCity > (CITY_RADIUS + 90) * ts) return [];
     }
     if (isUnderground) return [];
 
-    // Decrementa timers de portas abertas pelos moradores
     for (const [k, v] of _activeDoorwayTimers.entries()) {
       if (v <= 1) _activeDoorwayTimers.delete(k);
       else _activeDoorwayTimers.set(k, v - 1);
@@ -707,7 +726,7 @@ window.Game = window.Game || {};
       const c = CITIZENS[i];
       if (c.chatCooldown > 0) c.chatCooldown = Math.max(0, c.chatCooldown - dt);
 
-      // REGRA DA NOITE NO DESERTO: Ao anoitecer, todos voltam para casa descansar na esteira
+      // REGRA DA NOITE NO DESERTO: Todos voltam para casa descansar na esteira
       if (isNight) {
         if (c.state !== "returning_home_night" && c.state !== "night_at_home") {
           _sendDesertCitizenHome(c, ts, true);
@@ -720,7 +739,6 @@ window.Game = window.Game || {};
         }
       }
 
-      // Estado interagindo com o jogador
       if (c.state === "interacting") {
         c.isMoving = false;
         c.stateTimer -= dt;
@@ -735,14 +753,13 @@ window.Game = window.Game || {};
         continue;
       }
 
-      // Pausa temporária
       if (c.pauseTimer > 0) {
         c.pauseTimer -= dt;
         c.isMoving = false;
         continue;
       }
 
-      // Conversa entre moradores quando se cruzam nas areias
+      // Conversa entre moradores nas areias exclusivamente em runas!
       if (!isNight && !c.isInsideHouse && c.chatCooldown <= 0 && c.state === "strolling") {
         for (let j = i + 1; j < CITIZENS.length; j++) {
           const other = CITIZENS[j];
@@ -759,17 +776,15 @@ window.Game = window.Game || {};
               other.stateTimer = 4.5;
               c.chatCooldown = 18 + Math.random() * 10;
               other.chatCooldown = 18 + Math.random() * 10;
-              // Viram um para o outro
               c.facing = c.x < other.x ? "right" : "left";
               other.facing = other.x < c.x ? "right" : "left";
-              c.chatText = CITIZEN_CHATTER[Math.floor(Math.random() * CITIZEN_CHATTER.length)];
+              c.chatText = RUNIC_CHATTER[Math.floor(Math.random() * RUNIC_CHATTER.length)];
               break;
             }
           }
         }
       }
 
-      // Estado de conversa mútua
       if (c.state === "chatting") {
         c.isMoving = false;
         c.stateTimer -= dt;
@@ -782,14 +797,12 @@ window.Game = window.Game || {};
         continue;
       }
 
-      // Movimentação pelos waypoints
       if (c.waypoints && c.waypoints.length > 0) {
         const wp = c.waypoints[0];
         const dx = wp.x - c.x;
         const dy = wp.y - c.y;
         const dist = Math.hypot(dx, dy);
 
-        // Abre a porta ao se aproximar da soleira
         const doorWorldX = (c.doorTx + 0.5) * ts;
         const doorWorldY = (c.doorTy + 0.5) * ts;
         if (Math.hypot(c.x - doorWorldX, c.y - doorWorldY) < ts * 1.25) {
@@ -824,7 +837,6 @@ window.Game = window.Game || {};
             }
           }
         } else {
-          // Passada em direção ao waypoint
           c.isMoving = true;
           c.walkPhase += 0.16;
           const step = Math.min(dist, c.speed);
@@ -833,17 +845,14 @@ window.Game = window.Game || {};
           c.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
         }
       } else {
-        // Sem waypoints ativos: gerencia transições de estado
         c.isMoving = false;
         c.stateTimer -= dt;
 
         if (c.stateTimer <= 0) {
           if (c.state === "inside_home") {
-            // Se estiver de dia e dentro de casa, sai para passear ou muda de posição
             if (!isNight && Math.random() < 0.65) {
               _sendDesertCitizenOutside(c, ts);
             } else {
-              // Anda para a esteira ou potes dentro de casa
               const destTx = Math.random() < 0.5 ? c.matTx : c.potsTx;
               const destTy = Math.random() < 0.5 ? c.matTy : c.potsTy;
               c.waypoints = [{ x: (destTx + 0.5) * ts, y: (destTy + 0.5) * ts }];
@@ -851,7 +860,6 @@ window.Game = window.Game || {};
               c.stateTimer = 4 + Math.random() * 6;
             }
           } else if (c.state === "strolling") {
-            // Passeia para outro ponto ou entra em casa para beber água dos potes
             if (!isNight && Math.random() < 0.25) {
               _sendDesertCitizenHome(c, ts, false);
             } else {
@@ -863,7 +871,6 @@ window.Game = window.Game || {};
       }
     }
 
-    // Coleta os moradores visíveis na tela para renderização ordenada por Y
     const items = [];
     for (let i = 0; i < CITIZENS.length; i++) {
       const c = CITIZENS[i];
@@ -876,7 +883,6 @@ window.Game = window.Game || {};
         continue;
       }
 
-      // Se o morador está dentro de casa e o jogador NÃO está na mesma casa, o telhado de adobe esconde o morador
       if (c.isInsideHouse && activePlayerHouseId !== c.houseId) {
         const doorWorldY = (c.doorTy + 0.5) * ts;
         if (Math.abs(c.y - doorWorldY) > ts * 0.85) {
@@ -894,15 +900,14 @@ window.Game = window.Game || {};
   }
 
   // =========================================================================
-  // RENDERIZAÇÃO DETALHADA DO MORADOR DO DESERTO NO CANVAS
-  // - Vista em 4 direções (down, up, left, right).
-  // - Tons de pele e cabelos variados.
-  // - Roupas temáticas de deserto autênticas (túnica longa drapeada, manto/xale,
-  //   faixa larga, odre de água a tiracolo, sandálias de couro).
-  // - Coberturas de cabeça (Turbante enrolado, Shemagh com agal, Tagelmust tuaregue,
-  //   lenço fluido, capuz ou tiara de couro).
-  // - Acessórios nas mãos (ânfora de cerâmica, cesto de tâmaras, cajado ou leque).
-  // - Animações vivas de caminhada, respiração, gesticulação e sono na esteira.
+  // RENDERIZAÇÃO DO MORADOR DO DESERTO NO CANVAS
+  // - Proporções humanas normais idênticas ao jogador e moradores de SnowPeakCity.
+  // - Altura normal padrão, pescoço anatômico, pernas com pivô pendular no quadril.
+  // - Vista anatômica nas 4 direções (down, up, left, right) com perfil estreito lateral.
+  // - Cores variadas de pele e cabelo com roupas temáticas de deserto.
+  // - Túnica longa, cinto com faixa, manto/xale, odre e sandálias.
+  // - Turbantes e coberturas proporcionais à cabeça.
+  // - Balão de diálogo exclusivamente em RUNAS!
   // =========================================================================
 
   function _renderDesertCitizen(c, npc, timeOfDay, animTimer, player) {
@@ -919,7 +924,7 @@ window.Game = window.Game || {};
     const bob = isMoving
       ? Math.abs(Math.sin(npc.walkPhase)) * 1.8
       : isInteracting || isChatting
-        ? Math.sin(animTimer * 4 + npc.id) * 0.6
+        ? Math.sin(animTimer * 4 + npc.id) * 0.7
         : Math.sin(animTimer * 2 + npc.id) * 0.35;
 
     const pal = npc.outfit;
@@ -931,228 +936,330 @@ window.Game = window.Game || {};
     const headwearTrim = pal.headwearTrim || trimColor;
     const sandalsColor = pal.sandals || "#5c2c16";
 
-    // 1. Sombra suave oval no solo de areia
+    // 1. Sombra padrão no solo de areia
     c.fillStyle = "rgba(15, 23, 42, 0.35)";
     c.beginPath();
-    c.ellipse(0, 2.5, 8.2, 4.4, 0, 0, Math.PI * 2);
+    c.ellipse(0, 2.5, 7.8, 4.2, 0, 0, Math.PI * 2);
     c.fill();
 
-    // 2. Manto / Xale do Deserto nas costas (visível quando olhando para baixo ou lados)
-    const capeSway = isMoving ? Math.cos(npc.walkPhase) * 1.6 : 0;
-    if (w !== "up" && !isSleeping) {
+    // 2. Manto / Xale do Deserto nas costas (visível nas costas ou levemente de lado/frente)
+    const capeSway = isMoving ? Math.cos(npc.walkPhase) * 1.8 : 0;
+    if (w === "up") {
+      // Vista Traseira: Manto desce pelas costas
       c.fillStyle = cloakColor;
-      c.beginPath();
-      c.roundRect(-8.5 + capeSway * 0.3, -15 - bob, 17, 15, 3);
-      c.fill();
-      // Faixa de acabamento inferior do manto
+      c.fillRect(-7, -16 - bob, 14, 13);
       c.fillStyle = trimColor;
-      c.fillRect(-8.5 + capeSway * 0.3, -2 - bob, 17, 2);
+      c.fillRect(-7, -4 - bob, 14, 1.5);
+    } else if (!isSleeping) {
+      if (w === "down") {
+        c.fillStyle = cloakColor;
+        c.fillRect(-7.2 + capeSway * 0.25, -15.5 - bob, 14.4, 13);
+        c.fillStyle = trimColor;
+        c.fillRect(-7.2 + capeSway * 0.25, -3.5 - bob, 14.4, 1.2);
+      } else {
+        // Lateral
+        const capeX = w === "left" ? 0.5 : -4.5;
+        c.fillStyle = cloakColor;
+        c.fillRect(capeX + capeSway * 0.2, -15.5 - bob, 4.2, 13);
+      }
     }
 
-    // 3. Pernas e Sandálias de Couro com passada pendular
-    const legMult = 2.6;
+    // 3. Pernas e Sandálias Anatômicas com Balanço Pendular Normal (Pivô no quadril y = -3.5)
+    const legMult = 2.8;
     const legSwingL = isMoving ? -walkSin * legMult : 0;
     const legSwingR = isMoving ? walkSin * legMult : 0;
 
     if (w === "up") {
-      // Vista Traseira: pernas com calças de linho e sandálias
+      // VISTA TRASEIRA (COSTAS)
+      // Perna Esquerda
       c.fillStyle = "#e2e8f0";
       c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
-      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
-      // Sandálias de couro com tiras
+      c.fillStyle = "rgba(0, 0, 0, 0.22)";
+      c.fillRect(-3.2, -3.5 + legSwingL, 0.9, 4.6);
       c.fillStyle = sandalsColor;
-      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.6);
-      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.6);
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+      c.fillStyle = trimColor;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
       c.fillStyle = "#1c1917";
-      c.fillRect(-5.2, 3.6 + legSwingL, 3.8, 1.2);
-      c.fillRect(1.4, 3.6 + legSwingR, 3.8, 1.2);
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.22)";
+      c.fillRect(3.4, -3.5 + legSwingR, 0.9, 4.6);
+      c.fillStyle = sandalsColor;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = trimColor;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
     } else if (w === "down") {
-      // Vista Frontal: pés com tiras trançadas de couro nas sandálias
+      // VISTA FRONTAL
+      // Perna Esquerda
       c.fillStyle = "#e2e8f0";
       c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(-4.5, -1.2 + legSwingL, 2.4, 2.2);
+      c.fillStyle = sandalsColor;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+      c.fillStyle = trimColor;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = "#e2e8f0";
       c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
-      // Pele do peito do pé visível entre as tiras
       c.fillStyle = npc.skinColor;
-      c.fillRect(-5.0, -1.0 + legSwingL, 3.4, 2.2);
-      c.fillRect(1.6, -1.0 + legSwingR, 3.4, 2.2);
-      // Tiras de couro da sandália
+      c.fillRect(2.1, -1.2 + legSwingR, 2.4, 2.2);
       c.fillStyle = sandalsColor;
-      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.6);
-      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.6);
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = trimColor;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
       c.fillStyle = "#1c1917";
-      c.fillRect(-5.2, 3.6 + legSwingL, 3.8, 1.2);
-      c.fillRect(1.4, 3.6 + legSwingR, 3.8, 1.2);
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "left") {
+      // VISTA LATERAL ESQUERDA: Pêndulo anatômico com pivô em y = -3.5
+      const strideRange = 0.48;
+      const frontAngle = -walkSin * strideRange;
+      const backAngle = walkSin * strideRange;
+
+      // Perna de trás (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = sandalsColor;
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
+      c.fillStyle = trimColor;
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-3.0, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = sandalsColor;
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = trimColor;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-3.3, 6.8, 5.2, 1.2);
+      c.restore();
     } else {
-      // Vista Lateral (left / right)
-      const isLeft = w === "left";
-      const leadLegSwing = isLeft ? legSwingL : legSwingR;
-      const trailLegSwing = isLeft ? legSwingR : legSwingL;
-      // Perna de trás
+      // VISTA LATERAL DIREITA: Pêndulo anatômico com pivô em y = -3.5
+      const strideRange = 0.48;
+      const frontAngle = walkSin * strideRange;
+      const backAngle = -walkSin * strideRange;
+
+      // Perna de trás (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
       c.fillStyle = sandalsColor;
-      c.fillRect(-2.5 + trailLegSwing * 0.8, 0.5, 4.2, 4.0);
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
+      c.fillStyle = trimColor;
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
       c.fillStyle = "#1c1917";
-      c.fillRect(-3.0 + trailLegSwing * 0.8, 3.8, 5.0, 1.2);
-      // Perna da frente
-      c.fillStyle = npc.skinColor;
-      c.fillRect(-2.0 + leadLegSwing * 0.8, -1.5, 3.6, 2.4);
+      c.fillRect(-1.8, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = "#e2e8f0";
+      c.fillRect(-1.9, 0, 3.8, 4.6);
       c.fillStyle = sandalsColor;
-      c.fillRect(-2.5 + leadLegSwing * 0.8, 0.5, 4.5, 3.8);
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = trimColor;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
       c.fillStyle = "#1c1917";
-      c.fillRect(-3.2 + leadLegSwing * 0.8, 3.8, 5.4, 1.2);
+      c.fillRect(-1.9, 6.8, 5.2, 1.2);
+      c.restore();
     }
 
-    // 4. Túnica Longa de Deserto (Dishdasha / Jalabiya / Caftã)
-    const skirtSway = isMoving ? walkSin * 1.0 : 0;
-    c.fillStyle = robeColor;
-    c.beginPath();
-    c.moveTo(-7.5, -14 - bob);
-    c.lineTo(7.5, -14 - bob);
-    c.lineTo(8.5 + skirtSway, -1.5 - bob);
-    c.lineTo(-8.5 + skirtSway, -1.5 - bob);
-    c.closePath();
-    c.fill();
+    // 4. Túnica Longa de Deserto (Dishdasha / Caftã) com proporções normais
+    const skirtSway = walkSin * 1.1;
 
-    // Barra bordada decorativa na túnica
-    c.fillStyle = trimColor;
-    c.fillRect(-8.5 + skirtSway, -2.5 - bob, 17, 1.8);
-    c.fillStyle = "rgba(0, 0, 0, 0.12)";
-    c.fillRect(-8.5 + skirtSway, -0.7 - bob, 17, 0.9);
-
-    // 5. Faixa de Cintura / Cinto Largo de Couro com fivela
-    c.fillStyle = beltColor;
-    c.fillRect(-7.2, -8.5 - bob, 14.4, 3.2);
-    // Fivela de latão ou fita de tecido caindo
-    c.fillStyle = trimColor;
-    c.fillRect(-2.0, -8.5 - bob, 4.0, 3.2);
-    c.fillStyle = "#fbbf24";
-    c.fillRect(-1.0, -7.8 - bob, 2.0, 1.8);
-    // Pontas da faixa pendendo na lateral
-    c.fillStyle = beltColor;
-    c.fillRect(2.8, -5.5 - bob, 2.2, 4.5);
-
-    // 6. Odre de Água a Tiracolo (se o morador possuir)
-    if (npc.hasWaterSkin && !isSleeping) {
-      // Alça transversal de couro cruzando o peito
-      c.fillStyle = "#451a03";
+    if (w === "left" || w === "right") {
+      // Perfil lateral: túnica fluida estreita anatômica
+      const isLeft = w === "left";
+      const profX = isLeft ? -4.8 : -4.2;
+      c.fillStyle = robeColor;
       c.beginPath();
-      c.moveTo(-6.5, -14 - bob);
-      c.lineTo(5.5, -5.5 - bob);
-      c.lineTo(4.2, -4.5 - bob);
-      c.lineTo(-7.5, -13 - bob);
+      c.moveTo(profX, -16 - bob);
+      c.lineTo(profX + 9.2, -16 - bob);
+      c.lineTo(profX + 9.8 + (isLeft ? -skirtSway * 0.5 : skirtSway * 0.5), 2.0 - bob * 0.3);
+      c.lineTo(profX - 0.4 + (isLeft ? -skirtSway * 0.5 : skirtSway * 0.5), 2.0 - bob * 0.3);
       c.closePath();
       c.fill();
-      // O odre oval no quadril
+
+      // Barra bordada
+      c.fillStyle = trimColor;
+      c.fillRect(profX - 0.4, 0.4 - bob * 0.3, 10.2, 1.8);
+    } else {
+      // Vista frontal / traseira: túnica fluida normal
+      c.fillStyle = robeColor;
+      // Tronco superior
+      c.fillRect(-6.5, -16 - bob, 13, 10.5);
+
+      // Saia da túnica fluida
+      c.beginPath();
+      c.moveTo(-6.5, -6 - bob);
+      c.lineTo(6.5, -6 - bob);
+      c.lineTo(8.2 + skirtSway, 2.0 - bob * 0.3);
+      c.lineTo(-8.2 + skirtSway, 2.0 - bob * 0.3);
+      c.closePath();
+      c.fill();
+
+      // Barra bordada decorativa na túnica
+      c.fillStyle = trimColor;
+      c.fillRect(-7.8 + skirtSway * 0.8, -0.2 - bob * 0.3, 15.6, 2.0);
+      c.fillStyle = "rgba(0, 0, 0, 0.12)";
+      c.fillRect(-7.5 + skirtSway * 0.8, 1.2 - bob * 0.3, 15.0, 0.8);
+    }
+
+    // 5. Cinto / Faixa de Cintura Normal
+    c.fillStyle = beltColor;
+    c.fillRect(-6.8, -7.2 - bob, 13.6, 2.6);
+    if (w !== "up") {
+      // Fivela dourada ou nó decorativo caído
+      c.fillStyle = "#fbbf24";
+      c.fillRect(-1.0, -7.0 - bob, 2.0, 2.2);
+      c.fillStyle = beltColor;
+      c.fillRect(1.5, -6.5 - bob, 2.0, 4.8);
+      c.fillStyle = trimColor;
+      c.fillRect(1.5, -2.5 - bob, 2.0, 1.0);
+    }
+
+    // 6. Detalhes do Peito / Gola da Túnica
+    if (w !== "up") {
+      const fOffX = w === "left" ? -1.5 : w === "right" ? 1.5 : 0;
+      // Colarinho / decote em V tradicional
+      c.fillStyle = trimColor;
+      c.beginPath();
+      c.moveTo(-3.5 + fOffX, -16 - bob);
+      c.lineTo(3.5 + fOffX, -16 - bob);
+      c.lineTo(0 + fOffX, -10 - bob);
+      c.closePath();
+      c.fill();
+      c.fillStyle = npc.skinColor;
+      c.beginPath();
+      c.moveTo(-2.2 + fOffX, -16 - bob);
+      c.lineTo(2.2 + fOffX, -16 - bob);
+      c.lineTo(0 + fOffX, -11.5 - bob);
+      c.closePath();
+      c.fill();
+
+      // Botões ou bordados centrais
+      c.fillStyle = "#fbbf24";
+      c.fillRect(-0.6 + fOffX, -10.0 - bob, 1.2, 1.2);
+      c.fillRect(-0.6 + fOffX, -8.2 - bob, 1.2, 1.2);
+    }
+
+    // 7. Odre de Água a Tiracolo Normal
+    if (npc.hasWaterSkin && !isSleeping && w !== "up") {
+      c.fillStyle = "#451a03";
+      c.beginPath();
+      c.moveTo(-6.5, -15 - bob);
+      c.lineTo(5.5, -6.0 - bob);
+      c.lineTo(4.2, -5.0 - bob);
+      c.lineTo(-7.5, -14 - bob);
+      c.closePath();
+      c.fill();
       c.fillStyle = "#78350f";
       c.beginPath();
-      c.ellipse(6.2, -4.5 - bob, 3.2, 4.2, Math.PI / 6, 0, Math.PI * 2);
+      c.ellipse(6.2, -5.0 - bob, 3.0, 4.2, Math.PI / 6, 0, Math.PI * 2);
       c.fill();
       c.fillStyle = "#b45309";
-      c.fillRect(5.5, -9.0 - bob, 2.0, 2.0);
+      c.fillRect(5.5, -9.0 - bob, 1.8, 1.8);
     }
 
-    // 7. Manto Superior / Xale sobre os ombros
-    if (!isSleeping) {
-      c.fillStyle = cloakColor;
-      if (w === "up") {
-        c.beginPath();
-        c.roundRect(-8.5, -16 - bob, 17, 12, 3);
-        c.fill();
-        c.fillStyle = trimColor;
-        c.fillRect(-8.5, -5 - bob, 17, 1.5);
-      } else {
-        // Ombreiras e peitilho drapeado do manto
-        c.beginPath();
-        c.moveTo(-8.0, -15 - bob);
-        c.lineTo(8.0, -15 - bob);
-        c.lineTo(6.5, -7 - bob);
-        c.lineTo(-6.5, -7 - bob);
-        c.closePath();
-        c.fill();
-        c.fillStyle = trimColor;
-        c.fillRect(-6.5, -7.5 - bob, 13, 1.2);
-      }
-    }
-
-    // 8. Braços, Mangas Largas e Mãos
+    // 8. Braços com Mangas e Punhos + Mãos com tom de pele (Proporções normais)
     const walkSwing = isMoving
       ? walkSin
       : isInteracting || isChatting
         ? Math.sin(animTimer * 5 + npc.id) * 0.4
         : 0;
 
-    if (w === "left") {
-      // Braço esquerdo visível à frente
+    const swingL = walkSwing * 0.75;
+    const swingR = -walkSwing * 0.75;
+    const shoulderTopY = -15.2 - bob;
+
+    if (w === "down" || w === "up") {
+      // Braço esquerdo (topo fixo no ombro)
+      const wristYL = shoulderTopY + 5.0 + swingL;
       c.fillStyle = robeColor;
-      c.fillRect(-5.5 + walkSwing * 1.5, -13 - bob, 3.8, 8.5);
+      c.fillRect(-8.4, shoulderTopY, 2.6, 6.2 + swingL);
       c.fillStyle = trimColor;
-      c.fillRect(-5.5 + walkSwing * 1.5, -5 - bob, 3.8, 1.2);
+      c.fillRect(-8.4, wristYL, 2.6, 1.6);
       c.fillStyle = npc.skinColor;
-      c.fillRect(-5.2 + walkSwing * 1.5, -3.8 - bob, 3.2, 3.0);
-    } else if (w === "right") {
-      // Braço direito visível à frente
+      c.fillRect(-8.3, wristYL + 1.5, 2.4, 2.0);
+
+      // Braço direito (topo fixo no ombro)
+      const wristYR = shoulderTopY + 5.0 + swingR;
       c.fillStyle = robeColor;
-      c.fillRect(1.8 - walkSwing * 1.5, -13 - bob, 3.8, 8.5);
+      c.fillRect(5.8, shoulderTopY, 2.6, 6.2 + swingR);
       c.fillStyle = trimColor;
-      c.fillRect(1.8 - walkSwing * 1.5, -5 - bob, 3.8, 1.2);
+      c.fillRect(5.8, wristYR, 2.6, 1.6);
       c.fillStyle = npc.skinColor;
-      c.fillRect(2.0 - walkSwing * 1.5, -3.8 - bob, 3.2, 3.0);
+      c.fillRect(5.9, wristYR + 1.5, 2.4, 2.0);
     } else {
-      // Frontal ou Costas: ambos os braços nas laterais
-      // Braço Esquerdo
+      const isLeft = w === "left";
+      const shoulderPivotX = isLeft ? -1.0 : 0.8;
+      const armAngle = (isLeft ? 1 : -1) * walkSwing * 0.45;
+      c.save();
+      c.translate(shoulderPivotX, shoulderTopY);
+      c.rotate(armAngle);
       c.fillStyle = robeColor;
-      c.fillRect(-9.8 - walkSwing * 1.2, -13 - bob, 3.6, 8.5);
+      c.fillRect(-1.3, 0, 2.6, 6.2);
       c.fillStyle = trimColor;
-      c.fillRect(-9.8 - walkSwing * 1.2, -5.0 - bob, 3.6, 1.2);
+      c.fillRect(-1.3, 4.8, 2.6, 1.6);
       c.fillStyle = npc.skinColor;
-      c.fillRect(-9.5 - walkSwing * 1.2, -3.8 - bob, 3.0, 3.0);
-      // Braço Direito
-      c.fillStyle = robeColor;
-      c.fillRect(6.2 + walkSwing * 1.2, -13 - bob, 3.6, 8.5);
-      c.fillStyle = trimColor;
-      c.fillRect(6.2 + walkSwing * 1.2, -5.0 - bob, 3.6, 1.2);
-      c.fillStyle = npc.skinColor;
-      c.fillRect(6.5 + walkSwing * 1.2, -3.8 - bob, 3.0, 3.0);
+      c.fillRect(-1.2, 6.4, 2.4, 2.0);
+      c.restore();
     }
 
-    // 9. Acessórios na Mão (Ânfora, Cesto de Tâmaras, Cajado de Pastor ou Leque)
+    // 9. Acessórios na Mão
     if (npc.propInHand && !isSleeping && w !== "up") {
-      const propX = w === "left" ? -7.5 : 8.5;
-      const propY = -4.0 - bob;
+      const propX = w === "left" ? -7.8 : 7.6;
+      const propY = -5.0 - bob;
 
       if (npc.propInHand === "amphora") {
-        // Pequena ânfora de cerâmica de barro cozido com alça
         c.fillStyle = "#c2410c";
         c.beginPath();
-        c.ellipse(propX, propY, 3.5, 4.5, 0, 0, Math.PI * 2);
+        c.ellipse(propX, propY, 3.2, 4.4, 0, 0, Math.PI * 2);
         c.fill();
         c.fillStyle = "#9a3412";
         c.fillRect(propX - 1.5, propY - 6.0, 3.0, 2.0);
-        // Gargalo e alça
         c.strokeStyle = "#7c2d12";
         c.lineWidth = 1.0;
         c.beginPath();
-        c.arc(propX + 2.5, propY - 2.0, 2.2, 0, Math.PI * 2);
+        c.arc(propX + 2.2, propY - 2.0, 2.0, 0, Math.PI * 2);
         c.stroke();
       } else if (npc.propInHand === "basket") {
-        // Cesto de palha trançada com tâmaras escuras no topo
         c.fillStyle = "#b45309";
         c.beginPath();
-        c.ellipse(propX, propY, 4.5, 3.2, 0, 0, Math.PI * 2);
+        c.ellipse(propX, propY, 4.2, 3.0, 0, 0, Math.PI * 2);
         c.fill();
-        // Tâmaras secas
         c.fillStyle = "#451a03";
-        c.fillRect(propX - 3.0, propY - 3.8, 2.0, 2.0);
-        c.fillRect(propX, propY - 4.2, 2.2, 2.0);
-        c.fillRect(propX - 1.0, propY - 2.5, 2.0, 1.8);
+        c.fillRect(propX - 2.6, propY - 3.6, 1.8, 1.8);
+        c.fillRect(propX, propY - 3.8, 2.0, 1.8);
       } else if (npc.propInHand === "staff") {
-        // Cajado longo de madeira de pastor do deserto
         c.fillStyle = "#78350f";
-        c.fillRect(propX, propY - 14, 1.6, 22);
-        // Curvatura superior
+        c.fillRect(propX, propY - 16, 1.6, 24);
         c.fillStyle = "#d97706";
-        c.fillRect(propX - 1.5, propY - 16, 4.0, 2.4);
+        c.fillRect(propX - 1.4, propY - 18, 3.8, 2.4);
       } else if (npc.propInHand === "fan") {
-        // Leque de palha trançada contra o calor do meio-dia
         c.fillStyle = "#ca8a04";
         c.beginPath();
         c.moveTo(propX, propY);
@@ -1162,137 +1269,141 @@ window.Game = window.Game || {};
       }
     }
 
-    // 10. Cabeça, Rosto e Cabelo do Morador
+    // 10. Cabeça, Pescoço Anatômico e Rosto Normal (headY = -22 - bob, raio 6.1px)
     const headX = 0;
-    const headY = -18 - bob;
+    const headY = -22 - bob;
 
-    // Cabelo base (sob turbante ou à mostra)
+    // Pescoço de ligação anatômica normal (evita que a cabeça pareça colada no peito)
+    c.fillStyle = npc.skinColor;
+    c.fillRect(-2.2, headY + 3.2, 4.4, 3.0);
+
+    // Cabelo base atrás da cabeça
     c.fillStyle = npc.hairColor;
-    c.beginPath();
-    c.arc(headX, headY, 5.8, 0, Math.PI * 2);
-    c.fill();
+    c.fillRect(-6.8, headY - 2, 13.6, 9.5);
 
-    // Rosto (na cor da pele escolhida)
+    // Rosto normal com o tom de pele escolhido
     c.fillStyle = npc.skinColor;
     c.beginPath();
-    c.arc(headX, headY + 1.2, 4.8, 0, Math.PI * 2);
+    c.arc(headX, headY, 6.1, 0, Math.PI * 2);
     c.fill();
 
-    // Olhos e Expressão Facial
+    // Topo do cabelo / franja
+    c.fillStyle = npc.hairColor;
+    c.beginPath();
+    c.arc(headX, headY - 1.8, 6.3, Math.PI * 0.92, Math.PI * 0.08);
+    c.fill();
+
     if (w !== "up") {
       if (isSleeping) {
-        // Olhinhos fechados dormindo
         c.strokeStyle = "#171412";
         c.lineWidth = 1.0;
         c.beginPath();
-        c.moveTo(headX - 3.2, headY + 1.0);
-        c.lineTo(headX - 1.2, headY + 1.0);
-        c.moveTo(headX + 1.2, headY + 1.0);
-        c.lineTo(headX + 3.2, headY + 1.0);
+        c.moveTo(headX - 3.2, headY + 0.4);
+        c.lineTo(headX - 1.2, headY + 0.4);
+        c.moveTo(headX + 1.2, headY + 0.4);
+        c.lineTo(headX + 3.2, headY + 0.4);
         c.stroke();
       } else {
-        // Olhos vivos e expressivos
         const eyeOffset = w === "left" ? -1.2 : w === "right" ? 1.2 : 0;
         // Olho esquerdo
         c.fillStyle = "#ffffff";
-        c.fillRect(headX - 3.2 + eyeOffset, headY + 0.5, 2.2, 1.8);
+        c.fillRect(headX - 3.2 + eyeOffset, headY - 0.2, 2.2, 1.8);
         c.fillStyle = "#171412";
-        c.fillRect(headX - 2.6 + eyeOffset, headY + 0.8, 1.2, 1.2);
+        c.fillRect(headX - 2.6 + eyeOffset, headY + 0.1, 1.2, 1.2);
         // Olho direito
         c.fillStyle = "#ffffff";
-        c.fillRect(headX + 1.0 + eyeOffset, headY + 0.5, 2.2, 1.8);
+        c.fillRect(headX + 1.0 + eyeOffset, headY - 0.2, 2.2, 1.8);
         c.fillStyle = "#171412";
-        c.fillRect(headX + 1.4 + eyeOffset, headY + 0.8, 1.2, 1.2);
+        c.fillRect(headX + 1.4 + eyeOffset, headY + 0.1, 1.2, 1.2);
 
         // Sobrancelhas
         c.fillStyle = npc.hairColor;
-        c.fillRect(headX - 3.4 + eyeOffset, headY - 0.5, 2.4, 0.7);
-        c.fillRect(headX + 0.8 + eyeOffset, headY - 0.5, 2.4, 0.7);
+        c.fillRect(headX - 3.4 + eyeOffset, headY - 1.2, 2.4, 0.7);
+        c.fillRect(headX + 0.8 + eyeOffset, headY - 1.2, 2.4, 0.7);
 
-        // Barba para alguns homens (se headwear for 1, 2 ou 6)
+        // Barba para alguns homens
         if (npc.gender === "m" && npc.headwearStyle % 2 === 1) {
           c.fillStyle = npc.hairColor;
           c.beginPath();
-          c.arc(headX, headY + 4.2, 2.8, 0, Math.PI);
+          c.arc(headX, headY + 3.8, 2.8, 0, Math.PI);
           c.fill();
         }
       }
+    } else {
+      // Vista traseira da cabeça
+      c.fillStyle = npc.hairColor;
+      c.beginPath();
+      c.arc(headX, headY - 0.5, 6.2, 0, Math.PI * 2);
+      c.fill();
     }
 
-    // 11. Cobertura de Cabeça Temática de Deserto
+    // 11. Coberturas de Cabeça Temáticas proporcionais e ajustadas
     const hStyle = npc.headwearStyle;
 
     if (hStyle === 0) {
-      // TURBANTE ENROLADO CLÁSSICO: Tecido volumoso no topo com dobras em relevo
+      // Turbante enrolado clássico normal
       c.fillStyle = headwearColor;
       c.beginPath();
-      c.ellipse(headX, headY - 2.5, 6.8, 4.8, 0, 0, Math.PI * 2);
+      c.ellipse(headX, headY - 2.5, 6.6, 4.6, 0, 0, Math.PI * 2);
       c.fill();
-      // Dobras e nó frontal do turbante
       c.fillStyle = headwearTrim;
-      c.fillRect(headX - 6.5, headY - 2.0, 13.0, 1.6);
+      c.fillRect(headX - 6.2, headY - 2.0, 12.4, 1.6);
       c.fillStyle = "#fbbf24";
-      c.fillRect(headX - 1.2, headY - 3.8, 2.4, 2.4);
-      // Ponta do tecido caindo pelas costas/lado
+      c.fillRect(headX - 1.0, headY - 3.8, 2.0, 2.2);
       c.fillStyle = headwearColor;
-      c.fillRect(headX + (w === "left" ? 3.5 : -4.5), headY - 1.0, 2.6, 6.0);
+      c.fillRect(headX + (w === "left" ? 3.0 : -4.5), headY - 1.0, 2.2, 5.5);
     } else if (hStyle === 1) {
-      // SHEMAGH / KEFFIYEH COM AGAL PRETO: Pano drapeado cobrindo a cabeça e ombros
+      // Shemagh com agal preto normal
       c.fillStyle = headwearColor;
       c.beginPath();
-      c.moveTo(headX - 6.8, headY - 4.5);
-      c.lineTo(headX + 6.8, headY - 4.5);
-      c.lineTo(headX + 7.5, headY + 4.5);
-      c.lineTo(headX - 7.5, headY + 4.5);
+      c.moveTo(headX - 6.4, headY - 4.5);
+      c.lineTo(headX + 6.4, headY - 4.5);
+      c.lineTo(headX + 7.0, headY + 4.5);
+      c.lineTo(headX - 7.0, headY + 4.5);
       c.closePath();
       c.fill();
-      // O Agal: cordão duplo preto tradicional fixando o lenço
       c.fillStyle = "#18181b";
-      c.fillRect(headX - 6.0, headY - 3.2, 12.0, 1.4);
-      c.fillRect(headX - 5.5, headY - 1.2, 11.0, 1.4);
-      // Abas caídas sobre os ombros
+      c.fillRect(headX - 5.8, headY - 3.2, 11.6, 1.4);
+      c.fillRect(headX - 5.4, headY - 1.2, 10.8, 1.4);
       c.fillStyle = headwearColor;
-      c.fillRect(headX - 7.5, headY + 1.0, 2.5, 7.5);
-      c.fillRect(headX + 5.0, headY + 1.0, 2.5, 7.5);
+      c.fillRect(headX - 7.0, headY + 1.0, 2.2, 7.0);
+      c.fillRect(headX + 4.8, headY + 1.0, 2.2, 7.0);
     } else if (hStyle === 2) {
-      // TAGELMUST TUAREGUE (O véu índigo que cobre a face inferior)
+      // Tagelmust Tuaregue normal
       c.fillStyle = headwearColor;
       c.beginPath();
-      c.ellipse(headX, headY - 2.2, 6.6, 4.6, 0, 0, Math.PI * 2);
+      c.ellipse(headX, headY - 2.2, 6.4, 4.4, 0, 0, Math.PI * 2);
       c.fill();
-      // Pano cobrindo queixo, boca e pescoço
       if (w !== "up") {
         c.fillStyle = headwearColor;
-        c.fillRect(headX - 5.0, headY + 2.0, 10.0, 4.5);
+        c.fillRect(headX - 4.8, headY + 1.8, 9.6, 4.2);
         c.fillStyle = headwearTrim;
-        c.fillRect(headX - 5.0, headY + 1.8, 10.0, 1.0);
+        c.fillRect(headX - 4.8, headY + 1.8, 9.6, 1.0);
       }
     } else if (hStyle === 3) {
-      // LENÇO / VÉU FLUIDO DE LINHO FEMININO: Drapeado elegante caindo pelas costas
+      // Lenço / Véu fluido de linho normal
       c.fillStyle = headwearColor;
       c.beginPath();
-      c.arc(headX, headY - 1.5, 6.2, Math.PI, 0);
+      c.arc(headX, headY - 1.5, 6.3, Math.PI, 0);
       c.fill();
       c.fillRect(headX - 6.5, headY - 1.5, 13.0, 10.0);
       c.fillStyle = headwearTrim;
       c.fillRect(headX - 6.5, headY + 7.0, 13.0, 1.5);
     } else if (hStyle === 4) {
-      // CAPUZ LEVE DO DESERTO
+      // Capuz leve do deserto normal
       c.fillStyle = headwearColor;
       c.beginPath();
-      c.arc(headX, headY - 1.0, 6.6, 0, Math.PI * 2);
+      c.arc(headX, headY - 1.0, 6.5, 0, Math.PI * 2);
       c.fill();
       c.fillStyle = headwearTrim;
-      c.fillRect(headX - 5.5, headY + 2.0, 11.0, 2.0);
+      c.fillRect(headX - 5.5, headY + 1.8, 11.0, 1.8);
     } else if (hStyle === 5) {
-      // TIARA DE COURO COM TURQUESA E TRANÇAS DO DESERTO
+      // Tiara de couro com turquesa e tranças normal
       c.fillStyle = "#78350f";
       c.fillRect(headX - 5.8, headY - 2.2, 11.6, 1.8);
-      // Pedras de turquesa engastadas
       c.fillStyle = "#06b6d4";
-      c.fillRect(headX - 3.0, headY - 2.0, 1.6, 1.4);
-      c.fillRect(headX + 1.4, headY - 2.0, 1.6, 1.4);
-      // Tranças laterais
+      c.fillRect(headX - 3.0, headY - 2.0, 1.8, 1.4);
+      c.fillRect(headX + 1.2, headY - 2.0, 1.8, 1.4);
       c.fillStyle = npc.hairColor;
       c.fillRect(headX - 6.2, headY, 2.0, 7.0);
       c.fillRect(headX + 4.2, headY, 2.0, 7.0);
@@ -1300,11 +1411,11 @@ window.Game = window.Game || {};
       c.fillRect(headX - 6.2, headY + 6.0, 2.0, 1.2);
       c.fillRect(headX + 4.2, headY + 6.0, 2.0, 1.2);
     } else {
-      // BANDANA / LENÇO DE TESTA COM CABELOS NATURAIS
+      // Bandana / lenço de testa normal
       c.fillStyle = headwearColor;
-      c.fillRect(headX - 5.5, headY - 2.0, 11.0, 2.0);
+      c.fillRect(headX - 5.6, headY - 2.0, 11.2, 2.0);
       c.fillStyle = headwearTrim;
-      c.fillRect(headX - 5.5, headY - 0.5, 11.0, 0.8);
+      c.fillRect(headX - 5.6, headY - 0.5, 11.2, 0.8);
     }
 
     // 12. Efeito zZz quando descansando na esteira à noite
@@ -1313,43 +1424,43 @@ window.Game = window.Game || {};
       c.fillStyle = "#fde68a";
       c.font = "bold 9px sans-serif";
       c.textAlign = "center";
-      c.fillText("z", 6, -26 - zFloat * 12);
+      c.fillText("z", 6, headY - 8 - zFloat * 12);
       c.font = "bold 11px sans-serif";
-      c.fillText("Z", 12, -32 - zFloat * 12);
+      c.fillText("Z", 12, headY - 14 - zFloat * 12);
     }
 
-    // 13. Balão de Diálogo de RPG sobre a cabeça (Interação [F] ou conversa entre moradores)
+    // 13. Balão de Diálogo de RPG sobre a cabeça EXCLUSIVAMENTE EM RUNAS!
     if (npc.chatText && ((isInteracting && player && Math.hypot(player.x - npc.x, player.y - npc.y) < 280) || isChatting)) {
       const text = npc.chatText;
-      c.font = "bold 10px 'Segoe UI', sans-serif";
+      c.font = "bold 11px 'Courier New', monospace";
       const metrics = c.measureText(text);
-      const textWidth = Math.min(metrics.width, 240);
+      const textWidth = Math.min(metrics.width, 260);
       const bubbleW = textWidth + 18;
       const bubbleH = 22;
       const bx = -bubbleW / 2;
-      const by = -34 - bob;
+      const by = headY - 18 - bob;
 
-      // Sombra do balão
+      // Sombra
       c.fillStyle = "rgba(0, 0, 0, 0.35)";
       c.beginPath();
       c.roundRect(bx + 1, by + 1, bubbleW, bubbleH, 6);
       c.fill();
 
-      // Fundo pergaminho/âmbar translúcido temático do deserto
-      c.fillStyle = "rgba(15, 23, 42, 0.92)";
+      // Fundo místico púrpura/âmbar
+      c.fillStyle = "rgba(24, 15, 38, 0.94)";
       c.beginPath();
       c.roundRect(bx, by, bubbleW, bubbleH, 6);
       c.fill();
 
-      // Borda dourada do deserto
+      // Borda rúnica dourada
       c.strokeStyle = "#f59e0b";
-      c.lineWidth = 1.2;
+      c.lineWidth = 1.3;
       c.beginPath();
       c.roundRect(bx, by, bubbleW, bubbleH, 6);
       c.stroke();
 
       // Triângulo indicador apontando para a cabeça
-      c.fillStyle = "rgba(15, 23, 42, 0.92)";
+      c.fillStyle = "rgba(24, 15, 38, 0.94)";
       c.beginPath();
       c.moveTo(-4, by + bubbleH);
       c.lineTo(0, by + bubbleH + 4);
@@ -1363,8 +1474,8 @@ window.Game = window.Game || {};
       c.lineTo(4, by + bubbleH);
       c.stroke();
 
-      // Texto do diálogo
-      c.fillStyle = "#fef3c7";
+      // Glifos rúnicos luminosos
+      c.fillStyle = "#fef08a";
       c.textAlign = "center";
       c.fillText(text, 0, by + 14.5);
     }
@@ -1380,6 +1491,7 @@ window.Game = window.Game || {};
     biomeRadius: CITY_BIOME_RADIUS,
     houses: HOUSES,
     citizens: CITIZENS,
+    toRunes,
     isCityTerritory,
     isCityBiomeArea,
     getHouseAt,
