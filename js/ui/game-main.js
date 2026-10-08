@@ -1291,6 +1291,7 @@
         (E.stamina = E.maxStamina ?? 100),
         (E.isExhausted = !1),
         (E.sprinting = !1),
+        (E.paralyzedTimer = 0),
         (He.current = E.stamina),
         (oa.current = !1),
         (ga.current = !1),
@@ -1608,7 +1609,7 @@
     }, []);
     const Rl = J.useCallback((aimAngle, aimDistance) => {
         const E = f.current;
-        if (E.isDead) return;
+        if (E.isDead || (E.paralyzedTimer && E.paralyzedTimer > 0)) return;
         const D = c.current;
         const Q = o.current;
         const equipment = Da.current;
@@ -1716,8 +1717,9 @@
         }
       }, [ve]);
     const startPebbleAim = J.useCallback((customAngle, customDist) => {
-      pebbleKeyRef.current = { pressedAt: performance.now(), aiming: !0, angle: customAngle, distance: customDist, cancelled: !1 };
       const E = f.current;
+      if (E && E.paralyzedTimer && E.paralyzedTimer > 0) return;
+      pebbleKeyRef.current = { pressedAt: performance.now(), aiming: !0, angle: customAngle, distance: customDist, cancelled: !1 };
       if (E) {
         E.isAiming = !0;
         if (customAngle !== void 0) E.aimAngle = customAngle;
@@ -1751,7 +1753,7 @@
     const Sl = J.useCallback(() => {
         var ia, Je, he, $e, da, Ye;
         const E = f.current;
-        if (E.isDead) return;
+        if (E.isDead || (E.paralyzedTimer && E.paralyzedTimer > 0)) return;
         // Se estiver mirando com o seixo, desiste de jogar o seixo ao lutar no botão normal!
         if (E.isAiming || pebbleKeyRef.current.pressedAt || g.current.ShiftLeft || g.current.ShiftRight || g.current.Shift) {
           cancelPebbleAim();
@@ -3820,6 +3822,12 @@
               he.attackTimer > 0 &&
               ((he.attackTimer = Math.max(0, he.attackTimer - Ye)),
               he.attackTimer === 0 && (he.attackAngle = void 0)));
+          if (he.paralyzedTimer && he.paralyzedTimer > 0) {
+            he.paralyzedTimer = Math.max(0, he.paralyzedTimer - Ye);
+            if (he.isAiming) {
+              cancelPebbleAim();
+            }
+          }
           const Ge = Math.floor(he.x / Q.tileSize),
             Pe = Math.floor(he.y / Q.tileSize),
             aa = Q.getTile(Ge, Pe),

@@ -1298,15 +1298,6 @@
           Math.PI * 2,
         ),
         e.fill());
-      if (isStingerAtk && stingerProg >= 0.28 && stingerProg <= 0.65) {
-        ((e.fillStyle = "#4ade80"),
-          (e.shadowColor = "#22c55e"),
-          (e.shadowBlur = 10 * l),
-          e.beginPath(),
-          e.arc(Ee + 3.8 * l, ne + 4.4 * l, 2.2 * l, 0, Math.PI * 2),
-          e.fill(),
-          (e.shadowBlur = 0));
-      }
     }
     const ke = 0,
       G = -4.5 * l + g;
@@ -1831,15 +1822,6 @@
         e.beginPath(),
         e.arc(W, le + 6.2 * l + oe * 7 * l, 0.8 * l * (1 - oe), 0, Math.PI * 2),
         e.fill());
-      if (isStingerAtk && stingerProg >= 0.28 && stingerProg <= 0.65) {
-        ((e.fillStyle = "#4ade80"),
-          (e.shadowColor = "#22c55e"),
-          (e.shadowBlur = 10 * l),
-          e.beginPath(),
-          e.arc(W, le + 6 * l, 2.2 * l, 0, Math.PI * 2),
-          e.fill(),
-          (e.shadowBlur = 0));
-      }
     }
     e.restore();
   }
@@ -2147,15 +2129,6 @@
         e.beginPath(),
         e.arc(W, le - 6.2 * l - oe * 7 * l, 0.8 * l * (1 - oe), 0, Math.PI * 2),
         e.fill());
-      if (isStingerAtk && stingerProg >= 0.28 && stingerProg <= 0.65) {
-        ((e.fillStyle = "#4ade80"),
-          (e.shadowColor = "#22c55e"),
-          (e.shadowBlur = 10 * l),
-          e.beginPath(),
-          e.arc(W, le - 6 * l, 2.2 * l, 0, Math.PI * 2),
-          e.fill(),
-          (e.shadowBlur = 0));
-      }
     }
     e.restore();
   }

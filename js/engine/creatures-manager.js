@@ -525,17 +525,21 @@
         c = Math.max(1, Math.round(m - o * 0.45));
       ((l.hp = Math.max(0, (l.hp ?? 100) - c)),
         (f = this.audio) == null || f.playPlayerHurt(),
-        isStinger && (l.poisonTimer = Math.max(l.poisonTimer || 0, 5.5)),
+        isStinger && (
+          (l.paralyzedTimer = Math.max(l.paralyzedTimer || 0, 0.3)),
+          (l.attackTimer = 0),
+          (l.isAiming = !1)
+        ),
         this.floatingTexts.push({
           id: `dmg_${this.nextId++}`,
           x: l.x + (Math.random() - 0.5) * 10,
           y: l.y - 20,
-          text: isStinger ? `-${c} ☠` : `-${c}`,
-          color: isStinger ? "#22c55e" : "#ef4444",
+          text: `-${c}`,
+          color: "#ef4444",
           isCrit: isStinger,
           life: 0.85,
         }));
-      const particleCount = isStinger ? 7 : 4;
+      const particleCount = isStinger ? 6 : 4;
       for (let g = 0; g < particleCount; g++) {
         const y = Math.random() * Math.PI * 2;
         const spd = isStinger ? 3.5 : 4;
@@ -546,9 +550,9 @@
           vy: Math.sin(y) * spd,
           life: 0.4,
           maxLife: 0.4,
-          type: isStinger ? "poison" : "bubble",
-          color: isStinger ? "#4ade80" : "#f87171",
-          size: isStinger ? 2.2 : 1.8,
+          type: "bubble",
+          color: "#f87171",
+          size: 1.8,
         });
       }
       l.hp <= 0 && !l.isDead && this.handlePlayerDeath(l);
@@ -558,6 +562,7 @@
       ((t.isDead = !0),
         (t.hp = 0),
         (t.deathTimer = 0),
+        (t.paralyzedTimer = 0),
         (l = this.audio) == null || l.playPlayerDeath());
       for (const o of this.monsters)
         o.attached &&
@@ -582,6 +587,7 @@
         (t.hp = t.maxHp ?? 100),
         (t.poisonTimer = 0),
         (t.poisonTickTimer = 0),
+        (t.paralyzedTimer = 0),
         (t.attachedSlimes = 0),
         (t.invulnerableTimer = 3.5),
         (t.deathTimer = 0),
@@ -725,6 +731,9 @@
     }
     update(t, l, o, u, m = 0.5, c = 2) {
       var w, v, T;
+      if (l.paralyzedTimer && l.paralyzedTimer > 0) {
+        l.paralyzedTimer = Math.max(0, l.paralyzedTimer - t);
+      }
       ((this.lastPlayerX = l.x),
         (this.lastPlayerY = l.y),
         (this.lastIsUnderground = o),
@@ -1855,7 +1864,7 @@
       });
     }
     performAttack(t, l, o, u = !1, m = !1, c, rangeOverride, lockedPoint, whipFlag) {
-      if (t.isDead)
+      if (t.isDead || (t.paralyzedTimer && t.paralyzedTimer > 0))
         return {
           hitCount: 0,
           defeatedCount: 0,
