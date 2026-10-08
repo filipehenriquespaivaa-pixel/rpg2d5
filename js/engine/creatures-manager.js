@@ -929,26 +929,75 @@
             }
             continue;
           }
-          if (p.attackTimer && p.attackTimer > 0 && !p.attackHitApplied && typeof getScorpionHitColliders === "function") {
-            // Atualiza levemente o alvo durante o início do bote para mirar no jogador
-            const dur = p.attackDuration || 0.36;
-            const prog = 1 - p.attackTimer / dur;
-            if (prog < 0.35) {
-              p.attackTargetX = p.attackTargetX !== void 0 ? p.attackTargetX + (l.x - p.attackTargetX) * 0.35 : l.x;
-              p.attackTargetY = p.attackTargetY !== void 0 ? p.attackTargetY + (l.y - p.attackTargetY) * 0.35 : l.y;
+          if (p.isGiantScorpion) {
+            if (p.clawAttackTimer && p.clawAttackTimer > 0) {
+              p.clawAttackTimer = Math.max(0, p.clawAttackTimer - t);
+            }
+            if (p.stingerAttackTimer && p.stingerAttackTimer > 0) {
+              p.stingerAttackTimer = Math.max(0, p.stingerAttackTimer - t);
+            }
+            if (p.clawAttackCooldown && p.clawAttackCooldown > 0) {
+              p.clawAttackCooldown = Math.max(0, p.clawAttackCooldown - t);
+            }
+            if (p.stingerAttackCooldown && p.stingerAttackCooldown > 0) {
+              p.stingerAttackCooldown = Math.max(0, p.stingerAttackCooldown - t);
+            }
+            // Sincroniza a velocidade do Escorpião Gigante com a velocidade do player correndo
+            const playerBaseSpeed = l.speed || 2.15;
+            p.speed = playerBaseSpeed * 1.6 * 0.85; // 1.6x sprint no deserto (0.85x) = mesma velocidade do player correndo na areia (~2.93)
+          }
+          const hasActiveScorpionStrike = p.isGiantScorpion
+            ? ((p.clawAttackTimer && p.clawAttackTimer > 0 && !p.clawHitApplied) ||
+               (p.stingerAttackTimer && p.stingerAttackTimer > 0 && !p.stingerHitApplied))
+            : (p.attackTimer && p.attackTimer > 0 && !p.attackHitApplied);
+          if (hasActiveScorpionStrike && typeof getScorpionHitColliders === "function") {
+            if (p.isGiantScorpion) {
+              if (p.clawAttackTimer && p.clawAttackTimer > 0) {
+                const cProg = 1 - p.clawAttackTimer / (p.clawAttackDuration || 0.36);
+                if (cProg < 0.38) {
+                  p.clawTargetX = p.clawTargetX !== void 0 ? p.clawTargetX + (l.x - p.clawTargetX) * 0.4 : l.x;
+                  p.clawTargetY = p.clawTargetY !== void 0 ? p.clawTargetY + (l.y - p.clawTargetY) * 0.4 : l.y;
+                }
+              }
+              if (p.stingerAttackTimer && p.stingerAttackTimer > 0) {
+                const sProg = 1 - p.stingerAttackTimer / (p.stingerAttackDuration || 0.44);
+                if (sProg < 0.38) {
+                  p.stingerTargetX = p.stingerTargetX !== void 0 ? p.stingerTargetX + (l.x - p.stingerTargetX) * 0.4 : l.x;
+                  p.stingerTargetY = p.stingerTargetY !== void 0 ? p.stingerTargetY + (l.y - p.stingerTargetY) * 0.4 : l.y;
+                }
+              }
+            } else {
+              const dur = p.attackDuration || 0.36;
+              const prog = 1 - p.attackTimer / dur;
+              if (prog < 0.35) {
+                p.attackTargetX = p.attackTargetX !== void 0 ? p.attackTargetX + (l.x - p.attackTargetX) * 0.35 : l.x;
+                p.attackTargetY = p.attackTargetY !== void 0 ? p.attackTargetY + (l.y - p.attackTargetY) * 0.35 : l.y;
+              }
             }
             const colliders = getScorpionHitColliders(p);
             const playerHitRadius = Math.max(this.engine.footHX || 6, this.engine.footHY || 5) + 4;
             for (const col of colliders) {
               if (!col.active) continue;
+              const isSting = col.part === "stinger";
+              if (p.isGiantScorpion) {
+                if (isSting && p.stingerHitApplied) continue;
+                if (!isSting && p.clawHitApplied) continue;
+              } else if (p.attackHitApplied) {
+                continue;
+              }
               const distToPlayer = Math.hypot(l.x - col.x, l.y - col.y);
               if (distToPlayer <= col.radius + playerHitRadius) {
-                p.attackHitApplied = !0;
+                if (p.isGiantScorpion) {
+                  if (isSting) p.stingerHitApplied = !0;
+                  else p.clawHitApplied = !0;
+                } else {
+                  p.attackHitApplied = !0;
+                }
                 this.applyMonsterHitToPlayer(
                   p,
                   l,
                   p.attackPlayerDef ?? c,
-                  col.part === "stinger",
+                  isSting,
                   col.x,
                   col.y,
                 );
@@ -1240,7 +1289,75 @@
           this.steerAnimalExploration(p, t, x, f, m);
         else if (isPreyType(p.type))
           this.updatePreyAI(p, t, l);
-        else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.isGiantScorpion ? 260 : 150))) && j > chaseStopDist && z.canAttack) {
+        else if (p.isGiantScorpion && !NC && !l.isDead && j < ((p.aggroTimer || 0) > 0 ? 580 : 320) && z.canAttack) {
+          // Escorpião Gigante: persegue na velocidade do player correndo e ataca de forma independente com a garra mais próxima quando estiver no alcance!
+          if (j > chaseStopDist) {
+            const chaseSpeed = p.speed;
+            const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
+            ((p.vx = Math.cos(G) * chaseSpeed),
+              (p.vy = Math.sin(G) * chaseSpeed),
+              (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+          } else {
+            ((p.vx = 0),
+              (p.vy = 0),
+              (p.facing = this.getMonsterFacingToTarget(
+                p.x,
+                p.y,
+                l.x,
+                l.y,
+                p.facing,
+              )));
+          }
+          // Verifica de forma independente se as garras estão no alcance do player e escolhe a garra mais próxima do alvo!
+          if ((!p.clawAttackCooldown || p.clawAttackCooldown <= 0) && (!p.clawAttackTimer || p.clawAttackTimer <= 0) && (!l.invulnerableTimer || l.invulnerableTimer <= 0)) {
+            let closestClawSide = -1;
+            let closestClawDist = 1 / 0;
+            if (typeof getScorpionHitColliders === "function") {
+              const cols = getScorpionHitColliders(p);
+              for (const col of cols) {
+                if (col.part === "claw_left" || col.part === "claw_right") {
+                  const dClaw = Math.hypot(l.x - col.x, l.y - col.y);
+                  if (dClaw < closestClawDist) {
+                    closestClawDist = dClaw;
+                    closestClawSide = col.side;
+                  }
+                }
+              }
+            } else {
+              closestClawDist = j;
+              closestClawSide = (p.facing === "down" || p.facing === "up")
+                ? (l.x < p.x ? -1 : 1)
+                : (l.y < p.y ? -1 : 1);
+            }
+            // Se a garra mais próxima está dentro do alcance de bote da garra (~82px da ponta da garra ou j <= 105)
+            if (closestClawDist <= 82 || j <= 105) {
+              p.attackClawSide = closestClawSide;
+              p.clawTargetX = l.x;
+              p.clawTargetY = l.y;
+              p.clawAttackDuration = 0.36;
+              p.clawAttackTimer = p.clawAttackDuration;
+              p.clawHitApplied = !1;
+              p.attackPlayerDef = c;
+              p.clawAttackCooldown = 0.85;
+              // Sincroniza campos legados para compatibilidade
+              p.attackType = "claw";
+              p.attackDuration = p.clawAttackDuration;
+              p.attackTimer = p.clawAttackTimer;
+              p.attackTargetX = l.x;
+              p.attackTargetY = l.y;
+            }
+          }
+          // Verifica de forma independente o ataque do ferrão quando o player está no alcance do ferrão
+          if ((!p.stingerAttackCooldown || p.stingerAttackCooldown <= 0) && (!p.stingerAttackTimer || p.stingerAttackTimer <= 0) && (!l.invulnerableTimer || l.invulnerableTimer <= 0) && j <= 115) {
+            p.stingerTargetX = l.x;
+            p.stingerTargetY = l.y;
+            p.stingerAttackDuration = 0.44;
+            p.stingerAttackTimer = p.stingerAttackDuration;
+            p.stingerHitApplied = !1;
+            p.attackPlayerDef = c;
+            p.stingerAttackCooldown = 2.1;
+          }
+        } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.isGiantScorpion ? 260 : 150))) && j > chaseStopDist && z.canAttack) {
           const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1);
           const chaseSpeed = p.speed * de;
           const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
@@ -1579,7 +1696,7 @@
           maxHp: 95,
           attack: 14,
           defense: 5,
-          speed: 0.78,
+          speed: (player.speed || 2.15) * 1.6 * 0.85,
           color: "#b45309",
           accentColor: "#ef4444",
           scale: baseScale,

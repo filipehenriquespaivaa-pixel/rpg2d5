@@ -1220,10 +1220,14 @@
         e.lineTo(_e - 1.2 * l, xe + 1 * l),
         e.stroke());
     }
-    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const isStingerAtk = t.isGiantScorpion
+      ? !!(t.stingerAttackTimer && t.stingerAttackTimer > 0)
+      : (t.attackType === "stinger" && t.attackTimer > 0);
     const stingerProg = isStingerAtk
-      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.stingerAttackTimer / (t.stingerAttackDuration || 0.44) : t.attackTimer / (t.attackDuration || 0.38))))
       : 0;
+    const stingerTgtX = t.isGiantScorpion && t.stingerTargetX !== void 0 ? t.stingerTargetX : t.attackTargetX;
+    const stingerTgtY = t.isGiantScorpion && t.stingerTargetY !== void 0 ? t.stingerTargetY : t.attackTargetY;
     let stingerThrust = 0;
     let stingerDown = 0;
     let stingerStrikePower = 0;
@@ -1251,9 +1255,9 @@
       restTipLocalY = A - 18.2 * l + 4.7 * l;
     let aimDeltaX = stingerThrust,
       aimDeltaY = stingerDown * 0.6;
-    if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
-      const targetLocalX = (t.attackTargetX - t.x) * u,
-        targetLocalY = t.attackTargetY - t.y;
+    if (isStingerAtk && stingerStrikePower > 0 && stingerTgtX !== void 0 && stingerTgtY !== void 0) {
+      const targetLocalX = (stingerTgtX - t.x) * u,
+        targetLocalY = stingerTgtY - t.y;
       aimDeltaX = (targetLocalX - restTipLocalX) * stingerStrikePower;
       aimDeltaY = (targetLocalY - restTipLocalY) * stingerStrikePower;
     }
@@ -1469,10 +1473,16 @@
         e.lineTo(_e - 1.2 * l, xe + 1.2 * l),
         e.stroke());
     }
-    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
-    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const isAtk = t.isGiantScorpion
+      ? !!(t.clawAttackTimer && t.clawAttackTimer > 0)
+      : !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
+    const atkProg = isAtk
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.clawAttackTimer / (t.clawAttackDuration || 0.36) : t.attackTimer / (t.attackDuration || 0.32))))
+      : 0;
+    const clawTgtX = t.isGiantScorpion && t.clawTargetX !== void 0 ? t.clawTargetX : t.attackTargetX;
+    const clawTgtY = t.isGiantScorpion && t.clawTargetY !== void 0 ? t.clawTargetY : t.attackTargetY;
     const activeSide = t.attackClawSide || -1;
-    const baseOe = isStingerAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const baseOe = isStingerAtk && !isAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const clawSide of [1, -1]) {
       const isThisClaw = isAtk && activeSide === clawSide;
       let thrustX = 0;
@@ -1480,11 +1490,11 @@
       let clawOpen = baseOe;
       if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
-        if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+        if (clawTgtX !== void 0 && clawTgtY !== void 0) {
           const restClawTipX = W + 19.5 * l,
             restClawTipY = le + clawSide * 9.5 * l,
-            targetLocalX = (t.attackTargetX - t.x) * u,
-            targetLocalY = t.attackTargetY - t.y;
+            targetLocalX = (clawTgtX - t.x) * u,
+            targetLocalY = clawTgtY - t.y;
           thrustX = (targetLocalX - restClawTipX) * strikePower;
           thrustY = (targetLocalY - restClawTipY) * strikePower;
         } else {
@@ -1701,10 +1711,14 @@
       e.arc(-3 * l, A + 1.2 * l, 0.55 * l, 0, Math.PI * 2),
       e.arc(3 * l, A + 1.2 * l, 0.55 * l, 0, Math.PI * 2),
       e.fill());
-    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const isStingerAtk = t.isGiantScorpion
+      ? !!(t.stingerAttackTimer && t.stingerAttackTimer > 0)
+      : (t.attackType === "stinger" && t.attackTimer > 0);
     const stingerProg = isStingerAtk
-      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.stingerAttackTimer / (t.stingerAttackDuration || 0.44) : t.attackTimer / (t.attackDuration || 0.38))))
       : 0;
+    const stingerTgtX = t.isGiantScorpion && t.stingerTargetX !== void 0 ? t.stingerTargetX : t.attackTargetX;
+    const stingerTgtY = t.isGiantScorpion && t.stingerTargetY !== void 0 ? t.stingerTargetY : t.attackTargetY;
     let stingerThrustY = 0;
     let stingerStrikePower = 0;
     if (isStingerAtk) {
@@ -1721,10 +1735,16 @@
       }
     }
 
-    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
-    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const isAtk = t.isGiantScorpion
+      ? !!(t.clawAttackTimer && t.clawAttackTimer > 0)
+      : !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
+    const atkProg = isAtk
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.clawAttackTimer / (t.clawAttackDuration || 0.36) : t.attackTimer / (t.attackDuration || 0.32))))
+      : 0;
+    const clawTgtX = t.isGiantScorpion && t.clawTargetX !== void 0 ? t.clawTargetX : t.attackTargetX;
+    const clawTgtY = t.isGiantScorpion && t.clawTargetY !== void 0 ? t.clawTargetY : t.attackTargetY;
     const activeSide = t.attackClawSide || -1;
-    const baseM = isStingerAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const baseM = isStingerAtk && !isAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
       const isThisClaw = isAtk && activeSide === te;
       let thrustY = 0;
@@ -1732,11 +1752,11 @@
       let clawOpen = baseM;
       if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
-        if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+        if (clawTgtX !== void 0 && clawTgtY !== void 0) {
           const restClawTipX = te * 6.5 * l,
             restClawTipY = A + 14.5 * l,
-            targetLocalX = t.attackTargetX - t.x,
-            targetLocalY = t.attackTargetY - t.y;
+            targetLocalX = clawTgtX - t.x,
+            targetLocalY = clawTgtY - t.y;
           thrustX = (targetLocalX - restClawTipX) * strikePower;
           thrustY = (targetLocalY - restClawTipY) * strikePower;
         } else {
@@ -1824,11 +1844,11 @@
       K = j - 7.5 * l;
     let aimStingerX = 0,
       aimStingerY = stingerThrustY;
-    if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+    if (isStingerAtk && stingerStrikePower > 0 && stingerTgtX !== void 0 && stingerTgtY !== void 0) {
       const restTipX = z + $,
         restTipY = K - 2.5 * l + 7.2 * l,
-        targetLocalX = t.attackTargetX - t.x,
-        targetLocalY = t.attackTargetY - t.y;
+        targetLocalX = stingerTgtX - t.x,
+        targetLocalY = stingerTgtY - t.y;
       aimStingerX = (targetLocalX - restTipX) * stingerStrikePower;
       aimStingerY = (targetLocalY - restTipY) * stingerStrikePower;
     }
@@ -2031,10 +2051,14 @@
       e.lineTo(0.2 * l, A - 3.8 * l),
       e.closePath(),
       e.fill());
-    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const isStingerAtk = t.isGiantScorpion
+      ? !!(t.stingerAttackTimer && t.stingerAttackTimer > 0)
+      : (t.attackType === "stinger" && t.attackTimer > 0);
     const stingerProg = isStingerAtk
-      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.stingerAttackTimer / (t.stingerAttackDuration || 0.44) : t.attackTimer / (t.attackDuration || 0.38))))
       : 0;
+    const stingerTgtX = t.isGiantScorpion && t.stingerTargetX !== void 0 ? t.stingerTargetX : t.attackTargetX;
+    const stingerTgtY = t.isGiantScorpion && t.stingerTargetY !== void 0 ? t.stingerTargetY : t.attackTargetY;
     let stingerThrustY = 0;
     let stingerStrikePower = 0;
     if (isStingerAtk) {
@@ -2051,10 +2075,16 @@
       }
     }
 
-    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
-    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const isAtk = t.isGiantScorpion
+      ? !!(t.clawAttackTimer && t.clawAttackTimer > 0)
+      : !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
+    const atkProg = isAtk
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.clawAttackTimer / (t.clawAttackDuration || 0.36) : t.attackTimer / (t.attackDuration || 0.32))))
+      : 0;
+    const clawTgtX = t.isGiantScorpion && t.clawTargetX !== void 0 ? t.clawTargetX : t.attackTargetX;
+    const clawTgtY = t.isGiantScorpion && t.clawTargetY !== void 0 ? t.clawTargetY : t.attackTargetY;
     const activeSide = t.attackClawSide || -1;
-    const baseM = isStingerAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
+    const baseM = isStingerAtk && !isAtk ? 0.55 : Math.sin(t.animTimer * 4) * 0.35 + 0.35;
     for (const te of [-1, 1]) {
       const isThisClaw = isAtk && activeSide === te;
       let thrustY = 0;
@@ -2062,11 +2092,11 @@
       let clawOpen = baseM;
       if (isThisClaw) {
         const strikePower = Math.sin(atkProg * Math.PI);
-        if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+        if (clawTgtX !== void 0 && clawTgtY !== void 0) {
           const restClawTipX = te * 6.5 * l,
             restClawTipY = A - 14.5 * l,
-            targetLocalX = t.attackTargetX - t.x,
-            targetLocalY = t.attackTargetY - t.y;
+            targetLocalX = clawTgtX - t.x,
+            targetLocalY = clawTgtY - t.y;
           thrustX = (targetLocalX - restClawTipX) * strikePower;
           thrustY = (targetLocalY - restClawTipY) * strikePower;
         } else {
@@ -2154,11 +2184,11 @@
       K = j + 7.5 * l;
     let aimStingerX = 0,
       aimStingerY = stingerThrustY;
-    if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
+    if (isStingerAtk && stingerStrikePower > 0 && stingerTgtX !== void 0 && stingerTgtY !== void 0) {
       const restTipX = z + $,
         restTipY = K + 2.5 * l - 7.2 * l,
-        targetLocalX = t.attackTargetX - t.x,
-        targetLocalY = t.attackTargetY - t.y;
+        targetLocalX = stingerTgtX - t.x,
+        targetLocalY = stingerTgtY - t.y;
       aimStingerX = (targetLocalX - restTipX) * stingerStrikePower;
       aimStingerY = (targetLocalY - restTipY) * stingerStrikePower;
     }
@@ -2255,12 +2285,22 @@
       stepRate = Math.max(1.8, Math.min(4.2, (spd / Math.max(0.5, l * 0.65)) * 4.5)),
       c = m ? t.animTimer * stepRate : t.animTimer * 1.2,
       f = m ? Math.sin(c * 2) * 0.5 * l : Math.sin(t.animTimer * 1.5) * 0.3 * l;
-    const isStingerAtk = t.attackType === "stinger" && t.attackTimer > 0;
+    const isStingerAtk = t.isGiantScorpion
+      ? !!(t.stingerAttackTimer && t.stingerAttackTimer > 0)
+      : (t.attackType === "stinger" && t.attackTimer > 0);
     const stingerProg = isStingerAtk
-      ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.38)))
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.stingerAttackTimer / (t.stingerAttackDuration || 0.44) : t.attackTimer / (t.attackDuration || 0.38))))
       : 0;
-    const isAtk = !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
-    const atkProg = isAtk ? Math.max(0, Math.min(1, 1 - t.attackTimer / (t.attackDuration || 0.32))) : 0;
+    const stingerTgtX = t.isGiantScorpion && t.stingerTargetX !== void 0 ? t.stingerTargetX : t.attackTargetX;
+    const stingerTgtY = t.isGiantScorpion && t.stingerTargetY !== void 0 ? t.stingerTargetY : t.attackTargetY;
+    const isAtk = t.isGiantScorpion
+      ? !!(t.clawAttackTimer && t.clawAttackTimer > 0)
+      : !!(t.attackTimer && t.attackTimer > 0 && t.attackType !== "stinger");
+    const atkProg = isAtk
+      ? Math.max(0, Math.min(1, 1 - (t.isGiantScorpion ? t.clawAttackTimer / (t.clawAttackDuration || 0.36) : t.attackTimer / (t.attackDuration || 0.32))))
+      : 0;
+    const clawTgtX = t.isGiantScorpion && t.clawTargetX !== void 0 ? t.clawTargetX : t.attackTargetX;
+    const clawTgtY = t.isGiantScorpion && t.clawTargetY !== void 0 ? t.clawTargetY : t.attackTargetY;
     const activeSide = t.attackClawSide || -1;
     const clawRadius = Math.max(3.5, 3.6 * l);
     const stingerRadius = Math.max(3.2, 3.2 * l);
@@ -2286,9 +2326,9 @@
           restClawTipY = A + dirY * 14.5 * l;
         if (isThisClaw) {
           const strikePower = Math.sin(atkProg * Math.PI);
-          if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
-            const targetLocalX = t.attackTargetX - t.x,
-              targetLocalY = t.attackTargetY - t.y;
+          if (clawTgtX !== void 0 && clawTgtY !== void 0) {
+            const targetLocalX = clawTgtX - t.x,
+              targetLocalY = clawTgtY - t.y;
             thrustX = (targetLocalX - restClawTipX) * strikePower;
             thrustY = (targetLocalY - restClawTipY) * strikePower;
           } else {
@@ -2332,9 +2372,9 @@
         restTipY = K - dirY * 2.5 * l + dirY * 7.2 * l;
       let aimStingerX = 0,
         aimStingerY = stingerThrustY;
-      if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
-        const targetLocalX = t.attackTargetX - t.x,
-          targetLocalY = t.attackTargetY - t.y;
+      if (isStingerAtk && stingerStrikePower > 0 && stingerTgtX !== void 0 && stingerTgtY !== void 0) {
+        const targetLocalX = stingerTgtX - t.x,
+          targetLocalY = stingerTgtY - t.y;
         aimStingerX = (targetLocalX - restTipX) * stingerStrikePower;
         aimStingerY = (targetLocalY - restTipY) * stingerStrikePower;
       }
@@ -2358,9 +2398,9 @@
           restClawTipY = le + clawSide * 9.5 * l;
         if (isThisClaw) {
           const strikePower = Math.sin(atkProg * Math.PI);
-          if (t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
-            const targetLocalX = (t.attackTargetX - t.x) * u,
-              targetLocalY = t.attackTargetY - t.y;
+          if (clawTgtX !== void 0 && clawTgtY !== void 0) {
+            const targetLocalX = (clawTgtX - t.x) * u,
+              targetLocalY = clawTgtY - t.y;
             thrustX = (targetLocalX - restClawTipX) * strikePower;
             thrustY = (targetLocalY - restClawTipY) * strikePower;
           } else {
@@ -2407,9 +2447,9 @@
         restTipLocalY = A - 18.2 * l + 4.7 * l;
       let aimDeltaX = stingerThrust,
         aimDeltaY = stingerDown * 0.6;
-      if (isStingerAtk && stingerStrikePower > 0 && t.attackTargetX !== void 0 && t.attackTargetY !== void 0) {
-        const targetLocalX = (t.attackTargetX - t.x) * u,
-          targetLocalY = t.attackTargetY - t.y;
+      if (isStingerAtk && stingerStrikePower > 0 && stingerTgtX !== void 0 && stingerTgtY !== void 0) {
+        const targetLocalX = (stingerTgtX - t.x) * u,
+          targetLocalY = stingerTgtY - t.y;
         aimDeltaX = (targetLocalX - restTipLocalX) * stingerStrikePower;
         aimDeltaY = (targetLocalY - restTipLocalY) * stingerStrikePower;
       }
