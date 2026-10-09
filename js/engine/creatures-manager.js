@@ -388,22 +388,100 @@
             (t.facing = this.getMonsterFacing(t.vx, t.vy, t.facing)));
         }
     }
-    getNearestPreyForWolf(t, l, o, u) {
+    getNearestPreyForWolf(t, l, o, u, hunter = null) {
       let m = null,
         c = o;
+      const isTardigrade = hunter && hunter.type === "tardigrade";
       for (const f of this.monsters) {
-        if (
-          !isPreyType(f.type) ||
-          f.hp <= 0 ||
-          f.isUnderground !== u
-        )
-          continue;
+        if (f.hp <= 0 || f.isUnderground !== u) continue;
+        if (isTardigrade) {
+          // Tardígrados caçam especificamente escorpiões da caverna!
+          if (f.type !== "scorpion" || f.isGiantScorpion) continue;
+        } else {
+          if (!isPreyType(f.type)) continue;
+        }
         const g = Math.hypot(f.x - t, f.y - l);
         g < c && ((c = g), (m = f));
       }
       return m;
     }
+    tardigradeDevourScorpion(t, l) {
+      const o = t.attack + (Math.random() * 3 - 1),
+        u = Math.max(4, Math.round(o - (l.defense || 2) * 0.4));
+      ((l.hp -= u),
+        (l.hitFlashTimer = 0.22),
+        this.floatingTexts.push({
+          id: `dmg_${this.nextId++}`,
+          x: l.x,
+          y: l.y - 16,
+          text: `-${u}`,
+          color: "#ef4444",
+          isCrit: !1,
+          life: 0.8,
+        }));
+      for (let m = 0; m < 5; m++)
+        this.hitParticles.push({
+          x: l.x,
+          y: l.y,
+          vx: (Math.random() - 0.5) * 2.5,
+          vy: -Math.random() * 2.5,
+          life: 0.4,
+          color: "#f59e0b",
+          size: 2,
+        });
+      if (l.hp <= 0) {
+        // Devorado por completo pelo disco bucal do tardígrado!
+        for (let c = 0; c < 14; c++) {
+          const f = Math.random() * Math.PI * 2,
+            g = 2 + Math.random() * 3.5;
+          this.hitParticles.push({
+            x: l.x,
+            y: l.y,
+            vx: Math.cos(f) * g,
+            vy: Math.sin(f) * g,
+            life: 0.75,
+            color: c % 2 === 0 ? "#f59e0b" : "#4ade80",
+            size: 2.6 + Math.random() * 2,
+          });
+        }
+        var audio;
+        (audio = this.audio) == null || audio.playSlimePickup?.();
+        const healAmt = 22;
+        t.hp = Math.min(t.maxHp, t.hp + healAmt);
+        if (t.scale < (t.maxScale || t.scale * 1.25)) {
+          t.scale = Math.min((t.maxScale || t.scale * 1.25), Math.round((t.scale + 0.05) * 100) / 100);
+        }
+        this.floatingTexts.push({
+          id: `feed_${this.nextId++}`,
+          x: t.x,
+          y: t.y - 28,
+          text: `🍴 Devorou Escorpião! (+${healAmt} HP)`,
+          color: "#facc15",
+          isCrit: !0,
+          life: 1.4,
+        });
+        const m = this.monsters.findIndex((c) => c.id === l.id);
+        m >= 0 && this.monsters.splice(m, 1);
+      } else {
+        // Escorpião sobrevivente entra em pânico e foge em alta velocidade!
+        l.fleeTimer = 4.5;
+        l.lastThreatX = t.x;
+        l.lastThreatY = t.y;
+        l.threatName = t.name;
+        l.alertEffectTimer = 3.5;
+        const fleeAngle = Math.atan2(l.y - t.y, l.x - t.x) || (Math.random() * Math.PI * 2);
+        l.targetAngle = fleeAngle;
+        const sprintSpeed = l.speed * 1.5;
+        l.vx = Math.cos(fleeAngle) * sprintSpeed;
+        l.vy = Math.sin(fleeAngle) * sprintSpeed;
+        l.facing = this.getMonsterFacing(l.vx, l.vy, l.facing);
+      }
+    }
     wolfAttackPrey(t, l) {
+      if (t.type === "tardigrade" && l.type === "scorpion") {
+        this.tardigradeDevourScorpion(t, l);
+        return;
+      }
       const o = t.attack + (Math.random() * 2 - 1),
         u = Math.max(3, Math.round(o - l.defense * 0.4));
       ((l.hp -= u),
@@ -1599,14 +1677,39 @@
           p.fireFearTimer = 0;
           p.attackCooldown = Math.min(p.attackCooldown || 0, 0.3);
         }
+        // Escorpiões da caverna detectam Tardígrados (seus predadores naturais) e fogem apavorados!
+        let tardigradeThreat = null;
+        if (p.type === "scorpion" && !p.isGiantScorpion && !p.burrowing) {
+          for (const m of this.monsters) {
+            if (m.type === "tardigrade" && m.hp > 0 && m.isUnderground === p.isUnderground) {
+              const d = Math.hypot(m.x - p.x, m.y - p.y);
+              if (d < 165) {
+                tardigradeThreat = m;
+                break;
+              }
+            }
+          }
+        }
+        if (tardigradeThreat) {
+          const fleeG = this.pickFleeAngle(p, tardigradeThreat.x, tardigradeThreat.y, t, p.speed * 1.45);
+          p.targetAngle = fleeG;
+          const fleeSpd = p.speed * 1.45;
+          ((p.vx = Math.cos(fleeG) * fleeSpd),
+            (p.vy = Math.sin(fleeG) * fleeSpd),
+            (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+          if (!p.alertEffectTimer || p.alertEffectTimer <= 0) {
+            p.alertEffectTimer = 2.5;
+          }
+          continue;
+        }
         const z = this.getAnimalFireDeterrence(p, l),
           K = gl(p.type) && !!(x && M < $),
           V = gl(p.type) && !!(l.hasTorch && j < 58 && !l.isDead),
           O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
           _ = K || V || O,
           NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack);
-        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : 26,
-          chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 18 : 24) : 22;
+        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : p.type === "tardigrade" ? 28 : 26,
+          chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 18 : 24) : p.type === "tardigrade" ? 22 : 22;
         if (_) {
           ((!p.fleeFireTimer || p.fleeFireTimer <= 0) &&
             (p.fleeFireTimer = 3.5),
@@ -1704,7 +1807,7 @@
             p.attackPlayerDef = c;
             p.stingerAttackCooldown = 2.1;
           }
-        } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.isGiantScorpion ? 260 : 150))) && j > chaseStopDist && z.canAttack) {
+        } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.type === "tardigrade" ? 0 : (p.isGiantScorpion ? 260 : 150)))) && j > chaseStopDist && z.canAttack) {
           const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1);
           const chaseSpeed = p.speed * de;
           const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
@@ -1728,9 +1831,9 @@
               this.monsterAttackPlayer(p, l, c)));
         else if (creatureBehavior(p.type).hunter && (!p.aggroTimer || p.aggroTimer <= 0)) {
           const hunterAI = creatureBehavior(p.type).hunter;
-          const G = this.getNearestPreyForWolf(p.x, p.y, hunterAI.huntRadius, p.isUnderground);
+          const G = this.getNearestPreyForWolf(p.x, p.y, hunterAI.huntRadius, p.isUnderground, p);
           if (G)
-            if (Math.hypot(G.x - p.x, G.y - p.y) > hunterAI.meleeRange) {
+            if (Math.hypot(G.x - p.x, G.y - p.y) > (hunterAI.meleeRange + (p.scale || 1) * 6)) {
               const le = p.speed * hunterAI.huntSpeedMult;
               const W = this.steerAroundObstacles(p, G.x, G.y, le, !1);
               ((p.vx = Math.cos(W) * le),
@@ -2190,7 +2293,8 @@
         j = 22,
         P = 4,
         A = 0.75,
-        x = 1;
+        x = 1,
+        customDef = null;
       const M = o === BiomeId.SNOW_TAIGA || o === BiomeId.SNOW_PEAK || o === BiomeId.GLACIER,
         $ =
           o === BiomeId.DESERT ||
@@ -2284,20 +2388,49 @@
         if (isDesertCave) {
           // ===================================================================
           // CAVERNAS TEMÁTICAS DO DESERTO:
-          // "sem morcegos, mas pode ter escorpioes pequenos, menores que os comuns."
-          // Escorpião pequeno das areias cavernoso (escala 0.58 vs 0.95 do comum)!
+          // Escorpiões das Areias (mesmo tamanho do sobremundo, escala 0.58),
+          // Aranhas das Fendas Arenosas e o novo TARDÍGRADO CAVERNOSO!
           // NENHUM MORCEGO!
           // ===================================================================
           const K = Math.random();
-          if (K < 0.78) {
+          if (K < 0.40) {
             v = "scorpion";
-            T = "Escorpião Pequeno das Areias";
+            T = "Escorpião das Areias";
             S = "#b45309";
             p = "#fde047";
-            j = 14;
-            P = 4;
+            j = 16;
+            P = 5;
             A = 0.95;
             x = 0.58;
+          } else if (K < 0.78) {
+            // TARDÍGRADO CAVERNOSO: vive especificamente nesta caverna!
+            // Tamanho variado e porte colossal de até 3 vezes maior!
+            v = "tardigrade";
+            const sizeRoll = Math.random();
+            let sizeMult = 1.0;
+            if (sizeRoll < 0.40) {
+              // Porte Comum / Pequeno: 1.0x a 1.35x
+              sizeMult = 1.0 + Math.random() * 0.35;
+              T = "Tardígrado Cavernoso";
+            } else if (sizeRoll < 0.75) {
+              // Porte Grande: 1.6x a 2.15x
+              sizeMult = 1.6 + Math.random() * 0.55;
+              T = "Tardígrado Cavernoso Grande";
+            } else {
+              // Porte Titânico: 2.5x a 3.0x (até 3 vezes maiores!)
+              sizeMult = 2.5 + Math.random() * 0.5;
+              T = "Tardígrado Cavernoso Titânico";
+            }
+            const baseScale = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.scale : 0.95;
+            x = Math.round(baseScale * sizeMult * 100) / 100;
+            S = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.color : "#d97706";
+            p = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.accentColor : "#fef08a";
+            const baseHp = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.hp : 42;
+            const baseAtk = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.attack : 5;
+            j = Math.round(baseHp * (0.75 + sizeMult * 0.65));
+            P = Math.round(baseAtk * (0.75 + sizeMult * 0.55));
+            customDef = Math.round(6 + (sizeMult - 1) * 1.5);
+            A = Math.max(0.68, Math.round((0.85 - (sizeMult - 1) * 0.07) * 100) / 100);
           } else {
             v = "spider";
             T = "Aranha das Fendas Arenosas";
@@ -2519,11 +2652,12 @@
         hp: j,
         maxHp: j,
         attack: P,
-        defense: 2,
+        defense: customDef ?? (typeof CREATURES !== "undefined" && CREATURES[v]?.spawn?.defense !== void 0 ? CREATURES[v].spawn.defense : 2),
         speed: A,
         color: S,
         accentColor: p,
         scale: x,
+        maxScale: (v === "tardigrade" ? Math.min(3.0, x * 1.15) : x),
         isUnderground: l,
         isMoving: !1,
         hitFlashTimer: 0,

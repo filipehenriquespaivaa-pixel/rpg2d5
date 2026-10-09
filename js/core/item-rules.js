@@ -100,11 +100,14 @@
                 t.includes("escorpiao") ||
                 l.includes("scorpion") ||
                 t.includes("morcego") ||
-                l.includes("bat")
+                l.includes("bat") ||
+                t.includes("tardígrado") ||
+                t.includes("tardigrado") ||
+                l.includes("tardigrade")
               ? {
                   allowed: !0,
                   category: "creature_spider_scorpion",
-                  categoryName: "Aranha / Escorpião",
+                  categoryName: "Aranha / Escorpião / Tardígrado",
                   maxCapacity: 3,
                 }
               : t.includes("gosma") ||
