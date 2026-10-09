@@ -1250,6 +1250,15 @@
             g.fillRect(l + 2, o + 5 + T * 16, u - 4, 2),
             (g.fillStyle = "rgba(245, 158, 11, 0.28)"),
             g.fillRect(l + 6 + T * 12, o + 10 + T * 10, 4, 2),
+            t.isDesertCavePocket &&
+              ((g.fillStyle = "rgba(224, 132, 55, 0.28)"),
+              g.fillRect(l + 8, o + 8, u - 16, u - 16),
+              (g.fillStyle = "rgba(255, 214, 150, 0.24)"),
+              g.fillRect(l + 12 + T * 8, o + 12 + T * 6, 5, 2)),
+            t.isDesertCaveJunction &&
+              ((g.fillStyle = "rgba(245, 158, 11, 0.34)"),
+              g.fillRect(l + 4, o + u / 2 - 1, u - 8, 2),
+              g.fillRect(l + u / 2 - 1, o + 4, 2, u - 8)),
             T > 0.72 &&
               ((g.fillStyle = "rgba(254, 215, 170, 0.38)"),
               g.fillRect(l + 17, o + 6 + T * 16, 3, 1.5)))

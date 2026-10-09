@@ -88,6 +88,8 @@
       ((this.tileSize = 36),
         (this.isUnderground = !1),
         (this.activeCaveSeed = 0),
+        (this.activeDesertCaveLayoutSeed = 0),
+        (this.activeDesertCaveIdentity = null),
         (this.isDesertCave = !1),
         (this.activeCaveSurfaceBiomeId = null),
         (this.surfaceCoords = { x: 0, y: 0 }),
@@ -137,6 +139,8 @@
         this.clearTileCache(),
         (this.isUnderground = !1),
         (this.undergroundLevel = 0),
+        (this.activeDesertCaveLayoutSeed = 0),
+        (this.activeDesertCaveIdentity = null),
         (this.isDesertCave = !1),
         (this.activeCaveSurfaceBiomeId = null));
     }
@@ -934,7 +938,11 @@
       );
       this.isUnderground = !0;
       this.undergroundLevel = 1;
-      this.activeCaveSeed = (this.seed + 88888) >>> 0;
+      this.activeDesertCaveIdentity = this.isDesertCave ? this._getDesertCaveIdentityAt(t, l) : null;
+      this.activeDesertCaveLayoutSeed = this.activeDesertCaveIdentity
+        ? (this.seed ^ (this.activeDesertCaveIdentity.tx * 374761393) ^ (this.activeDesertCaveIdentity.ty * 668265263)) >>> 0
+        : 0;
+      this.activeCaveSeed = (this.activeDesertCaveLayoutSeed || this.seed + 88888) >>> 0;
       this.caveWallNoise.seed(this.activeCaveSeed + 404);
       this.caveRoomNoise.seed(this.activeCaveSeed + 505);
       this.caveDetailNoise.seed(this.activeCaveSeed + 606);
@@ -943,6 +951,8 @@
     exitCave(t, l) {
       this.isUnderground = !1;
       this.undergroundLevel = 0;
+      this.activeDesertCaveLayoutSeed = 0;
+      this.activeDesertCaveIdentity = null;
       this.isDesertCave = !1;
       this.activeCaveSurfaceBiomeId = null;
       this.clearTileCache();
@@ -1224,6 +1234,107 @@
         (u = (u ^ (u >>> 13)) * 1274126177),
         ((u ^ (u >>> 16)) >>> 0) / 4294967296
       );
+    }
+    _getDesertCaveIdentityAt(t, l) {
+      // Entradas próximas que foram fundidas representam a mesma caverna.
+      // Escolher a menor coordenada como âncora faz a identidade ser igual
+      // independentemente de qual entrada o jogador usou.
+      const candidates = [];
+      for (let dy = -8; dy <= 8; dy++) {
+        for (let dx = -8; dx <= 8; dx++) {
+          const candidate = this._isRawCaveCandidateAt(t + dx, l + dy);
+          if (candidate && Math.hypot(dx, dy) <= 8) candidates.push(candidate);
+        }
+      }
+      if (!candidates.length) return { tx: t, ty: l };
+      candidates.sort((a, b) => a.ty - b.ty || a.tx - b.tx);
+      return { tx: candidates[0].tx, ty: candidates[0].ty };
+    }
+    _desertCaveHash(t, l, salt = 0) {
+      const seed = this.activeDesertCaveLayoutSeed || this.seed;
+      let v = (t * 374761393) ^ (l * 668265263) ^ (seed * 31) ^ (salt * 1013904223);
+      return ((v = (v ^ (v >>> 13)) * 1274126177), ((v ^ (v >>> 16)) >>> 0) / 4294967296);
+    }
+    _getDesertCaveLayoutAt(t, l) {
+      // FASE 1: a rede é construída em uma malha determinística. Cada nó tem
+      // uma câmara e pelo menos uma ligação para oeste/norte, garantindo que
+      // os bolsões não sejam ilhas desconectadas. Ligações diagonais são raras
+      // e já nascem com largura mínima de 2 blocos.
+      const cellSize = 28;
+      const nodeAt = (cx, cy) => ({
+        x: cx * cellSize + 14 + Math.floor(this._desertCaveHash(cx, cy, 811) * 10 - 5),
+        y: cy * cellSize + 14 + Math.floor(this._desertCaveHash(cx, cy, 817) * 10 - 5),
+      });
+      const distanceToSegment = (px, py, ax, ay, bx, by) => {
+        const dx = bx - ax;
+        const dy = by - ay;
+        const len2 = dx * dx + dy * dy || 1;
+        const q = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
+        return Math.hypot(px - (ax + q * dx), py - (ay + q * dy));
+      };
+      const cx = Math.floor(t / cellSize);
+      const cy = Math.floor(l / cellSize);
+      let isPocket = !1;
+      let isOpen = !1;
+      let isDiagonal = !1;
+      let isJunction = !1;
+
+      // FASE 1A: bolsões/câmaras ocos, irregulares e sempre centrados em nós.
+      for (let ny = cy - 1; ny <= cy + 1; ny++) {
+        for (let nx = cx - 1; nx <= cx + 1; nx++) {
+          const node = nodeAt(nx, ny);
+          const radius = 3.5 + this._desertCaveHash(nx, ny, 823) * 4.5;
+          const stretch = 0.8 + this._desertCaveHash(nx, ny, 829) * 0.4;
+          const wobble = this.caveDetailNoise.noise2D(t * 0.09 + nx * 7, l * 0.09 + ny * 7) * 0.16;
+          const ndx = (t - node.x) / stretch;
+          const ndy = l - node.y;
+          if (Math.hypot(ndx, ndy) <= radius * (1 + wobble)) {
+            isPocket = !0;
+            isOpen = !0;
+          }
+        }
+      }
+
+      // FASE 1B: túneis retos e ramificações diagonais entre nós vizinhos.
+      const directions = [[1, 0], [0, 1], [1, 1], [-1, 1]];
+      for (let ny = cy - 2; ny <= cy + 2; ny++) {
+        for (let nx = cx - 2; nx <= cx + 2; nx++) {
+          const from = nodeAt(nx, ny);
+          for (let di = 0; di < directions.length; di++) {
+            const [dx, dy] = directions[di];
+            const tx = nx + dx;
+            const ty = ny + dy;
+            if (tx < cx - 2 || tx > cx + 2 || ty < cy - 2 || ty > cy + 2) continue;
+            const diagonal = dx !== 0 && dy !== 0;
+            const edgeHash = this._desertCaveHash(nx * 13 + di, ny * 17 - di, 839);
+            // A malha ortogonal é a espinha dorsal: todas as ligações leste/sul
+            // existem, portanto cada nó e cada bolsão tem uma rota contínua.
+            // As diagonais são ramificações opcionais, nunca a única conexão.
+            const enabled = diagonal ? edgeHash < 0.24 : !0;
+            if (!enabled) continue;
+            const to = nodeAt(tx, ty);
+            const width = diagonal ? 2 + Math.floor(this._desertCaveHash(nx, ny, 853 + di) * 2) :
+              1 + Math.floor(this._desertCaveHash(nx, ny, 853 + di) * 3);
+            const distance = distanceToSegment(t, l, from.x, from.y, to.x, to.y);
+            const phase2Noise = this.caveDetailNoise.noise2D(t * 0.08 + di * 13, l * 0.08 - di * 17) * 0.32;
+            // A folga adicional mantém a linha inteira conectada mesmo quando
+            // os centros dos nós têm deslocamento determinístico.
+            const coreRadius = (width - 0.25) / 2;
+            if (distance <= coreRadius + Math.max(0, phase2Noise)) {
+              isOpen = !0;
+              isDiagonal = isDiagonal || diagonal;
+              isJunction = isJunction || (!diagonal && distance < coreRadius &&
+                this._desertCaveHash(nx + tx, ny + ty, 877) > 0.7);
+            }
+          }
+        }
+      }
+      return {
+        isOpen,
+        isPocket,
+        isDiagonal: isDiagonal && !isPocket,
+        isJunction: isJunction && !isPocket,
+      };
     }
     getTile(t, l) {
       const o = this._tk(t, l, this.undergroundLevel || (this.isUnderground ? 1 : 0)),
@@ -3312,17 +3423,11 @@
       }
 
       // =========================================================================
-      // CAVERNAS DO DESERTO: corredores longos de terra, com largura variável
-      // de 1 a 3 blocos, sem lagos, cristais, fungos ou decoração cavernosa.
+      // FASES 1 E 2 DAS CAVERNAS DO DESERTO:
+      // primeiro a rede determinística; depois o acabamento orgânico do helper.
       if (this.isDesertCave) {
-        const nearEntrance = this.activeCaveEntranceCoords &&
-          Math.hypot(t - this.activeCaveEntranceCoords.tx, l - this.activeCaveEntranceCoords.ty) <= 4;
-        const widthA = 1 + Math.floor(this.hash2D(Math.floor(t / 6), Math.floor(l / 6), 711) * 3);
-        const widthB = 1 + Math.floor(this.hash2D(Math.floor(t / 9), Math.floor(l / 9), 712) * 3);
-        const corridorA = Math.abs(this.caveRoomNoise.noise2D(t * 0.018, l * 0.018)) < 0.026 + widthA * 0.014;
-        const corridorB = Math.abs(this.caveDetailNoise.noise2D(t * 0.026 + 41, l * 0.026 + 41)) < 0.022 + widthB * 0.012;
-        const isOpen = !!nearEntrance || corridorA || corridorB;
-        if (!isOpen) {
+        const layout = this._getDesertCaveLayoutAt(t, l);
+        if (!layout.isOpen) {
           return {
             tx: t,
             ty: l,
@@ -3345,7 +3450,10 @@
           biome: BIOMES[BiomeId.CAVE_FLOOR],
           isDesertCave: !0,
           isDesertCavePath: !0,
-          desertCaveWidth: Math.max(widthA, widthB),
+          isDesertCavePocket: layout.isPocket,
+          isDesertCaveJunction: layout.isJunction,
+          isDesertCaveDiagonal: layout.isDiagonal,
+          desertCaveWidth: layout.isPocket ? 3 : layout.isDiagonal ? 2 : 1,
           prop: null,
           detailHash: u,
         };
