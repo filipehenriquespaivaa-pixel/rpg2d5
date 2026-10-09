@@ -2260,8 +2260,20 @@
           case "cave_entrance":
             bg(c, f, this.animTimer, u.biome, !!t.isMerged, t.mergedCount || 1, !!t.isStaircase, !!t.isBarracksStaircase);
             break;
+          case "large_rock":
+            if (typeof drawLargeCaveRock === "function") {
+              drawLargeCaveRock(c, f, this.animTimer, u.biome, !!t.isMerged, t.mergedCount || 1, t.subType || 0);
+            }
+            break;
           case "cave_exit":
             yg(c, f, this.animTimer, t.surfaceBiome || u.biome, !!t.isMerged, t.mergedCount || 1, !!t.isStaircase, !!t.isBarracksStaircase);
+            break;
+          case "stalactite":
+            if (typeof drawCaveExitStalactites === "function") {
+              drawCaveExitStalactites(c, f, t.subType || 0, this.animTimer || 0, !!t.isMerged, t.surfaceBiome || u.biome);
+            } else {
+              Tg(c, f, t.subType);
+            }
             break;
           case "crystal_cluster":
             vg(c, f, t.subType, t.opened);

@@ -1204,10 +1204,16 @@
       }
 
       if (nearby.length <= 1) {
+        const isMustBeCave =
+          (t === 10 && l === 8) ||
+          !!selfRaw.isStaircase ||
+          this._computeSurfaceBaseBiome(t, l)?.id === BiomeId.MEADOW;
+        const isLargeRock = !isMustBeCave && this.hash2D(t, l, 471) < 0.5;
         const singleRes = {
           ...selfRaw,
           isMerged: !1,
           mergedCount: 1,
+          isLargeRock: isLargeRock,
         };
         this.mergedCaveCache.set(key, singleRes);
         return singleRes;
@@ -1230,11 +1236,17 @@
       const mergedCount = nearby.length;
       const isStair = !!selfRaw.isStaircase;
       const isDesert = !!selfRaw.isDesertCave;
+      const isMustBeCave =
+        (t === 10 && l === 8) ||
+        isStair ||
+        this._computeSurfaceBaseBiome(t, l)?.id === BiomeId.MEADOW;
+      const isLargeRock = !isMustBeCave && this.hash2D(t, l, 471) < 0.5;
       const mergedRes = {
         ...selfRaw,
         isMerged: !0,
         isStaircase: isStair,
         isDesertCave: isDesert,
+        isLargeRock: isLargeRock,
         mergedCount: mergedCount,
         scale: Math.min(1.85, 1.58 + (mergedCount - 2) * 0.12),
         namePt: isStair
@@ -1260,7 +1272,7 @@
         return this.knownCaveEntrances.get(key);
       const merged = this._getMergedCaveInfoAt(t, l);
       let res = null;
-      if (merged) {
+      if (merged && !merged.isLargeRock) {
         res = {
           kind: "cave_entrance",
           namePt: merged.namePt || "Entrada da Caverna",
@@ -1285,6 +1297,19 @@
           if (d <= maxR) {
             const cave = this.getCaveEntranceAt(t + dx, l + dy);
             if (cave) return { cave, dist: d, dx, dy };
+          }
+        }
+      }
+      return null;
+    }
+    getNearbyFormerCaveStalactite(t, l, maxR = 3.0) {
+      const rInt = Math.ceil(maxR);
+      for (let dy = -rInt; dy <= rInt; dy++) {
+        for (let dx = -rInt; dx <= rInt; dx++) {
+          const d = Math.hypot(dx, dy);
+          if (d <= maxR) {
+            const merged = this._getMergedCaveInfoAt(t + dx, l + dy);
+            if (merged && merged.isLargeRock) return { merged, dist: d, dx, dy };
           }
         }
       }
@@ -3712,6 +3737,41 @@
         }
       }
 
+      const thisMergedCave = this._getMergedCaveInfoAt(t, l);
+      if (thisMergedCave && thisMergedCave.isLargeRock) {
+        const surfBiome = this._computeSurfaceBaseBiome(t, l);
+        const isDesert = !!(
+          thisMergedCave.isDesertCave ||
+          this.activeCaveEntranceIsDesert ||
+          (surfBiome && (surfBiome.id === BiomeId.DESERT || surfBiome.id === BiomeId.CANYON))
+        );
+        return {
+          tx: t,
+          ty: l,
+          elevation: 0.1,
+          moisture: isDesert ? 0.15 : 0.65,
+          temperature: isDesert ? 0.65 : 0.45,
+          biome: isDesert ? BIOMES[BiomeId.DESERT_CAVE_FLOOR] : BIOMES[BiomeId.CAVE_FLOOR],
+          isDesertCave: isDesert,
+          prop: {
+            kind: "stalactite",
+            subType: Math.floor(this.hash2D(t, l, 479) * 3),
+            isMerged: !!thisMergedCave.isMerged,
+            mergedCount: thisMergedCave.mergedCount || 1,
+            surfaceBiome: surfBiome,
+            offsetX: 0,
+            offsetY: -4,
+            scale: thisMergedCave.scale || 1.35,
+            interactive: !0,
+            namePt: thisMergedCave.isMerged
+              ? "Grande Formação de Estalactites"
+              : "Estalactites do Teto da Caverna",
+            descriptionPt:
+              "Pontas calcárias e minerais milenares que pendem da abóbada rochosa logo abaixo de um grande rochedo maciço da superfície, gotejando água mineral na base.",
+          },
+          detailHash: u,
+        };
+      }
       const thisCave = this.getCaveEntranceAt(t, l);
       if (thisCave) {
         const surfBiome = this._computeSurfaceBaseBiome(t, l);
@@ -4204,6 +4264,7 @@
         };
       }
 
+      const nearStalactite = this.getNearbyFormerCaveStalactite(t, l, 2.5);
       const isConnectorHall =
         nearConnector &&
         (Math.abs(nearConnector.dx) <= 1.4 ||
@@ -4214,6 +4275,7 @@
         fDetail = this.caveDetailNoise.noise2D(t * 0.08, l * 0.08);
       const isOpen =
         !!nearExit ||
+        !!nearStalactite ||
         isConnectorHall ||
         m < 0.15 ||
         Math.abs(f) < 0.14 ||
@@ -5202,6 +5264,23 @@
       }
       const mergedCave = this._getMergedCaveInfoAt(t, l);
       if (mergedCave) {
+        if (mergedCave.isLargeRock) {
+          return {
+            kind: "large_rock",
+            subType: mergedCave.subType || 0,
+            isMerged: !!mergedCave.isMerged,
+            mergedCount: mergedCave.mergedCount || 1,
+            offsetX: 0,
+            offsetY: -4,
+            scale: mergedCave.scale || 1.35,
+            interactive: !0,
+            namePt: mergedCave.isMerged
+              ? "Grande Maciço Rochoso"
+              : "Rocha Grande Maciça",
+            descriptionPt:
+              "Uma colossal formação de rocha bruta maciça erguida na superfície, sem fendas ou entradas para o subsolo.",
+          };
+        }
         return {
           kind: "cave_entrance",
           subType: mergedCave.subType || 0,
@@ -5333,6 +5412,20 @@
           message:
             "Atravessando o portal de pedra de volta à luz da superfície!",
           reward: "Retorno à Superfície",
+        };
+      if (o.prop.kind === "large_rock")
+        return {
+          success: !0,
+          message:
+            "🪨 Você examinou a Rocha Grande Maciça: é um afloramento sólido de pedra natural, sem abertura para cavernas.",
+          reward: "Rocha Maciça",
+        };
+      if (o.prop.kind === "stalactite")
+        return {
+          success: !0,
+          message:
+            "💧 Longas estalactites pontiagudas pendem do teto da caverna onde acima repousa uma grande rocha maciça, gotejando água fria nas pedras.",
+          reward: "Estalactites Examinadas (+35 XP)",
         };
       if (o.prop.kind === "geode_fissure")
         return {
@@ -6216,7 +6309,8 @@
         southTile &&
         southTile.prop &&
         (southTile.prop.kind === "cave_entrance" ||
-          southTile.prop.kind === "cave_exit")
+          southTile.prop.kind === "cave_exit" ||
+          southTile.prop.kind === "large_rock")
       )
         return !1;
       return !0;
@@ -6310,7 +6404,9 @@
           if (
             t &&
             t.prop &&
-            (t.prop.kind === "cave_entrance" || t.prop.kind === "cave_exit")
+            (t.prop.kind === "cave_entrance" ||
+              t.prop.kind === "cave_exit" ||
+              t.prop.kind === "large_rock")
           ) {
             const isMerged = !!t.prop.isMerged;
             const isStair = !!t.prop.isStaircase;
@@ -6322,14 +6418,23 @@
             const ry = y - cy;
             const halfW = (isMerged ? 38 : 24) * scaleMul;
             const topY = (isMerged ? -62 : -38) * scaleMul;
-            const doorHalfW = (isStair ? (isMerged ? 16 : 13) : isMerged ? 11.5 : 8.5) * scaleMul;
             const sideBottomY = (isMerged ? 10 : 6) * scaleMul;
+            if (t.prop.kind === "large_rock") {
+              if (Math.abs(rx) <= halfW && ry >= topY && ry <= sideBottomY) return !0;
+              continue;
+            }
+            const doorHalfW = (isStair ? (isMerged ? 16 : 13) : isMerged ? 11.5 : 8.5) * scaleMul;
             const topTriggerY = (isStair ? -11 : -4) * scaleMul;
             if (Math.abs(rx) <= doorHalfW) {
               if (ry < topTriggerY - 2 && ry >= topY) return !0;
             } else if (Math.abs(rx) <= halfW) {
               if (ry >= topY && ry <= sideBottomY) return !0;
             }
+          }
+          if (t && t.prop && t.prop.kind === "stalactite") {
+            const cx = t.tx * this.tileSize + this.tileSize / 2;
+            const cy = t.ty * this.tileSize + this.tileSize / 2;
+            if (Math.hypot(x - cx, y - cy) <= 13) return !0;
           }
         }
       }

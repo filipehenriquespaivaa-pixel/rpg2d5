@@ -2419,6 +2419,219 @@
     // Cobertura de musgo/arenito/neve seguindo o bioma da superfície correspondente
     drawCaveBiomeOverlay(e, t, theme, isMerged);
   }
+  function drawLargeCaveRock(e, t, l = 0, biome = null, isMerged = !1, mergedCount = 1, subType = 0) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    e.save();
+    const theme = getCaveBiomeTheme(biome);
+    const wMul = isMerged ? 1.32 : 1;
+    const hMul = isMerged ? 1.48 : 1;
+
+    // 1. Desenha a formação rochosa irregular base (mesmo porte das cavernas)
+    drawIrregularCaveRockFormation(e, t, theme, !1, isMerged, mergedCount);
+
+    // 2. Preenche o centro frontal com um paredão/bloco rochoso maciço (sem abertura de caverna e sem lanterna)
+    e.fillStyle = theme.rockOuter;
+    e.beginPath();
+    e.moveTo(-17 * wMul * t, 6 * t);
+    e.lineTo(-19 * wMul * t, -9 * hMul * t);
+    e.lineTo(-11 * wMul * t, -23 * hMul * t);
+    e.lineTo(0, -27 * hMul * t);
+    e.lineTo(12 * wMul * t, -22 * hMul * t);
+    e.lineTo(18 * wMul * t, -8 * hMul * t);
+    e.lineTo(16 * wMul * t, 6 * t);
+    e.closePath();
+    e.fill();
+
+    // Facetas frontais de rocha bruta maciça
+    e.fillStyle = theme.rockMid;
+    e.beginPath();
+    e.moveTo(-14 * wMul * t, 5 * t);
+    e.lineTo(-15 * wMul * t, -8 * hMul * t);
+    e.lineTo(-8 * wMul * t, -20 * hMul * t);
+    e.lineTo(2 * wMul * t, -23 * hMul * t);
+    e.lineTo(11 * wMul * t, -16 * hMul * t);
+    e.lineTo(13 * wMul * t, 5 * t);
+    e.closePath();
+    e.fill();
+
+    // Planos de luz na face central da grande rocha
+    e.fillStyle = theme.rockLight;
+    e.beginPath();
+    e.moveTo(-9 * wMul * t, -5 * hMul * t);
+    e.lineTo(-6 * wMul * t, -18 * hMul * t);
+    e.lineTo(3 * wMul * t, -20 * hMul * t);
+    e.lineTo(6 * wMul * t, -7 * hMul * t);
+    e.lineTo(-2 * wMul * t, 1 * t);
+    e.closePath();
+    e.fill();
+
+    // Fissuras e veios naturais de rocha fechada
+    e.strokeStyle = theme.stratumCol;
+    e.lineWidth = 1.4 * t;
+    e.beginPath();
+    e.moveTo(-11 * wMul * t, -14 * hMul * t);
+    e.lineTo(-2 * wMul * t, -9 * hMul * t);
+    e.lineTo(8 * wMul * t, -12 * hMul * t);
+    e.moveTo(-3 * wMul * t, -9 * hMul * t);
+    e.lineTo(1 * wMul * t, 3 * t);
+    e.stroke();
+
+    // Pedregulhos frontais encostados na base da grande rocha
+    const frontBoulders = [
+      { x: -9 * wMul, y: 5.5, rx: 6.5 * wMul, ry: 4.2, col: theme.rockOuter },
+      { x: 8 * wMul, y: 5.5, rx: 6.8 * wMul, ry: 4.4, col: theme.rockOuter },
+      { x: 0, y: 6.2, rx: 7.5 * wMul, ry: 4.6, col: theme.rockMid },
+      { x: -1 * wMul, y: 4.8, rx: 4.8 * wMul, ry: 3.0, col: theme.rockLight },
+    ];
+    for (let i = 0; i < frontBoulders.length; i++) {
+      const b = frontBoulders[i];
+      e.fillStyle = b.col;
+      e.beginPath();
+      e.moveTo((b.x - b.rx) * t, b.y * t);
+      e.lineTo((b.x - b.rx * 0.65) * t, (b.y - b.ry) * t);
+      e.lineTo((b.x + b.rx * 0.55) * t, (b.y - b.ry * 0.9) * t);
+      e.lineTo((b.x + b.rx) * t, b.y * t);
+      e.closePath();
+      e.fill();
+    }
+
+    // 3. Cobertura de musgo/areia/neve do bioma
+    drawCaveBiomeOverlay(e, t, theme, isMerged);
+    e.restore();
+  }
+  function drawCaveExitStalactites(e, t = 1, subType = 0, animTimer = 0, isMerged = !1, surfaceBiome = null) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    const safeT = (typeof animTimer === "number" && isFinite(animTimer)) ? animTimer : 0;
+    const wMul = isMerged ? 1.25 : 1;
+    const hMul = isMerged ? 1.2 : 1;
+    const isDesert = surfaceBiome && (surfaceBiome.id === "DESERT" || surfaceBiome.id === "CANYON");
+
+    const colDark = isDesert ? "#451a03" : "#1c1917";
+    const colMid = isDesert ? "#78350f" : "#44403c";
+    const colLight = isDesert ? "#b45309" : "#78716c";
+    const colHighlight = isDesert ? "#f59e0b" : "#d6d3d1";
+
+    e.save();
+
+    // 1. Sombra e poça mineral de gotejamento no chão da caverna
+    e.fillStyle = "rgba(0, 0, 0, 0.55)";
+    e.beginPath();
+    e.ellipse(0, 4 * t, 18 * wMul * t, 7.5 * t, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Anel úmido de calcário e gotejamento no piso
+    e.fillStyle = isDesert ? "rgba(180, 83, 9, 0.28)" : "rgba(56, 189, 248, 0.18)";
+    e.beginPath();
+    e.ellipse(0, 4 * t, 12 * wMul * t, 4.8 * t, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Pequenas bases de estalagmite/calcário formadas pelo gotejamento no chão
+    const floorCones = [
+      { x: -7 * wMul, y: 4, w: 5.5, h: 7 },
+      { x: 6.5 * wMul, y: 4.5, w: 5, h: 6.5 },
+      { x: 0, y: 5, w: 6.5, h: 8.5 },
+    ];
+    for (let i = 0; i < floorCones.length; i++) {
+      const fc = floorCones[i];
+      e.fillStyle = colMid;
+      e.beginPath();
+      e.moveTo((fc.x - fc.w * 0.5) * t, fc.y * t);
+      e.lineTo(fc.x * t, (fc.y - fc.h) * t);
+      e.lineTo((fc.x + fc.w * 0.5) * t, fc.y * t);
+      e.closePath();
+      e.fill();
+    }
+
+    // 2. Abóbada / Base rochosa superior presa ao teto da caverna
+    const topY = -36 * hMul * t;
+    e.fillStyle = colDark;
+    e.beginPath();
+    e.ellipse(0, topY, 21 * wMul * t, 6.5 * t, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // 3. Conjunto de Estalactites penduradas apontando para BAIXO (do teto em direção ao chão!)
+    const spikes = [
+      { x: -14 * wMul, topW: 6.5, len: 21 * hMul },
+      { x: -8.5 * wMul, topW: 8.0, len: 29 * hMul },
+      { x: 8.5 * wMul, topW: 7.8, len: 27 * hMul },
+      { x: 14 * wMul, topW: 6.0, len: 19 * hMul },
+      { x: -3.2 * wMul, topW: 7.2, len: 24 * hMul },
+      { x: 3.5 * wMul, topW: 7.0, len: 23 * hMul },
+      { x: 0, topW: 9.8, len: 35 * hMul },
+    ];
+
+    for (let i = 0; i < spikes.length; i++) {
+      const sp = spikes[i];
+      const sx = sp.x * t;
+      const hw = (sp.topW * 0.5) * t;
+      const tipY = topY + sp.len * t;
+
+      // Sombra/corpo principal da estalactite apontando para baixo
+      e.fillStyle = colDark;
+      e.beginPath();
+      e.moveTo(sx - hw, topY);
+      e.lineTo(sx, tipY);
+      e.lineTo(sx + hw, topY);
+      e.closePath();
+      e.fill();
+
+      // Face média iluminada
+      e.fillStyle = colMid;
+      e.beginPath();
+      e.moveTo(sx - hw * 0.85, topY);
+      e.lineTo(sx, tipY);
+      e.lineTo(sx + hw * 0.25, topY);
+      e.closePath();
+      e.fill();
+
+      // Aresta de luz lateral
+      e.fillStyle = colLight;
+      e.beginPath();
+      e.moveTo(sx - hw * 0.55, topY);
+      e.lineTo(sx, tipY);
+      e.lineTo(sx - hw * 0.1, topY);
+      e.closePath();
+      e.fill();
+
+      // Brilho mineral úmido na ponta inferior da estalactite
+      e.fillStyle = colHighlight;
+      e.beginPath();
+      e.arc(sx, tipY - 1.2 * t, 0.9 * t, 0, Math.PI * 2);
+      e.fill();
+    }
+
+    // Anéis horizontais de calcário nas estalactites maiores
+    e.strokeStyle = "rgba(0, 0, 0, 0.35)";
+    e.lineWidth = 1 * t;
+    e.beginPath();
+    e.moveTo(-4 * wMul * t, topY + 10 * t);
+    e.lineTo(4 * wMul * t, topY + 10 * t);
+    e.moveTo(-2.5 * wMul * t, topY + 19 * t);
+    e.lineTo(2.5 * wMul * t, topY + 19 * t);
+    e.stroke();
+
+    // 4. Animação de gota d'água caindo da ponta da estalactite central até a poça no chão
+    const dropPhase = (safeT * 1.35 + (subType || 0) * 0.37) % 1;
+    const centralTipY = topY + 35 * hMul * t;
+    const floorImpactY = 4 * t;
+    if (dropPhase < 0.75) {
+      const p = dropPhase / 0.75;
+      const dropY = centralTipY + p * p * (floorImpactY - centralTipY);
+      e.fillStyle = "#7dd3fc";
+      e.beginPath();
+      e.arc(0, dropY, 1.3 * t, 0, Math.PI * 2);
+      e.fill();
+    } else {
+      const rippleP = (dropPhase - 0.75) / 0.25;
+      e.strokeStyle = `rgba(125, 211, 252, ${(1 - rippleP) * 0.75})`;
+      e.lineWidth = 1.1 * t;
+      e.beginPath();
+      e.ellipse(0, floorImpactY, (2 + rippleP * 7) * t, (0.8 + rippleP * 2.8) * t, 0, 0, Math.PI * 2);
+      e.stroke();
+    }
+
+    e.restore();
+  }
   function vg(e, t, l, o = !1) {
     if (
       ((e.fillStyle = "#1c1917"),
