@@ -136,6 +136,22 @@ MELHORIAS NO SISTEMA DE CAVERNAS:
    - Bússola do Calabouço (Modo Dev):
      * Ao estar no subsolo do bioma com construção, surge uma bússola dinâmica com agulha 360°, distância em metros/tiles, direção cardeal (N, NE, L, SE, etc.) e botão de teleporte rápido "Ir até Lá", além de um marcador/seta em tempo real no minimapa.
 
+6. CAVERNAS TEMÁTICAS DO DESERTO (TÚNEIS ESTREITOS & ESCORPIÕES PEQUENOS):
+- Localizadas sob as dunas e rochas de arenito do bioma de Deserto Dourado (DESERT).
+- Entradas de Caverna Temáticas: "Fenda da Caverna do Deserto" / "Fenda das Areias Profundas" com formação rochosa de arenito e areia dourada acumulada.
+- Ambiente Subterrâneo Exclusivo:
+  * Bioma de Chão: 'Túnel Arenoso do Deserto' (DESERT_CAVE_FLOOR) com solo árido e poeira fina de areia dourada em suspensão.
+  * Bioma de Paredão: 'Paredão de Arenito das Profundezas' (DESERT_CAVE_WALL) em rocha sedimentar compacta.
+- Apenas Vários Túneis Estreitos:
+  * Não possui salões amplos nem grandes câmaras abertas; é formada por múltiplos túneis estreitos (1 a 2 blocos de largura) que serpenteiam e se entrecruzam pelo arenito.
+- Sem Minerais:
+  * Totalmente livre de minerais (sem filões de ouro/ferro/mitril, sem drusas de cristais, sem cogumelos bioluminescentes nem carrinhos de mineração).
+  * Passagens limpas e navegáveis para o jogador e criaturas, contendo apenas raras ossadas antigas preservadas na areia.
+- Criaturas das Profundezas do Deserto:
+  * SEM MORCEGOS: morcegos não habitam nem surgem nas cavernas do deserto.
+  * Escorpiões Pequenos das Areias: escorpiões pequenos, ágeis e menores que os comuns da superfície (escala 0.58 vs 0.95), com carapaça de âmbar escuro e ferrão venenoso, perfeitos para emboscadas nos túneis estreitos.
+- No Modo Desenvolvedor, o botão '🦂 Ir p/ Caverna Deserto' na HUD teleporta o jogador diretamente para os túneis estreitos da caverna do deserto.
+
 CONTROLES:
 - W, A, S, D ou Setas: Movimentação do personagem
 - E ou F ou Botão de Interagir: Entrar/Sair de cavernas e calabouços, abrir baús e grades, minerar veios, acender fogueira, descansar

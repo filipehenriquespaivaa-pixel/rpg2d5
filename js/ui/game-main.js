@@ -1486,6 +1486,38 @@
             found = !0;
           }
 
+          if (E === "DESERT_CAVE" || E === "DESERT_CAVE_FLOOR" || E === "DESERT_CAVE_WALL") {
+            // Encontra a caverna do deserto mais próxima e desce o jogador diretamente nos túneis estreitos!
+            let targetCave = null;
+            for (let r = 1; r <= 35 && !targetCave; r++) {
+              for (let dy = -r; dy <= r && !targetCave; dy++) {
+                for (let dx = -r; dx <= r && !targetCave; dx++) {
+                  if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                  const tx = 520 + dx * 14, ty = 360 + dy * 14;
+                  const b = D._computeSurfaceBaseBiome(tx, ty);
+                  if (b && (b.id === BiomeId.DESERT || b.id === BiomeId.CANYON)) {
+                    for (let sy = -8; sy <= 8 && !targetCave; sy++) {
+                      for (let sx = -8; sx <= 8 && !targetCave; sx++) {
+                        const cand = D.getCaveEntranceAt(tx + sx, ty + sy);
+                        if (cand && (cand.isDesertCave || b.id === BiomeId.DESERT)) {
+                          targetCave = cand;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if (targetCave) {
+              D.enterCave(targetCave.tx, targetCave.ty, targetCave.tx * D.tileSize + 14, targetCave.ty * D.tileSize + 14);
+              targetPixelX = targetCave.tx * D.tileSize + 14;
+              targetPixelY = targetCave.ty * D.tileSize + 20;
+              foundDist = Math.round(Math.hypot(targetCave.tx - originTx, targetCave.ty - originTy));
+              found = !0;
+              ve(`🦂 Teleportado para os túneis estreitos da Caverna do Deserto em [${targetCave.tx}, ${targetCave.ty}]!`);
+            }
+          }
+
           if (E === "MEADOW" && !D.isUnderground) {
             // Ao teleportar para Planície Florida (MEADOW), tenta levar para a Cidade Grega se houver uma próxima
             for (let r = 1; r <= 8 && !found; r++) {

@@ -1236,33 +1236,7 @@
               (g.lineWidth = 0.8),
               g.stroke());
           }
-        } else if (t.isDesertCaveWall)
-          ((g.fillStyle = "#6b3418"),
-            g.fillRect(l, o, u, u),
-            (g.fillStyle = "#a85f2a"),
-            g.fillRect(l, o, u, 4),
-            (g.fillStyle = "rgba(245, 158, 11, 0.24)"),
-            g.fillRect(l + 3 + T * 12, o + 8 + T * 14, u - 8, 2),
-            (g.fillStyle = "rgba(67, 33, 14, 0.55)"),
-            g.fillRect(l, o + u - 6, u, 6))
-        else if (t.isDesertCavePath)
-          ((g.fillStyle = "rgba(180, 102, 42, 0.38)"),
-            g.fillRect(l + 2, o + 5 + T * 16, u - 4, 2),
-            (g.fillStyle = "rgba(245, 158, 11, 0.28)"),
-            g.fillRect(l + 6 + T * 12, o + 10 + T * 10, 4, 2),
-            t.isDesertCavePocket &&
-              ((g.fillStyle = "rgba(224, 132, 55, 0.28)"),
-              g.fillRect(l + 8, o + 8, u - 16, u - 16),
-              (g.fillStyle = "rgba(255, 214, 150, 0.24)"),
-              g.fillRect(l + 12 + T * 8, o + 12 + T * 6, 5, 2)),
-            t.isDesertCaveJunction &&
-              ((g.fillStyle = "rgba(245, 158, 11, 0.34)"),
-              g.fillRect(l + 4, o + u / 2 - 1, u - 8, 2),
-              g.fillRect(l + u / 2 - 1, o + 4, 2, u - 8)),
-            T > 0.72 &&
-              ((g.fillStyle = "rgba(254, 215, 170, 0.38)"),
-              g.fillRect(l + 17, o + 6 + T * 16, 3, 1.5)))
-        else if (y.id === BiomeId.CAVE_WALL)
+        } else if (y.id === BiomeId.CAVE_WALL)
           ((g.fillStyle = "#11100f"),
             g.fillRect(l, o, u, u),
             (g.fillStyle = "#292524"),
@@ -1276,13 +1250,28 @@
             g.stroke(),
             (g.fillStyle = "rgba(0, 0, 0, 0.45)"),
             g.fillRect(l, o + u - 6, u, 6));
-        else if (y.id === BiomeId.DESERT_CAVE_WALL || y.id === BiomeId.DESERT_CAVE_FLOOR) {
-          // Caverna do Deserto: tema arenito, tuneis estreitos de terra, SEM props!
-          this.engine && typeof this.engine.renderDesertCaveTile === "function"
-            ? this.engine.renderDesertCaveTile(g, t, l, o, u)
-            : ((g.fillStyle = y.groundColor), g.fillRect(l, o, u + 1.2, u + 1.2));
-        }
-        else if (y.id === BiomeId.CAVE_FLOOR)
+        else if (y.id === BiomeId.DESERT_CAVE_WALL) {
+          g.fillStyle = "#4a321a";
+          g.fillRect(l, o, u, u);
+          g.fillStyle = "#6b4725";
+          g.fillRect(l, o, u, 4);
+          g.strokeStyle = "#29180b";
+          g.lineWidth = 1.4;
+          g.beginPath();
+          g.moveTo(l + 3, o + T * 16);
+          g.lineTo(l + 15, o + 8 + T * 8);
+          g.lineTo(l + u - 3, o + 7 + T * 12);
+          g.stroke();
+          g.fillStyle = "rgba(180, 83, 9, 0.25)";
+          g.fillRect(l, o + u - 6, u, 6);
+        } else if (y.id === BiomeId.DESERT_CAVE_FLOOR) {
+          g.fillStyle = "rgba(180, 83, 9, 0.24)";
+          g.fillRect(l + 5 + T * 12, o + 5 + T * 10, 4, 3);
+          if (T > 0.5) {
+            g.fillStyle = "rgba(254, 240, 138, 0.18)";
+            g.fillRect(l + 7 + T * 9, o + 3 + T * 15, 3, 2);
+          }
+        } else if (y.id === BiomeId.CAVE_FLOOR)
           ((g.fillStyle = "rgba(0, 0, 0, 0.28)"),
             g.fillRect(l + 6 + T * 14, o + 6 + T * 12, 4, 3),
             T > 0.6 &&

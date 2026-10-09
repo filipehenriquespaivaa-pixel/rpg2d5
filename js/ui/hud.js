@@ -527,6 +527,14 @@
                   }),
                   h.jsx("button", {
                     type: "button",
+                    onClick: () => p && p("DESERT_CAVE"),
+                    className:
+                      "px-2 py-0.5 rounded-full bg-amber-700 hover:bg-amber-600 text-white font-bold text-[10px] transition cursor-pointer active:scale-95 whitespace-nowrap shadow",
+                    title: "Teleportar direto para a Caverna do Deserto (Túneis Estreitos)",
+                    children: "🦂 Ir p/ Caverna Deserto",
+                  }),
+                  h.jsx("button", {
+                    type: "button",
                     onClick: () => p && p("SNOW_PEAK"),
                     className:
                       "px-2 py-0.5 rounded-full bg-sky-600 hover:bg-sky-500 text-white font-bold text-[10px] transition cursor-pointer active:scale-95 whitespace-nowrap shadow",

@@ -126,7 +126,7 @@
         const tx = Math.floor(qx / e.tileSize);
         const ty = Math.floor(qy / e.tileSize);
         if (
-          !e.isTilePassable(tx, ty) ||
+          !e.isTileCreaturePassable(tx, ty) ||
           e.isCaveRockAt(qx, qy) ||
           e.isCliffDarkWallAt(qx, qy) ||
           e.isTrunkAt(qx, qy)
@@ -177,11 +177,12 @@
         const qx = p.x + ux * dist * k,
           qy = p.y + uy * dist * k;
         if (
-          !e.isTilePassable(
+          !e.isTileCreaturePassable(
             Math.floor(qx / e.tileSize),
             Math.floor(qy / e.tileSize),
           ) ||
           e.isCaveRockAt(qx, qy) ||
+          e.isCliffDarkWallAt(qx, qy) ||
           e.isTrunkAt(qx, qy)
         )
           return !1;
@@ -346,9 +347,10 @@
           const tx = Math.floor(cx / this.engine.tileSize),
             ty = Math.floor(cy / this.engine.tileSize);
           return (
-            !this.engine.isTilePassable(tx, ty) ||
+            !this.engine.isTileCreaturePassable(tx, ty) ||
             this.engine.isTrunkAt(cx, cy, this.engine.footHX + 1, this.engine.footHY + 1) ||
-            this.engine.isCaveRockAt(cx, cy)
+            this.engine.isCaveRockAt(cx, cy) ||
+            this.engine.isCliffDarkWallAt(cx, cy)
           );
         };
         if (isBlocked(x, M)) {
@@ -699,7 +701,6 @@
       let count = 0;
       for (const m of this.monsters) {
         if (m.hp <= 0) continue;
-        if (toUnderground && this.engine.isDesertCave) continue;
         const dist = Math.hypot(m.x - fromX, m.y - fromY);
         const isHostile = !isPreyType(m.type);
         const isChasing = m.attached || (isHostile && dist <= (m.isGiantScorpion ? 340 : 180));
@@ -810,7 +811,7 @@
             if (Math.abs(w) !== y && Math.abs(v) !== y) continue;
             const T = m + w,
               S = c + v;
-            if (!this.engine.isTilePassable(T, S)) continue;
+            if (!this.engine.isTileCreaturePassable(T, S)) continue;
             const p = T * this.engine.tileSize + this.engine.tileSize / 2,
               j = S * this.engine.tileSize + this.engine.tileSize / 2,
               P = this.isShallowWater(T, S),
@@ -827,11 +828,6 @@
     }
     update(t, l, o, u, m = 0.5, c = 2) {
       var w, v, T;
-      if (o && this.engine.isDesertCave) {
-        for (let i = this.monsters.length - 1; i >= 0; i--) {
-          if (this.monsters[i].isUnderground) this.monsters.splice(i, 1);
-        }
-      }
       if (l.paralyzedTimer && l.paralyzedTimer > 0) {
         l.paralyzedTimer = Math.max(0, l.paralyzedTimer - t);
       }
@@ -2089,7 +2085,7 @@
           tx = Math.floor(cx / this.engine.tileSize),
           ty = Math.floor(cy / this.engine.tileSize);
         if (
-          this.engine.isTilePassable(tx, ty) &&
+          this.engine.isTileCreaturePassable(tx, ty) &&
           !this.engine.isNearLitCampfire(cx, cy) &&
           this.engine.getBiome(tx, ty) === BiomeId.DESERT &&
           !(typeof window !== "undefined" && window.DesertCity && typeof window.DesertCity.getHouseAt === "function" && window.DesertCity.getHouseAt(tx, ty))
@@ -2128,7 +2124,7 @@
             tx = Math.floor(cx / this.engine.tileSize),
             ty = Math.floor(cy / this.engine.tileSize);
           if (
-            this.engine.isTilePassable(tx, ty) &&
+            this.engine.isTileCreaturePassable(tx, ty) &&
             !this.engine.isNearLitCampfire(cx, cy) &&
             !(typeof window !== "undefined" && window.DesertCity && typeof window.DesertCity.getHouseAt === "function" && window.DesertCity.getHouseAt(tx, ty))
           ) {
@@ -2152,7 +2148,6 @@
       }
     }
     spawnMonsterNearPlayer(t, l, o, u = 0.5) {
-      if (l && this.engine.isDesertCave) return;
       const m = Math.random() * Math.PI * 2,
         c = 180 + Math.random() * 180;
       let f = t.x + Math.cos(m) * c,
@@ -2160,7 +2155,7 @@
         y = Math.floor(f / this.engine.tileSize),
         w = Math.floor(g / this.engine.tileSize);
       if (
-        !this.engine.isTilePassable(y, w) ||
+        !this.engine.isTileCreaturePassable(y, w) ||
         this.engine.isNearLitCampfire(f, g)
       )
         return;
@@ -2273,33 +2268,75 @@
           window.SnowPeakCity &&
           typeof window.SnowPeakCity.isPrisonMineArea === "function" &&
           window.SnowPeakCity.isPrisonMineArea(y, w);
-        const K = isInPrisonEarthMine ? 0.5 : Math.random();
-        K < 0.35
-          ? ((v = "slime"),
-            (T = "Gosma Cavernosa Bioluminescente"),
-            (S = "#0ea5e9"),
-            (p = "#7dd3fc"),
-            (j = 24),
-            (P = 4),
-            (A = 0.8),
-            (x = 1.05))
-          : K < 0.68
-            ? ((v = "bat"),
-              (T = "Morcego das Profundezas"),
-              (S = "#475569"),
-              (p = "#f43f5e"),
-              (j = 18),
-              (P = 5),
-              (A = 1.25),
-              (x = 0.9))
-            : ((v = "spider"),
-              (T = "Aranha Cavernosa"),
-              (S = "#334155"),
-              (p = "#ef4444"),
-              (j = 26),
-              (P = 6),
-              (A = 0.95),
-              (x = 1));
+        const spawnTile = this.engine.getTile(y, w);
+        const curTile = this.engine.getTile(Math.floor(t.x / this.engine.tileSize), Math.floor(t.y / this.engine.tileSize));
+        const isDesertCave = !isInPrisonEarthMine && !!(
+          (spawnTile && (spawnTile.isDesertCave || spawnTile.biome.id === BiomeId.DESERT_CAVE_FLOOR || spawnTile.biome.id === BiomeId.DESERT_CAVE_WALL)) ||
+          (curTile && (curTile.isDesertCave || curTile.biome.id === BiomeId.DESERT_CAVE_FLOOR || curTile.biome.id === BiomeId.DESERT_CAVE_WALL)) ||
+          (o === BiomeId.DESERT_CAVE_FLOOR || o === BiomeId.DESERT_CAVE_WALL || o === BiomeId.DESERT || o === BiomeId.CANYON) ||
+          this.engine.activeCaveEntranceIsDesert ||
+          (this.engine.activeCaveEntranceBiome && (this.engine.activeCaveEntranceBiome.id === BiomeId.DESERT || this.engine.activeCaveEntranceBiome.id === BiomeId.CANYON)) ||
+          (this.engine._computeSurfaceBaseBiome && (
+            (this.engine._computeSurfaceBaseBiome(y, w) && (this.engine._computeSurfaceBaseBiome(y, w).id === BiomeId.DESERT || this.engine._computeSurfaceBaseBiome(y, w).id === BiomeId.CANYON))
+          ))
+        );
+
+        if (isDesertCave) {
+          // ===================================================================
+          // CAVERNAS TEMÁTICAS DO DESERTO:
+          // "sem morcegos, mas pode ter escorpioes pequenos, menores que os comuns."
+          // Escorpião pequeno das areias cavernoso (escala 0.58 vs 0.95 do comum)!
+          // NENHUM MORCEGO!
+          // ===================================================================
+          const K = Math.random();
+          if (K < 0.78) {
+            v = "scorpion";
+            T = "Escorpião Pequeno das Areias";
+            S = "#b45309";
+            p = "#fde047";
+            j = 14;
+            P = 4;
+            A = 0.95;
+            x = 0.58;
+          } else {
+            v = "spider";
+            T = "Aranha das Fendas Arenosas";
+            S = "#78350f";
+            p = "#fbbf24";
+            j = 16;
+            P = 4;
+            A = 0.92;
+            x = 0.72;
+          }
+        } else {
+          const K = isInPrisonEarthMine ? 0.5 : Math.random();
+          K < 0.35
+            ? ((v = "slime"),
+              (T = "Gosma Cavernosa Bioluminescente"),
+              (S = "#0ea5e9"),
+              (p = "#7dd3fc"),
+              (j = 24),
+              (P = 4),
+              (A = 0.8),
+              (x = 1.05))
+            : K < 0.68
+              ? ((v = "bat"),
+                (T = "Morcego das Profundezas"),
+                (S = "#475569"),
+                (p = "#f43f5e"),
+                (j = 18),
+                (P = 5),
+                (A = 1.25),
+                (x = 0.9))
+              : ((v = "spider"),
+                (T = "Aranha Cavernosa"),
+                (S = "#334155"),
+                (p = "#ef4444"),
+                (j = 26),
+                (P = 6),
+                (A = 0.95),
+                (x = 1));
+        }
       } else if (
         o === BiomeId.COAST_WATER ||
         o === BiomeId.OASIS_LAKE ||
@@ -2498,7 +2535,6 @@
       this.monsters.push(z);
     }
     spawnSwarmSlimeNearPlayer(t, l, o) {
-      if (l && this.engine.isDesertCave) return;
       const u = o === BiomeId.SNOW_TAIGA || o === BiomeId.SNOW_PEAK || o === BiomeId.GLACIER,
         m =
           o === BiomeId.DESERT ||
@@ -2514,7 +2550,7 @@
         w = Math.floor(g / this.engine.tileSize),
         v = Math.floor(y / this.engine.tileSize);
       if (
-        !this.engine.isTilePassable(w, v) ||
+        !this.engine.isTileCreaturePassable(w, v) ||
         this.engine.isNearLitCampfire(g, y) ||
         this.engine.isNearLitCampfire(t.x, t.y)
       )
@@ -2794,15 +2830,16 @@
             ((p.x = t.x + Math.cos(z) * 28), (p.y = t.y + Math.sin(z) * 28));
           } else if (!isCapturingMe) {
             const z = A ? 14 : 9;
-            m && v !== void 0
-              ? ((p.x += Math.cos(v) * z), (p.y += Math.sin(v) * z))
-              : t.direction === "up"
-                ? (p.y -= z)
-                : t.direction === "down"
-                  ? (p.y += z)
-                  : t.direction === "left"
-                    ? (p.x -= z)
-                    : (p.x += z);
+            const kx = m && v !== void 0 ? Math.cos(v) * z : (t.direction === "left" ? -z : t.direction === "right" ? z : 0);
+            const ky = m && v !== void 0 ? Math.sin(v) * z : (t.direction === "up" ? -z : t.direction === "down" ? z : 0);
+            if (this.engine && typeof this.engine.moveWithSlide === "function") {
+              const _sl = this.engine.moveWithSlide(p.x, p.y, kx, ky, !1);
+              p.x = _sl.x;
+              p.y = _sl.y;
+            } else {
+              p.x += kx;
+              p.y += ky;
+            }
           }
           if (isPreyType(p.type)) {
             p.fleeTimer = creatureBehavior(p.type).playerHitFleeTimer ?? 4.5;
@@ -3333,4 +3370,7 @@
         t.restore();
       }
     }
+  }
+  if (typeof window !== "undefined") {
+    window.CreatureManager = CreatureManager;
   }

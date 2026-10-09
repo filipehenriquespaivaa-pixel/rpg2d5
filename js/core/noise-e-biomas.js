@@ -45,12 +45,12 @@
     (e.TAIGA_LAKE = "TAIGA_LAKE"),
     (e.GLACIER_LAKE = "GLACIER_LAKE"),
     (e.CAVE_FLOOR = "CAVE_FLOOR"),
-    (e.DESERT_CAVE_FLOOR = "DESERT_CAVE_FLOOR"),
-    (e.DESERT_CAVE_WALL = "DESERT_CAVE_WALL"),
     (e.CAVE_CRYSTAL = "CAVE_CRYSTAL"),
     (e.CAVE_MUSHROOM = "CAVE_MUSHROOM"),
     (e.CAVE_LAKE = "CAVE_LAKE"),
     (e.CAVE_WALL = "CAVE_WALL"),
+    (e.DESERT_CAVE_FLOOR = "DESERT_CAVE_FLOOR"),
+    (e.DESERT_CAVE_WALL = "DESERT_CAVE_WALL"),
     (e.MOUNTAIN_25D = "MOUNTAIN_25D"),
     e
   ))(BiomeId || {});
@@ -518,44 +518,6 @@
       descriptionPt:
         "Galerias rochosas escavadas nas entranhas da terra antiga.",
     },
-    DESERT_CAVE_FLOOR: {
-      id: "DESERT_CAVE_FLOOR",
-      namePt: "Túnel Estreito de Areia Compactada",
-      category: "cave",
-      groundColor: "#a16207",
-      groundAccentColor: "#b45309",
-      treeColor: "#854d0e",
-      treeTrunkColor: "#713f12",
-      hasWater: !1,
-      passable: !0,
-      moveSpeedMultiplier: 0.8,
-      treeDensity: 0,
-      floraDensity: 0,
-      rockDensity: 0,
-      propType: "none",
-      ambientParticle: "sand",
-      descriptionPt:
-        "Corredor longo e estreito escavado na areia dourada compactada do deserto.",
-    },
-    DESERT_CAVE_WALL: {
-      id: "DESERT_CAVE_WALL",
-      namePt: "Parede de Arenito do Deserto",
-      category: "cave",
-      groundColor: "#7c2d12",
-      groundAccentColor: "#9a3412",
-      treeColor: "#78350f",
-      treeTrunkColor: "#451a03",
-      hasWater: !1,
-      passable: !1,
-      moveSpeedMultiplier: 0,
-      treeDensity: 0,
-      floraDensity: 0,
-      rockDensity: 0,
-      propType: "none",
-      ambientParticle: "none",
-      descriptionPt:
-        "Maciço impenetrável de arenito avermelhado com estratos de areia fossilizada.",
-    },
     CAVE_CRYSTAL: {
       id: "CAVE_CRYSTAL",
       namePt: "Câmara dos Cristais Radiantes",
@@ -633,7 +595,49 @@
       descriptionPt:
         "Maciço rochoso ancestral impenetrável que sustenta o teto da caverna.",
     },
+    DESERT_CAVE_FLOOR: {
+      id: "DESERT_CAVE_FLOOR",
+      namePt: "Túnel Arenoso do Deserto",
+      category: "cave",
+      groundColor: "#8c6538",
+      groundAccentColor: "#b2854b",
+      treeColor: "#593d1e",
+      treeTrunkColor: "#3d2612",
+      hasWater: !1,
+      passable: !0,
+      moveSpeedMultiplier: 1,
+      treeDensity: 0,
+      floraDensity: 0,
+      rockDensity: 0.02,
+      propType: "none",
+      ambientParticle: "sand",
+      descriptionPt:
+        "Túneis estreitos de arenito e solo árido sob as dunas escaldantes do deserto.",
+    },
+    DESERT_CAVE_WALL: {
+      id: "DESERT_CAVE_WALL",
+      namePt: "Paredão de Arenito das Profundezas",
+      category: "cave",
+      groundColor: "#4a321a",
+      groundAccentColor: "#6b4725",
+      treeColor: "#332010",
+      treeTrunkColor: "#221307",
+      hasWater: !1,
+      passable: !1,
+      moveSpeedMultiplier: 0,
+      treeDensity: 0,
+      floraDensity: 0,
+      rockDensity: 0,
+      propType: "none",
+      ambientParticle: "none",
+      descriptionPt:
+        "Paredões compactos de arenito sedimentar que sustentam o teto dos túneis estreitos do deserto.",
+    },
   };
+  if (typeof window !== "undefined") {
+    window.BiomeId = BiomeId;
+    window.BIOMES = BIOMES;
+  }
   function Jp(e, t, l, o) {
     return o != null && o.isIsland
       ? o.isVolcano && o.volcanoCore

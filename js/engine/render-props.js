@@ -1627,8 +1627,8 @@
     const bId = (biome && biome.id) || "MEADOW";
     const groundCol = (biome && biome.groundColor) || "#5fa743";
     const accentCol = (biome && biome.groundAccentColor) || "#6cb64d";
-    // 1. Biomas de Areia (DESERT, BEACH): Pedra de Arenito dourado/amarelado com estratos e areia acumulada
-    if (bId === "DESERT" || bId === "BEACH") {
+    // 1. Biomas de Areia (DESERT, BEACH, DESERT_CAVE): Pedra de Arenito dourado/amarelado com estratos e areia acumulada
+    if (bId === "DESERT" || bId === "BEACH" || bId === "DESERT_CAVE_FLOOR" || bId === "DESERT_CAVE_WALL") {
       return {
         kind: "sandstone",
         rockOuter: "#92400e",

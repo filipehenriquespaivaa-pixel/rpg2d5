@@ -88,10 +88,6 @@
       ((this.tileSize = 36),
         (this.isUnderground = !1),
         (this.activeCaveSeed = 0),
-        (this.activeDesertCaveLayoutSeed = 0),
-        (this.activeDesertCaveIdentity = null),
-        (this.isDesertCave = !1),
-        (this.activeCaveSurfaceBiomeId = null),
         (this.surfaceCoords = { x: 0, y: 0 }),
         (this.minedCrystals = 0),
         (this.interactedProps = new Map()),
@@ -138,11 +134,7 @@
         this._dungeonStairCache && this._dungeonStairCache.clear(),
         this.clearTileCache(),
         (this.isUnderground = !1),
-        (this.undergroundLevel = 0),
-        (this.activeDesertCaveLayoutSeed = 0),
-        (this.activeDesertCaveIdentity = null),
-        (this.isDesertCave = !1),
-        (this.activeCaveSurfaceBiomeId = null));
+        (this.undergroundLevel = 0));
     }
     _tk(t, l, c) {
       const lvl = typeof c === "number" ? c : (c ? (this.undergroundLevel || 1) : 0);
@@ -929,25 +921,19 @@
       this.surfaceCoords = { x: o, y: u };
       this.activeCaveEntranceCoords = { tx: t, ty: l };
       const surfB = this._computeSurfaceBaseBiome(t, l);
-      this.activeCaveSurfaceBiomeId = surfB ? surfB.id : null;
-      this.isDesertCave = !!(surfB && surfB.id === BiomeId.DESERT);
       const ent = this.getCaveEntranceAt(t, l);
-      // Caverna do Deserto: galerias de arenito com tuneis estreitos e longos, SEM criaturas!
-      this.activeCaveIsDesert = !!(
-        (ent && ent.isDesertCave) ||
-        (surfB && surfB.id === BiomeId.DESERT)
-      );
       this.enteredViaStaircase = !!(
         (ent && ent.isStaircase) ||
         (surfB && surfB.id === BiomeId.MEADOW)
       );
+      this.activeCaveEntranceBiome = surfB;
+      this.activeCaveEntranceIsDesert = !!(
+        (ent && ent.isDesertCave) ||
+        (surfB && (surfB.id === BiomeId.DESERT || surfB.id === BiomeId.CANYON))
+      );
       this.isUnderground = !0;
       this.undergroundLevel = 1;
-      this.activeDesertCaveIdentity = this.isDesertCave ? this._getDesertCaveIdentityAt(t, l) : null;
-      this.activeDesertCaveLayoutSeed = this.activeDesertCaveIdentity
-        ? (this.seed ^ (this.activeDesertCaveIdentity.tx * 374761393) ^ (this.activeDesertCaveIdentity.ty * 668265263)) >>> 0
-        : 0;
-      this.activeCaveSeed = (this.activeDesertCaveLayoutSeed || this.seed + 88888) >>> 0;
+      this.activeCaveSeed = (this.seed + 88888) >>> 0;
       this.caveWallNoise.seed(this.activeCaveSeed + 404);
       this.caveRoomNoise.seed(this.activeCaveSeed + 505);
       this.caveDetailNoise.seed(this.activeCaveSeed + 606);
@@ -956,10 +942,6 @@
     exitCave(t, l) {
       this.isUnderground = !1;
       this.undergroundLevel = 0;
-      this.activeDesertCaveLayoutSeed = 0;
-      this.activeDesertCaveIdentity = null;
-      this.isDesertCave = !1;
-      this.activeCaveSurfaceBiomeId = null;
       this.clearTileCache();
       if (t !== undefined && l !== undefined) {
         return {
@@ -1070,6 +1052,7 @@
                 b.id === BiomeId.MOUNTAIN_25D ||
                 b.elevation > 0.65;
               const isRuinsBiome = b.id === BiomeId.MEADOW;
+              const isDesertBiome = b.id === BiomeId.DESERT || b.id === BiomeId.CANYON;
 
               if (isRuinsBiome && g > 0.0075 && g < 0.0135) {
                 res = {
@@ -1083,6 +1066,17 @@
                     : "Escadaria para o Subsolo",
                   descriptionPt:
                     "Uma escadaria monumental de mármore helênico que desce em degraus profundos até as galerias do subsolo. Pressione [F] para descer!",
+                };
+              } else if (isDesertBiome && g > 0.0075 && g < 0.0135) {
+                res = {
+                  tx: t,
+                  ty: l,
+                  subType: 3,
+                  isDesertCave: !0,
+                  scale: 1.3,
+                  namePt: "Fenda da Caverna do Deserto",
+                  descriptionPt:
+                    "Uma fenda profunda talhada nas rochas de arenito e dunas douradas, descendo para túneis estreitos subterrâneos. Pressione [F] para entrar!",
                 };
               } else if (isMountainOrHigh && g > 0.0075 && g < 0.0125) {
                 res = {
@@ -1098,37 +1092,39 @@
                 res = {
                   tx: t,
                   ty: l,
-                  subType: isRuinsBiome ? 2 : 1,
+                  subType: isRuinsBiome ? 2 : isDesertBiome ? 3 : 1,
                   isStaircase: isRuinsBiome,
+                  isDesertCave: isDesertBiome,
                   scale: 1.25,
-                  namePt: isRuinsBiome ? "Escadaria para o Subsolo" : "Fenda da Caverna Oculta",
+                  namePt: isRuinsBiome
+                    ? "Escadaria para o Subsolo"
+                    : isDesertBiome
+                      ? "Fenda das Areias Profundas"
+                      : "Fenda da Caverna Oculta",
                   descriptionPt: isRuinsBiome
                     ? "Uma escadaria de pedra lavrada que desce para o subsolo das ruínas. Pressione [F] para descer."
-                    : "Uma fenda profunda entre os rochedos conduzindo ao mundo subterrâneo. Pressione [F] para explorar.",
+                    : isDesertBiome
+                      ? "Uma fenda profunda talhada nas dunas que desce para um labirinto de túneis estreitos de arenito. Pressione [F] para descer."
+                      : "Uma fenda profunda entre os rochedos conduzindo ao mundo subterrâneo. Pressione [F] para explorar.",
                 };
               } else if (clusterNoise > 0.18 && g > 0.0125 && g < 0.0162) {
                 res = {
                   tx: t,
                   ty: l,
-                  subType: isRuinsBiome ? 2 : 1,
+                  subType: isRuinsBiome ? 2 : isDesertBiome ? 3 : 1,
                   isStaircase: isRuinsBiome,
+                  isDesertCave: isDesertBiome,
                   scale: 1.25,
-                  namePt: isRuinsBiome ? "Escadaria Antiga para o Subsolo" : "Galeria Rochosa Subterrânea",
+                  namePt: isRuinsBiome
+                    ? "Escadaria Antiga para o Subsolo"
+                    : isDesertBiome
+                      ? "Entrada dos Túneis do Deserto"
+                      : "Galeria Rochosa Subterrânea",
                   descriptionPt: isRuinsBiome
                     ? "Degraus antigos de mármore que levam às galerias subterrâneas. Pressione [F] para explorar."
-                    : "Uma fenda geológica entre os rochedos conectada às galerias subterrâneas. Pressione [F] para explorar.",
-                };
-              } else if (b.id === BiomeId.DESERT && g > 0.0125 && g < 0.0165) {
-                // Cavernas do Deserto: tema arenoso, túneis estreitos e longos, SEM criaturas!
-                res = {
-                  tx: t,
-                  ty: l,
-                  subType: 3,
-                  isDesertCave: !0,
-                  scale: 1.25,
-                  namePt: "Boca da Caverna do Deserto",
-                  descriptionPt:
-                    "Uma abertura na duna revela túneis estreitos e intermináveis escavados na areia compactada. O silêncio é absoluto — nenhuma criatura habita estas galerias. Pressione [F] para explorar!",
+                    : isDesertBiome
+                      ? "Abertura entre rochas de arenito conectada aos estreitos túneis subterrâneos do deserto. Pressione [F] para explorar."
+                      : "Uma fenda geológica entre os rochedos conectada às galerias subterrâneas. Pressione [F] para explorar.",
                 };
               }
             }
@@ -1190,20 +1186,26 @@
 
       const mergedCount = nearby.length;
       const isStair = !!selfRaw.isStaircase;
+      const isDesert = !!selfRaw.isDesertCave;
       const mergedRes = {
         ...selfRaw,
         isMerged: !0,
         isStaircase: isStair,
+        isDesertCave: isDesert,
         mergedCount: mergedCount,
         scale: Math.min(1.85, 1.58 + (mergedCount - 2) * 0.12),
         namePt: isStair
           ? `Grande Escadaria Unificada para o Subsolo (${mergedCount} Galerias)`
-          : selfRaw.tx === 10 && selfRaw.ty === 8
-            ? "Grande Caverna Unificada dos Cristais"
-            : `Grande Caverna Unificada (${mergedCount} Galerias)`,
+          : isDesert
+            ? `Grande Fenda Arenosa do Deserto (${mergedCount} Túneis)`
+            : selfRaw.tx === 10 && selfRaw.ty === 8
+              ? "Grande Caverna Unificada dos Cristais"
+              : `Grande Caverna Unificada (${mergedCount} Galerias)`,
         descriptionPt: isStair
           ? `Uma escadaria monumental de mármore helênico unificando ${mergedCount} galerias subterrâneas! Pressione [F] para descer ao subsolo.`
-          : `Duas ou mais cavernas próximas se fundiram nesta formação rochosa colossal, mais alta e cercada de rochedos na entrada! Pressione [F] para explorar.`,
+          : isDesert
+            ? `Grandes fendas nas dunas e rochas de arenito unificadas nesta colossal entrada para os túneis do deserto subterrâneo! Pressione [F] para descer.`
+            : `Duas ou mais cavernas próximas se fundiram nesta formação rochosa colossal, mais alta e cercada de rochedos na entrada! Pressione [F] para explorar.`,
       };
       this.mergedCaveCache.set(key, mergedRes);
       return mergedRes;
@@ -1220,8 +1222,8 @@
           kind: "cave_entrance",
           namePt: merged.namePt || "Entrada da Caverna",
           subType: merged.subType || 0,
-          isDesertCave: !!merged.isDesertCave,
           isStaircase: !!merged.isStaircase,
+          isDesertCave: !!merged.isDesertCave,
           isMerged: !!merged.isMerged,
           mergedCount: merged.mergedCount || 1,
           scale: merged.scale || 1.35,
@@ -1252,107 +1254,6 @@
         (u = (u ^ (u >>> 13)) * 1274126177),
         ((u ^ (u >>> 16)) >>> 0) / 4294967296
       );
-    }
-    _getDesertCaveIdentityAt(t, l) {
-      // Entradas próximas que foram fundidas representam a mesma caverna.
-      // Escolher a menor coordenada como âncora faz a identidade ser igual
-      // independentemente de qual entrada o jogador usou.
-      const candidates = [];
-      for (let dy = -8; dy <= 8; dy++) {
-        for (let dx = -8; dx <= 8; dx++) {
-          const candidate = this._isRawCaveCandidateAt(t + dx, l + dy);
-          if (candidate && Math.hypot(dx, dy) <= 8) candidates.push(candidate);
-        }
-      }
-      if (!candidates.length) return { tx: t, ty: l };
-      candidates.sort((a, b) => a.ty - b.ty || a.tx - b.tx);
-      return { tx: candidates[0].tx, ty: candidates[0].ty };
-    }
-    _desertCaveHash(t, l, salt = 0) {
-      const seed = this.activeDesertCaveLayoutSeed || this.seed;
-      let v = (t * 374761393) ^ (l * 668265263) ^ (seed * 31) ^ (salt * 1013904223);
-      return ((v = (v ^ (v >>> 13)) * 1274126177), ((v ^ (v >>> 16)) >>> 0) / 4294967296);
-    }
-    _getDesertCaveLayoutAt(t, l) {
-      // FASE 1: a rede é construída em uma malha determinística. Cada nó tem
-      // uma câmara e pelo menos uma ligação para oeste/norte, garantindo que
-      // os bolsões não sejam ilhas desconectadas. Ligações diagonais são raras
-      // e já nascem com largura mínima de 2 blocos.
-      const cellSize = 28;
-      const nodeAt = (cx, cy) => ({
-        x: cx * cellSize + 14 + Math.floor(this._desertCaveHash(cx, cy, 811) * 10 - 5),
-        y: cy * cellSize + 14 + Math.floor(this._desertCaveHash(cx, cy, 817) * 10 - 5),
-      });
-      const distanceToSegment = (px, py, ax, ay, bx, by) => {
-        const dx = bx - ax;
-        const dy = by - ay;
-        const len2 = dx * dx + dy * dy || 1;
-        const q = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
-        return Math.hypot(px - (ax + q * dx), py - (ay + q * dy));
-      };
-      const cx = Math.floor(t / cellSize);
-      const cy = Math.floor(l / cellSize);
-      let isPocket = !1;
-      let isOpen = !1;
-      let isDiagonal = !1;
-      let isJunction = !1;
-
-      // FASE 1A: bolsões/câmaras ocos, irregulares e sempre centrados em nós.
-      for (let ny = cy - 1; ny <= cy + 1; ny++) {
-        for (let nx = cx - 1; nx <= cx + 1; nx++) {
-          const node = nodeAt(nx, ny);
-          const radius = 3.5 + this._desertCaveHash(nx, ny, 823) * 4.5;
-          const stretch = 0.8 + this._desertCaveHash(nx, ny, 829) * 0.4;
-          const wobble = this.caveDetailNoise.noise2D(t * 0.09 + nx * 7, l * 0.09 + ny * 7) * 0.16;
-          const ndx = (t - node.x) / stretch;
-          const ndy = l - node.y;
-          if (Math.hypot(ndx, ndy) <= radius * (1 + wobble)) {
-            isPocket = !0;
-            isOpen = !0;
-          }
-        }
-      }
-
-      // FASE 1B: túneis retos e ramificações diagonais entre nós vizinhos.
-      const directions = [[1, 0], [0, 1], [1, 1], [-1, 1]];
-      for (let ny = cy - 2; ny <= cy + 2; ny++) {
-        for (let nx = cx - 2; nx <= cx + 2; nx++) {
-          const from = nodeAt(nx, ny);
-          for (let di = 0; di < directions.length; di++) {
-            const [dx, dy] = directions[di];
-            const tx = nx + dx;
-            const ty = ny + dy;
-            if (tx < cx - 2 || tx > cx + 2 || ty < cy - 2 || ty > cy + 2) continue;
-            const diagonal = dx !== 0 && dy !== 0;
-            const edgeHash = this._desertCaveHash(nx * 13 + di, ny * 17 - di, 839);
-            // A malha ortogonal é a espinha dorsal: todas as ligações leste/sul
-            // existem, portanto cada nó e cada bolsão tem uma rota contínua.
-            // As diagonais são ramificações opcionais, nunca a única conexão.
-            const enabled = diagonal ? edgeHash < 0.24 : !0;
-            if (!enabled) continue;
-            const to = nodeAt(tx, ty);
-            const width = diagonal ? 2 + Math.floor(this._desertCaveHash(nx, ny, 853 + di) * 2) :
-              1 + Math.floor(this._desertCaveHash(nx, ny, 853 + di) * 3);
-            const distance = distanceToSegment(t, l, from.x, from.y, to.x, to.y);
-            const phase2Noise = this.caveDetailNoise.noise2D(t * 0.08 + di * 13, l * 0.08 - di * 17) * 0.32;
-            // A folga adicional mantém a linha inteira conectada mesmo quando
-            // os centros dos nós têm deslocamento determinístico.
-            const coreRadius = (width - 0.25) / 2;
-            if (distance <= coreRadius + Math.max(0, phase2Noise)) {
-              isOpen = !0;
-              isDiagonal = isDiagonal || diagonal;
-              isJunction = isJunction || (!diagonal && distance < coreRadius &&
-                this._desertCaveHash(nx + tx, ny + ty, 877) > 0.7);
-            }
-          }
-        }
-      }
-      return {
-        isOpen,
-        isPocket,
-        isDiagonal: isDiagonal && !isPocket,
-        isJunction: isJunction && !isPocket,
-      };
     }
     getTile(t, l) {
       const o = this._tk(t, l, this.undergroundLevel || (this.isUnderground ? 1 : 0)),
@@ -2712,64 +2613,6 @@
       }
       return null;
     }
-    // =========================================================================
-    // GERADOR DA CAVERNA DO DESERTO:
-    // - Tema arenito/areia compactada (DESERT_CAVE_FLOOR / DESERT_CAVE_WALL)
-    // - Tuneis ESTREITOS (1 tile de largura) e LONGOS, serpenteando pelo subsolo
-    // - SEM criaturas, SEM lagos, SEM cristais, SEM minerios, SEM props
-    // - A boca da caverna (tile da entrada) permanece como saida interativa
-    // =========================================================================
-    _getDesertCaveTile(t, l, u) {
-      const entrance = this.activeCaveEntranceCoords || { tx: 0, ty: 0 };
-      const dx = t - entrance.tx,
-        dy = l - entrance.ty;
-      // Boca da caverna: mantem a saida interativa original
-      if (dx === 0 && dy === 0) return null;
-
-      // Semente especifica do deserto: tuneis independentes das cavernas normais
-      const dSeed = ((this.seed ^ 0x5eed77) + 91234) >>> 0;
-      // Eixo principal longo na diagonal + dois ramais ortogonais igualmente longos
-      const diag = (dx + dy) * 0.7071067811865476;
-      const perp = (dx - dy) * 0.7071067811865476;
-      const w1 = this.caveWallNoise.noise2D(diag * 0.045, dSeed % 97) +
-        0.5 * this.caveDetailNoise.noise2D(diag * 0.11, (dSeed >> 3) % 71);
-      const c1 = Math.abs(perp - w1 * 3.2);
-      const w2 = this.caveRoomNoise.noise2D(dx * 0.05, dSeed % 83) +
-        0.5 * this.caveDetailNoise.noise2D(dx * 0.13, (dSeed >> 5) % 61);
-      const c2 = Math.abs(dy - w2 * 3.0);
-      const w3 = this.caveWallNoise.noise2D(dy * 0.05, (dSeed >> 7) % 89) +
-        0.5 * this.caveRoomNoise.noise2D(dy * 0.13, (dSeed >> 11) % 53);
-      const c3 = Math.abs(dx - w3 * 3.0);
-      const corridorDist = Math.min(c1, c2, c3);
-      // Tunel estreito: apenas ~1-2 tiles de largura de areia compactada
-      const isOpen = corridorDist < 0.85;
-
-      if (!isOpen) {
-        return {
-          tx: t,
-          ty: l,
-          elevation: 0.9,
-          moisture: 0.15,
-          temperature: 0.55,
-          biome: BIOMES[BiomeId.DESERT_CAVE_WALL],
-          isDesertCave: !0,
-          isDesertCaveWall: !0,
-          prop: null,
-          detailHash: u,
-        };
-      }
-      return {
-        tx: t,
-        ty: l,
-        elevation: 0.1,
-        moisture: 0.2,
-        temperature: 0.55,
-        biome: BIOMES[BiomeId.DESERT_CAVE_FLOOR],
-        isDesertCave: !0,
-        prop: null,
-        detailHash: u,
-      };
-    }
     _getUndergroundGreekSanctuaryCellAt(t, l) {
       // Verifica se este ponto subterrâneo está ESTRITAMENTE abaixo do bioma que tem Ruínas Gregas (MEADOW).
       // Cavernas abaixo de quaisquer outros biomas continuam sendo cavernas naturais normais!
@@ -3451,15 +3294,6 @@
       const thisCave = this.getCaveEntranceAt(t, l);
       if (thisCave) {
         const surfBiome = this._computeSurfaceBaseBiome(t, l);
-        // =========================================================================
-        // CAVERNA DO DESERTO: saida na boca, mas o interior e gerado pelo
-        // gerador de tuneis estreitos e longos de arenito (SEM criaturas)!
-        // =========================================================================
-        if (this.activeCaveIsDesert) {
-          const dTile = this._getDesertCaveTile(t, l, u);
-          if (dTile) return dTile;
-          // Boca da caverna (dx=dy=0): cai no bloco abaixo e vira saida interativa
-        }
         const isStair = !!(
           thisCave.isStaircase ||
           thisCave.subType === 2 ||
@@ -3467,17 +3301,24 @@
             (surfBiome.id === BiomeId.MEADOW ||
               surfBiome.id === BiomeId.MEADOW_LAKE))
         );
+        const isDesert = !!(
+          thisCave.isDesertCave ||
+          this.activeCaveEntranceIsDesert ||
+          (surfBiome && (surfBiome.id === BiomeId.DESERT || surfBiome.id === BiomeId.CANYON))
+        );
         const cleanName = thisCave.namePt
           .replace("Entrada da ", "")
           .replace("Boca da ", "")
-          .replace("Fenda da ", "");
+          .replace("Fenda da ", "")
+          .replace("Fenda das ", "");
         return {
           tx: t,
           ty: l,
           elevation: 0.1,
-          moisture: 0.6,
-          temperature: 0.45,
-          biome: BIOMES[BiomeId.CAVE_FLOOR],
+          moisture: isDesert ? 0.15 : 0.6,
+          temperature: isDesert ? 0.65 : 0.45,
+          biome: isDesert ? BIOMES[BiomeId.DESERT_CAVE_FLOOR] : BIOMES[BiomeId.CAVE_FLOOR],
+          isDesertCave: isDesert,
           isGreekRuin: isStair,
           greekRuinRole: isStair ? "mosaic_center" : void 0,
           greekRuinRx: 0,
@@ -3487,6 +3328,7 @@
             kind: "cave_exit",
             subType: thisCave.subType || 0,
             isStaircase: isStair,
+            isDesertCave: isDesert,
             isMerged: !!thisCave.isMerged,
             mergedCount: thisCave.mergedCount || 1,
             surfaceBiome: surfBiome,
@@ -3498,51 +3340,19 @@
             interactive: !0,
             namePt: isStair
               ? `Escadaria de Saída do Subsolo [${cleanName}]`
-              : `Saída da Caverna [${cleanName}]`,
+              : isDesert
+                ? `Saída dos Túneis do Deserto [${cleanName}]`
+                : `Saída da Caverna [${cleanName}]`,
             descriptionPt: isStair
               ? `Escadaria monumental de mármore que sobe do subsolo de volta para o bioma de ruínas em [${t}, ${l}]. Pressione [F] para subir!`
-              : `Portal rochoso em arco conectado com a superfície em [${t}, ${l}] (${thisCave.namePt}). Pressione [F] para emergir no mundo superior!`,
+              : isDesert
+                ? `Abertura nas rochas de arenito que sobe dos túneis subterrâneos de volta para as dunas e sol do deserto em [${t}, ${l}]. Pressione [F] para sair!`
+                : `Portal rochoso em arco conectado com a superfície em [${t}, ${l}] (${thisCave.namePt}). Pressione [F] para emergir no mundo superior!`,
           },
           detailHash: u,
         };
       }
 
-      // =========================================================================
-      // FASES 1 E 2 DAS CAVERNAS DO DESERTO:
-      // primeiro a rede determinística; depois o acabamento orgânico do helper.
-      if (this.isDesertCave) {
-        const layout = this._getDesertCaveLayoutAt(t, l);
-        if (!layout.isOpen) {
-          return {
-            tx: t,
-            ty: l,
-            elevation: 0.9,
-            moisture: 0.08,
-            temperature: 0.7,
-            biome: BIOMES[BiomeId.CAVE_WALL],
-            isDesertCave: !0,
-            isDesertCaveWall: !0,
-            prop: null,
-            detailHash: u,
-          };
-        }
-        return {
-          tx: t,
-          ty: l,
-          elevation: 0.1,
-          moisture: 0.08,
-          temperature: 0.75,
-          biome: BIOMES[BiomeId.CAVE_FLOOR],
-          isDesertCave: !0,
-          isDesertCavePath: !0,
-          isDesertCavePocket: layout.isPocket,
-          isDesertCaveJunction: layout.isJunction,
-          isDesertCaveDiagonal: layout.isDiagonal,
-          desertCaveWidth: layout.isPocket ? 3 : layout.isDiagonal ? 2 : 1,
-          prop: null,
-          detailHash: u,
-        };
-      }
       // =========================================================================
       // PRIORIDADE MÁXIMA NO SUBSOLO DO BIOMA DE RUÍNAS (MEADOW):
       // Avalia a grande estrutura temática de Corredores, Salões de Tamanhos
@@ -3550,15 +3360,6 @@
       // Assim NUNCA surgem rochedos (CAVE_WALL / stalagmites) neste subsolo!
       // =========================================================================
       const p = `cave_${t},${l}`;
-      // =========================================================================
-      // CAVERNA DO DESERTO (interior): tuneis estreitos e longos de areia
-      // compactada, SEM lagos, cristais, minerios ou props. Apenas caminhos!
-      // Dispara para QUALQUER tile do subsolo quando a caverna ativa e do deserto.
-      // =========================================================================
-      if (this.activeCaveIsDesert) {
-        const dTile2 = this._getDesertCaveTile(t, l, u);
-        if (dTile2) return dTile2;
-      }
       const sanctuary = this._getUndergroundGreekSanctuaryCellAt(t, l);
       if (sanctuary) {
         const dStair = this.isDungeonEntranceStairAt(t, l);
@@ -3773,6 +3574,79 @@
 
       const nearExit = this.getNearbyCaveExit(t, l, 3.5);
       const nearConnector = this.getNearbyCaveExit(t, l, 6.5);
+      const surfBiome = this._computeSurfaceBaseBiome(t, l);
+      const isDesertCave = !!(
+        (nearExit && nearExit.cave && nearExit.cave.isDesertCave) ||
+        (surfBiome && (surfBiome.id === BiomeId.DESERT || surfBiome.id === BiomeId.CANYON)) ||
+        this.activeCaveEntranceIsDesert
+      );
+
+      if (isDesertCave) {
+        // =====================================================================
+        // CAVERNAS TEMÁTICAS NO DESERTO:
+        // "sem minerais apenas varios tuneis estreitos"
+        // 1. Nenhum mineral (sem ore_vein, sem crystal_cluster, sem miner_cart)
+        // 2. Vários túneis estreitos (1 a 2 tiles de largura) que serpenteiam e se cruzam
+        // =====================================================================
+        const isTunnelNoise = (x, y) => {
+          const a = Math.abs(this.caveWallNoise.noise2D(x * 0.08, y * 0.08));
+          const b = Math.abs(this.caveDetailNoise.noise2D(x * 0.08 + 137, y * 0.08 + 137));
+          const c = Math.abs(this.caveRoomNoise.noise2D(x * 0.09 + 351, y * 0.09 + 351));
+          return a < 0.088 || b < 0.088 || c < 0.088;
+        };
+        const inNarrowTunnel =
+          isTunnelNoise(t, l) ||
+          (isTunnelNoise(t - 1, l) && isTunnelNoise(t, l + 1)) ||
+          (isTunnelNoise(t + 1, l) && isTunnelNoise(t, l + 1)) ||
+          (isTunnelNoise(t - 1, l) && isTunnelNoise(t, l - 1)) ||
+          (isTunnelNoise(t + 1, l) && isTunnelNoise(t, l - 1));
+        const atExitPlaza = nearExit && nearExit.dist <= 2.8;
+        const inConnectorTunnel =
+          nearConnector &&
+          ((Math.abs(nearConnector.dx) <= 1.5 && Math.abs(nearConnector.dy) <= 7.0) ||
+            (Math.abs(nearConnector.dy) <= 1.5 && Math.abs(nearConnector.dx) <= 7.0));
+        const isOpen = atExitPlaza || inConnectorTunnel || inNarrowTunnel;
+
+        if (!isOpen) {
+          return {
+            tx: t,
+            ty: l,
+            elevation: 0.9,
+            moisture: 0.1,
+            temperature: 0.65,
+            biome: BIOMES[BiomeId.DESERT_CAVE_WALL],
+            isDesertCave: !0,
+            prop: null,
+            detailHash: u,
+          };
+        }
+
+        // Piso dos túneis estreitos do deserto: SEM MINERAIS!
+        let w = null;
+        if (!nearExit && u < 0.02) {
+          w = {
+            kind: "dungeon_skeleton",
+            subType: 0,
+            scale: 0.85,
+            interactive: !1,
+            namePt: "Ossada Seca nas Areias Subterrâneas",
+            descriptionPt: "Restos fósseis de uma criatura nas profundezas dos túneis estreitos do deserto.",
+          };
+        }
+
+        return {
+          tx: t,
+          ty: l,
+          elevation: 0.1,
+          moisture: 0.15,
+          temperature: 0.65,
+          biome: BIOMES[BiomeId.DESERT_CAVE_FLOOR],
+          isDesertCave: !0,
+          prop: w,
+          detailHash: u,
+        };
+      }
+
       const isConnectorHall =
         nearConnector &&
         (Math.abs(nearConnector.dx) <= 1.4 ||
@@ -3917,39 +3791,6 @@
         prop: w,
         detailHash: u,
       };
-    }
-    // =========================================================================
-    // RENDERIZACAO DOS TILES DA CAVERNA DO DESERTO (chamada pelo renderer):
-    // Piso = faixa central de areia compactada dourada com ondulas de vento;
-    // Parede = arenito avermelhado IMPOSSIVEL de atravessar, sempre continuo.
-    // NUNCA desenha props/estalagmites/cristais aqui — apenas caminhos de terra!
-    // =========================================================================
-    renderDesertCaveTile(g, t, x, y, size) {
-      const u = t.detailHash || 0,
-        isWall = !!t.isDesertCaveWall || t.biome.id === BiomeId.DESERT_CAVE_WALL;
-      if (isWall) {
-        g.fillStyle = "#7c2d12";
-        g.fillRect(x, y, size + 1.2, size + 1.2);
-        g.fillStyle = "rgba(120, 53, 15, 0.85)";
-        g.fillRect(x, y, size + 1.2, 5);
-        g.fillStyle = "rgba(69, 26, 3, 0.55)";
-        g.fillRect(x, y + size - 5, size + 1.2, 5);
-        g.strokeStyle = "rgba(45, 15, 5, 0.6)";
-        g.lineWidth = 1.2;
-        g.beginPath();
-        g.moveTo(x + 2, y + 8 + u * 8);
-        g.lineTo(x + size - 2, y + 11 + u * 6);
-        g.stroke();
-        return;
-      }
-      g.fillStyle = "rgba(146, 64, 14, 0.30)";
-      g.fillRect(x + 4 + u * 12, y + 5 + u * 9, 5, 2);
-      g.fillStyle = "rgba(253, 230, 138, 0.22)";
-      g.fillRect(x + 3 + u * 14, y + 14 + u * 8, 7, 2);
-      if (u > 0.6) {
-        g.fillStyle = "rgba(255, 255, 255, 0.10)";
-        g.fillRect(x + 8 + u * 10, y + 9 + u * 12, 3, 2);
-      }
     }
     _getDungeonCellAt(dx, dy) {
       // 1. Vestíbulo da Escadaria: dx in [-3, 3], dy in [-4, 2]
@@ -5649,9 +5490,19 @@
           }
         : null;
     }
+    isTileCreaturePassable(t, l) {
+      const o = this.getTile(t, l);
+      if (!o) return !1;
+      // Proíbe criaturas de andarem nos paredões (isCliffWall) da montanha!
+      if (o.isCliffWall) return !1;
+      if (!this.isTilePassable(t, l)) return !1;
+      if (this.isUnderground && (o.biome.id === BiomeId.CAVE_WALL || o.biome.id === BiomeId.DESERT_CAVE_WALL || (o.biome && !o.biome.passable))) return !1;
+      return !0;
+    }
     isTilePassable(t, l) {
       const o = this.getTile(t, l);
-      if (this.isUnderground && o.biome.id === BiomeId.CAVE_WALL) return !1;
+      if (!o) return !1;
+      if (this.isUnderground && (o.biome.id === BiomeId.CAVE_WALL || o.biome.id === BiomeId.DESERT_CAVE_WALL || (o.biome && !o.biome.passable))) return !1;
       if (o && o.isGreekWall) return !1;
       if (o && o.isGreekDoor && !o.isGreekDoorOpen) return !1;
       if (o && o.isSnowCityWall) return !1;
@@ -5811,15 +5662,12 @@
             const topY = (isMerged ? -62 : -38) * scaleMul;
             const doorHalfW = (isStair ? (isMerged ? 16 : 13) : isMerged ? 11.5 : 8.5) * scaleMul;
             const sideBottomY = (isMerged ? 10 : 6) * scaleMul;
-            const backWallBottomY = (isStair ? -12 : -2) * scaleMul;
-            if (ry >= topY && ry <= backWallBottomY && Math.abs(rx) <= halfW) return !0;
-            if (
-              ry > backWallBottomY &&
-              ry <= sideBottomY &&
-              ((rx <= -doorHalfW && rx >= -halfW) ||
-                (rx >= doorHalfW && rx <= halfW))
-            )
-              return !0;
+            const topTriggerY = (isStair ? -11 : -4) * scaleMul;
+            if (Math.abs(rx) <= doorHalfW) {
+              if (ry < topTriggerY - 2 && ry >= topY) return !0;
+            } else if (Math.abs(rx) <= halfW) {
+              if (ry >= topY && ry <= sideBottomY) return !0;
+            }
           }
         }
       }
@@ -5970,15 +5818,20 @@
       hy = this.footHY,
     ) {
       const escape = !!this.findTrunkAt(x, y, hx, hy);
-      const tileOk = (px, py) =>
-        (isPlayer
-          ? this.canPlayerMoveTo(px, py)
-          : this.isTilePassable(
-              Math.floor(px / this.tileSize),
-              Math.floor(py / this.tileSize),
-            )) && !this.isCliffFaceBlockedAt(x, y, px, py);
+      const tileOk = (px, py) => {
+        const tx = Math.floor(px / this.tileSize),
+          ty = Math.floor(py / this.tileSize);
+        if (isPlayer) {
+          return this.canPlayerMoveTo(px, py) && !this.isCliffFaceBlockedAt(x, y, px, py);
+        }
+        if (!this.isTileCreaturePassable(tx, ty)) return !1;
+        if (this.isCaveRockAt(px, py)) return !1;
+        if (this.isCliffDarkWallAt(px, py)) return !1;
+        return !0;
+      };
+      const startOk = tileOk(x, y);
       const free = (px, py) =>
-        tileOk(px, py) && (escape || !this.findTrunkAt(px, py, hx, hy));
+        (tileOk(px, py) || (!startOk && isPlayer)) && (escape || !this.findTrunkAt(px, py, hx, hy));
       if (free(x + dx, y + dy))
         return { x: x + dx, y: y + dy, blocked: !1, detour: null };
       const fx = dx !== 0 && free(x + dx, y),
@@ -5989,6 +5842,47 @@
           : { x: x, y: y + dy, blocked: !0, detour: null };
       if (fx) return { x: x + dx, y: y, blocked: !0, detour: null };
       if (fy) return { x: x, y: y + dy, blocked: !0, detour: null };
+
+      // Deslizamento fracionário nos eixos (aproximação suave da parede sem travar)
+      for (const frac of [0.75, 0.5, 0.25]) {
+        if (dx !== 0 && free(x + dx * frac, y))
+          return { x: x + dx * frac, y: y, blocked: !0, detour: null };
+        if (dy !== 0 && free(x, y + dy * frac))
+          return { x: x, y: y + dy * frac, blocked: !0, detour: null };
+      }
+
+      // Arredondamento e desvio de quinas (corner nudge) em paredes de caverna e corredores
+      if (isPlayer) {
+        if (Math.abs(dy) > 0.001) {
+          for (const s of [2, -2, 4, -4, 6, -6, 8, -8]) {
+            if (free(x + s, y + dy * 0.75)) {
+              return { x: x + s, y: y + dy * 0.75, blocked: !0, detour: null };
+            }
+          }
+        }
+        if (Math.abs(dx) > 0.001) {
+          for (const s of [2, -2, 4, -4, 6, -6, 8, -8]) {
+            if (free(x + dx * 0.75, y + s)) {
+              return { x: x + dx * 0.75, y: y + s, blocked: !0, detour: null };
+            }
+          }
+        }
+      }
+
+      // Se o jogador estiver preso dentro de uma parede, permite escapar para o piso livre mais próximo
+      if (!startOk && isPlayer) {
+        for (const [ox, oy] of [
+          [dx, 0], [0, dy], [-dx, 0], [0, -dy],
+          [2, 0], [-2, 0], [0, 2], [0, -2],
+          [4, 0], [-4, 0], [0, 4], [0, -4]
+        ]) {
+          if (ox !== 0 || oy !== 0) {
+            if (tileOk(x + ox, y + oy)) {
+              return { x: x + ox, y: y + oy, blocked: !0, detour: null };
+            }
+          }
+        }
+      }
       const len = Math.hypot(dx, dy);
       if (len < 1e-6) return { x: x, y: y, blocked: !0, detour: null };
       const tr =
@@ -6024,4 +5918,7 @@
       }
       return { x: x, y: y, blocked: !0, detour: null };
     }
+  }
+  if (typeof window !== "undefined") {
+    window.World = World;
   }
