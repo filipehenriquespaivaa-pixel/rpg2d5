@@ -1068,6 +1068,10 @@
       }
       for (let S = this.monsters.length - 1; S >= 0; S--) {
         const p = this.monsters[S];
+        if (this.engine.undergroundLevel === 3 && p.type === "tardigrade") {
+          this.monsters.splice(S, 1);
+          continue;
+        }
         if (p.isUnderground !== o) {
           // Escorpião Gigante do lado de fora da caverna: permanece vivo na entrada e enfia a garra pela abertura para tentar pegar e retirar o player da caverna!
           if (p.isGiantScorpion && !p.isUnderground && o && this.engine.undergroundLevel === 1) {
@@ -2407,10 +2411,11 @@
       return z;
     }
     checkTardigradeNestEncounter(l) {
-      if (!l || l.isDead || !this.engine.isUnderground) return;
+      if (!l || l.isDead || !this.engine.isUnderground || this.engine.undergroundLevel === 3) return;
       const pTx = Math.floor(l.x / this.engine.tileSize);
       const pTy = Math.floor(l.y / this.engine.tileSize);
       const curTile = this.engine.getTile(pTx, pTy);
+      if (curTile && curTile.isGeodeInterior) return;
       const isDesert = !!(
         (curTile && (curTile.isDesertCave || curTile.isTardigradeNest)) ||
         this.engine.activeCaveEntranceIsDesert
@@ -2616,6 +2621,27 @@
             (A = 0.95),
             (x = 0.58));
       else if (l) {
+        if (this.engine.undergroundLevel === 3) {
+          // Dentro do Geodo: NUNCA nascem tardígrados!
+          const K = Math.random();
+          K < 0.65
+            ? ((v = "slime"),
+              (T = "Gosma Bioluminescente do Geodo"),
+              (S = "#2dd4bf"),
+              (p = "#a7f3d0"),
+              (j = 24),
+              (P = 4),
+              (A = 0.8),
+              (x = 1.0))
+            : ((v = "bat"),
+              (T = "Morcego Cristalino"),
+              (S = "#6b21a8"),
+              (p = "#e879f9"),
+              (j = 18),
+              (P = 5),
+              (A = 1.2),
+              (x = 0.9));
+        } else {
         const isInPrisonEarthMine =
           typeof window !== "undefined" &&
           window.SnowPeakCity &&
@@ -2623,7 +2649,12 @@
           window.SnowPeakCity.isPrisonMineArea(y, w);
         const spawnTile = this.engine.getTile(y, w);
         const curTile = this.engine.getTile(Math.floor(t.x / this.engine.tileSize), Math.floor(t.y / this.engine.tileSize));
-        const isDesertCave = !isInPrisonEarthMine && !!(
+        const isGeodeTile = !!(
+          (spawnTile && spawnTile.isGeodeInterior) ||
+          (curTile && curTile.isGeodeInterior) ||
+          this.engine.undergroundLevel === 3
+        );
+        const isDesertCave = !isInPrisonEarthMine && !isGeodeTile && !!(
           (spawnTile && (spawnTile.isDesertCave || spawnTile.biome.id === BiomeId.DESERT_CAVE_FLOOR || spawnTile.biome.id === BiomeId.DESERT_CAVE_WALL)) ||
           (curTile && (curTile.isDesertCave || curTile.biome.id === BiomeId.DESERT_CAVE_FLOOR || curTile.biome.id === BiomeId.DESERT_CAVE_WALL)) ||
           (o === BiomeId.DESERT_CAVE_FLOOR || o === BiomeId.DESERT_CAVE_WALL || o === BiomeId.DESERT || o === BiomeId.CANYON) ||
@@ -2734,6 +2765,7 @@
                 (P = 6),
                 (A = 0.95),
                 (x = 1));
+        }
         }
       } else if (
         o === BiomeId.COAST_WATER ||

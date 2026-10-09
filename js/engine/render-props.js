@@ -4190,14 +4190,14 @@
 
   function drawGeodeWallFissure25D(e, t = 1, neighbors = null, isExit = !1, animTimer = 0) {
     t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
-    // 1. Desenha a estrutura base do paredão alto 2.5D (arenito na caverna do deserto ou casca cristalina no geodo)
+    // 1. Desenha a estrutura base do paredão alto 2.5D em tons de terra (earth_mine / desert_cave)
     const wallNeighbors = {
       left: !!(neighbors && neighbors.left),
       right: !!(neighbors && neighbors.right),
       top: !!(neighbors && neighbors.top),
       bottom: !1, // Garante que a face frontal vertical 40*t seja sempre desenhada com a fenda!
     };
-    drawCaveRockWall25D(e, t, isExit ? "geode_crystal" : "desert_cave", 0.42, wallNeighbors);
+    drawCaveRockWall25D(e, t, isExit ? "earth_mine" : "desert_cave", 0.42, wallNeighbors);
 
     e.save();
     const baseY = 18 * t;
@@ -4207,119 +4207,213 @@
     const safeTimer = typeof animTimer === "number" && isFinite(animTimer) ? animTimer : 0;
     const pulse = Math.sin(safeTimer * 3.5) * 0.14 + 0.86;
 
-    // 2. Halo bioluminescente violeta/safira projetado no piso diante da fenda
+    // 2. Halo terroso/ocre suave projetado no chão de terra diante da fenda
     const glowY = isExit ? topBackY - 4 * t : baseY + 5 * t;
     const floorGlow = e.createRadialGradient(0, glowY, 2 * t, 0, glowY, 24 * t);
-    if (isExit) {
-      floorGlow.addColorStop(0, `rgba(251, 191, 36, ${0.55 * pulse})`);
-      floorGlow.addColorStop(0.5, `rgba(217, 119, 6, ${0.28 * pulse})`);
-      floorGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
-    } else {
-      floorGlow.addColorStop(0, `rgba(192, 132, 252, ${0.62 * pulse})`);
-      floorGlow.addColorStop(0.45, `rgba(56, 189, 248, ${0.32 * pulse})`);
-      floorGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
-    }
+    floorGlow.addColorStop(0, `rgba(180, 105, 45, ${0.52 * pulse})`);
+    floorGlow.addColorStop(0.5, `rgba(120, 62, 24, ${0.28 * pulse})`);
+    floorGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
     e.fillStyle = floorGlow;
     e.beginPath();
     e.ellipse(0, glowY, 22 * t, 10 * t, 0, 0, Math.PI * 2);
     e.fill();
 
-    // 3. Fenda Geológica Escarpada Rasgando a Face 2.5D do Paredão (de baseY até perto do topo)
-    // Borda externa da rachadura na rocha
-    e.fillStyle = isExit ? "#2e1065" : "#451a03";
+    // 3. Fenda Geológica Escarpada em Tons de Terra Rasgando a Face 2.5D do Paredão
+    // Borda externa de terra escura / barro compactado
+    e.fillStyle = "#26150a";
     e.beginPath();
-    e.moveTo(-12.5 * t, baseY);
-    e.lineTo(-10.5 * t, baseY - 12 * t);
-    e.lineTo(-13 * t, baseY - 22 * t);
-    e.lineTo(-6.5 * t, baseY - 33 * t);
+    e.moveTo(-13 * t, baseY);
+    e.lineTo(-11 * t, baseY - 12 * t);
+    e.lineTo(-13.5 * t, baseY - 22 * t);
+    e.lineTo(-7 * t, baseY - 33 * t);
     e.lineTo(0 * t, topFrontY - 3 * t);
-    e.lineTo(7 * t, baseY - 32 * t);
-    e.lineTo(12.5 * t, baseY - 20 * t);
-    e.lineTo(10 * t, baseY - 10 * t);
-    e.lineTo(13 * t, baseY);
+    e.lineTo(7.5 * t, baseY - 32 * t);
+    e.lineTo(13 * t, baseY - 20 * t);
+    e.lineTo(10.5 * t, baseY - 10 * t);
+    e.lineTo(13.5 * t, baseY);
     e.closePath();
     e.fill();
 
-    // Vão profundo da fenda (interior escuro com brilho místico de ametistas lá dentro)
+    // Camada intermediária de solo argiloso, siena e ocre terroso
     const fissureGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
-    if (isExit) {
-      fissureGrad.addColorStop(0, "#1c1917");
-      fissureGrad.addColorStop(0.45, "#451a03");
-      fissureGrad.addColorStop(0.85, "#b45309");
-      fissureGrad.addColorStop(1, "#f59e0b");
-    } else {
-      fissureGrad.addColorStop(0, "#090414");
-      fissureGrad.addColorStop(0.4, "#2e1065");
-      fissureGrad.addColorStop(0.78, "#6b21a8");
-      fissureGrad.addColorStop(1, "#a855f7");
-    }
+    fissureGrad.addColorStop(0, "#1c0f07");
+    fissureGrad.addColorStop(0.38, "#3b2210");
+    fissureGrad.addColorStop(0.75, "#694122");
+    fissureGrad.addColorStop(1, "#854d0e");
     e.fillStyle = fissureGrad;
     e.beginPath();
-    e.moveTo(-9.5 * t, baseY);
-    e.lineTo(-7.8 * t, baseY - 11 * t);
-    e.lineTo(-9.5 * t, baseY - 21 * t);
-    e.lineTo(-4.2 * t, baseY - 30 * t);
+    e.moveTo(-9.8 * t, baseY);
+    e.lineTo(-8.0 * t, baseY - 11 * t);
+    e.lineTo(-9.8 * t, baseY - 21 * t);
+    e.lineTo(-4.5 * t, baseY - 30 * t);
     e.lineTo(0 * t, topFrontY + 2 * t);
-    e.lineTo(4.8 * t, baseY - 29 * t);
-    e.lineTo(9.2 * t, baseY - 19 * t);
-    e.lineTo(7.5 * t, baseY - 10 * t);
-    e.lineTo(9.8 * t, baseY);
+    e.lineTo(5.0 * t, baseY - 29 * t);
+    e.lineTo(9.5 * t, baseY - 19 * t);
+    e.lineTo(7.8 * t, baseY - 10 * t);
+    e.lineTo(10.0 * t, baseY);
     e.closePath();
     e.fill();
 
-    // Núcleo abissal da fenda no centro
-    e.fillStyle = "#05020a";
+    // Vão profundo de sombra terrosa no centro da fenda
+    e.fillStyle = "#120904";
     e.beginPath();
-    e.moveTo(-5.8 * t, baseY);
-    e.lineTo(-4.8 * t, baseY - 14 * t);
-    e.lineTo(-2.5 * t, baseY - 25 * t);
+    e.moveTo(-6.0 * t, baseY);
+    e.lineTo(-5.0 * t, baseY - 14 * t);
+    e.lineTo(-2.6 * t, baseY - 25 * t);
     e.lineTo(0 * t, baseY - 29 * t);
-    e.lineTo(2.8 * t, baseY - 24 * t);
-    e.lineTo(4.8 * t, baseY - 13 * t);
-    e.lineTo(6.0 * t, baseY);
+    e.lineTo(2.9 * t, baseY - 24 * t);
+    e.lineTo(5.0 * t, baseY - 13 * t);
+    e.lineTo(6.2 * t, baseY);
     e.closePath();
     e.fill();
 
-    // 4. Cristais de Ametista e Safira Brotando nas Bordas Internas da Fenda!
-    const shardColors = ["#c084fc", "#e879f9", "#38bdf8", "#f0abfc"];
-    const shards = [
-      { x: -8.5, y: baseY - 5 * t, dx: 4.5, dy: -4.2, w: 2.4, c: 0 },
-      { x: -7.5, y: baseY - 14 * t, dx: 4.8, dy: -3.5, w: 2.2, c: 2 },
-      { x: -5.5, y: baseY - 23 * t, dx: 3.8, dy: -2.8, w: 1.9, c: 1 },
-      { x: 8.8, y: baseY - 6 * t, dx: -4.6, dy: -4.0, w: 2.4, c: 1 },
-      { x: 7.8, y: baseY - 15 * t, dx: -4.5, dy: -3.6, w: 2.2, c: 0 },
-      { x: 5.8, y: baseY - 22 * t, dx: -3.8, dy: -2.5, w: 1.9, c: 3 },
+    // 4. Saliências de Terra Compactada, Argila Seca e Arenito Ocre nas Bordas Internas da Fenda!
+    const earthLedgeColors = ["#7c4d28", "#9a6234", "#5c3a21", "#b45309"];
+    const ledges = [
+      { x: -8.8, y: baseY - 5 * t, dx: 4.4, dy: -3.6, w: 2.6, c: 0 },
+      { x: -7.8, y: baseY - 14 * t, dx: 4.6, dy: -3.2, w: 2.4, c: 2 },
+      { x: -5.8, y: baseY - 23 * t, dx: 3.6, dy: -2.5, w: 2.0, c: 1 },
+      { x: 9.0, y: baseY - 6 * t, dx: -4.5, dy: -3.6, w: 2.6, c: 1 },
+      { x: 8.0, y: baseY - 15 * t, dx: -4.4, dy: -3.2, w: 2.4, c: 3 },
+      { x: 6.0, y: baseY - 22 * t, dx: -3.6, dy: -2.4, w: 2.0, c: 0 },
     ];
-    for (let i = 0; i < shards.length; i++) {
-      const s = shards[i];
-      e.fillStyle = shardColors[s.c % shardColors.length];
+    for (let i = 0; i < ledges.length; i++) {
+      const s = ledges[i];
+      e.fillStyle = earthLedgeColors[s.c % earthLedgeColors.length];
       e.beginPath();
-      e.moveTo(s.x * t, s.y - s.w * 0.5 * t);
+      e.moveTo(s.x * t, s.y - s.w * 0.55 * t);
       e.lineTo((s.x + s.dx) * t, s.y + s.dy * t);
-      e.lineTo(s.x * t, s.y + s.w * 0.5 * t);
+      e.lineTo(s.x * t, s.y + s.w * 0.55 * t);
       e.closePath();
       e.fill();
     }
 
-    // 5. Fenda também rasga o topo 2.5D do paredão (importante para quem vê de dentro do Geodo ao norte!)
-    e.fillStyle = "#1e1b4b";
+    // Cascalho de terra e torrões de barro na soleira da fenda
+    e.fillStyle = "#523118";
     e.beginPath();
-    e.moveTo(-6 * t, topBackY);
-    e.lineTo(-3.5 * t, topBackY + 18 * t);
-    e.lineTo(-1.5 * t, topFrontY);
-    e.lineTo(2 * t, topFrontY);
-    e.lineTo(4 * t, topBackY + 16 * t);
-    e.lineTo(6.5 * t, topBackY);
+    e.ellipse(-7.5 * t, baseY + 1.5 * t, 3.2 * t, 1.6 * t, 0.2, 0, Math.PI * 2);
+    e.ellipse(8.0 * t, baseY + 1.8 * t, 3.5 * t, 1.7 * t, -0.2, 0, Math.PI * 2);
+    e.fill();
+    e.fillStyle = "#854d0e";
+    e.beginPath();
+    e.ellipse(-4.2 * t, baseY + 2.2 * t, 2.2 * t, 1.2 * t, 0, 0, Math.PI * 2);
+    e.ellipse(4.8 * t, baseY + 2.0 * t, 2.4 * t, 1.3 * t, 0.15, 0, Math.PI * 2);
+    e.fill();
+
+    // 5. Fenda em tons de terra rasgando também o topo 2.5D do paredão (visível de dentro do Geodo ao norte!)
+    e.fillStyle = "#26150a";
+    e.beginPath();
+    e.moveTo(-6.5 * t, topBackY);
+    e.lineTo(-3.8 * t, topBackY + 18 * t);
+    e.lineTo(-1.8 * t, topFrontY);
+    e.lineTo(2.2 * t, topFrontY);
+    e.lineTo(4.2 * t, topBackY + 16 * t);
+    e.lineTo(6.8 * t, topBackY);
     e.closePath();
     e.fill();
 
-    // Indicador sutil pulsante acima da fenda
+    e.strokeStyle = "#7c4d28";
+    e.lineWidth = 1.3 * t;
+    e.beginPath();
+    e.moveTo(-6.5 * t, topBackY);
+    e.lineTo(-3.8 * t, topBackY + 18 * t);
+    e.lineTo(-1.8 * t, topFrontY);
+    e.moveTo(6.8 * t, topBackY);
+    e.lineTo(4.2 * t, topBackY + 16 * t);
+    e.lineTo(2.2 * t, topFrontY);
+    e.stroke();
+
+    // Indicador sutil pulsante em tom ocre/terra acima da fenda
     const floatY = Math.sin(safeTimer * 4.5) * 1.8 * t;
-    e.fillStyle = isExit ? `rgba(251, 191, 36, ${0.88 * pulse})` : `rgba(216, 180, 254, ${0.9 * pulse})`;
+    e.fillStyle = `rgba(217, 119, 6, ${0.92 * pulse})`;
     e.font = `bold ${Math.round(6.5 * t)}px monospace`;
     e.textAlign = "center";
     e.textBaseline = "middle";
-    e.fillText(isExit ? "▼ SAÍDA DO GEODO ▼" : "💎 GEODO ▲", 0, (isExit ? topBackY - 7 * t : topFrontY - 8 * t) + floatY);
+    e.fillText(isExit ? "▼ SAÍDA DO GEODO ▼" : "▲ FENDA DO GEODO ▲", 0, (isExit ? topBackY - 7 * t : topFrontY - 8 * t) + floatY);
+
+    e.restore();
+  }
+
+  function drawLuminousAlgae(e, t = 1, subType = 0, animTimer = 0) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    const safeT = typeof animTimer === "number" && isFinite(animTimer) ? animTimer : 0;
+    const sway = Math.sin(safeT * 2.6 + subType * 1.7) * 2.2 * t;
+    const pulse = Math.sin(safeT * 3.8 + subType * 1.1) * 0.18 + 0.82;
+
+    e.save();
+
+    // Halo bioluminescente subaquático
+    const glowGrad = e.createRadialGradient(0, 0, 1 * t, 0, 0, 15 * t);
+    if (subType === 1) {
+      glowGrad.addColorStop(0, `rgba(56, 189, 248, ${0.52 * pulse})`);
+      glowGrad.addColorStop(0.55, `rgba(20, 184, 166, ${0.24 * pulse})`);
+    } else if (subType === 2) {
+      glowGrad.addColorStop(0, `rgba(163, 230, 53, ${0.5 * pulse})`);
+      glowGrad.addColorStop(0.55, `rgba(16, 185, 129, ${0.24 * pulse})`);
+    } else {
+      glowGrad.addColorStop(0, `rgba(45, 212, 191, ${0.55 * pulse})`);
+      glowGrad.addColorStop(0.55, `rgba(16, 185, 129, ${0.26 * pulse})`);
+    }
+    glowGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    e.fillStyle = glowGrad;
+    e.beginPath();
+    e.ellipse(0, 1 * t, 15 * t, 9.5 * t, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Filamentos e frondes ondulantes de algas luminosas emergindo da água
+    const fronds = [
+      { bx: -5.5, by: 3.5, h: 11.5, w: 2.2, ph: 0 },
+      { bx: -2.0, by: 4.2, h: 14.0, w: 2.5, ph: 1.2 },
+      { bx: 2.2, by: 3.8, h: 12.8, w: 2.4, ph: 2.4 },
+      { bx: 5.8, by: 3.0, h: 9.8, w: 2.0, ph: 3.6 },
+    ];
+    const mainCol = subType === 1 ? "#38bdf8" : subType === 2 ? "#4ade80" : "#2dd4bf";
+    const coreCol = subType === 1 ? "#bae6fd" : subType === 2 ? "#dcfce7" : "#99f6e4";
+
+    for (let i = 0; i < fronds.length; i++) {
+      const f = fronds[i];
+      const fSway = Math.sin(safeT * 2.8 + f.ph) * 2.4 * t;
+      const startX = f.bx * t;
+      const startY = f.by * t;
+      const tipX = startX + fSway;
+      const tipY = startY - f.h * t;
+
+      e.strokeStyle = mainCol;
+      e.lineWidth = f.w * t;
+      e.lineCap = "round";
+      e.beginPath();
+      e.moveTo(startX, startY);
+      e.quadraticCurveTo(startX - fSway * 0.45, startY - f.h * 0.5 * t, tipX, tipY);
+      e.stroke();
+
+      e.strokeStyle = coreCol;
+      e.lineWidth = f.w * 0.45 * t;
+      e.beginPath();
+      e.moveTo(startX, startY - 1 * t);
+      e.quadraticCurveTo(startX - fSway * 0.45, startY - f.h * 0.5 * t, tipX, tipY);
+      e.stroke();
+
+      // Vesícula luminosa na ponta da alga
+      e.fillStyle = "#ffffff";
+      e.beginPath();
+      e.arc(tipX, tipY, 1.35 * t * pulse, 0, Math.PI * 2);
+      e.fill();
+    }
+
+    // Bolhas/esporos bioluminescentes flutuando na superfície do lago
+    const orbs = [
+      { ox: -7.5, oy: -2.0, r: 1.2 },
+      { ox: 0.5, oy: -11.5, r: 1.4 },
+      { ox: 7.2, oy: -3.5, r: 1.1 },
+    ];
+    e.fillStyle = coreCol;
+    for (let i = 0; i < orbs.length; i++) {
+      const ob = orbs[i];
+      const bob = Math.sin(safeT * 3.5 + i * 2.1) * 1.4 * t;
+      e.beginPath();
+      e.arc(ob.ox * t + sway * 0.3, ob.oy * t + bob, ob.r * t * pulse, 0, Math.PI * 2);
+      e.fill();
+    }
 
     e.restore();
   }

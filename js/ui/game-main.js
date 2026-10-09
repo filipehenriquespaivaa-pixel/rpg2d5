@@ -2903,7 +2903,7 @@
                 Ze = Math.floor(D.y / Q);
               v(E.getTile(qe, Ze).biome);
               S({ tx: qe, ty: Ze });
-              ve("💎 Atravessando a fenda no paredão de arenito... Você entrou no Geodo de Cristais!");
+              ve("💎 Atravessando a fenda no paredão terroso... Você entrou no Geodo de Cristais!");
             } else if (Ke.action === "exit_geode") {
               __autoCaveTimer.current = 1.0;
               m.current.playCaveExit();
@@ -2943,6 +2943,25 @@
             } else if (Ke.action === "harvest_mushroom") {
               m.current.playChestChime();
               const De = pi("mushroom");
+              ra((qe) => {
+                const Ze = ot(Da.current.mochila);
+                return qe.length >= Ze
+                  ? (ve(`Inventário cheio (máximo ${Ze} itens)!`), qe)
+                  : [...qe, De];
+              });
+            } else if (Ke.action === "harvest_luminous_algae") {
+              m.current.playChestChime();
+              const De = {
+                id: `alga_luminosa_${Date.now()}_${Math.floor(Math.random() * 1e4)}`,
+                name: "Alga Luminosa do Geodo",
+                icon: "herb",
+                color: "#2dd4bf",
+                isEquippable: !1,
+                isConsumable: !0,
+                healAmount: 18,
+                hydrationAmount: 25,
+                description: "Filamento bioluminescente colhido no lago central do Geodo. Restaura vida e sede.",
+              };
               ra((qe) => {
                 const Ze = ot(Da.current.mochila);
                 return qe.length >= Ze

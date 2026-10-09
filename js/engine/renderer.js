@@ -176,19 +176,27 @@
                 K.push({
                   x: ke * f + f / 2,
                   y: ne * f + f / 2 + 4,
-                  radius: 145 + Math.sin(this.animTimer * 3.5) * 10,
-                  color: "rgba(192, 132, 252, 0.72)",
-                  intensity: 0.9,
+                  radius: 135 + Math.sin(this.animTimer * 3.5) * 8,
+                  color: "rgba(180, 105, 45, 0.55)",
+                  intensity: 0.82,
                   isCampfire: !0,
                 });
               else if (G.prop.kind === "geode_exit_fissure")
                 K.push({
                   x: ke * f + f / 2,
                   y: ne * f + f / 2 + 4,
-                  radius: 155 + Math.sin(this.animTimer * 3.2) * 8,
-                  color: "rgba(251, 191, 36, 0.75)",
-                  intensity: 0.9,
+                  radius: 145 + Math.sin(this.animTimer * 3.2) * 8,
+                  color: "rgba(180, 105, 45, 0.58)",
+                  intensity: 0.85,
                   isCampfire: !0,
+                });
+              else if (G.prop.kind === "luminous_algae")
+                K.push({
+                  x: ke * f + f / 2,
+                  y: ne * f + f / 2,
+                  radius: 95 + Math.sin(this.animTimer * 3.8 + ke) * 6,
+                  color: "rgba(45, 212, 191, 0.52)",
+                  intensity: 0.78,
                 });
               else if (G.prop.kind === "dungeon_staircase_up")
                 K.push({
@@ -1471,6 +1479,23 @@
                     : y &&
                       ((c.fillStyle = "rgba(245, 158, 11, 0.08)"),
                       c.fillRect(l, o, u + 1.2, u + 1.2));
+        if (t.isGeodeLake) {
+          const alPulse = (Math.sin(x * 3.0 + t.tx * 0.7 + t.ty * 0.9) + 1) * 0.5;
+          c.fillStyle = `rgba(16, 185, 129, ${0.22 + alPulse * 0.14})`;
+          c.fillRect(l, o, u + 1.2, u + 1.2);
+          c.fillStyle = `rgba(45, 212, 191, ${0.28 + alPulse * 0.25})`;
+          c.beginPath();
+          c.ellipse(
+            l + u * (0.28 + t.detailHash * 0.44),
+            o + u * (0.3 + ((t.detailHash * 7) % 1) * 0.4),
+            4 + t.detailHash * 4,
+            2.5 + t.detailHash * 2,
+            t.detailHash * Math.PI,
+            0,
+            Math.PI * 2,
+          );
+          c.fill();
+        }
         const K = t.tx * u,
           V = t.ty * u,
           O = Math.sin(K * 0.045 + x * 1.5 + V * 0.035) * 3 + u * 0.35;
@@ -2252,6 +2277,11 @@
             break;
           case "glowing_mushroom":
             kP(c, f, t.subType);
+            break;
+          case "luminous_algae":
+            if (typeof drawLuminousAlgae === "function") {
+              drawLuminousAlgae(c, f, t.subType || 0, this.animTimer || 0);
+            }
             break;
           case "clay_deposit":
             Mg(c, f, this.animTimer, t.opened);

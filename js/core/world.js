@@ -1481,16 +1481,16 @@
           isCaveRockWall25D: !0,
           prop: {
             kind: "geode_exit_fissure",
-            wallTheme: "geode_crystal",
+            wallTheme: "earth_mine",
             targetTx: exitTx,
             targetTy: exitTy,
             offsetX: 0,
             offsetY: 0,
             scale: 1,
             interactive: !0,
-            namePt: "Fenda de Saída do Geodo [Paredão do Deserto]",
+            namePt: "Fenda Terrosa de Saída do Geodo [Paredão do Deserto]",
             descriptionPt:
-              "Abertura estreita incrustada de ametistas na casca rochosa do geodo que retorna aos túneis de arenito do deserto. Pressione [F] ou caminhe até a fenda para sair!",
+              "Abertura estreita esculpida em terra e argila compactada que retorna aos túneis do deserto. Pressione [F] ou caminhe até a fenda para sair!",
           },
           detailHash: u,
         };
@@ -1531,7 +1531,13 @@
         };
       }
 
-      // Piso cristalino interno do Geodo (com drusas de cristal mineráveis abundantes!)
+      // Lago subterrâneo com algas luminosas no centro do Geodo!
+      const lakeDist =
+        Math.hypot(dx / 4.2, dy / 3.4) +
+        Math.sin(angle * 4 + gcx * 0.5) * 0.07 +
+        Math.cos(angle * 3 - gcy * 0.4) * 0.05;
+      const isCentralLake = !inEntryVestibule && lakeDist <= 0.92;
+
       const pKey = `underground_${t},${l}`;
       const intState =
         this.interactedProps.get(pKey) ||
@@ -1540,31 +1546,56 @@
         {};
       let geodeProp = null;
       const placedKey = `cave_${t},${l}`;
+
+      if (isCentralLake) {
+        if (this.customPlacedProps.has(placedKey)) {
+          geodeProp = { ...this.customPlacedProps.get(placedKey) };
+        } else {
+          const algaeHash = this.hash2D(t, l, 919);
+          const subAlgae = this.hash2D(t, l, 929);
+          const isExactCenter = t === gcx && l === gcy;
+          if (isExactCenter || algaeHash < 0.62) {
+            const aType = isExactCenter ? 0 : Math.floor(subAlgae * 3);
+            geodeProp = {
+              kind: "luminous_algae",
+              subType: aType,
+              offsetX: isExactCenter ? 0 : (subAlgae - 0.5) * 8,
+              offsetY: isExactCenter ? 0 : (algaeHash - 0.3) * 6,
+              scale: isExactCenter ? 1.35 : 0.92 + (algaeHash % 0.35),
+              interactive: !0,
+              namePt: isExactCenter
+                ? "Colônia Real de Algas Luminosas do Geodo"
+                : "Algas Luminosas Bioluminescentes",
+              descriptionPt:
+                "Filamentos aquáticos bioluminescentes que brilham em tons de ciano, esmeralda e turquesa nas águas cristalinas do centro do geodo. Pressione [F] para colher e restaurar vigor!",
+            };
+          }
+        }
+        return {
+          tx: t,
+          ty: l,
+          elevation: 0.22,
+          moisture: 0.95,
+          temperature: 0.48,
+          biome: BIOMES[BiomeId.CAVE_LAKE],
+          isGeodeInterior: !0,
+          isGeodeLake: !0,
+          geodeNormDist: normDist,
+          roomName: "Lago de Algas Luminosas do Geodo",
+          prop: geodeProp,
+          detailHash: u,
+        };
+      }
+
+      // Piso cristalino interno do Geodo ao redor do lago (com drusas de cristal mineráveis abundantes!)
       if (this.customPlacedProps.has(placedKey)) {
         geodeProp = { ...this.customPlacedProps.get(placedKey) };
       } else if (!inEntryVestibule && !(Math.abs(t - exitTx) <= 1 && l >= exitTy - 4)) {
         const cHash = this.hash2D(t, l, 811);
         const subHash = this.hash2D(t, l, 823);
         const isRingEdge = normDist >= 0.56 && normDist <= 0.78;
-        const isCenterCore = Math.hypot(dx, dy) <= 1.6;
-        if (isCenterCore && t === gcx && l === gcy) {
-          const opened = !!intState.opened;
-          geodeProp = {
-            kind: "crystal_cluster",
-            subType: 0,
-            offsetX: 0,
-            offsetY: -4,
-            scale: 1.55,
-            interactive: !0,
-            opened: opened,
-            namePt: opened
-              ? "Coração do Geodo (Minerado)"
-              : "Coração Cristalino do Geodo (Drusa Colossal)",
-            descriptionPt: opened
-              ? "Os grandes cristais primordiais do núcleo deste geodo já foram colhidos."
-              : "Enorme matriz de cristais puros no centro exato do geodo subterrâneo. Pressione [F] para minerar!",
-          };
-        } else if ((isRingEdge && cHash < 0.42) || (!isRingEdge && cHash < 0.18)) {
+        const isLakeShore = lakeDist > 0.92 && lakeDist <= 1.22;
+        if ((isRingEdge && cHash < 0.42) || (isLakeShore && cHash < 0.28) || (!isRingEdge && !isLakeShore && cHash < 0.16)) {
           const opened = !!intState.opened;
           const cType = Math.floor(subHash * 4);
           const cNames = [
@@ -5598,6 +5629,14 @@
           message:
             "O cogumelo bioluminescente expeliu uma nuvem de esporos restauradores!",
           reward: "Esporos Místicos (+50 Stamina)",
+        };
+      if (o.prop.kind === "luminous_algae")
+        return {
+          success: !0,
+          action: "harvest_mushroom",
+          message:
+            "As algas luminosas do lago do geodo liberaram essência bioluminescente revigorante nas águas!",
+          reward: "Essência Bioluminescente (+50 Stamina)",
         };
       if (o.prop.kind === "blue_plant") {
         const hasFlowered = this.isNight() || !!m.bluePlantFlowered;
