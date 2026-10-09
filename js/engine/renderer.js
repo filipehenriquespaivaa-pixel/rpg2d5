@@ -1762,6 +1762,8 @@
           t.kind !== "cliff_wall" &&
             t.kind !== "cliff_ramp" &&
             t.kind !== "greek_wall" &&
+            t.kind !== "dungeon_wall" &&
+            t.kind !== "cave_wall_25d" &&
             this.drawPropDirectionalShadow(c, t.kind, f, y),
           t.kind)
         ) {
@@ -1837,6 +1839,38 @@
           case "chest":
             pg(c, f, t.opened, this.animTimer);
             break;
+          case "cave_wall_25d": {
+            let nb = u._cw25Nb;
+            if (!nb) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty,
+                isCaveW = (tile) =>
+                  !!(
+                    tile &&
+                    (tile.isCaveRockWall25D ||
+                      tile.isEarthMineWall ||
+                      (tile.biome &&
+                        (tile.biome.id === BiomeId.CAVE_WALL ||
+                          tile.biome.id === BiomeId.DESERT_CAVE_WALL)))
+                  );
+              nb = u._cw25Nb = {
+                left: isCaveW(eng.getTile(tx - 1, ty)),
+                right: isCaveW(eng.getTile(tx + 1, ty)),
+                top: isCaveW(eng.getTile(tx, ty - 1)),
+                bottom: isCaveW(eng.getTile(tx, ty + 1)),
+              };
+            }
+            const theme =
+              t.wallTheme ||
+              (u.isEarthMineWall
+                ? "earth_mine"
+                : u.isDesertCave || (u.biome && u.biome.id === BiomeId.DESERT_CAVE_WALL)
+                  ? "desert_cave"
+                  : "cave_rock");
+            drawCaveRockWall25D(c, f, theme, u.detailHash || 0.5, nb);
+            break;
+          }
           case "dungeon_wall": {
             let nb = u._dwNb;
             if (!nb) {

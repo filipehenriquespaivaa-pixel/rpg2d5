@@ -3775,79 +3775,325 @@
     const nR = !!(neighbors && neighbors.right);
     const nT = !!(neighbors && neighbors.top);
     const nB = !!(neighbors && neighbors.bottom);
-    const half = 17 * t;
+    const half = 18 * t;
     const leftX = nL ? -half - 1 * t : -half;
     const rightX = nR ? half + 1 * t : half;
     const w = rightX - leftX;
-    const wallH = 26 * t;
-    const baseY = 16 * t;
+    // Altura 2.5D alta e imponente (36*t) com topo elevado em perspectiva!
+    const wallH = 36 * t;
+    const baseY = 18 * t;
     const topFrontY = baseY - wallH;
+    const topBackY = -half - wallH;
+    const topDepth = topFrontY - topBackY;
 
-    // Sombra projetada na base
+    // 1. Sombra projetada na base sul quando exposta ao piso
     if (!nB) {
-      e.fillStyle = "rgba(2, 6, 23, 0.75)";
-      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 9.5 * t);
+      e.fillStyle = "rgba(2, 6, 23, 0.78)";
+      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 11 * t);
     }
 
-    // Face frontal da muralha de granito escuro com contraste nítido
+    // 2. Face frontal 2.5D da muralha de granito escuro (muito mais alta!)
     const frontGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
     frontGrad.addColorStop(0, "#64748b");
-    frontGrad.addColorStop(0.35, "#475569");
-    frontGrad.addColorStop(0.75, "#334155");
+    frontGrad.addColorStop(0.28, "#475569");
+    frontGrad.addColorStop(0.68, "#334155");
     frontGrad.addColorStop(1, "#1e293b");
     e.fillStyle = frontGrad;
     e.fillRect(leftX, topFrontY, w, wallH);
 
-    // Rodapé reforçado de cantaria bruta
+    // Rodapé reforçado de cantaria bruta na base
     e.fillStyle = "#0f172a";
-    e.fillRect(leftX, baseY - 3.5 * t, w, 3.5 * t);
+    e.fillRect(leftX, baseY - 4 * t, w, 4 * t);
 
-    // Linhas de argamassa e chanfros de relevo nos blocos de pedra
+    // 4 fileiras de blocos de pedra (cantaria pesada 2.5D) na face frontal alta
     e.strokeStyle = "rgba(15, 23, 42, 0.95)";
     e.lineWidth = 1.3 * t;
     e.beginPath();
-    // Linhas horizontais de argamassa
-    e.moveTo(leftX, topFrontY + 8.5 * t);
-    e.lineTo(rightX, topFrontY + 8.5 * t);
-    e.moveTo(leftX, topFrontY + 17 * t);
-    e.lineTo(rightX, topFrontY + 17 * t);
-    // Linhas verticais alternadas
+    e.moveTo(leftX, topFrontY + 8 * t);
+    e.lineTo(rightX, topFrontY + 8 * t);
+    e.moveTo(leftX, topFrontY + 16 * t);
+    e.lineTo(rightX, topFrontY + 16 * t);
+    e.moveTo(leftX, topFrontY + 24 * t);
+    e.lineTo(rightX, topFrontY + 24 * t);
+    // Juntas verticais alternadas
     e.moveTo(0, topFrontY);
-    e.lineTo(0, topFrontY + 8.5 * t);
-    e.moveTo(-6 * t, topFrontY + 8.5 * t);
-    e.lineTo(-6 * t, topFrontY + 17 * t);
-    e.moveTo(6 * t, topFrontY + 8.5 * t);
-    e.lineTo(6 * t, topFrontY + 17 * t);
-    e.moveTo(0, topFrontY + 17 * t);
-    e.lineTo(0, baseY - 3.5 * t);
+    e.lineTo(0, topFrontY + 8 * t);
+    e.moveTo(-6 * t, topFrontY + 8 * t);
+    e.lineTo(-6 * t, topFrontY + 16 * t);
+    e.moveTo(6 * t, topFrontY + 8 * t);
+    e.lineTo(6 * t, topFrontY + 16 * t);
+    e.moveTo(0, topFrontY + 16 * t);
+    e.lineTo(0, topFrontY + 24 * t);
+    e.moveTo(-6 * t, topFrontY + 24 * t);
+    e.lineTo(-6 * t, baseY - 4 * t);
+    e.moveTo(6 * t, topFrontY + 24 * t);
+    e.lineTo(6 * t, baseY - 4 * t);
     e.stroke();
 
-    // Destaque de luz nas bordas superiores dos blocos de cantaria
+    // Destaques de luz no topo de cada fiada de pedra
     e.strokeStyle = "rgba(148, 163, 184, 0.35)";
     e.lineWidth = 1 * t;
     e.beginPath();
     e.moveTo(leftX + 1, topFrontY + 1 * t);
     e.lineTo(rightX - 1, topFrontY + 1 * t);
-    e.moveTo(leftX + 1, topFrontY + 9.5 * t);
-    e.lineTo(rightX - 1, topFrontY + 9.5 * t);
-    e.moveTo(leftX + 1, topFrontY + 18 * t);
-    e.lineTo(rightX - 1, topFrontY + 18 * t);
+    e.moveTo(leftX + 1, topFrontY + 9 * t);
+    e.lineTo(rightX - 1, topFrontY + 9 * t);
+    e.moveTo(leftX + 1, topFrontY + 17 * t);
+    e.lineTo(rightX - 1, topFrontY + 17 * t);
+    e.moveTo(leftX + 1, topFrontY + 25 * t);
+    e.lineTo(rightX - 1, topFrontY + 25 * t);
     e.stroke();
 
-    // Topo da parede (laje de cobertura visível se não tiver parede acima)
+    // 3. Topo 2.5D da muralha (plano superior elevado visto de cima, de topBackY até topFrontY!)
+    const topGrad = e.createLinearGradient(0, topBackY, 0, topFrontY);
+    topGrad.addColorStop(0, "#1e293b");
+    topGrad.addColorStop(0.5, "#334155");
+    topGrad.addColorStop(1, "#475569");
+    e.fillStyle = topGrad;
+    e.fillRect(leftX, topBackY, w, topDepth + 1.5 * t);
+
+    // Lajes de cobertura no topo 2.5D
+    e.strokeStyle = "rgba(15, 23, 42, 0.85)";
+    e.lineWidth = 1.1 * t;
+    e.strokeRect(leftX + 0.5 * t, topBackY + 0.5 * t, w - 1 * t, topDepth);
+    e.beginPath();
+    e.moveTo(leftX, topBackY + topDepth * 0.5);
+    e.lineTo(rightX, topBackY + topDepth * 0.5);
+    e.moveTo(0, topBackY);
+    e.lineTo(0, topBackY + topDepth * 0.5);
+    e.moveTo(-6 * t, topBackY + topDepth * 0.5);
+    e.lineTo(-6 * t, topFrontY);
+    e.moveTo(6 * t, topBackY + topDepth * 0.5);
+    e.lineTo(6 * t, topFrontY);
+    e.stroke();
+
+    // Cornija frontal iluminada separando o topo 2.5D da face vertical sul
+    e.fillStyle = "#94a3b8";
+    e.fillRect(leftX, topFrontY - 2.2 * t, w, 2.5 * t);
+    e.fillStyle = "#cbd5e1";
+    e.fillRect(leftX, topFrontY - 2.6 * t, w, 1 * t);
+
     if (!nT) {
-      e.fillStyle = "#94a3b8";
-      e.fillRect(leftX, topFrontY - 3.5 * t, w, 3.5 * t);
-      e.fillStyle = "#cbd5e1";
-      e.fillRect(leftX, topFrontY - 4 * t, w, 1 * t);
-      e.strokeStyle = "#475569";
-      e.lineWidth = 0.8 * t;
-      e.strokeRect(leftX, topFrontY - 3.5 * t, w, 3.5 * t);
+      e.fillStyle = "#0f172a";
+      e.fillRect(leftX, topBackY, w, 2.2 * t);
+    }
+    if (!nL) {
+      e.fillStyle = "rgba(15, 23, 42, 0.55)";
+      e.fillRect(leftX, topBackY, 2.2 * t, baseY - topBackY);
+    }
+    if (!nR) {
+      e.fillStyle = "rgba(2, 6, 23, 0.65)";
+      e.fillRect(rightX - 2.2 * t, topBackY, 2.2 * t, baseY - topBackY);
     }
 
     // Manchas de umidade e musgo na base da muralha
-    e.fillStyle = "rgba(22, 101, 52, 0.4)";
-    e.fillRect(leftX, baseY - 5 * t, w, 2 * t);
+    if (!nB) {
+      e.fillStyle = "rgba(22, 101, 52, 0.42)";
+      e.fillRect(leftX, baseY - 5 * t, w, 2 * t);
+    }
+
+    e.restore();
+  }
+
+  function drawCaveRockWall25D(e, t = 1, wallTheme = "cave_rock", detailHash = 0.5, neighbors = null) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    e.save();
+    const nL = !!(neighbors && neighbors.left);
+    const nR = !!(neighbors && neighbors.right);
+    const nT = !!(neighbors && neighbors.top);
+    const nB = !!(neighbors && neighbors.bottom);
+
+    const half = 18 * t;
+    const leftX = nL ? -half - 1.5 * t : -half;
+    const rightX = nR ? half + 1.5 * t : half;
+    const w = rightX - leftX;
+
+    // Paredão 2.5D alto de caverna: 40*t de elevação vertical para parecer bem mais alto e imponente!
+    const wallH = 40 * t;
+    const baseY = 18 * t;
+    const topFrontY = baseY - wallH; // -22 * t
+    const topBackY = -half - wallH;  // -58 * t
+    const topDepth = topFrontY - topBackY; // 36 * t
+
+    // Paleta de cores conforme o bioma/tipo de caverna
+    let pal;
+    if (wallTheme === "desert_cave") {
+      // Arenito estratificado dourado/avermelhado das cavernas do deserto
+      pal = {
+        faceTop: "#b45309",
+        faceUpper: "#92400e",
+        faceMid: "#78350f",
+        faceBot: "#3b1806",
+        baseFoot: "#240d03",
+        topBack: "#5c280b",
+        topMid: "#7c340f",
+        topFront: "#9a4212",
+        ridgeLight: "#d97706",
+        ridgeBright: "#f59e0b",
+        crackCol: "rgba(36, 13, 3, 0.85)",
+        stratumLight: "rgba(251, 191, 36, 0.22)",
+        sideL: "rgba(245, 158, 11, 0.16)",
+        sideR: "rgba(24, 10, 2, 0.55)",
+      };
+    } else if (wallTheme === "earth_mine") {
+      // Terra escavada profunda e barro compactado da mina
+      pal = {
+        faceTop: "#694122",
+        faceUpper: "#523118",
+        faceMid: "#3b2210",
+        faceBot: "#1f1108",
+        baseFoot: "#120904",
+        topBack: "#26150a",
+        topMid: "#361e0f",
+        topFront: "#4a2a16",
+        ridgeLight: "#7c4d28",
+        ridgeBright: "#9a6234",
+        crackCol: "rgba(15, 7, 3, 0.88)",
+        stratumLight: "rgba(180, 120, 70, 0.2)",
+        sideL: "rgba(154, 98, 52, 0.18)",
+        sideR: "rgba(12, 6, 2, 0.6)",
+      };
+    } else {
+      // Rocha cavernosa escura / basalto e ardósia subterrânea (cavernas comuns e caverna dos mortos)
+      pal = {
+        faceTop: "#57534e",
+        faceUpper: "#44403c",
+        faceMid: "#292524",
+        faceBot: "#141210",
+        baseFoot: "#090807",
+        topBack: "#171513",
+        topMid: "#262320",
+        topFront: "#36322e",
+        ridgeLight: "#78716c",
+        ridgeBright: "#a8a29e",
+        crackCol: "rgba(5, 5, 5, 0.9)",
+        stratumLight: "rgba(168, 162, 158, 0.2)",
+        sideL: "rgba(168, 162, 158, 0.15)",
+        sideR: "rgba(0, 0, 0, 0.6)",
+      };
+    }
+
+    // 1. Sombra projetada no chão da caverna ao pé do paredão (quando o sul é piso aberto)
+    if (!nB) {
+      e.fillStyle = "rgba(0, 0, 0, 0.72)";
+      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 12 * t);
+    }
+
+    // 2. Face Frontal Vertical 2.5D do Paredão (visível quando não há parede abaixo, ou na transição)
+    if (!nB) {
+      const faceGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
+      faceGrad.addColorStop(0, pal.faceTop);
+      faceGrad.addColorStop(0.28, pal.faceUpper);
+      faceGrad.addColorStop(0.68, pal.faceMid);
+      faceGrad.addColorStop(1, pal.faceBot);
+      e.fillStyle = faceGrad;
+      e.fillRect(leftX, topFrontY, w, wallH);
+
+      // Rodapé escarpado na base do paredão onde encontra o chão da caverna
+      e.fillStyle = pal.baseFoot;
+      e.fillRect(leftX, baseY - 5 * t, w, 5 * t);
+
+      // Saliências e blocos rochosos esculpidos em 3 níveis na face frontal alta
+      const hStep = wallH / 3;
+      for (let tier = 0; tier < 3; tier++) {
+        const sy = topFrontY + tier * hStep;
+        const wob = ((detailHash * (tier + 3) * 7) % 1) * 3 * t - 1.5 * t;
+
+        // Luz na crista de cada camada rochosa
+        e.fillStyle = pal.stratumLight;
+        e.fillRect(leftX + 1.5 * t, sy + 1.2 * t, w - 3 * t, 2.2 * t);
+
+        // Fenda horizontal irregular dividindo os estratos do paredão
+        if (tier > 0) {
+          e.strokeStyle = pal.crackCol;
+          e.lineWidth = 1.5 * t;
+          e.beginPath();
+          e.moveTo(leftX, sy);
+          e.lineTo(-6 * t, sy + wob);
+          e.lineTo(6 * t, sy - wob * 0.8);
+          e.lineTo(rightX, sy);
+          e.stroke();
+        }
+      }
+
+      // Fraturas verticais e fendas geológicas profundas ao longo da altura do paredão
+      const crackX = (detailHash - 0.5) * 14 * t;
+      e.strokeStyle = pal.crackCol;
+      e.lineWidth = 1.4 * t;
+      e.beginPath();
+      e.moveTo(crackX, topFrontY + 2 * t);
+      e.lineTo(crackX - 3.5 * t, topFrontY + wallH * 0.36);
+      e.lineTo(crackX + 2.5 * t, topFrontY + wallH * 0.72);
+      e.lineTo(crackX - 1 * t, baseY - 3 * t);
+      e.stroke();
+    }
+
+    // 3. Topo 2.5D do Paredão (maciço rochoso superior elevado visto em perspectiva)
+    const topGrad = e.createLinearGradient(0, topBackY, 0, topFrontY);
+    topGrad.addColorStop(0, pal.topBack);
+    topGrad.addColorStop(0.55, pal.topMid);
+    topGrad.addColorStop(1, pal.topFront);
+    e.fillStyle = topGrad;
+    e.fillRect(leftX, topBackY, w, topDepth + (nB ? 2 * t : 1 * t));
+
+    // Relevo rochoso orgânico no topo do paredão
+    if (detailHash > 0.32) {
+      e.fillStyle = pal.stratumLight;
+      e.beginPath();
+      e.ellipse(
+        (detailHash - 0.5) * 10 * t,
+        topBackY + topDepth * 0.48,
+        8 * t,
+        4.5 * t,
+        detailHash * Math.PI,
+        0,
+        Math.PI * 2
+      );
+      e.fill();
+    }
+
+    e.strokeStyle = pal.crackCol;
+    e.lineWidth = 1.1 * t;
+    e.beginPath();
+    e.moveTo(leftX + 3 * t, topBackY + topDepth * (0.3 + detailHash * 0.35));
+    e.lineTo(0, topBackY + topDepth * 0.52);
+    e.lineTo(rightX - 3 * t, topBackY + topDepth * (0.65 - detailHash * 0.25));
+    e.stroke();
+
+    // 4. Cristas e Escarpas de Borda 2.5D (destacam claramente o volume e a altura nas bordas expostas!)
+    // Crista frontal sul (borda superior da face alta do paredão)
+    if (!nB) {
+      e.fillStyle = pal.ridgeLight;
+      e.fillRect(leftX, topFrontY - 2.8 * t, w, 3.2 * t);
+      e.fillStyle = pal.ridgeBright;
+      e.fillRect(leftX, topFrontY - 3.2 * t, w, 1.2 * t);
+    }
+
+    // Borda norte (quando há corredor/chão ao norte deste paredão)
+    if (!nT) {
+      e.fillStyle = pal.baseFoot;
+      e.fillRect(leftX, topBackY, w, 3.5 * t);
+      e.fillStyle = pal.ridgeLight;
+      e.fillRect(leftX, topBackY + 3.5 * t, w, 1.5 * t);
+    }
+
+    // Escarpa lateral esquerda (quando há corredor/chão a oeste)
+    if (!nL) {
+      const sideH = (nB ? topFrontY : baseY) - topBackY;
+      e.fillStyle = pal.sideL;
+      e.fillRect(leftX, topBackY, 3.5 * t, sideH);
+      e.fillStyle = pal.crackCol;
+      e.fillRect(leftX, topBackY, 1.2 * t, sideH);
+    }
+
+    // Escarpa lateral direita (quando há corredor/chão a leste)
+    if (!nR) {
+      const sideH = (nB ? topFrontY : baseY) - topBackY;
+      e.fillStyle = pal.sideR;
+      e.fillRect(rightX - 3.8 * t, topBackY, 3.8 * t, sideH);
+      e.fillStyle = pal.crackCol;
+      e.fillRect(rightX - 1.2 * t, topBackY, 1.2 * t, sideH);
+    }
 
     e.restore();
   }

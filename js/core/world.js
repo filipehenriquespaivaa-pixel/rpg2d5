@@ -3112,9 +3112,17 @@
               temperature: 0.35,
               biome: BIOMES[BiomeId.CAVE_WALL],
               isEarthMineWall: !0,
+              isCaveRockWall25D: !0,
               dungeonRole: "earth_mine_wall",
               dungeonRoomName: bCell.roomName,
-              prop: null,
+              prop: {
+                kind: "cave_wall_25d",
+                wallTheme: "earth_mine",
+                subType: 0,
+                scale: 1,
+                namePt: "Paredão de Terra Escavada da Mina",
+                descriptionPt: `Paredão alto de terra compactada e rocha escavada em: ${bCell.roomName}.`,
+              },
               detailHash: u,
             };
           } else if (bCell.role === "earth_mine_floor") {
@@ -3708,7 +3716,15 @@
             temperature: 0.65,
             biome: BIOMES[BiomeId.DESERT_CAVE_WALL],
             isDesertCave: !0,
-            prop: null,
+            isCaveRockWall25D: !0,
+            prop: {
+              kind: "cave_wall_25d",
+              wallTheme: "desert_cave",
+              subType: 0,
+              scale: 1,
+              namePt: "Paredão de Arenito da Caverna",
+              descriptionPt: "Paredão alto e escarpado de rocha sedimentar de arenito das cavernas do deserto.",
+            },
             detailHash: u,
           };
         }
@@ -3805,7 +3821,15 @@
           moisture: 0.2,
           temperature: 0.4,
           biome: BIOMES[BiomeId.CAVE_WALL],
-          prop: null,
+          isCaveRockWall25D: !0,
+          prop: {
+            kind: "cave_wall_25d",
+            wallTheme: "cave_rock",
+            subType: 0,
+            scale: 1,
+            namePt: "Paredão Rochoso da Caverna",
+            descriptionPt: "Alto paredão maciço de rocha bruta que forma as galerias subterrâneas da caverna.",
+          },
           detailHash: u,
         };
       let y = BIOMES[BiomeId.CAVE_FLOOR];
@@ -4391,14 +4415,24 @@
 
         if (this.customPlacedProps.has(pKey)) {
           sProp = { ...this.customPlacedProps.get(pKey) };
-        } else if (cell.role === "dungeon_wall" || cell.role === "cave_tunnel_wall" || cell.role === "bone_cavern_wall") {
+        } else if (cell.role === "dungeon_wall") {
           isDungeonWall = !0;
           sProp = {
             kind: "dungeon_wall",
             subType: 0,
             scale: 1,
-            namePt: cell.role === "dungeon_wall" ? "Muralha de Cantaria do Calabouço" : "Paredão de Rocha da Caverna",
+            namePt: "Muralha de Cantaria do Calabouço",
             descriptionPt: `Paredão maciço e intransponível de rocha selando o interior de: ${cell.roomName}.`,
+          };
+        } else if (cell.role === "cave_tunnel_wall" || cell.role === "bone_cavern_wall") {
+          isDungeonWall = !0;
+          sProp = {
+            kind: "cave_wall_25d",
+            wallTheme: "cave_rock",
+            subType: 0,
+            scale: 1,
+            namePt: "Paredão de Rocha da Caverna",
+            descriptionPt: `Alto paredão maciço e intransponível de rocha natural selando: ${cell.roomName}.`,
           };
         } else if (cell.role === "dungeon_staircase_up") {
           sProp = {
@@ -4628,6 +4662,7 @@
           biome: isDungeonWall ? BIOMES[BiomeId.CAVE_WALL] : BIOMES[BiomeId.CAVE_FLOOR],
           isDungeonFloor: isCaveTheme ? false : !isDungeonWall,
           isDungeonWall: isCaveTheme ? false : isDungeonWall,
+          isCaveRockWall25D: isCaveTheme && isDungeonWall,
           isDungeonDoor,
           isDungeonDoorOpen,
           isIronBars,
@@ -4654,7 +4689,15 @@
           moisture: 0.2,
           temperature: 0.4,
           biome: BIOMES[BiomeId.CAVE_WALL],
-          prop: null,
+          isCaveRockWall25D: !0,
+          prop: {
+            kind: "cave_wall_25d",
+            wallTheme: "cave_rock",
+            subType: 0,
+            scale: 1,
+            namePt: "Paredão Rochoso da Caverna",
+            descriptionPt: "Alto paredão maciço de rocha bruta que forma as galerias subterrâneas da caverna.",
+          },
           detailHash: u,
         };
       }
