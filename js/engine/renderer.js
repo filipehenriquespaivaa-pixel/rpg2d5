@@ -1913,6 +1913,11 @@
           case "dungeon_straw":
             drawDungeonStraw(c, f);
             break;
+          case "tardigrade_egg":
+            if (typeof drawTardigradeEggs === "function") {
+              drawTardigradeEggs(c, f, t.subType || 0, !!t.opened);
+            }
+            break;
           case "pedregulhos":
             drawPedregulhos(c, f, t.subType || 0);
             break;

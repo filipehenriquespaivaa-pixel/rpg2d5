@@ -556,6 +556,13 @@
                 (c = 250),
                 (f =
                   "Carcaça lendária de dragão. Pode ser destrinchada com uma faca para extrair escamas, chifres, dentes, asas, crânio, carne e ossos.")),
+        t.isQueen &&
+          ((o = "Carcaça da Rainha dos Tardígrados"),
+          (u = "Corpo da Rainha dos Tardígrados"),
+          (m = "lendario"),
+          (c = 320),
+          (f =
+            "Carcaça monumental da Rainha dos Tardígrados das profundezas do deserto. Pode ser destrinchada com uma faca para extrair a rara Geleia Real, Membrana Criptobiótica lendária e micro-garras colossais.")),
         {
           id: `carcass_${this.nextId++}`,
           monsterId: t.id,
@@ -566,19 +573,20 @@
           color: t.color,
           accentColor: t.accentColor,
           scale: t.scale,
+          isQueen: !!t.isQueen,
           isUnderground: t.isUnderground,
           isSlime: l,
           collected: !1,
           settleProgress: 0,
-          lifetime: 20,
-          maxLifetime: 20,
+          lifetime: t.isQueen ? 60 : 20,
+          maxLifetime: t.isQueen ? 60 : 20,
           lootItemName: u,
           lootItemIcon: `creature_${t.type}`,
           lootItemColor: t.color,
           lootItemRarity: m,
           lootItemDescription: f,
           lootItemValue: c,
-          gold: Math.floor(Math.random() * 8) + 4,
+          gold: t.isQueen ? Math.floor(Math.random() * 25) + 35 : Math.floor(Math.random() * 8) + 4,
         }
       );
     }
@@ -639,8 +647,8 @@
         id: `dmg_${this.nextId++}`,
         x: l.x,
         y: l.y - 20,
-        text: `👄 Mordida! -${c}`,
-        color: "#ef4444",
+        text: t.isQueen ? `👑 Mordida da Rainha! -${c}` : `👄 Mordida! -${c}`,
+        color: t.isQueen ? "#fbbf24" : "#ef4444",
         isCrit: !0,
         life: 0.9,
       });
@@ -2088,6 +2096,9 @@
           !l.isDead &&
           ((this.spawnCooldown = 2 + Math.random() * 1.5),
           this.spawnMonsterNearPlayer(l, o, u, m)));
+      if (o && !l.isDead) {
+        this.checkTardigradeNestEncounter(l);
+      }
       for (let S = this.floatingTexts.length - 1; S >= 0; S--) {
         const p = this.floatingTexts[S];
         ((p.life -= t * 1.8),
@@ -2316,6 +2327,112 @@
         });
       }
     }
+    spawnBabyTardigradeAt(x, y) {
+      const babySize = 0.44 + Math.random() * 0.12;
+      const z = {
+        id: `mob_${this.nextId++}_${Date.now()}`,
+        name: "Tardígrado Filhote",
+        type: "tardigrade",
+        x: x,
+        y: y,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+        hp: 18,
+        maxHp: 18,
+        attack: 3,
+        defense: 4,
+        speed: 1.25,
+        color: "#f59e0b",
+        accentColor: "#fef08a",
+        scale: Math.round(babySize * 100) / 100,
+        maxScale: 0.65,
+        isUnderground: true,
+        isBaby: true,
+        isMoving: true,
+        hitFlashTimer: 0,
+        animTimer: Math.random() * 10,
+        wanderTimer: 1.5,
+        targetAngle: Math.random() * Math.PI * 2,
+        facing: ["down", "left", "right", "up"][Math.floor(Math.random() * 4)],
+      };
+      this.monsters.push(z);
+      return z;
+    }
+    checkTardigradeNestEncounter(l) {
+      if (!l || l.isDead || !this.engine.isUnderground) return;
+      const pTx = Math.floor(l.x / this.engine.tileSize);
+      const pTy = Math.floor(l.y / this.engine.tileSize);
+      const curTile = this.engine.getTile(pTx, pTy);
+      const isDesert = !!(
+        (curTile && (curTile.isDesertCave || curTile.isTardigradeNest)) ||
+        this.engine.activeCaveEntranceIsDesert
+      );
+      if (!isDesert) return;
+
+      const nest = typeof this.engine.getDesertTardigradeNest === "function"
+        ? this.engine.getDesertTardigradeNest(pTx, pTy)
+        : null;
+      if (!nest) return;
+
+      const nestDist = Math.hypot(pTx - nest.cx, pTy - nest.cy);
+      if (nestDist <= 16) {
+        const nestWorldX = nest.cx * this.engine.tileSize + 16;
+        const nestWorldY = nest.cy * this.engine.tileSize + 16;
+
+        const hasQueen = this.monsters.some(
+          (m) => m.type === "tardigrade" && m.isQueen && m.isUnderground && Math.hypot(m.x - nestWorldX, m.y - nestWorldY) < 650
+        );
+        if (!hasQueen) {
+          const queenMonster = {
+            id: `mob_${this.nextId++}_${Date.now()}`,
+            name: "👑 Rainha dos Tardígrados",
+            type: "tardigrade",
+            x: nestWorldX,
+            y: nestWorldY,
+            vx: 0,
+            vy: 0,
+            hp: 220,
+            maxHp: 220,
+            attack: 18,
+            defense: 16,
+            speed: 0.76,
+            color: "#b45309",
+            accentColor: "#fef08a",
+            scale: 2.85, // 3 VEZES MAIOR!
+            maxScale: 3.2,
+            isUnderground: true,
+            isQueen: true,
+            isBoss: true,
+            isMoving: false,
+            hitFlashTimer: 0,
+            animTimer: Math.random() * 10,
+            wanderTimer: 2.0,
+            targetAngle: Math.random() * Math.PI * 2,
+            facing: "down",
+          };
+          this.monsters.push(queenMonster);
+        }
+
+        const babyCount = this.monsters.filter(
+          (m) => m.type === "tardigrade" && m.isBaby && m.isUnderground && Math.hypot(m.x - nestWorldX, m.y - nestWorldY) < 550
+        ).length;
+
+        if (babyCount < 5) {
+          const needed = 5 - babyCount;
+          for (let k = 0; k < needed; k++) {
+            const ang = Math.random() * Math.PI * 2;
+            const dist = (2.2 + Math.random() * 4.8) * this.engine.tileSize;
+            const bx = nestWorldX + Math.cos(ang) * dist;
+            const by = nestWorldY + Math.sin(ang) * dist;
+            const bTx = Math.floor(bx / this.engine.tileSize);
+            const bTy = Math.floor(by / this.engine.tileSize);
+            if (this.engine.isTileCreaturePassable(bTx, bTy)) {
+              this.spawnBabyTardigradeAt(bx, by);
+            }
+          }
+        }
+      }
+    }
     spawnMonsterNearPlayer(t, l, o, u = 0.5) {
       const m = Math.random() * Math.PI * 2,
         c = 180 + Math.random() * 180;
@@ -2360,7 +2477,10 @@
         P = 4,
         A = 0.75,
         x = 1,
-        customDef = null;
+        customDef = null,
+        isQueen = false,
+        isBaby = false,
+        isBoss = false;
       const M = o === BiomeId.SNOW_TAIGA || o === BiomeId.SNOW_PEAK || o === BiomeId.GLACIER,
         $ =
           o === BiomeId.DESERT ||
@@ -2454,58 +2574,99 @@
         if (isDesertCave) {
           // ===================================================================
           // CAVERNAS TEMÁTICAS DO DESERTO:
-          // Escorpiões das Areias (mesmo tamanho do sobremundo, escala 0.58),
-          // Aranhas das Fendas Arenosas e o novo TARDÍGRADO CAVERNOSO!
-          // NENHUM MORCEGO!
+          // Se estiver dentro da área média do Ninho dos Tardígrados:
+          // Rainha colossal 3x maior e tardígrados pequenos!
           // ===================================================================
-          const K = Math.random();
-          if (K < 0.40) {
-            v = "scorpion";
-            T = "Escorpião das Areias";
-            S = "#b45309";
-            p = "#fde047";
-            j = 16;
-            P = 5;
-            A = 0.95;
-            x = 0.58;
-          } else if (K < 0.78) {
-            // TARDÍGRADO CAVERNOSO: vive especificamente nesta caverna!
-            // Tamanho variado e porte colossal de até 3 vezes maior!
+          const isNest = !!(
+            (spawnTile && spawnTile.isTardigradeNest) ||
+            (typeof this.engine.isTardigradeNest === "function" && this.engine.isTardigradeNest(y, w))
+          );
+
+          if (isNest) {
             v = "tardigrade";
-            const sizeRoll = Math.random();
-            let sizeMult = 1.0;
-            if (sizeRoll < 0.35) {
-              // Porte Comum / Pequeno: 1.0x a 1.35x
-              sizeMult = 1.0 + Math.random() * 0.35;
-              T = "Tardígrado Cavernoso";
-            } else if (sizeRoll < 0.70) {
-              // Porte Grande: 1.5x a 2.15x
-              sizeMult = 1.5 + Math.random() * 0.65;
-              T = "Tardígrado Cavernoso Grande";
+            const nestCx = (spawnTile && spawnTile.nestCx !== undefined) ? spawnTile.nestCx : y;
+            const nestCy = (spawnTile && spawnTile.nestCy !== undefined) ? spawnTile.nestCy : w;
+            const nestWorldX = nestCx * this.engine.tileSize + 16;
+            const nestWorldY = nestCy * this.engine.tileSize + 16;
+            const hasQueen = this.monsters.some(
+              (m) => m.type === "tardigrade" && m.isQueen && m.isUnderground && Math.hypot(m.x - nestWorldX, m.y - nestWorldY) < 650
+            );
+            const isAtCenter = (spawnTile && spawnTile.isNestCenter) || Math.hypot(f - nestWorldX, g - nestWorldY) < 100;
+
+            if (!hasQueen && (isAtCenter || Math.random() < 0.45)) {
+              // A RAINHA DOS TARDÍGRADOS: 3 VEZES MAIOR!
+              T = "👑 Rainha dos Tardígrados";
+              isQueen = true;
+              isBoss = true;
+              f = nestWorldX;
+              g = nestWorldY;
+              x = 2.85; // 3 VEZES MAIOR que a base!
+              S = "#b45309";
+              p = "#fef08a";
+              j = 220;
+              P = 18;
+              customDef = 16;
+              A = 0.75;
             } else {
-              // Porte Titânico: 2.4x a 3.0x (até 3 vezes maiores!)
-              sizeMult = 2.4 + Math.random() * 0.6;
-              T = "Tardígrado Cavernoso Titânico";
+              // TARDÍGRADOS PEQUENOS (Filhotes andando na área):
+              T = "Tardígrado Filhote";
+              isBaby = true;
+              const babySize = 0.44 + Math.random() * 0.12;
+              x = Math.round(babySize * 100) / 100;
+              S = "#f59e0b";
+              p = "#fef08a";
+              j = 18;
+              P = 3;
+              customDef = 4;
+              A = 1.22;
             }
-            const baseScale = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.scale : 0.95;
-            x = Math.round(baseScale * sizeMult * 100) / 100;
-            S = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.color : "#d97706";
-            p = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.accentColor : "#fef08a";
-            const baseHp = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.hp : 42;
-            const baseAtk = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.attack : 5;
-            j = Math.round(baseHp * (0.75 + sizeMult * 0.65));
-            P = Math.round(baseAtk * (0.75 + sizeMult * 0.65));
-            customDef = Math.round(6 + (sizeMult - 1) * 2.0);
-            A = Math.max(0.66, Math.round((0.85 - (sizeMult - 1) * 0.07) * 100) / 100);
           } else {
-            v = "spider";
-            T = "Aranha das Fendas Arenosas";
-            S = "#78350f";
-            p = "#fbbf24";
-            j = 16;
-            P = 4;
-            A = 0.92;
-            x = 0.72;
+            // Túneis normais fora do ninho
+            const K = Math.random();
+            if (K < 0.40) {
+              v = "scorpion";
+              T = "Escorpião das Areias";
+              S = "#b45309";
+              p = "#fde047";
+              j = 16;
+              P = 5;
+              A = 0.95;
+              x = 0.58;
+            } else if (K < 0.78) {
+              // TARDÍGRADO CAVERNOSO: vive especificamente nesta caverna!
+              v = "tardigrade";
+              const sizeRoll = Math.random();
+              let sizeMult = 1.0;
+              if (sizeRoll < 0.35) {
+                sizeMult = 1.0 + Math.random() * 0.35;
+                T = "Tardígrado Cavernoso";
+              } else if (sizeRoll < 0.70) {
+                sizeMult = 1.5 + Math.random() * 0.65;
+                T = "Tardígrado Cavernoso Grande";
+              } else {
+                sizeMult = 2.4 + Math.random() * 0.6;
+                T = "Tardígrado Cavernoso Titânico";
+              }
+              const baseScale = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.scale : 0.95;
+              x = Math.round(baseScale * sizeMult * 100) / 100;
+              S = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.color : "#d97706";
+              p = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.accentColor : "#fef08a";
+              const baseHp = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.hp : 42;
+              const baseAtk = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.attack : 5;
+              j = Math.round(baseHp * (0.75 + sizeMult * 0.65));
+              P = Math.round(baseAtk * (0.75 + sizeMult * 0.65));
+              customDef = Math.round(6 + (sizeMult - 1) * 2.0);
+              A = Math.max(0.66, Math.round((0.85 - (sizeMult - 1) * 0.07) * 100) / 100);
+            } else {
+              v = "spider";
+              T = "Aranha das Fendas Arenosas";
+              S = "#78350f";
+              p = "#fbbf24";
+              j = 16;
+              P = 4;
+              A = 0.92;
+              x = 0.72;
+            }
           }
         } else {
           const K = isInPrisonEarthMine ? 0.5 : Math.random();
@@ -2724,6 +2885,9 @@
         accentColor: p,
         scale: x,
         maxScale: (v === "tardigrade" ? Math.max(x, Math.min(3.2, x * 1.15)) : x),
+        isQueen: !!isQueen,
+        isBaby: !!isBaby,
+        isBoss: !!isBoss,
         isUnderground: l,
         isMoving: !1,
         hitFlashTimer: 0,

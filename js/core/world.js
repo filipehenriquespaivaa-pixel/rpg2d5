@@ -1247,6 +1247,85 @@
       }
       return null;
     }
+    _distanceToSegment(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+      let param = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+      param = Math.max(0, Math.min(1, param));
+      const nx = x1 + param * dx;
+      const ny = y1 + param * dy;
+      return Math.hypot(px - nx, py - ny);
+    }
+    getDesertTardigradeNest(t, l) {
+      if (!this._tardigradeNestCache) this._tardigradeNestCache = new Map();
+      const chunkKey = `${Math.floor(t / 24)},${Math.floor(l / 24)}`;
+      if (this._tardigradeNestCache.has(chunkKey)) {
+        return this._tardigradeNestCache.get(chunkKey);
+      }
+
+      let nests = [];
+      // 1. Ninho principal garantido conectado à entrada da caverna ativa do deserto
+      if (this.activeCaveEntranceCoords && this.activeCaveEntranceIsDesert) {
+        const entTx = this.activeCaveEntranceCoords.tx;
+        const entTy = this.activeCaveEntranceCoords.ty;
+        const hX = this.hash2D(entTx, entTy, 11);
+        const hY = this.hash2D(entTx, entTy, 19);
+        const signX = hX > 0.5 ? 1 : -1;
+        const signY = hY > 0.5 ? 1 : -1;
+        const dx = signX * (14 + Math.floor(hX * 5));
+        const dy = signY * (12 + Math.floor(hY * 5));
+        nests.push({
+          cx: entTx + dx,
+          cy: entTy + dy,
+          entTx: entTx,
+          entTy: entTy,
+          radius: 8.5,
+          isPrimary: true,
+        });
+      }
+
+      // 2. Ninhos em grade procedural pelo deserto subterrâneo (cada bloco de 48x48 tiles)
+      const bx = Math.floor((t + 24) / 48);
+      const by = Math.floor((l + 24) / 48);
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const cbx = bx + ox;
+          const cby = by + oy;
+          const rHashX = this.hash2D(cbx, cby, 71);
+          const rHashY = this.hash2D(cbx, cby, 83);
+          const rCx = cbx * 48 + 14 + Math.floor(rHashX * 20);
+          const rCy = cby * 48 + 14 + Math.floor(rHashY * 20);
+          const surfB = this._computeSurfaceBaseBiome(rCx, rCy);
+          if (surfB && (surfB.id === BiomeId.DESERT || surfB.id === BiomeId.CANYON)) {
+            nests.push({
+              cx: rCx,
+              cy: rCy,
+              radius: 8.5,
+              isPrimary: false,
+            });
+          }
+        }
+      }
+
+      let best = null;
+      let minD = Infinity;
+      for (const n of nests) {
+        const d = Math.hypot(t - n.cx, l - n.cy);
+        if (d < minD) {
+          minD = d;
+          best = n;
+        }
+      }
+
+      this._tardigradeNestCache.set(chunkKey, best);
+      return best;
+    }
+    isTardigradeNest(t, l) {
+      const tile = this.getTile(t, l);
+      return !!(tile && tile.isTardigradeNest);
+    }
     hash2D(t, l, o = 0) {
       let u =
         (t * 374761393) ^ (l * 668265263) ^ (this.seed * 31) ^ (o * 1013904223);
@@ -3584,10 +3663,36 @@
       if (isDesertCave) {
         // =====================================================================
         // CAVERNAS TEMÁTICAS NO DESERTO:
-        // "sem minerais apenas varios tuneis estreitos"
-        // 1. Nenhum mineral (sem ore_vein, sem crystal_cluster, sem miner_cart)
-        // 2. Vários túneis estreitos (1 a 2 tiles de largura) que serpenteiam e se cruzam
+        // Túneis estreitos naturais e a ÁREA MÉDIA DO NINHO DOS TARDÍGRADOS
+        // com a Rainha 3 vezes maior, ovos espalhados e filhotes andando!
         // =====================================================================
+        const nest = this.getDesertTardigradeNest(t, l);
+        let inNestRoom = false;
+        let inNestCorridor = false;
+        let isNestTile = false;
+        let isNestCenter = false;
+
+        if (nest) {
+          const distToNestCenter = Math.hypot(t - nest.cx, l - nest.cy);
+          const nestWobble = this.caveDetailNoise.noise2D(t * 0.16, l * 0.16) * 1.5;
+          if (distToNestCenter + nestWobble <= nest.radius) {
+            inNestRoom = true;
+            isNestTile = true;
+            if (distToNestCenter <= 2.8) {
+              isNestCenter = true;
+            }
+          }
+
+          // Corredor largo de conexão entre a entrada da caverna e o ninho
+          if (nest.entTx !== undefined && nest.entTy !== undefined) {
+            const segDist = this._distanceToSegment(t, l, nest.entTx, nest.entTy, nest.cx, nest.cy);
+            const corrWobble = this.caveWallNoise.noise2D(t * 0.12, l * 0.12) * 0.75;
+            if (segDist + corrWobble <= 2.2) {
+              inNestCorridor = true;
+            }
+          }
+        }
+
         const isTunnelNoise = (x, y) => {
           const a = Math.abs(this.caveWallNoise.noise2D(x * 0.08, y * 0.08));
           const b = Math.abs(this.caveDetailNoise.noise2D(x * 0.08 + 137, y * 0.08 + 137));
@@ -3605,7 +3710,7 @@
           nearConnector &&
           ((Math.abs(nearConnector.dx) <= 1.5 && Math.abs(nearConnector.dy) <= 7.0) ||
             (Math.abs(nearConnector.dy) <= 1.5 && Math.abs(nearConnector.dx) <= 7.0));
-        const isOpen = atExitPlaza || inConnectorTunnel || inNarrowTunnel;
+        const isOpen = atExitPlaza || inConnectorTunnel || inNarrowTunnel || inNestRoom || inNestCorridor;
 
         if (!isOpen) {
           return {
@@ -3617,6 +3722,50 @@
             biome: BIOMES[BiomeId.DESERT_CAVE_WALL],
             isDesertCave: !0,
             prop: null,
+            detailHash: u,
+          };
+        }
+
+        // Se estiver dentro da área média do Ninho dos Tardígrados
+        if (inNestRoom && nest) {
+          let eggProp = null;
+          // No centro (raio <= 2.8), o chão fica livre para a Rainha se mover e lutar
+          if (!isNestCenter) {
+            const eggHash = this.hash2D(t, l, 909);
+            // Espalha ninhadas de ovos em cerca de 32% dos tiles do ninho
+            if (eggHash < 0.32) {
+              const eggSub = Math.floor(this.hash2D(t, l, 919) * 3);
+              const pKey = this.isUnderground ? `underground_${t},${l}` : `${t},${l}`;
+              const prev = this.interactedProps.get(pKey);
+              const opened = !!(prev && prev.opened);
+              eggProp = {
+                kind: "tardigrade_egg",
+                subType: eggSub,
+                scale: 0.95 + this.hash2D(t, l, 929) * 0.3,
+                interactive: true,
+                opened: opened,
+                namePt: opened ? "Cascas Vazias de Ovos de Tardígrado" : "Ninhada de Ovos de Tardígrado",
+                descriptionPt: opened
+                  ? "Cascas translúcidas rompidas de tardígrados que já eclodiram no ninho."
+                  : "Aglomerado de ovos translúcidos de tardígrado com casca quitinosa dourada e embriões em estado criptobiótico. Pressione [F] para examinar ou colher!",
+              };
+            }
+          }
+
+          return {
+            tx: t,
+            ty: l,
+            elevation: 0.1,
+            moisture: 0.2,
+            temperature: 0.65,
+            biome: BIOMES[BiomeId.DESERT_CAVE_FLOOR],
+            isDesertCave: !0,
+            isTardigradeNest: !0,
+            isNestCenter: isNestCenter,
+            nestCx: nest.cx,
+            nestCy: nest.cy,
+            roomName: "Ninho dos Tardígrados (Câmara da Rainha e Ninhada)",
+            prop: eggProp,
             detailHash: u,
           };
         }
@@ -4750,6 +4899,56 @@
             "Atravessando o portal de pedra de volta à luz da superfície!",
           reward: "Retorno à Superfície",
         };
+      if (o.prop.kind === "tardigrade_egg") {
+        if (m.opened) {
+          return {
+            success: !1,
+            message: "Estas cascas de ovos de tardígrado já estão vazias e secas.",
+          };
+        }
+        this.interactedProps.set(u, { ...m, opened: !0, collected: !0 });
+        this.invalidateTile(t, l);
+
+        const eggItem = {
+          id: `item_ovo_tardigrado_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: "Ovo Criptobiótico de Tardígrado",
+          categoryType: "consumable",
+          isEquippable: !1,
+          rarity: "raro",
+          value: 70,
+          stackCount: 1,
+          icon: "sparkles",
+          color: "#f59e0b",
+          description:
+            "Ovo esférico translúcido e dourado recolhido do ninho das cavernas do deserto. Rico em trealose e gel nutritivo (+50 Vida, +50 Stamina e proteção celular ao consumir).",
+        };
+
+        let hatched = !1;
+        if (
+          Math.random() < 0.38 &&
+          typeof window !== "undefined" &&
+          window.__gameEngine &&
+          window.__gameEngine.creaturesManager &&
+          typeof window.__gameEngine.creaturesManager.spawnBabyTardigradeAt === "function"
+        ) {
+          window.__gameEngine.creaturesManager.spawnBabyTardigradeAt(
+            t * this.tileSize + 16,
+            l * this.tileSize + 16,
+          );
+          hatched = !0;
+        }
+
+        return {
+          success: !0,
+          action: "collect_tardigrade_egg",
+          item: eggItem,
+          hatched: hatched,
+          message: hatched
+            ? "🐣 Ao tocar nos ovos, você colheu uma amostra, mas outro filhote de tardígrado acabou de eclodir na sua frente e começou a correr pelas areias do ninho!"
+            : "🥚 Você recolheu com cuidado um Ovo Criptobiótico de Tardígrado translúcido para seu inventário!",
+          reward: "Ovo de Tardígrado (+60 XP)",
+        };
+      }
       if (o.prop.kind === "dungeon_staircase_down")
         return {
           success: !0,

@@ -7905,6 +7905,125 @@
     ctx.restore();
   }
 
+  // 7. Ovos e Ninhadas de Tardígrados no Ninho das Cavernas do Deserto
+  function drawTardigradeEggs(ctx, scale = 1, subType = 0, opened = false) {
+    scale = (typeof scale === "number" && isFinite(scale) && scale > 0) ? scale : 1;
+    ctx.save();
+
+    // Sombra suave no chão arenoso
+    ctx.fillStyle = "rgba(15, 23, 42, 0.45)";
+    ctx.beginPath();
+    ctx.ellipse(0, 3 * scale, 12 * scale, 6 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ninho sutil de secreção criptobiótica e fios mucosos secos
+    ctx.strokeStyle = "rgba(180, 83, 9, 0.35)";
+    ctx.lineWidth = 1.0 * scale;
+    ctx.beginPath();
+    ctx.arc(0, 1 * scale, 10 * scale, 0.2, Math.PI * 1.8);
+    ctx.stroke();
+
+    if (opened) {
+      // Cascas vazias e rompidas de ovos eclodidos
+      ctx.fillStyle = "rgba(217, 119, 6, 0.6)";
+      ctx.strokeStyle = "#92400e";
+      ctx.lineWidth = 0.8 * scale;
+      // Casca 1
+      ctx.beginPath();
+      ctx.ellipse(-4 * scale, 1 * scale, 3.8 * scale, 2.5 * scale, 0.3, Math.PI * 0.2, Math.PI * 1.2);
+      ctx.stroke();
+      ctx.fill();
+      // Casca 2
+      ctx.beginPath();
+      ctx.ellipse(3 * scale, 2 * scale, 3.2 * scale, 2.2 * scale, -0.4, 0, Math.PI);
+      ctx.stroke();
+      ctx.fill();
+      // Fragmentos
+      ctx.fillStyle = "#fef08a";
+      ctx.fillRect(-1 * scale, 0, 1.2 * scale, 1.2 * scale);
+      ctx.fillRect(5 * scale, -1 * scale, 1.0 * scale, 1.0 * scale);
+      ctx.restore();
+      return;
+    }
+
+    // Configuração dos ovos por subType (aglomerados naturais de 3 a 5 ovos translúcidos)
+    const eggConfigs = [
+      // Subtipo 0: Quatro ovos aglomerados
+      [
+        { x: -4.5, y: 1.5, rx: 4.2, ry: 3.5, ang: -0.2 },
+        { x: 3.5, y: 2.0, rx: 4.5, ry: 3.6, ang: 0.25 },
+        { x: -0.5, y: -2.0, rx: 4.8, ry: 3.8, ang: 0.1 },
+        { x: 1.5, y: 0.5, rx: 3.6, ry: 3.0, ang: -0.15 },
+      ],
+      // Subtipo 1: Grande ovo central com dois ovos companheiros
+      [
+        { x: -3.8, y: 1.0, rx: 3.8, ry: 3.2, ang: -0.3 },
+        { x: 1.0, y: -1.0, rx: 5.6, ry: 4.5, ang: 0.15 },
+        { x: 4.2, y: 2.2, rx: 3.5, ry: 3.0, ang: 0.4 },
+      ],
+      // Subtipo 2: Ninhada de cinco ovos brilhantes
+      [
+        { x: -5.0, y: 0.0, rx: 4.0, ry: 3.2, ang: -0.2 },
+        { x: -1.5, y: -3.0, rx: 4.2, ry: 3.5, ang: 0.05 },
+        { x: 3.5, y: -2.0, rx: 4.4, ry: 3.6, ang: 0.25 },
+        { x: 4.0, y: 2.0, rx: 3.8, ry: 3.2, ang: 0.35 },
+        { x: -1.0, y: 1.8, rx: 4.6, ry: 3.8, ang: -0.1 },
+      ],
+    ][subType % 3];
+
+    for (const egg of eggConfigs) {
+      const ex = egg.x * scale;
+      const ey = egg.y * scale;
+      const erx = egg.rx * scale;
+      const ery = egg.ry * scale;
+
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(egg.ang);
+
+      // Brilho exterior suave (halo translúcido)
+      const glowGrad = ctx.createRadialGradient(0, 0, erx * 0.4, 0, 0, erx * 1.3);
+      glowGrad.addColorStop(0, "rgba(251, 191, 36, 0.45)");
+      glowGrad.addColorStop(1, "rgba(245, 158, 11, 0)");
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, erx * 1.3, ery * 1.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Casca externa do ovo (âmbar translúcido dourado)
+      const shellGrad = ctx.createRadialGradient(-erx * 0.25, -ery * 0.3, erx * 0.15, 0, 0, erx);
+      shellGrad.addColorStop(0, "#fef08a"); // Centro luminoso
+      shellGrad.addColorStop(0.45, "#fbbf24"); // Corpo âmbar
+      shellGrad.addColorStop(0.85, "#d97706"); // Borda densa
+      shellGrad.addColorStop(1, "#92400e");
+      ctx.fillStyle = shellGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, erx, ery, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Contorno fino quitinoso
+      ctx.strokeStyle = "rgba(120, 53, 15, 0.65)";
+      ctx.lineWidth = 0.8 * scale;
+      ctx.stroke();
+
+      // Embrião dormente visível por transparência (minúsculo corpo de tardígrado encolhido)
+      ctx.fillStyle = "rgba(180, 83, 9, 0.42)";
+      ctx.beginPath();
+      ctx.ellipse(0.3 * scale, 0.2 * scale, erx * 0.45, ery * 0.4, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ponto de luz / reflexo especular na casca curvada
+      ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+      ctx.beginPath();
+      ctx.ellipse(-erx * 0.35, -ery * 0.38, erx * 0.3, ery * 0.22, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
   // Torna as funções acessíveis globalmente
   window.drawDesertCityHouseRoofs = drawDesertCityHouseRoofs;
   window.drawDesertCityWall = drawDesertCityWall;
@@ -7912,4 +8031,5 @@
   window.drawDesertCityMat = drawDesertCityMat;
   window.drawDesertCityPots = drawDesertCityPots;
   window.drawDesertCityFloor = drawDesertCityFloor;
+  window.drawTardigradeEggs = drawTardigradeEggs;
 

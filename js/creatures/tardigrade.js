@@ -65,85 +65,132 @@ CREATURES.tardigrade = {
     l.includes("tardigrad") ||
     o === "creature_tardigrade",
   // Despojos ao destrinchar (t = timestamp, l = gerador de sufixo aleatório)
-  loot: (t, l) => [
-    {
-      id: `butcher_tardigrade_membrane_${t}_${l()}`,
-      isExclusive: true,
-      exclusiveLabel: "⭐ Exclusivo de Tardígrado",
-      status: "pending",
-      item: {
-        isCreaturePart: true,
-        id: `item_membrana_tardigrado_${t}_${l()}`,
-        name: "Membrana Criptobiótica de Tardígrado",
-        categoryType: "material",
-        rarity: "raro",
-        stackCount: 2,
-        isEquippable: false,
-        icon: "sparkles",
-        color: "#f59e0b",
-        value: 75,
-        description:
-          "Cutícula celular translúcida ultra resistente de tardígrado. Imune ao vácuo e à dessecação, material lendário para armaduras e elixires protetores.",
+  loot: (t, l, monster) => {
+    const isQueen = !!(monster && (monster.isQueen || (monster.name && monster.name.includes("Rainha"))));
+    const items = [];
+    if (isQueen) {
+      items.push({
+        id: `butcher_tardigrade_queen_jelly_${t}_${l()}`,
+        isExclusive: true,
+        exclusiveLabel: "👑 Tesouro Real da Rainha",
+        status: "pending",
+        item: {
+          isCreaturePart: true,
+          id: `item_geleia_real_tardigrado_${t}_${l()}`,
+          name: "Geleia Real Criptobiótica da Rainha",
+          categoryType: "consumable",
+          rarity: "lendario",
+          stackCount: 1,
+          isEquippable: false,
+          icon: "sparkles",
+          color: "#fbbf24",
+          value: 190,
+          description:
+            "Concentrado biológico puríssimo produzido pela Rainha dos Tardígrados no ninho profundo (+100 Vida, +100 Stamina ao consumir). Concede vitalidade lendária.",
+        },
+      });
+      items.push({
+        id: `butcher_tardigrade_queen_membrane_${t}_${l()}`,
+        isExclusive: true,
+        exclusiveLabel: "👑 Membrana Real",
+        status: "pending",
+        item: {
+          isCreaturePart: true,
+          id: `item_membrana_rainha_tardigrado_${t}_${l()}`,
+          name: "Membrana Real da Rainha Tardígrado",
+          categoryType: "material",
+          rarity: "epico",
+          stackCount: 3,
+          isEquippable: false,
+          icon: "shield",
+          color: "#f59e0b",
+          value: 130,
+          description:
+            "Placas de cutícula reforçada da Rainha dos Tardígrados. Material lendário para forja de armaduras de altíssima proteção.",
+        },
+      });
+    }
+    items.push(
+      {
+        id: `butcher_tardigrade_membrane_${t}_${l()}`,
+        isExclusive: true,
+        exclusiveLabel: "⭐ Exclusivo de Tardígrado",
+        status: "pending",
+        item: {
+          isCreaturePart: true,
+          id: `item_membrana_tardigrado_${t}_${l()}`,
+          name: "Membrana Criptobiótica de Tardígrado",
+          categoryType: "material",
+          rarity: "raro",
+          stackCount: isQueen ? 4 : 2,
+          isEquippable: false,
+          icon: "sparkles",
+          color: "#f59e0b",
+          value: 75,
+          description:
+            "Cutícula celular translúcida ultra resistente de tardígrado. Imune ao vácuo e à dessecação, material lendário para armaduras e elixires protetores.",
+        },
       },
-    },
-    {
-      id: `butcher_tardigrade_claws_${t}_${l()}`,
-      isExclusive: false,
-      status: "pending",
-      item: {
-        isCreaturePart: true,
-        id: `item_garras_tardigrado_${t}_${l()}`,
-        name: "Micro-Garras Quitinosas de Tardígrado",
-        categoryType: "material",
-        rarity: "incomum",
-        stackCount: 4,
-        isEquippable: false,
-        icon: "sparkles",
-        color: "#fde047",
-        value: 28,
-        description:
-          "Conjunto de garras diminutas e hiper afiadas das 8 patas do tardígrado. Ideais para agulhas de precisão e pontas perfurantes.",
+      {
+        id: `butcher_tardigrade_claws_${t}_${l()}`,
+        isExclusive: false,
+        status: "pending",
+        item: {
+          isCreaturePart: true,
+          id: `item_garras_tardigrado_${t}_${l()}`,
+          name: "Micro-Garras Quitinosas de Tardígrado",
+          categoryType: "material",
+          rarity: "incomum",
+          stackCount: isQueen ? 8 : 4,
+          isEquippable: false,
+          icon: "sparkles",
+          color: "#fde047",
+          value: 28,
+          description:
+            "Conjunto de garras diminutas e hiper afiadas das 8 patas do tardígrado. Ideais para agulhas de precisão e pontas perfurantes.",
+        },
       },
-    },
-    {
-      id: `butcher_tardigrade_gel_${t}_${l()}`,
-      isExclusive: false,
-      status: "pending",
-      item: {
-        isCreaturePart: true,
-        id: `item_gel_tardigrado_${t}_${l()}`,
-        name: "Gel Criptobiótico Hidratado",
-        categoryType: "consumable",
-        rarity: "incomum",
-        stackCount: 2,
-        isEquippable: false,
-        icon: "droplet",
-        color: "#38bdf8",
-        value: 36,
-        description:
-          "Fluido biológico concentrado com trealose e proteínas protetoras (+40 Vida, +40 Stamina ao consumir). Aumenta resistência celular a venenos e calor.",
+      {
+        id: `butcher_tardigrade_gel_${t}_${l()}`,
+        isExclusive: false,
+        status: "pending",
+        item: {
+          isCreaturePart: true,
+          id: `item_gel_tardigrado_${t}_${l()}`,
+          name: "Gel Criptobiótico Hidratado",
+          categoryType: "consumable",
+          rarity: "incomum",
+          stackCount: isQueen ? 4 : 2,
+          isEquippable: false,
+          icon: "droplet",
+          color: "#38bdf8",
+          value: 36,
+          description:
+            "Fluido biológico concentrado com trealose e proteínas protetoras (+40 Vida, +40 Stamina ao consumir). Aumenta resistência celular a venenos e calor.",
+        },
       },
-    },
-    {
-      id: `butcher_tardigrade_meat_${t}_${l()}`,
-      isExclusive: false,
-      status: "pending",
-      item: {
-        isCreaturePart: true,
-        id: `item_carne_tardigrado_${t}_${l()}`,
-        name: "Carne Mineralizada de Tardígrado",
-        categoryType: "consumable",
-        rarity: "comum",
-        stackCount: 1,
-        isEquippable: false,
-        icon: "utensils",
-        color: "#d97706",
-        value: 18,
-        description:
-          "Carne densa e gelatinosa rica em minerais cavernosos (+30 Vida ao consumir).",
-      },
-    },
-  ],
+      {
+        id: `butcher_tardigrade_meat_${t}_${l()}`,
+        isExclusive: false,
+        status: "pending",
+        item: {
+          isCreaturePart: true,
+          id: `item_carne_tardigrado_${t}_${l()}`,
+          name: "Carne Mineralizada de Tardígrado",
+          categoryType: "consumable",
+          rarity: "comum",
+          stackCount: isQueen ? 3 : 1,
+          isEquippable: false,
+          icon: "utensils",
+          color: "#d97706",
+          value: 18,
+          description:
+            "Carne densa e gelatinosa rica em minerais cavernosos (+30 Vida ao consumir).",
+        },
+      }
+    );
+    return items;
+  },
   // Reconhecer por nome/id/ícone para escolher o DESENHO do ícone
   detectIcon: (t, l, o) =>
     o === "creature_tardigrade" ||
@@ -160,16 +207,64 @@ CREATURES.tardigrade = {
       const walkAnim = isMoving ? t.animTimer * 6.0 : t.animTimer * 1.8;
       const bobY = Math.sin(walkAnim) * 0.7 * o;
       const facing = t.facing || "down";
+      const isQueen = !!(t.isQueen || (t.name && t.name.includes("Rainha")));
+      const isBaby = !!(t.isBaby || (t.name && t.name.includes("Filhote")));
       const mainCol = l ? "#ffffff" : (t.color || "#d97706");
       const darkCol = l ? "#e2e8f0" : "#92400e";
       const lightCol = l ? "#ffffff" : (t.accentColor || "#fef08a");
       const deepCol = l ? "#94a3b8" : "#78350f";
 
+      // Aura bioluminescente dourada da Rainha
+      if (isQueen) {
+        const auraPhase = (t.animTimer || 0) * 2.5;
+        const auraAlpha = 0.22 + Math.sin(auraPhase) * 0.08;
+        e.save();
+        e.fillStyle = `rgba(245, 158, 11, ${auraAlpha})`;
+        e.beginPath();
+        e.ellipse(0, bobY, 17 * o, 13 * o, 0, 0, Math.PI * 2);
+        e.fill();
+        e.strokeStyle = `rgba(254, 240, 138, ${auraAlpha * 1.6})`;
+        e.lineWidth = 1.6 * o;
+        e.stroke();
+        e.restore();
+      }
+
       // Sombra suave sob o tardígrado
       e.fillStyle = "rgba(15, 23, 42, 0.42)";
       e.beginPath();
-      e.ellipse(0, 4.5 * o, 13 * o, 7 * o, 0, 0, Math.PI * 2);
+      e.ellipse(0, 4.5 * o, (isQueen ? 15 : isBaby ? 10 : 13) * o, (isQueen ? 8 : isBaby ? 5 : 7) * o, 0, 0, Math.PI * 2);
       e.fill();
+
+      // Função auxiliar para desenhar a Coroa Quitinosa Régia da Rainha
+      function drawQueenCrown(cx, cy, scaleCrown = 1, angle = 0) {
+        e.save();
+        e.translate(cx, cy);
+        if (angle) e.rotate(angle);
+        e.fillStyle = l ? "#ffffff" : "#fbbf24";
+        e.strokeStyle = l ? "#cbd5e1" : "#92400e";
+        e.lineWidth = 1.0 * o * scaleCrown;
+        e.beginPath();
+        e.moveTo(-5.2 * o * scaleCrown, 0);
+        e.lineTo(-4.0 * o * scaleCrown, -5.5 * o * scaleCrown);
+        e.lineTo(-2.0 * o * scaleCrown, -2.5 * o * scaleCrown);
+        e.lineTo(0, -7.5 * o * scaleCrown);
+        e.lineTo(2.0 * o * scaleCrown, -2.5 * o * scaleCrown);
+        e.lineTo(4.0 * o * scaleCrown, -5.5 * o * scaleCrown);
+        e.lineTo(5.2 * o * scaleCrown, 0);
+        e.closePath();
+        e.fill();
+        e.stroke();
+        // Rubi/gema no centro da coroa
+        e.fillStyle = "#ef4444";
+        e.beginPath();
+        e.arc(0, -3.2 * o * scaleCrown, 1.2 * o * scaleCrown, 0, Math.PI * 2);
+        e.fill();
+        e.fillStyle = "#ffffff";
+        e.beginPath();
+        e.arc(-0.4 * o * scaleCrown, -3.5 * o * scaleCrown, 0.45 * o * scaleCrown, 0, Math.PI * 2);
+        e.fill();
+        e.restore();
+      }
 
       // Desenho de uma pata rechonchuda com 3 micro-garras
       function drawStubbyLeg(lx, ly, angle, scaleLeg = 1) {
@@ -280,16 +375,23 @@ CREATURES.tardigrade = {
         e.fill();
 
         // Olhos/ocelos pequeninos e curiosos
+        const eyeR = (isBaby ? 1.6 : 1.1) * o;
+        const pupilR = (isBaby ? 0.7 : 0.45) * o;
         e.fillStyle = "#0f172a";
         e.beginPath();
-        e.arc(-3.2 * o, 6.2 * o + bobY, 1.1 * o, 0, Math.PI * 2);
-        e.arc(3.2 * o, 6.2 * o + bobY, 1.1 * o, 0, Math.PI * 2);
+        e.arc(-3.2 * o, 6.2 * o + bobY, eyeR, 0, Math.PI * 2);
+        e.arc(3.2 * o, 6.2 * o + bobY, eyeR, 0, Math.PI * 2);
         e.fill();
         e.fillStyle = "#ffffff";
         e.beginPath();
-        e.arc(-3.5 * o, 5.9 * o + bobY, 0.45 * o, 0, Math.PI * 2);
-        e.arc(2.9 * o, 5.9 * o + bobY, 0.45 * o, 0, Math.PI * 2);
+        e.arc(-3.5 * o, 5.9 * o + bobY, pupilR, 0, Math.PI * 2);
+        e.arc(2.9 * o, 5.9 * o + bobY, pupilR, 0, Math.PI * 2);
         e.fill();
+
+        // Coroa Real se for a Rainha
+        if (isQueen) {
+          drawQueenCrown(0, 2.8 * o + bobY, 0.95);
+        }
 
       } else if (facing === "up") {
         // Visto de costas
@@ -343,6 +445,11 @@ CREATURES.tardigrade = {
         e.arc(0, -0.5 * o + bobY, 7.0 * o, 0.2, Math.PI - 0.2);
         e.arc(0, 3.8 * o + bobY, 6.5 * o, 0.2, Math.PI - 0.2);
         e.stroke();
+
+        // Coroa Real se for a Rainha (vista de costas)
+        if (isQueen) {
+          drawQueenCrown(0, -10.5 * o + bobY, 0.9, Math.PI);
+        }
 
       } else {
         // Perfil Lateral (facing === "left" ou "right")
@@ -419,14 +526,21 @@ CREATURES.tardigrade = {
         e.fill();
 
         // Olho lateral
+        const latEyeR = (isBaby ? 1.6 : 1.1) * o;
+        const latPupilR = (isBaby ? 0.7 : 0.45) * o;
         e.fillStyle = "#0f172a";
         e.beginPath();
-        e.arc(8.2 * o, -0.8 * o + bobY, 1.1 * o, 0, Math.PI * 2);
+        e.arc(8.2 * o, -0.8 * o + bobY, latEyeR, 0, Math.PI * 2);
         e.fill();
         e.fillStyle = "#ffffff";
         e.beginPath();
-        e.arc(8.5 * o, -1.1 * o + bobY, 0.45 * o, 0, Math.PI * 2);
+        e.arc(8.5 * o, -1.1 * o + bobY, latPupilR, 0, Math.PI * 2);
         e.fill();
+
+        // Coroa Real se for a Rainha (perfil lateral)
+        if (isQueen) {
+          drawQueenCrown(7.5 * o, -4.5 * o + bobY, 0.9, 0.25);
+        }
 
         // Dobras dorsais entre os gomos
         e.strokeStyle = lightCol;
