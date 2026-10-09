@@ -1605,8 +1605,8 @@
           O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
           _ = K || V || O,
           NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack);
-        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? 32 : 26,
-          chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? 24 : 22;
+        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : 26,
+          chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 18 : 24) : 22;
         if (_) {
           ((!p.fleeFireTimer || p.fleeFireTimer <= 0) &&
             (p.fleeFireTimer = 3.5),
@@ -2258,10 +2258,10 @@
             (T = "Escorpião das Areias"),
             (S = "#d97706"),
             (p = "#fef08a"),
-            (j = 24),
-            (P = 6),
-            (A = 0.85),
-            (x = 0.95));
+            (j = 16),
+            (P = 5),
+            (A = 0.95),
+            (x = 0.58));
       else if (l) {
         const isInPrisonEarthMine =
           typeof window !== "undefined" &&
