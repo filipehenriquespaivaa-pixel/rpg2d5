@@ -4011,6 +4011,23 @@
             sideL: "rgba(154, 98, 52, 0.18)",
             sideR: "rgba(12, 6, 2, 0.6)",
           };
+        } else if (wallTheme === "geode_crystal") {
+          pal = {
+            faceTop: "#7e22ce",
+            faceUpper: "#581c87",
+            faceMid: "#3b0764",
+            faceBot: "#1e1b4b",
+            baseFoot: "#0f0728",
+            topBack: "#1e1b4b",
+            topMid: "#311052",
+            topFront: "#4c1d95",
+            ridgeLight: "#c084fc",
+            ridgeBright: "#e879f9",
+            crackCol: "rgba(15, 7, 40, 0.9)",
+            stratumLight: "rgba(216, 180, 254, 0.32)",
+            sideL: "rgba(192, 132, 252, 0.25)",
+            sideR: "rgba(15, 7, 40, 0.65)",
+          };
         } else {
           pal = {
             faceTop: "#57534e",
@@ -4083,6 +4100,21 @@
           wc.lineTo(crackX + 2.5 * t, topFrontY + wallH * 0.72);
           wc.lineTo(crackX - 1 * t, baseY - 3 * t);
           wc.stroke();
+
+          if (wallTheme === "geode_crystal") {
+            // Drusas de ametista e quartzo incrustadas na face 2.5D da parede do Geodo
+            wc.fillStyle = "#d8b4fe";
+            wc.beginPath();
+            wc.moveTo(-7 * t, baseY - 4 * t);
+            wc.lineTo(-10 * t, baseY - 18 * t);
+            wc.lineTo(-4 * t, baseY - 14 * t);
+            wc.closePath();
+            wc.moveTo(5 * t, baseY - 5 * t);
+            wc.lineTo(9 * t, baseY - 21 * t);
+            wc.lineTo(12 * t, baseY - 8 * t);
+            wc.closePath();
+            wc.fill();
+          }
         }
 
         // 3. Topo 2.5D do Paredão (maciço rochoso superior elevado visto em perspectiva)
@@ -4154,6 +4186,142 @@
     }
 
     e.drawImage(cached.canvas, -cached.padX, -cached.padTop);
+  }
+
+  function drawGeodeWallFissure25D(e, t = 1, neighbors = null, isExit = !1, animTimer = 0) {
+    t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
+    // 1. Desenha a estrutura base do paredão alto 2.5D (arenito na caverna do deserto ou casca cristalina no geodo)
+    const wallNeighbors = {
+      left: !!(neighbors && neighbors.left),
+      right: !!(neighbors && neighbors.right),
+      top: !!(neighbors && neighbors.top),
+      bottom: !1, // Garante que a face frontal vertical 40*t seja sempre desenhada com a fenda!
+    };
+    drawCaveRockWall25D(e, t, isExit ? "geode_crystal" : "desert_cave", 0.42, wallNeighbors);
+
+    e.save();
+    const baseY = 18 * t;
+    const wallH = 40 * t;
+    const topFrontY = baseY - wallH; // -22 * t
+    const topBackY = -18 * t - wallH; // -58 * t
+    const safeTimer = typeof animTimer === "number" && isFinite(animTimer) ? animTimer : 0;
+    const pulse = Math.sin(safeTimer * 3.5) * 0.14 + 0.86;
+
+    // 2. Halo bioluminescente violeta/safira projetado no piso diante da fenda
+    const glowY = isExit ? topBackY - 4 * t : baseY + 5 * t;
+    const floorGlow = e.createRadialGradient(0, glowY, 2 * t, 0, glowY, 24 * t);
+    if (isExit) {
+      floorGlow.addColorStop(0, `rgba(251, 191, 36, ${0.55 * pulse})`);
+      floorGlow.addColorStop(0.5, `rgba(217, 119, 6, ${0.28 * pulse})`);
+      floorGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+    } else {
+      floorGlow.addColorStop(0, `rgba(192, 132, 252, ${0.62 * pulse})`);
+      floorGlow.addColorStop(0.45, `rgba(56, 189, 248, ${0.32 * pulse})`);
+      floorGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+    }
+    e.fillStyle = floorGlow;
+    e.beginPath();
+    e.ellipse(0, glowY, 22 * t, 10 * t, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // 3. Fenda Geológica Escarpada Rasgando a Face 2.5D do Paredão (de baseY até perto do topo)
+    // Borda externa da rachadura na rocha
+    e.fillStyle = isExit ? "#2e1065" : "#451a03";
+    e.beginPath();
+    e.moveTo(-12.5 * t, baseY);
+    e.lineTo(-10.5 * t, baseY - 12 * t);
+    e.lineTo(-13 * t, baseY - 22 * t);
+    e.lineTo(-6.5 * t, baseY - 33 * t);
+    e.lineTo(0 * t, topFrontY - 3 * t);
+    e.lineTo(7 * t, baseY - 32 * t);
+    e.lineTo(12.5 * t, baseY - 20 * t);
+    e.lineTo(10 * t, baseY - 10 * t);
+    e.lineTo(13 * t, baseY);
+    e.closePath();
+    e.fill();
+
+    // Vão profundo da fenda (interior escuro com brilho místico de ametistas lá dentro)
+    const fissureGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
+    if (isExit) {
+      fissureGrad.addColorStop(0, "#1c1917");
+      fissureGrad.addColorStop(0.45, "#451a03");
+      fissureGrad.addColorStop(0.85, "#b45309");
+      fissureGrad.addColorStop(1, "#f59e0b");
+    } else {
+      fissureGrad.addColorStop(0, "#090414");
+      fissureGrad.addColorStop(0.4, "#2e1065");
+      fissureGrad.addColorStop(0.78, "#6b21a8");
+      fissureGrad.addColorStop(1, "#a855f7");
+    }
+    e.fillStyle = fissureGrad;
+    e.beginPath();
+    e.moveTo(-9.5 * t, baseY);
+    e.lineTo(-7.8 * t, baseY - 11 * t);
+    e.lineTo(-9.5 * t, baseY - 21 * t);
+    e.lineTo(-4.2 * t, baseY - 30 * t);
+    e.lineTo(0 * t, topFrontY + 2 * t);
+    e.lineTo(4.8 * t, baseY - 29 * t);
+    e.lineTo(9.2 * t, baseY - 19 * t);
+    e.lineTo(7.5 * t, baseY - 10 * t);
+    e.lineTo(9.8 * t, baseY);
+    e.closePath();
+    e.fill();
+
+    // Núcleo abissal da fenda no centro
+    e.fillStyle = "#05020a";
+    e.beginPath();
+    e.moveTo(-5.8 * t, baseY);
+    e.lineTo(-4.8 * t, baseY - 14 * t);
+    e.lineTo(-2.5 * t, baseY - 25 * t);
+    e.lineTo(0 * t, baseY - 29 * t);
+    e.lineTo(2.8 * t, baseY - 24 * t);
+    e.lineTo(4.8 * t, baseY - 13 * t);
+    e.lineTo(6.0 * t, baseY);
+    e.closePath();
+    e.fill();
+
+    // 4. Cristais de Ametista e Safira Brotando nas Bordas Internas da Fenda!
+    const shardColors = ["#c084fc", "#e879f9", "#38bdf8", "#f0abfc"];
+    const shards = [
+      { x: -8.5, y: baseY - 5 * t, dx: 4.5, dy: -4.2, w: 2.4, c: 0 },
+      { x: -7.5, y: baseY - 14 * t, dx: 4.8, dy: -3.5, w: 2.2, c: 2 },
+      { x: -5.5, y: baseY - 23 * t, dx: 3.8, dy: -2.8, w: 1.9, c: 1 },
+      { x: 8.8, y: baseY - 6 * t, dx: -4.6, dy: -4.0, w: 2.4, c: 1 },
+      { x: 7.8, y: baseY - 15 * t, dx: -4.5, dy: -3.6, w: 2.2, c: 0 },
+      { x: 5.8, y: baseY - 22 * t, dx: -3.8, dy: -2.5, w: 1.9, c: 3 },
+    ];
+    for (let i = 0; i < shards.length; i++) {
+      const s = shards[i];
+      e.fillStyle = shardColors[s.c % shardColors.length];
+      e.beginPath();
+      e.moveTo(s.x * t, s.y - s.w * 0.5 * t);
+      e.lineTo((s.x + s.dx) * t, s.y + s.dy * t);
+      e.lineTo(s.x * t, s.y + s.w * 0.5 * t);
+      e.closePath();
+      e.fill();
+    }
+
+    // 5. Fenda também rasga o topo 2.5D do paredão (importante para quem vê de dentro do Geodo ao norte!)
+    e.fillStyle = "#1e1b4b";
+    e.beginPath();
+    e.moveTo(-6 * t, topBackY);
+    e.lineTo(-3.5 * t, topBackY + 18 * t);
+    e.lineTo(-1.5 * t, topFrontY);
+    e.lineTo(2 * t, topFrontY);
+    e.lineTo(4 * t, topBackY + 16 * t);
+    e.lineTo(6.5 * t, topBackY);
+    e.closePath();
+    e.fill();
+
+    // Indicador sutil pulsante acima da fenda
+    const floatY = Math.sin(safeTimer * 4.5) * 1.8 * t;
+    e.fillStyle = isExit ? `rgba(251, 191, 36, ${0.88 * pulse})` : `rgba(216, 180, 254, ${0.9 * pulse})`;
+    e.font = `bold ${Math.round(6.5 * t)}px monospace`;
+    e.textAlign = "center";
+    e.textBaseline = "middle";
+    e.fillText(isExit ? "▼ SAÍDA DO GEODO ▼" : "💎 GEODO ▲", 0, (isExit ? topBackY - 7 * t : topFrontY - 8 * t) + floatY);
+
+    e.restore();
   }
 
   function drawIronBarsGate(e, t = 1, isVert = !0, isOpened = !1) {

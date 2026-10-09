@@ -151,6 +151,7 @@
       (this.tileCache.delete(this._tk(t, l, 0)),
         this.tileCache.delete(this._tk(t, l, 1)),
         this.tileCache.delete(this._tk(t, l, 2)),
+        this.tileCache.delete(this._tk(t, l, 3)),
         this.closestCampfireCache.clear());
     }
     clearTileCache() {
@@ -158,7 +159,8 @@
         this.closestCampfireCache.clear(),
         this.knownCaveEntrances && this.knownCaveEntrances.clear(),
         this.mergedCaveCache && this.mergedCaveCache.clear(),
-        this.rawCaveCandidateCache && this.rawCaveCandidateCache.clear());
+        this.rawCaveCandidateCache && this.rawCaveCandidateCache.clear(),
+        this._desertGeodeCache && this._desertGeodeCache.clear());
     }
     getCachedTileCount() {
       return this.tileCache.size;
@@ -950,6 +952,7 @@
       } else {
         this._singleDesertTardigradeNest = null;
       }
+      this._singleDesertGeodeFissure = null;
       this.isUnderground = !0;
       this.undergroundLevel = 1;
       this.activeCaveSeed = (this.seed + 88888) >>> 0;
@@ -962,6 +965,7 @@
       this.isUnderground = !1;
       this.undergroundLevel = 0;
       this._singleDesertTardigradeNest = null;
+      this._singleDesertGeodeFissure = null;
       this.clearTileCache();
       if (t !== undefined && l !== undefined) {
         return {
@@ -989,6 +993,25 @@
         };
       }
       return this.subsoloCoords || { x: t * this.tileSize + 14, y: l * this.tileSize + 20 };
+    }
+    enterGeode(t, l, o, u) {
+      this.desertCaveCoords = { x: o, y: u };
+      this.activeGeodeFissureCoords = { tx: t, ty: l };
+      this.isUnderground = !0;
+      this.undergroundLevel = 3;
+      this.clearTileCache();
+    }
+    exitGeode(t, l) {
+      this.isUnderground = !0;
+      this.undergroundLevel = 1;
+      this.clearTileCache();
+      if (t !== undefined && l !== undefined) {
+        return {
+          x: t * this.tileSize + this.tileSize / 2,
+          y: (l + 1) * this.tileSize + 20,
+        };
+      }
+      return this.desertCaveCoords || { x: (t || 0) * this.tileSize + 18, y: ((l || 0) + 1) * this.tileSize + 20 };
     }
     _isRawCaveCandidateAt(t, l) {
       if (!this.rawCaveCandidateCache) this.rawCaveCandidateCache = new Map();
@@ -1313,6 +1336,295 @@
       const tile = this.getTile(t, l);
       return !!(tile && tile.isTardigradeNest);
     }
+    _isDesertCaveFloorRawAt(tx, ty) {
+      const nearExit = this.getNearbyCaveExit(tx, ty, 3.5);
+      const nearConnector = this.getNearbyCaveExit(tx, ty, 6.5);
+      const nest = this.getDesertTardigradeNest(tx, ty);
+      let inNestRoom = !1;
+      let inNestCorridor = !1;
+      if (nest) {
+        const distToNestCenter = Math.hypot(tx - nest.cx, ty - nest.cy);
+        const nestWobble = this.caveDetailNoise.noise2D(tx * 0.16, ty * 0.16) * 1.5;
+        if (distToNestCenter + nestWobble <= nest.radius) inNestRoom = !0;
+        if (nest.entTx !== undefined && nest.entTy !== undefined) {
+          const segDist = this._distanceToSegment(tx, ty, nest.entTx, nest.entTy, nest.cx, nest.cy);
+          const corrWobble = this.caveWallNoise.noise2D(tx * 0.12, ty * 0.12) * 0.75;
+          if (segDist + corrWobble <= 2.2) inNestCorridor = !0;
+        }
+      }
+      const isTunnelNoise = (x, y) => {
+        const a = Math.abs(this.caveWallNoise.noise2D(x * 0.08, y * 0.08));
+        const b = Math.abs(this.caveDetailNoise.noise2D(x * 0.08 + 137, y * 0.08 + 137));
+        const c = Math.abs(this.caveRoomNoise.noise2D(x * 0.09 + 351, y * 0.09 + 351));
+        return a < 0.088 || b < 0.088 || c < 0.088;
+      };
+      const inNarrowTunnel =
+        isTunnelNoise(tx, ty) ||
+        (isTunnelNoise(tx - 1, ty) && isTunnelNoise(tx, ty + 1)) ||
+        (isTunnelNoise(tx + 1, ty) && isTunnelNoise(tx, ty + 1)) ||
+        (isTunnelNoise(tx - 1, ty) && isTunnelNoise(tx, ty - 1)) ||
+        (isTunnelNoise(tx + 1, ty) && isTunnelNoise(tx, ty - 1));
+      const atExitPlaza = nearExit && nearExit.dist <= 2.8;
+      const inConnectorTunnel =
+        nearConnector &&
+        ((Math.abs(nearConnector.dx) <= 1.5 && Math.abs(nearConnector.dy) <= 7.0) ||
+          (Math.abs(nearConnector.dy) <= 1.5 && Math.abs(nearConnector.dx) <= 7.0));
+      return !!(atExitPlaza || inConnectorTunnel || inNarrowTunnel || inNestRoom || inNestCorridor);
+    }
+    getDesertGeodeFissure(t, l) {
+      if (!this._desertGeodeCache) {
+        this._desertGeodeCache = new Map();
+      }
+      // Se o jogador entrou por uma caverna do deserto específica, garante uma fenda de geodo logo nas proximidades dos paredões dessa caverna!
+      let anchorTx = Math.floor(t / 44) * 44 + 22;
+      let anchorTy = Math.floor(l / 44) * 44 + 22;
+      let cacheKey = `region_${Math.floor(t / 44)},${Math.floor(l / 44)}`;
+      if (
+        this.activeCaveEntranceIsDesert &&
+        this.activeCaveEntranceCoords &&
+        this.activeCaveEntranceCoords.tx !== undefined &&
+        Math.hypot(t - this.activeCaveEntranceCoords.tx, l - this.activeCaveEntranceCoords.ty) <= 36
+      ) {
+        anchorTx = this.activeCaveEntranceCoords.tx;
+        anchorTy = this.activeCaveEntranceCoords.ty;
+        cacheKey = `ent_${anchorTx},${anchorTy}`;
+      }
+      if (this._desertGeodeCache.has(cacheKey)) {
+        return this._desertGeodeCache.get(cacheKey);
+      }
+
+      const nest = this.getDesertTardigradeNest(anchorTx, anchorTy);
+      let bestWallX = null,
+        bestWallY = null,
+        bestScore = -9999;
+
+      // Procura nos paredões 2.5D do deserto ao redor de anchorTx, anchorTy um paredão cuja face sul dá para um corredor aberto!
+      for (let dy = -16; dy <= 16; dy++) {
+        for (let dx = -16; dx <= 16; dx++) {
+          const dist = Math.hypot(dx, dy);
+          if (dist < 4.5 || dist > 16.5) continue;
+          const wx = anchorTx + dx;
+          const wy = anchorTy + dy;
+          if (this.getCaveEntranceAt(wx, wy) || this.getCaveEntranceAt(wx, wy + 1)) continue;
+          if (nest && Math.hypot(wx - nest.cx, wy - nest.cy) <= nest.radius + 2.5) continue;
+          // O bloco (wx, wy) DEVE ser um paredão do deserto (!isOpen)
+          if (this._isDesertCaveFloorRawAt(wx, wy)) continue;
+          // E o bloco ao sul (wx, wy + 1) DEVE ser piso aberto da caverna para a face frontal 2.5D do paredão ficar exposta e acessível!
+          if (!this._isDesertCaveFloorRawAt(wx, wy + 1)) continue;
+
+          const wallLeft = !this._isDesertCaveFloorRawAt(wx - 1, wy);
+          const wallRight = !this._isDesertCaveFloorRawAt(wx + 1, wy);
+          const wallTop = !this._isDesertCaveFloorRawAt(wx, wy - 1);
+          const floorSouth2 = this._isDesertCaveFloorRawAt(wx, wy + 2);
+          const h = this.hash2D(wx, wy, 9417);
+          const sc =
+            (wallLeft ? 3.0 : 0) +
+            (wallRight ? 3.0 : 0) +
+            (wallTop ? 2.5 : 0) +
+            (floorSouth2 ? 2.0 : 0) -
+            Math.abs(dist - 8.5) * 0.45 +
+            h * 2.0;
+          if (sc > bestScore) {
+            bestScore = sc;
+            bestWallX = wx;
+            bestWallY = wy;
+          }
+        }
+      }
+
+      if (bestWallX === null) {
+        bestWallX = anchorTx + 6;
+        bestWallY = anchorTy - 5;
+      }
+
+      const res = {
+        tx: bestWallX,
+        ty: bestWallY,
+        anchorTx,
+        anchorTy,
+        geodeCenterX: bestWallX,
+        geodeCenterY: bestWallY - 9,
+        radiusX: 11.5,
+        radiusY: 9.5,
+      };
+      this._desertGeodeCache.set(cacheKey, res);
+      return res;
+    }
+    isGeodeFissureAt(t, l) {
+      const f = this.getDesertGeodeFissure(t, l);
+      return f && f.tx === t && f.ty === l ? f : null;
+    }
+    getGeodeTile(t, l) {
+      const u = this.hash2D(t, l, 7);
+      const origin = this.activeGeodeFissureCoords || { tx: t, ty: l + 9 };
+      const gcx = origin.tx;
+      const gcy = origin.ty - 9;
+      const exitTx = origin.tx;
+      const exitTy = origin.ty;
+      const rx = 11.5;
+      const ry = 9.5;
+      const dx = t - gcx;
+      const dy = l - gcy;
+
+      // Fenda de saída na parede sul do Geodo (volta para a caverna de arenito do deserto)
+      if (t === exitTx && l === exitTy) {
+        return {
+          tx: t,
+          ty: l,
+          elevation: 0.9,
+          moisture: 0.4,
+          temperature: 0.5,
+          biome: BIOMES[BiomeId.DESERT_CAVE_WALL],
+          isDesertCave: !0,
+          isGeodeInterior: !0,
+          isGeodeExitWall: !0,
+          isCaveRockWall25D: !0,
+          prop: {
+            kind: "geode_exit_fissure",
+            wallTheme: "geode_crystal",
+            targetTx: exitTx,
+            targetTy: exitTy,
+            offsetX: 0,
+            offsetY: 0,
+            scale: 1,
+            interactive: !0,
+            namePt: "Fenda de Saída do Geodo [Paredão do Deserto]",
+            descriptionPt:
+              "Abertura estreita incrustada de ametistas na casca rochosa do geodo que retorna aos túneis de arenito do deserto. Pressione [F] ou caminhe até a fenda para sair!",
+          },
+          detailHash: u,
+        };
+      }
+
+      // Passagem de entrada logo ao norte da fenda de saída (garante corredor livre para entrar e sair)
+      const inEntryVestibule = Math.abs(t - exitTx) <= 1 && l >= exitTy - 3 && l < exitTy;
+
+      const angle = Math.atan2(dy, dx);
+      const wobble =
+        Math.sin(angle * 5 + (gcx * 0.37 + gcy * 0.71)) * 0.055 +
+        Math.cos(angle * 3 - gcx * 0.23) * 0.045;
+      const normDist = Math.hypot(dx / rx, dy / ry) + wobble;
+
+      const isFloor = inEntryVestibule || (normDist <= 0.80 && l < exitTy);
+
+      if (!isFloor) {
+        return {
+          tx: t,
+          ty: l,
+          elevation: 0.95,
+          moisture: 0.45,
+          temperature: 0.45,
+          biome: BIOMES[BiomeId.CAVE_WALL],
+          isGeodeInterior: !0,
+          isGeodeWall: !0,
+          isCaveRockWall25D: !0,
+          prop: {
+            kind: "cave_wall_25d",
+            wallTheme: "geode_crystal",
+            subType: Math.floor(u * 4),
+            scale: 1,
+            namePt: "Casca Cristalina do Geodo",
+            descriptionPt:
+              "Paredão 2.5D de basalto e ágata bandeada forrado por drusas colossais de ametista, quartzo e safira estelar.",
+          },
+          detailHash: u,
+        };
+      }
+
+      // Piso cristalino interno do Geodo (com drusas de cristal mineráveis abundantes!)
+      const pKey = `underground_${t},${l}`;
+      const intState =
+        this.interactedProps.get(pKey) ||
+        this.interactedProps.get(`cave_${t},${l}`) ||
+        this.interactedProps.get(`${t},${l}`) ||
+        {};
+      let geodeProp = null;
+      const placedKey = `cave_${t},${l}`;
+      if (this.customPlacedProps.has(placedKey)) {
+        geodeProp = { ...this.customPlacedProps.get(placedKey) };
+      } else if (!inEntryVestibule && !(Math.abs(t - exitTx) <= 1 && l >= exitTy - 4)) {
+        const cHash = this.hash2D(t, l, 811);
+        const subHash = this.hash2D(t, l, 823);
+        const isRingEdge = normDist >= 0.56 && normDist <= 0.78;
+        const isCenterCore = Math.hypot(dx, dy) <= 1.6;
+        if (isCenterCore && t === gcx && l === gcy) {
+          const opened = !!intState.opened;
+          geodeProp = {
+            kind: "crystal_cluster",
+            subType: 0,
+            offsetX: 0,
+            offsetY: -4,
+            scale: 1.55,
+            interactive: !0,
+            opened: opened,
+            namePt: opened
+              ? "Coração do Geodo (Minerado)"
+              : "Coração Cristalino do Geodo (Drusa Colossal)",
+            descriptionPt: opened
+              ? "Os grandes cristais primordiais do núcleo deste geodo já foram colhidos."
+              : "Enorme matriz de cristais puros no centro exato do geodo subterrâneo. Pressione [F] para minerar!",
+          };
+        } else if ((isRingEdge && cHash < 0.42) || (!isRingEdge && cHash < 0.18)) {
+          const opened = !!intState.opened;
+          const cType = Math.floor(subHash * 4);
+          const cNames = [
+            "Drusa de Ametista do Geodo",
+            "Drusa de Safira Estelar do Geodo",
+            "Drusa de Rubi Ígneo do Geodo",
+            "Drusa de Esmeralda Cristalina do Geodo",
+          ];
+          geodeProp = {
+            kind: "crystal_cluster",
+            subType: cType,
+            offsetX: (subHash - 0.5) * 6,
+            offsetY: -2,
+            scale: isRingEdge ? 1.22 : 1.08,
+            interactive: !0,
+            opened: opened,
+            namePt: opened ? `${cNames[cType]} (Minerada)` : cNames[cType],
+            descriptionPt: opened
+              ? "Esta formação cristalina do geodo já foi extraída."
+              : "Formação reluzente de cristais puros crescidos no interior da cavidade do geodo. Pressione [F] para minerar!",
+          };
+        } else if (cHash > 0.92) {
+          const opened = !!intState.opened;
+          const oType = Math.floor(subHash * 3);
+          const oNames = [
+            "Veio de Ouro Puro do Geodo",
+            "Veio de Mitril Cristalino",
+            "Veio de Ferro Meteórico",
+          ];
+          geodeProp = {
+            kind: "ore_vein",
+            subType: oType,
+            offsetX: 0,
+            offsetY: 0,
+            scale: 1.05,
+            interactive: !0,
+            opened: opened,
+            namePt: opened ? `${oNames[oType]} (Extraído)` : oNames[oType],
+            descriptionPt: opened
+              ? "Este veio mineral já foi extraído."
+              : "Veio metálico raro exposto entre as camadas de ágata do geodo. Pressione [F] para extrair!",
+          };
+        }
+      }
+
+      return {
+        tx: t,
+        ty: l,
+        elevation: 0.12,
+        moisture: 0.5,
+        temperature: 0.45,
+        biome: BIOMES[BiomeId.CAVE_CRYSTAL],
+        isGeodeInterior: !0,
+        isGeodeFloor: !0,
+        geodeNormDist: normDist,
+        roomName: "Interior do Geodo de Cristais",
+        prop: geodeProp,
+        detailHash: u,
+      };
+    }
     hash2D(t, l, o = 0) {
       let u =
         (t * 374761393) ^ (l * 668265263) ^ (this.seed * 31) ^ (o * 1013904223);
@@ -1330,6 +1642,10 @@
           : u;
       }
       if (this.isUnderground) {
+        if (this.undergroundLevel === 3) {
+          const ue = this.getGeodeTile(t, l);
+          return (this.tileCache.set(o, ue), ue);
+        }
         if (this.undergroundLevel === 2) {
           const ue = this.getDungeonTile(t, l);
           return (this.tileCache.set(o, ue), ue);
@@ -3705,7 +4021,65 @@
           nearConnector &&
           ((Math.abs(nearConnector.dx) <= 1.5 && Math.abs(nearConnector.dy) <= 7.0) ||
             (Math.abs(nearConnector.dy) <= 1.5 && Math.abs(nearConnector.dx) <= 7.0));
-        const isOpen = atExitPlaza || inConnectorTunnel || inNarrowTunnel || inNestRoom || inNestCorridor;
+        const geodeFissure = this.isGeodeFissureAt(t, l);
+        if (geodeFissure) {
+          return {
+            tx: t,
+            ty: l,
+            elevation: 0.9,
+            moisture: 0.15,
+            temperature: 0.65,
+            biome: BIOMES[BiomeId.DESERT_CAVE_WALL],
+            isDesertCave: !0,
+            isGeodeFissureWall: !0,
+            isCaveRockWall25D: !0,
+            prop: {
+              kind: "geode_fissure",
+              wallTheme: "desert_cave",
+              targetTx: t,
+              targetTy: l,
+              offsetX: 0,
+              offsetY: 0,
+              scale: 1,
+              interactive: !0,
+              namePt: "Fenda no Paredão para o Geodo de Cristais",
+              descriptionPt:
+                "Uma fenda profunda na escarpa de arenito do deserto que reluz com cristais violetas e safiras no interior. Pressione [F] ou caminhe até a fenda para entrar no Geodo!",
+            },
+            detailHash: u,
+          };
+        }
+
+        const nearGeodeFissure = this.getDesertGeodeFissure(t, l);
+        let inGeodeAccess = !1;
+        if (nearGeodeFissure) {
+          // Garante clareira diante da face frontal sul da fenda do paredão e corredor ligado ao túnel ou entrada
+          if (Math.abs(t - nearGeodeFissure.tx) <= 1 && l >= nearGeodeFissure.ty + 1 && l <= nearGeodeFissure.ty + 2) {
+            inGeodeAccess = !0;
+          } else if (
+            nearGeodeFissure.anchorTx !== undefined &&
+            nearGeodeFissure.anchorTy !== undefined &&
+            l > nearGeodeFissure.ty
+          ) {
+            const dSeg = this._distanceToSegment(
+              t,
+              l,
+              nearGeodeFissure.tx,
+              nearGeodeFissure.ty + 1,
+              nearGeodeFissure.anchorTx,
+              nearGeodeFissure.anchorTy,
+            );
+            if (dSeg <= 1.45) inGeodeAccess = !0;
+          }
+        }
+
+        const isOpen =
+          atExitPlaza ||
+          inConnectorTunnel ||
+          inNarrowTunnel ||
+          inNestRoom ||
+          inNestCorridor ||
+          inGeodeAccess;
 
         if (!isOpen) {
           return {
@@ -4929,6 +5303,26 @@
             "Atravessando o portal de pedra de volta à luz da superfície!",
           reward: "Retorno à Superfície",
         };
+      if (o.prop.kind === "geode_fissure")
+        return {
+          success: !0,
+          action: "enter_geode",
+          targetTx: o.prop.targetTx !== undefined ? o.prop.targetTx : t,
+          targetTy: o.prop.targetTy !== undefined ? o.prop.targetTy : l,
+          message:
+            "Atravessando a fenda estreita no paredão de arenito para o interior reluzente de um Geodo de Cristais!",
+          reward: "Geodo Descoberto (+120 XP)",
+        };
+      if (o.prop.kind === "geode_exit_fissure")
+        return {
+          success: !0,
+          action: "exit_geode",
+          targetTx: o.prop.targetTx !== undefined ? o.prop.targetTx : t,
+          targetTy: o.prop.targetTy !== undefined ? o.prop.targetTy : l,
+          message:
+            "Saindo pela fenda cristalina do geodo de volta aos túneis de arenito do deserto!",
+          reward: "Retorno à Caverna de Arenito",
+        };
       if (o.prop.kind === "tardigrade_egg") {
         if (m.opened) {
           return {
@@ -5951,6 +6345,30 @@
                   t.prop.kind === "dungeon_staircase_down"
                     ? "enter_dungeon"
                     : "exit_dungeon",
+                tx: t.tx,
+                ty: t.ty,
+                prop: t.prop,
+              };
+            }
+          }
+          if (
+            t &&
+            t.prop &&
+            (t.prop.kind === "geode_fissure" || t.prop.kind === "geode_exit_fissure")
+          ) {
+            const cx = t.tx * this.tileSize + this.tileSize / 2;
+            const cy = t.ty * this.tileSize + this.tileSize / 2;
+            const rx = x - cx;
+            const ry = y - cy;
+            const isEnter = t.prop.kind === "geode_fissure";
+            // A fenda de entrada fica na face sul do paredão (jogador aproxima vindo do sul: ry entre 16 e 34)
+            // A fenda de saída fica no sul da câmara do geodo (jogador aproxima vindo do norte: ry entre -34 e -14)
+            if (
+              Math.abs(rx) <= 15 &&
+              ((isEnter && ry >= 14 && ry <= 31) || (!isEnter && ry >= -31 && ry <= -14))
+            ) {
+              return {
+                action: isEnter ? "enter_geode" : "exit_geode",
                 tx: t.tx,
                 ty: t.ty,
                 prop: t.prop,

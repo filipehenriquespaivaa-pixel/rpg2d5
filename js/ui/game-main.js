@@ -1545,63 +1545,60 @@
             found = !0;
           }
 
-          if (E === "DESERT_CAVE" || E === "DESERT_CAVE_FLOOR" || E === "DESERT_CAVE_WALL") {
-            // Encontra a caverna do deserto mais próxima e desce o jogador diretamente nos túneis estreitos!
-            let targetCave = null;
-            for (let r = 1; r <= 35 && !targetCave; r++) {
-              for (let dy = -r; dy <= r && !targetCave; dy++) {
-                for (let dx = -r; dx <= r && !targetCave; dx++) {
-                  if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-                  const tx = 520 + dx * 14, ty = 360 + dy * 14;
-                  const b = D._computeSurfaceBaseBiome(tx, ty);
-                  if (b && (b.id === BiomeId.DESERT || b.id === BiomeId.CANYON)) {
-                    for (let sy = -8; sy <= 8 && !targetCave; sy++) {
-                      for (let sx = -8; sx <= 8 && !targetCave; sx++) {
-                        const cand = D.getCaveEntranceAt(tx + sx, ty + sy);
-                        if (cand && (cand.isDesertCave || b.id === BiomeId.DESERT)) {
-                          targetCave = cand;
-                        }
-                      }
-                    }
-                  }
-                }
+          if (E === "DESERT_GEODE") {
+            let fissure = D.getDesertGeodeFissure ? D.getDesertGeodeFissure() : null;
+            if (fissure) {
+              if (!D.isUnderground) {
+                D.enterCave(fissure.tx, fissure.ty + 1, fissure.tx * D.tileSize + 14, (fissure.ty + 1) * D.tileSize + 14);
               }
+              D.enterGeode(fissure.tx, fissure.ty, fissure.tx * D.tileSize + 14, (fissure.ty + 1) * D.tileSize + 14);
+              targetPixelX = fissure.tx * D.tileSize + 14;
+              targetPixelY = (fissure.ty + 2) * D.tileSize + 14;
+              foundDist = Math.round(Math.hypot(fissure.tx - originTx, fissure.ty - originTy));
+              found = !0;
+              ve(`💎 Teleportado diretamente para dentro do Geodo de Cristais em [${fissure.tx}, ${fissure.ty}]!`);
             }
-            if (targetCave) {
-              D.enterCave(targetCave.tx, targetCave.ty, targetCave.tx * D.tileSize + 14, targetCave.ty * D.tileSize + 14);
-              if (E === "DESERT_CAVE_WALL") {
-                // Posiciona em um piso adjacente a um paredão de arenito para não prender o jogador dentro da rocha
-                let wallAdjFound = !1;
-                for (let sr = 1; sr <= 12 && !wallAdjFound; sr++) {
-                  for (let sdy = -sr; sdy <= sr && !wallAdjFound; sdy++) {
-                    for (let sdx = -sr; sdx <= sr && !wallAdjFound; sdx++) {
-                      const cx = targetCave.tx + sdx, cy = targetCave.ty + sdy;
-                      const ct = D.getTile(cx, cy);
-                      if (ct && ct.biome && ct.biome.id === BiomeId.DESERT_CAVE_WALL) {
-                        for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-                          const ft = D.getTile(cx + ox, cy + oy);
-                          if (ft && ft.biome && ft.biome.passable && !D.getNearbyCaveDoorwayAt((cx + ox) * D.tileSize + 14, (cy + oy) * D.tileSize + 14)) {
-                            targetPixelX = (cx + ox) * D.tileSize + 14;
-                            targetPixelY = (cy + oy) * D.tileSize + 14;
-                            wallAdjFound = !0;
-                            break;
+          }
+
+          if (E === "DESERT_CAVE" || E === "DESERT_CAVE_FLOOR" || E === "DESERT_CAVE_WALL") {
+            const fissure = D.getDesertGeodeFissure ? D.getDesertGeodeFissure() : null;
+            if (E === "DESERT_CAVE_WALL" && fissure) {
+              D.enterCave(fissure.tx, fissure.ty + 1, fissure.tx * D.tileSize + 14, (fissure.ty + 1) * D.tileSize + 14);
+              targetPixelX = fissure.tx * D.tileSize + 14;
+              targetPixelY = (fissure.ty + 1) * D.tileSize + 20;
+              foundDist = Math.round(Math.hypot(fissure.tx - originTx, fissure.ty - originTy));
+              found = !0;
+              ve(`💎 Teleportado para o Paredão do Deserto com a Fenda do Geodo em [${fissure.tx}, ${fissure.ty}]!`);
+            } else {
+              // Encontra a caverna do deserto mais próxima e desce o jogador diretamente nos túneis estreitos!
+              let targetCave = null;
+              for (let r = 1; r <= 35 && !targetCave; r++) {
+                for (let dy = -r; dy <= r && !targetCave; dy++) {
+                  for (let dx = -r; dx <= r && !targetCave; dx++) {
+                    if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                    const tx = 520 + dx * 14, ty = 360 + dy * 14;
+                    const b = D._computeSurfaceBaseBiome(tx, ty);
+                    if (b && (b.id === BiomeId.DESERT || b.id === BiomeId.CANYON)) {
+                      for (let sy = -8; sy <= 8 && !targetCave; sy++) {
+                        for (let sx = -8; sx <= 8 && !targetCave; sx++) {
+                          const cand = D.getCaveEntranceAt(tx + sx, ty + sy);
+                          if (cand && (cand.isDesertCave || b.id === BiomeId.DESERT)) {
+                            targetCave = cand;
                           }
                         }
                       }
                     }
                   }
                 }
-                if (!wallAdjFound) {
-                  targetPixelX = targetCave.tx * D.tileSize + 14;
-                  targetPixelY = (targetCave.ty + 2) * D.tileSize + 14;
-                }
-              } else {
+              }
+              if (targetCave) {
+                D.enterCave(targetCave.tx, targetCave.ty, targetCave.tx * D.tileSize + 14, targetCave.ty * D.tileSize + 14);
                 targetPixelX = targetCave.tx * D.tileSize + 14;
                 targetPixelY = (targetCave.ty + 2) * D.tileSize + 14;
+                foundDist = Math.round(Math.hypot(targetCave.tx - originTx, targetCave.ty - originTy));
+                found = !0;
+                ve(`🦂 Teleportado para os túneis estreitos da Caverna do Deserto em [${targetCave.tx}, ${targetCave.ty}]! (Fenda do Geodo em [${fissure ? fissure.tx : "?"}, ${fissure ? fissure.ty : "?"}])`);
               }
-              foundDist = Math.round(Math.hypot(targetCave.tx - originTx, targetCave.ty - originTy));
-              found = !0;
-              ve(`🦂 Teleportado para os túneis estreitos da Caverna do Deserto em [${targetCave.tx}, ${targetCave.ty}]!`);
             }
           }
 
@@ -2887,6 +2884,44 @@
               v(E.getTile(qe, Ze).biome);
               S({ tx: qe, ty: Ze });
               ve("Subindo os degraus de pedra de volta aos salões do subsolo!");
+            } else if (Ke.action === "enter_geode") {
+              __autoCaveTimer.current = 1.0;
+              const oldX = D.x,
+                oldY = D.y;
+              m.current.playCaveEnter();
+              const targetTx = Ke.targetTx !== undefined ? Ke.targetTx : Ye.tx,
+                targetTy = Ke.targetTy !== undefined ? Ke.targetTy : Ye.ty;
+              E.enterGeode(targetTx, targetTy, oldX, oldY);
+              Oa.current = { x: 0, y: 0 };
+              Et(!1);
+              D.x = targetTx * Q + 14;
+              D.y = (targetTy + 1) * Q + 18;
+              D.vx = 0;
+              D.vy = 0;
+              D.direction = "down";
+              const qe = Math.floor(D.x / Q),
+                Ze = Math.floor(D.y / Q);
+              v(E.getTile(qe, Ze).biome);
+              S({ tx: qe, ty: Ze });
+              ve("💎 Atravessando a fenda no paredão de arenito... Você entrou no Geodo de Cristais!");
+            } else if (Ke.action === "exit_geode") {
+              __autoCaveTimer.current = 1.0;
+              m.current.playCaveExit();
+              const targetTx = Ke.targetTx !== undefined ? Ke.targetTx : Math.floor(D.x / Q),
+                targetTy = Ke.targetTy !== undefined ? Ke.targetTy : Math.floor(D.y / Q);
+              const De = E.exitGeode(targetTx, targetTy);
+              Oa.current = { x: 0, y: 0 };
+              Et(!1);
+              D.x = De.x;
+              D.y = De.y;
+              D.vx = 0;
+              D.vy = 0;
+              D.direction = "down";
+              const qe = Math.floor(D.x / Q),
+                Ze = Math.floor(D.y / Q);
+              v(E.getTile(qe, Ze).biome);
+              S({ tx: qe, ty: Ze });
+              ve("Saindo pela fenda do Geodo de volta para a Caverna de Arenito!");
             } else if (Ke.action === "mine_crystal") {
               m.current.playMineCrystal();
               const De = pi("crystal", aa);
@@ -4545,6 +4580,40 @@
                   v(Q.getTile(qe_t, Ze_t).biome);
                   S({ tx: qe_t, ty: Ze_t });
                   ve("Subindo os degraus de volta aos salões do subsolo!");
+                } else if (autoC.action === "enter_geode") {
+                  m.current.playCaveEnter();
+                  Q.enterGeode(autoC.tx, autoC.ty, oldX, oldY);
+                  Oa.current = { x: 0, y: 0 };
+                  Et(!1);
+                  he.x = autoC.tx * Q.tileSize + 14;
+                  he.y = (autoC.ty + 1) * Q.tileSize + 18;
+                  he.vx = 0;
+                  he.vy = 0;
+                  he.direction = "down";
+                  const qe_t = Math.floor(he.x / Q.tileSize),
+                    Ze_t = Math.floor(he.y / Q.tileSize);
+                  v(Q.getTile(qe_t, Ze_t).biome);
+                  S({ tx: qe_t, ty: Ze_t });
+                  ve("💎 Atravessando a fenda no paredão de arenito... Você entrou no Geodo de Cristais!");
+                } else if (autoC.action === "exit_geode") {
+                  m.current.playCaveExit();
+                  const targetTx =
+                      autoC.prop?.targetTx !== undefined ? autoC.prop.targetTx : autoC.tx,
+                    targetTy =
+                      autoC.prop?.targetTy !== undefined ? autoC.prop.targetTy : autoC.ty;
+                  const De = Q.exitGeode(targetTx, targetTy);
+                  Oa.current = { x: 0, y: 0 };
+                  Et(!1);
+                  he.x = De.x;
+                  he.y = De.y;
+                  he.vx = 0;
+                  he.vy = 0;
+                  he.direction = "down";
+                  const qe_t = Math.floor(he.x / Q.tileSize),
+                    Ze_t = Math.floor(he.y / Q.tileSize);
+                  v(Q.getTile(qe_t, Ze_t).biome);
+                  S({ tx: qe_t, ty: Ze_t });
+                  ve("Saindo pela fenda do Geodo de volta para a Caverna de Arenito!");
                 }
               }
             }

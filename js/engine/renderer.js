@@ -172,6 +172,24 @@
                   color: "rgba(254, 240, 138, 0.16)",
                   intensity: 0.75,
                 });
+              else if (G.prop.kind === "geode_fissure")
+                K.push({
+                  x: ke * f + f / 2,
+                  y: ne * f + f / 2 + 4,
+                  radius: 145 + Math.sin(this.animTimer * 3.5) * 10,
+                  color: "rgba(192, 132, 252, 0.72)",
+                  intensity: 0.9,
+                  isCampfire: !0,
+                });
+              else if (G.prop.kind === "geode_exit_fissure")
+                K.push({
+                  x: ke * f + f / 2,
+                  y: ne * f + f / 2 + 4,
+                  radius: 155 + Math.sin(this.animTimer * 3.2) * 8,
+                  color: "rgba(251, 191, 36, 0.75)",
+                  intensity: 0.9,
+                  isCampfire: !0,
+                });
               else if (G.prop.kind === "dungeon_staircase_up")
                 K.push({
                   x: ke * f + f / 2,
@@ -1301,6 +1319,23 @@
               ((g.fillStyle = "rgba(255, 255, 255, 0.08)"),
               g.fillRect(l + 8 + T * 10, o + 4 + T * 16, 3, 2)));
         else if (y.id === BiomeId.CAVE_CRYSTAL) {
+          if (t.isGeodeInterior) {
+            const isAlt = (Math.abs(t.tx * 3 + t.ty * 5) % 2) === 0;
+            g.fillStyle = isAlt ? "#1e1b4b" : "#17143a";
+            g.fillRect(l, o, u + 1, u + 1);
+            g.strokeStyle = "rgba(139, 92, 246, 0.22)";
+            g.lineWidth = 1;
+            g.strokeRect(l + 1, o + 1, u - 2, u - 2);
+            if (T > 0.35) {
+              g.fillStyle = T > 0.68 ? "rgba(192, 132, 252, 0.22)" : "rgba(56, 189, 248, 0.18)";
+              g.beginPath();
+              g.moveTo(l + 4 + T * 14, o + 6 + (1 - T) * 14);
+              g.lineTo(l + 9 + T * 14, o + 4 + (1 - T) * 14);
+              g.lineTo(l + 7 + T * 14, o + 11 + (1 - T) * 14);
+              g.closePath();
+              g.fill();
+            }
+          }
           if (!f) {
             const S = (Math.sin(this.animTimer * 3 + l * 0.1) + 1) * 0.5;
             ((g.fillStyle = `rgba(192, 132, 252, ${0.35 + S * 0.45})`),
@@ -1787,6 +1822,8 @@
             t.kind !== "greek_wall" &&
             t.kind !== "dungeon_wall" &&
             t.kind !== "cave_wall_25d" &&
+            t.kind !== "geode_fissure" &&
+            t.kind !== "geode_exit_fissure" &&
             this.drawPropDirectionalShadow(c, t.kind, f, y),
           t.kind)
         ) {
@@ -1888,10 +1925,47 @@
               t.wallTheme ||
               (u.isEarthMineWall
                 ? "earth_mine"
-                : u.isDesertCave || (u.biome && u.biome.id === BiomeId.DESERT_CAVE_WALL)
-                  ? "desert_cave"
-                  : "cave_rock");
+                : u.isGeodeInterior
+                  ? "geode_crystal"
+                  : u.isDesertCave || (u.biome && u.biome.id === BiomeId.DESERT_CAVE_WALL)
+                    ? "desert_cave"
+                    : "cave_rock");
             drawCaveRockWall25D(c, f, theme, u.detailHash || 0.5, nb);
+            break;
+          }
+          case "geode_fissure":
+          case "geode_exit_fissure": {
+            let nb = u._gf25Nb;
+            if (!nb) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty,
+                isCW = (tile) =>
+                  !!(
+                    tile &&
+                    (tile.isCaveRockWall25D ||
+                      tile.isGeodeFissure ||
+                      tile.isGeodeExitFissure ||
+                      (tile.biome &&
+                        (tile.biome.id === BiomeId.CAVE_WALL ||
+                          tile.biome.id === BiomeId.DESERT_CAVE_WALL)))
+                  );
+              nb = u._gf25Nb = {
+                left: isCW(eng.getTile(tx - 1, ty)),
+                right: isCW(eng.getTile(tx + 1, ty)),
+                top: isCW(eng.getTile(tx, ty - 1)),
+                bottom: !1,
+              };
+            }
+            if (typeof drawGeodeWallFissure25D === "function") {
+              drawGeodeWallFissure25D(
+                c,
+                f,
+                nb,
+                t.kind === "geode_exit_fissure",
+                this.animTimer || 0,
+              );
+            }
             break;
           }
           case "dungeon_wall": {

@@ -2831,6 +2831,24 @@
                           h.jsxs("button", {
                             type: "button",
                             onClick: () => {
+                              p && p("DESERT_GEODE");
+                              setShowDevSettings(!1);
+                            },
+                            className:
+                              "py-2 px-3 rounded-lg bg-purple-950/80 hover:bg-purple-900 border border-purple-500/50 text-purple-200 hover:text-white font-bold text-xs flex items-center justify-between transition cursor-pointer shadow-sm",
+                            children: [
+                              h.jsx("span", {
+                                children: "💎 Geodo de Cristais (Fenda no Paredão do Deserto)",
+                              }),
+                              h.jsx("span", {
+                                className: "text-[10px] font-mono text-purple-400",
+                                children: "Subsolo",
+                              }),
+                            ],
+                          }),
+                          h.jsxs("button", {
+                            type: "button",
+                            onClick: () => {
                               p && p("MOUNTAIN_25D");
                               setShowDevSettings(!1);
                             },
