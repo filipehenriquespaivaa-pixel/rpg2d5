@@ -1276,6 +1276,12 @@
             g.stroke(),
             (g.fillStyle = "rgba(0, 0, 0, 0.45)"),
             g.fillRect(l, o + u - 6, u, 6));
+        else if (y.id === BiomeId.DESERT_CAVE_WALL || y.id === BiomeId.DESERT_CAVE_FLOOR) {
+          // Caverna do Deserto: tema arenito, tuneis estreitos de terra, SEM props!
+          this.engine && typeof this.engine.renderDesertCaveTile === "function"
+            ? this.engine.renderDesertCaveTile(g, t, l, o, u)
+            : ((g.fillStyle = y.groundColor), g.fillRect(l, o, u + 1.2, u + 1.2));
+        }
         else if (y.id === BiomeId.CAVE_FLOOR)
           ((g.fillStyle = "rgba(0, 0, 0, 0.28)"),
             g.fillRect(l + 6 + T * 14, o + 6 + T * 12, 4, 3),
