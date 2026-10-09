@@ -271,8 +271,8 @@
               offY = (typeof ke.offsetY === "number" && isFinite(ke.offsetY)) ? ke.offsetY : 0,
               G = ne.tx * f + f / 2 + offX,
               de = ne.ty * f + f / 2 + offY;
-            // [PERF] Paredao totalmente cercado por platô (esq/dir/cima/baixo) so repintava o chao que o chunk ja tem:
-            // pula o desenho (e as 8 consultas getTile). Resultado calculado 1x por tile. Desligue com window.__cliffKeepBuried = true.
+            // [PERF] Paredao totalmente cercado por platô/rocha (esq/dir/cima/baixo) so repintava o topo que o chunk ja tem:
+            // pula o desenho e reduz drasticamente a fila de ordenacao Y nas cavernas e montanhas!
             let __skipWall = !1;
             if (ke.kind === "cliff_wall" && !window.__cliffKeepBuried) {
               if (ne._wallBuried === void 0) {
@@ -285,6 +285,29 @@
                   el(ne.tx - 1, ne.ty) && el(ne.tx + 1, ne.ty) && el(ne.tx, ne.ty - 1) && el(ne.tx, ne.ty + 1);
               }
               if (ne._wallBuried) __skipWall = !0;
+            } else if (ke.kind === "cave_wall_25d") {
+              let nb = ne._cw25Nb;
+              if (!nb) {
+                const eng = this.engine,
+                  tx = ne.tx,
+                  ty = ne.ty,
+                  isCW = (tile) =>
+                    !!(
+                      tile &&
+                      tile.biome &&
+                      (tile.biome.id === BiomeId.CAVE_WALL ||
+                        tile.biome.id === BiomeId.DESERT_CAVE_WALL)
+                    );
+                nb = ne._cw25Nb = {
+                  left: isCW(eng.getTile(tx - 1, ty)),
+                  right: isCW(eng.getTile(tx + 1, ty)),
+                  top: isCW(eng.getTile(tx, ty - 1)),
+                  bottom: isCW(eng.getTile(tx, ty + 1)),
+                };
+              }
+              if (nb.left && nb.right && nb.top && nb.bottom && !ne.isDungeonWall) {
+                // O interior maciço da rocha usa o topo pré-renderizado no chunk ou 1 único drawImage sem face frontal
+              }
             }
             // Desenha o paredão (cliff_wall) e a rampa (cliff_ramp) na camada de terreno/platô abaixo dos pés do personagem
             // para que o jogador apareça caminhando em cima do paredão!
@@ -2190,25 +2213,27 @@
             break;
           }
           case "cliff_wall": {
-            const eng = this.engine,
-              tx = u.tx,
-              ty = u.ty,
-              myTier = u.mountainTier || t.subType || 1,
-              tL = eng.getTile(tx - 1, ty),
-              tR = eng.getTile(tx + 1, ty),
-              tT = eng.getTile(tx, ty - 1),
-              tB = eng.getTile(tx, ty + 1),
-              tTL = eng.getTile(tx - 1, ty - 1),
-              tTR = eng.getTile(tx + 1, ty - 1),
-              tBL = eng.getTile(tx - 1, ty + 1),
-              tBR = eng.getTile(tx + 1, ty + 1),
-              isElevatedOrWall = (tile) =>
-                !!(
-                  tile &&
-                  tile.biome.id === BiomeId.MOUNTAIN_25D &&
-                  (tile.mountainTier || 1) >= myTier
-                ),
-              neighbors = {
+            let neighbors = u._cwNb;
+            if (!neighbors) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty,
+                myTier = u.mountainTier || t.subType || 1,
+                tL = eng.getTile(tx - 1, ty),
+                tR = eng.getTile(tx + 1, ty),
+                tT = eng.getTile(tx, ty - 1),
+                tB = eng.getTile(tx, ty + 1),
+                tTL = eng.getTile(tx - 1, ty - 1),
+                tTR = eng.getTile(tx + 1, ty - 1),
+                tBL = eng.getTile(tx - 1, ty + 1),
+                tBR = eng.getTile(tx + 1, ty + 1),
+                isElevatedOrWall = (tile) =>
+                  !!(
+                    tile &&
+                    tile.biome.id === BiomeId.MOUNTAIN_25D &&
+                    (tile.mountainTier || 1) >= myTier
+                  );
+              neighbors = u._cwNb = {
                 left: isElevatedOrWall(tL),
                 right: isElevatedOrWall(tR),
                 top: isElevatedOrWall(tT),
@@ -2222,6 +2247,7 @@
                 wallTop: !!(tT && tT.isCliffWall && (tT.mountainTier || 1) === myTier),
                 wallBottom: !!(tB && tB.isCliffWall && (tB.mountainTier || 1) === myTier),
               };
+            }
             // Só desenha sombra direcional quando o sul é externo (fora do platô elevado)
             if (!neighbors.bottom) {
               this.drawPropDirectionalShadow(c, t.kind, f, y);

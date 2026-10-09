@@ -1008,156 +1008,170 @@
     e.restore();
   }
   function drawGreekRuinWall25D(e, t, subType = 0, neighbors = null, wallHeightState = 0) {
-    e.save();
     const nL = !!(neighbors && neighbors.left),
       nR = !!(neighbors && neighbors.right),
       nT = !!(neighbors && neighbors.top),
       nB = !!(neighbors && neighbors.bottom),
-      half = 18 * t,
-      leftX = nL ? -half - 1 * t : -half + 1 * t,
-      rightX = nR ? half + 1 * t : half - 1 * t,
-      w = rightX - leftX,
-      // Altura variável: 0 = completa (26*t), 1 = topo irregular quebrado (22*t), 2 = meia parede (14*t), 3 = base baixa inacabada/ruína (7*t)
-      wallH =
-        wallHeightState === 3
-          ? 7.5 * t
-          : wallHeightState === 2
-            ? 14.5 * t
-            : wallHeightState === 1
-              ? 22 * t
-              : 26 * t,
-      baseY = 18 * t,
-      topFrontY = baseY - wallH,
-      topBackY = -half - wallH;
+      st = Math.abs(subType || 0) % 4,
+      hs = Math.abs(wallHeightState || 0) % 4;
 
-    // Sombra forte projetada no piso ao redor da base da parede para destacar o volume 3D
-    if (!nB) {
-      e.fillStyle = "rgba(2, 6, 23, 0.58)";
-      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, (wallHeightState >= 2 ? 6 : 9.5) * t);
+    // [PERF] Cacheia todos os estados das paredes 2.5D das ruínas gregas em canvas offscreen!
+    if (!drawGreekRuinWall25D._cache) {
+      drawGreekRuinWall25D._cache = new Map();
+    }
+    const mask = (nL ? 1 : 0) | (nR ? 2 : 0) | (nT ? 4 : 0) | (nB ? 8 : 0);
+    const key = `${t.toFixed(3)}_${mask}_${st}_${hs}`;
+    let cached = drawGreekRuinWall25D._cache.get(key);
+
+    if (!cached) {
+      const padX = Math.ceil(22 * t);
+      const padTop = Math.ceil(50 * t);
+      const padBot = Math.ceil(32 * t);
+      const can = document.createElement("canvas");
+      can.width = Math.max(1, padX * 2);
+      can.height = Math.max(1, padTop + padBot);
+      const wc = can.getContext("2d");
+
+      if (wc) {
+        wc.translate(padX, padTop);
+        const half = 18 * t,
+          leftX = nL ? -half - 1 * t : -half + 1 * t,
+          rightX = nR ? half + 1 * t : half - 1 * t,
+          w = rightX - leftX,
+          wallH =
+            hs === 3
+              ? 7.5 * t
+              : hs === 2
+                ? 14.5 * t
+                : hs === 1
+                  ? 22 * t
+                  : 26 * t,
+          baseY = 18 * t,
+          topFrontY = baseY - wallH,
+          topBackY = -half - wallH;
+
+        if (!nB) {
+          wc.fillStyle = "rgba(2, 6, 23, 0.58)";
+          wc.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, (hs >= 2 ? 6 : 9.5) * t);
+        }
+
+        const frontGrad = wc.createLinearGradient(0, topFrontY, 0, baseY);
+        frontGrad.addColorStop(0, "#ffffff");
+        frontGrad.addColorStop(0.55, "#f1f5f9");
+        frontGrad.addColorStop(1, "#cbd5e1");
+        wc.fillStyle = frontGrad;
+
+        if (hs === 0) {
+          wc.fillRect(leftX, topFrontY, w, wallH);
+        } else {
+          wc.beginPath();
+          wc.moveTo(leftX, baseY);
+          wc.lineTo(leftX, topFrontY + (st === 1 ? 4 * t : 1 * t));
+          wc.lineTo(leftX + w * 0.28, topFrontY + (st === 1 ? 4 * t : 1 * t));
+          wc.lineTo(leftX + w * 0.32, topFrontY - (st === 2 ? 2.5 * t : -3.5 * t));
+          wc.lineTo(leftX + w * 0.68, topFrontY - (st === 2 ? 2.5 * t : -3.5 * t));
+          wc.lineTo(leftX + w * 0.72, topFrontY + (st === 0 ? 3.5 * t : 0));
+          wc.lineTo(rightX, topFrontY + (st === 0 ? 3.5 * t : 0));
+          wc.lineTo(rightX, baseY);
+          wc.closePath();
+          wc.fill();
+        }
+
+        wc.fillStyle = "#1e293b";
+        wc.fillRect(leftX, baseY - 3.8 * t, w, 3.8 * t);
+        wc.fillStyle = "#d97706";
+        wc.fillRect(leftX, baseY - 4.8 * t, w, 1.1 * t);
+
+        wc.strokeStyle = "rgba(51, 65, 85, 0.65)";
+        wc.lineWidth = 1.2 * t;
+        wc.beginPath();
+        if (hs <= 1) {
+          wc.moveTo(leftX, topFrontY + 8.5 * t);
+          wc.lineTo(rightX, topFrontY + 8.5 * t);
+          wc.moveTo(0, topFrontY + 8.5 * t);
+          wc.lineTo(0, topFrontY + 17 * t);
+        }
+        if (hs <= 2) {
+          wc.moveTo(leftX, baseY - 8.5 * t);
+          wc.lineTo(rightX, baseY - 8.5 * t);
+          wc.moveTo(-6 * t, baseY - 8.5 * t);
+          wc.lineTo(-6 * t, baseY - 4 * t);
+        }
+        wc.stroke();
+
+        if (hs === 0 || (hs === 1 && st !== 1)) {
+          const friezeW = hs === 1 ? w * 0.62 : w;
+          const friezeX = hs === 1 ? leftX + w * 0.18 : leftX;
+          wc.fillStyle = "#0369a1";
+          wc.fillRect(friezeX, topFrontY + 2 * t, friezeW, 4.4 * t);
+          wc.strokeStyle = "#fbbf24";
+          wc.lineWidth = 1.2 * t;
+          wc.beginPath();
+          wc.moveTo(friezeX, topFrontY + 2 * t);
+          wc.lineTo(friezeX + friezeW, topFrontY + 2 * t);
+          wc.moveTo(friezeX, topFrontY + 6.4 * t);
+          wc.lineTo(friezeX + friezeW, topFrontY + 6.4 * t);
+          wc.stroke();
+        }
+
+        const topDepth = topFrontY - topBackY;
+        if (hs === 0) {
+          wc.fillStyle = "#334155";
+          wc.fillRect(leftX, topBackY, w, topDepth + 1.5 * t);
+          wc.strokeStyle = "#f8fafc";
+          wc.lineWidth = 1.6 * t;
+          wc.strokeRect(leftX + 0.8 * t, topBackY + 0.8 * t, w - 1.6 * t, topDepth - 0.5 * t);
+          wc.strokeStyle = "#fbbf24";
+          wc.lineWidth = 0.9 * t;
+          wc.strokeRect(leftX + 2.5 * t, topBackY + 2.5 * t, w - 5 * t, topDepth - 4 * t);
+        } else {
+          wc.fillStyle = "#1e293b";
+          wc.fillRect(leftX + 1 * t, topBackY + 2.5 * t, w - 2 * t, topDepth - 2 * t);
+          wc.fillStyle = "#e2e8f0";
+          wc.fillRect(leftX + 1.5 * t, topBackY + 3.5 * t, w * 0.4, topDepth - 4 * t);
+          wc.fillStyle = "#ffffff";
+          wc.fillRect(leftX + w * 0.42, topBackY + (st === 2 ? 0.5 * t : 5 * t), w * 0.46, topDepth - 4 * t);
+          wc.strokeStyle = "#0f172a";
+          wc.lineWidth = 1.3 * t;
+          wc.strokeRect(leftX + 1 * t, topBackY + 2.5 * t, w - 2 * t, topDepth - 2 * t);
+          wc.fillStyle = "#94a3b8";
+          wc.beginPath();
+          wc.arc(leftX + w * 0.22, topFrontY - 4 * t, 2.8 * t, 0, Math.PI * 2);
+          wc.arc(leftX + w * 0.78, topFrontY - 2.5 * t, 2.4 * t, 0, Math.PI * 2);
+          wc.fill();
+        }
+
+        if (st === 1 || hs === 2) {
+          wc.fillStyle = "#15803d";
+          wc.beginPath();
+          wc.arc(-5 * t, baseY - 6 * t, 3 * t, 0, Math.PI * 2);
+          wc.arc(-2 * t, baseY - 9 * t, 2.3 * t, 0, Math.PI * 2);
+          wc.fill();
+        } else if (st === 2 || hs === 1) {
+          wc.strokeStyle = "rgba(71, 85, 105, 0.75)";
+          wc.lineWidth = 1.2 * t;
+          wc.beginPath();
+          wc.moveTo(-3 * t, topFrontY + 4 * t);
+          wc.lineTo(0, topFrontY + 10 * t);
+          wc.lineTo(-2 * t, baseY - 2 * t);
+          wc.stroke();
+        }
+
+        if (!nL) {
+          wc.fillStyle = "#94a3b8";
+          wc.fillRect(leftX, topBackY + (hs > 0 ? 3 * t : 0), 2 * t, baseY - topBackY);
+        }
+        if (!nR) {
+          wc.fillStyle = "#94a3b8";
+          wc.fillRect(rightX - 2 * t, topBackY + (hs > 0 ? 3 * t : 0), 2 * t, baseY - topBackY);
+        }
+      }
+
+      cached = { canvas: can, padX, padTop };
+      drawGreekRuinWall25D._cache.set(key, cached);
     }
 
-    // Face Frontal 2.5D de blocos de Mármore Branco Pario (bem clara, contrastando com o piso terracota/ocre escuro)
-    const frontGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
-    frontGrad.addColorStop(0, "#ffffff");
-    frontGrad.addColorStop(0.55, "#f1f5f9");
-    frontGrad.addColorStop(1, "#cbd5e1");
-    e.fillStyle = frontGrad;
-
-    if (wallHeightState === 0) {
-      // Parede de topo completo
-      e.fillRect(leftX, topFrontY, w, wallH);
-    } else {
-      // Topo irregular com blocos em degraus quebrados / incompletos!
-      e.beginPath();
-      e.moveTo(leftX, baseY);
-      e.lineTo(leftX, topFrontY + (subType === 1 ? 4 * t : 1 * t));
-      e.lineTo(leftX + w * 0.28, topFrontY + (subType === 1 ? 4 * t : 1 * t));
-      e.lineTo(leftX + w * 0.32, topFrontY - (subType === 2 ? 2.5 * t : -3.5 * t));
-      e.lineTo(leftX + w * 0.68, topFrontY - (subType === 2 ? 2.5 * t : -3.5 * t));
-      e.lineTo(leftX + w * 0.72, topFrontY + (subType === 0 ? 3.5 * t : 0));
-      e.lineTo(rightX, topFrontY + (subType === 0 ? 3.5 * t : 0));
-      e.lineTo(rightX, baseY);
-      e.closePath();
-      e.fill();
-    }
-
-    // Rodapé (Ortostato) escuro na base da parede onde ela toca o piso (separa 100% a parede do chão!)
-    e.fillStyle = "#1e293b";
-    e.fillRect(leftX, baseY - 3.8 * t, w, 3.8 * t);
-    e.fillStyle = "#d97706";
-    e.fillRect(leftX, baseY - 4.8 * t, w, 1.1 * t);
-
-    // Juntas dos blocos de cantaria de mármore (isódomo grego)
-    e.strokeStyle = "rgba(51, 65, 85, 0.65)";
-    e.lineWidth = 1.2 * t;
-    e.beginPath();
-    if (wallHeightState <= 1) {
-      e.moveTo(leftX, topFrontY + 8.5 * t);
-      e.lineTo(rightX, topFrontY + 8.5 * t);
-      e.moveTo(0, topFrontY + 8.5 * t);
-      e.lineTo(0, topFrontY + 17 * t);
-    }
-    if (wallHeightState <= 2) {
-      e.moveTo(leftX, baseY - 8.5 * t);
-      e.lineTo(rightX, baseY - 8.5 * t);
-      e.moveTo(-6 * t, baseY - 8.5 * t);
-      e.lineTo(-6 * t, baseY - 4 * t);
-    }
-    e.stroke();
-
-    // Friso Grego Dourado/Azul-Olímpico (Meandro Helênico) na faixa superior da parede
-    if (wallHeightState === 0 || (wallHeightState === 1 && subType !== 1)) {
-      const friezeW = wallHeightState === 1 ? w * 0.62 : w;
-      const friezeX = wallHeightState === 1 ? leftX + w * 0.18 : leftX;
-      e.fillStyle = "#0369a1";
-      e.fillRect(friezeX, topFrontY + 2 * t, friezeW, 4.4 * t);
-      e.strokeStyle = "#fbbf24";
-      e.lineWidth = 1.2 * t;
-      e.beginPath();
-      e.moveTo(friezeX, topFrontY + 2 * t);
-      e.lineTo(friezeX + friezeW, topFrontY + 2 * t);
-      e.moveTo(friezeX, topFrontY + 6.4 * t);
-      e.lineTo(friezeX + friezeW, topFrontY + 6.4 * t);
-      e.stroke();
-    }
-
-    // Topo da Parede 2.5D: Cornija Superior em Ardósia Azul-Escura / Cinza-Chumbo com borda de Mármore e Ouro
-    // (dá leitura imediata de onde está o topo da parede visto de cima!)
-    const topDepth = topFrontY - topBackY;
-    if (wallHeightState === 0) {
-      e.fillStyle = "#334155";
-      e.fillRect(leftX, topBackY, w, topDepth + 1.5 * t);
-      e.strokeStyle = "#f8fafc";
-      e.lineWidth = 1.6 * t;
-      e.strokeRect(leftX + 0.8 * t, topBackY + 0.8 * t, w - 1.6 * t, topDepth - 0.5 * t);
-      e.strokeStyle = "#fbbf24";
-      e.lineWidth = 0.9 * t;
-      e.strokeRect(leftX + 2.5 * t, topBackY + 2.5 * t, w - 5 * t, topDepth - 4 * t);
-    } else {
-      // Blocos superiores irregulares mostrando o miolo escuro da alvenaria grega (emplekton) e blocos de mármore lascados
-      e.fillStyle = "#1e293b";
-      e.fillRect(leftX + 1 * t, topBackY + 2.5 * t, w - 2 * t, topDepth - 2 * t);
-      e.fillStyle = "#e2e8f0";
-      e.fillRect(leftX + 1.5 * t, topBackY + 3.5 * t, w * 0.4, topDepth - 4 * t);
-      e.fillStyle = "#ffffff";
-      e.fillRect(leftX + w * 0.42, topBackY + (subType === 2 ? 0.5 * t : 5 * t), w * 0.46, topDepth - 4 * t);
-      e.strokeStyle = "#0f172a";
-      e.lineWidth = 1.3 * t;
-      e.strokeRect(leftX + 1 * t, topBackY + 2.5 * t, w - 2 * t, topDepth - 2 * t);
-      // Pedras soltas no topo quebrado
-      e.fillStyle = "#94a3b8";
-      e.beginPath();
-      e.arc(leftX + w * 0.22, topFrontY - 4 * t, 2.8 * t, 0, Math.PI * 2);
-      e.arc(leftX + w * 0.78, topFrontY - 2.5 * t, 2.4 * t, 0, Math.PI * 2);
-      e.fill();
-    }
-
-    // Hera e rachaduras de ruína
-    if (subType === 1 || wallHeightState === 2) {
-      e.fillStyle = "#15803d";
-      e.beginPath();
-      e.arc(-5 * t, baseY - 6 * t, 3 * t, 0, Math.PI * 2);
-      e.arc(-2 * t, baseY - 9 * t, 2.3 * t, 0, Math.PI * 2);
-      e.fill();
-    } else if (subType === 2 || wallHeightState === 1) {
-      e.strokeStyle = "rgba(71, 85, 105, 0.75)";
-      e.lineWidth = 1.2 * t;
-      e.beginPath();
-      e.moveTo(-3 * t, topFrontY + 4 * t);
-      e.lineTo(0, topFrontY + 10 * t);
-      e.lineTo(-2 * t, baseY - 2 * t);
-      e.stroke();
-    }
-
-    if (!nL) {
-      e.fillStyle = "#94a3b8";
-      e.fillRect(leftX, topBackY + (wallHeightState > 0 ? 3 * t : 0), 2 * t, baseY - topBackY);
-    }
-    if (!nR) {
-      e.fillStyle = "#94a3b8";
-      e.fillRect(rightX - 2 * t, topBackY + (wallHeightState > 0 ? 3 * t : 0), 2 * t, baseY - topBackY);
-    }
-    e.restore();
+    e.drawImage(cached.canvas, -cached.padX, -cached.padTop);
   }
 
   function drawGreekStatue(e, t, subType = 0, animTimer = 0) {
@@ -3770,332 +3784,376 @@
 
   function drawDungeonWall25D(e, t = 1, neighbors = null) {
     t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
-    e.save();
     const nL = !!(neighbors && neighbors.left);
     const nR = !!(neighbors && neighbors.right);
     const nT = !!(neighbors && neighbors.top);
     const nB = !!(neighbors && neighbors.bottom);
-    const half = 18 * t;
-    const leftX = nL ? -half - 1 * t : -half;
-    const rightX = nR ? half + 1 * t : half;
-    const w = rightX - leftX;
-    // Altura 2.5D alta e imponente (36*t) com topo elevado em perspectiva!
-    const wallH = 36 * t;
-    const baseY = 18 * t;
-    const topFrontY = baseY - wallH;
-    const topBackY = -half - wallH;
-    const topDepth = topFrontY - topBackY;
 
-    // 1. Sombra projetada na base sul quando exposta ao piso
-    if (!nB) {
-      e.fillStyle = "rgba(2, 6, 23, 0.78)";
-      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 11 * t);
+    // [PERF] Cacheia os 16 estados possíveis da muralha 2.5D do calabouço em canvas offscreen!
+    if (!drawDungeonWall25D._cache) {
+      drawDungeonWall25D._cache = new Map();
+    }
+    const mask = (nL ? 1 : 0) | (nR ? 2 : 0) | (nT ? 4 : 0) | (nB ? 8 : 0);
+    const key = `${t.toFixed(3)}_${mask}`;
+    let cached = drawDungeonWall25D._cache.get(key);
+
+    if (!cached) {
+      const padX = Math.ceil(22 * t);
+      const padTop = Math.ceil(58 * t);
+      const padBot = Math.ceil(32 * t);
+      const can = document.createElement("canvas");
+      can.width = Math.max(1, padX * 2);
+      can.height = Math.max(1, padTop + padBot);
+      const wc = can.getContext("2d");
+
+      if (wc) {
+        wc.translate(padX, padTop);
+        const half = 18 * t;
+        const leftX = nL ? -half - 1 * t : -half;
+        const rightX = nR ? half + 1 * t : half;
+        const w = rightX - leftX;
+        // Altura 2.5D alta e imponente (36*t) com topo elevado em perspectiva!
+        const wallH = 36 * t;
+        const baseY = 18 * t;
+        const topFrontY = baseY - wallH;
+        const topBackY = -half - wallH;
+        const topDepth = topFrontY - topBackY;
+
+        // 1. Sombra projetada na base sul quando exposta ao piso
+        if (!nB) {
+          wc.fillStyle = "rgba(2, 6, 23, 0.78)";
+          wc.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 11 * t);
+        }
+
+        // 2. Face frontal 2.5D da muralha de granito escuro (muito mais alta!)
+        const frontGrad = wc.createLinearGradient(0, topFrontY, 0, baseY);
+        frontGrad.addColorStop(0, "#64748b");
+        frontGrad.addColorStop(0.28, "#475569");
+        frontGrad.addColorStop(0.68, "#334155");
+        frontGrad.addColorStop(1, "#1e293b");
+        wc.fillStyle = frontGrad;
+        wc.fillRect(leftX, topFrontY, w, wallH);
+
+        // Rodapé reforçado de cantaria bruta na base
+        wc.fillStyle = "#0f172a";
+        wc.fillRect(leftX, baseY - 4 * t, w, 4 * t);
+
+        // 4 fileiras de blocos de pedra (cantaria pesada 2.5D) na face frontal alta
+        wc.strokeStyle = "rgba(15, 23, 42, 0.95)";
+        wc.lineWidth = 1.3 * t;
+        wc.beginPath();
+        wc.moveTo(leftX, topFrontY + 8 * t);
+        wc.lineTo(rightX, topFrontY + 8 * t);
+        wc.moveTo(leftX, topFrontY + 16 * t);
+        wc.lineTo(rightX, topFrontY + 16 * t);
+        wc.moveTo(leftX, topFrontY + 24 * t);
+        wc.lineTo(rightX, topFrontY + 24 * t);
+        // Juntas verticais alternadas
+        wc.moveTo(0, topFrontY);
+        wc.lineTo(0, topFrontY + 8 * t);
+        wc.moveTo(-6 * t, topFrontY + 8 * t);
+        wc.lineTo(-6 * t, topFrontY + 16 * t);
+        wc.moveTo(6 * t, topFrontY + 8 * t);
+        wc.lineTo(6 * t, topFrontY + 16 * t);
+        wc.moveTo(0, topFrontY + 16 * t);
+        wc.lineTo(0, topFrontY + 24 * t);
+        wc.moveTo(-6 * t, topFrontY + 24 * t);
+        wc.lineTo(-6 * t, baseY - 4 * t);
+        wc.moveTo(6 * t, topFrontY + 24 * t);
+        wc.lineTo(6 * t, baseY - 4 * t);
+        wc.stroke();
+
+        // Destaques de luz no topo de cada fiada de pedra
+        wc.strokeStyle = "rgba(148, 163, 184, 0.35)";
+        wc.lineWidth = 1 * t;
+        wc.beginPath();
+        wc.moveTo(leftX + 1, topFrontY + 1 * t);
+        wc.lineTo(rightX - 1, topFrontY + 1 * t);
+        wc.moveTo(leftX + 1, topFrontY + 9 * t);
+        wc.lineTo(rightX - 1, topFrontY + 9 * t);
+        wc.moveTo(leftX + 1, topFrontY + 17 * t);
+        wc.lineTo(rightX - 1, topFrontY + 17 * t);
+        wc.moveTo(leftX + 1, topFrontY + 25 * t);
+        wc.lineTo(rightX - 1, topFrontY + 25 * t);
+        wc.stroke();
+
+        // 3. Topo 2.5D da muralha (plano superior elevado visto de cima, de topBackY até topFrontY!)
+        const topGrad = wc.createLinearGradient(0, topBackY, 0, topFrontY);
+        topGrad.addColorStop(0, "#1e293b");
+        topGrad.addColorStop(0.5, "#334155");
+        topGrad.addColorStop(1, "#475569");
+        wc.fillStyle = topGrad;
+        wc.fillRect(leftX, topBackY, w, topDepth + 1.5 * t);
+
+        // Lajes de cobertura no topo 2.5D
+        wc.strokeStyle = "rgba(15, 23, 42, 0.85)";
+        wc.lineWidth = 1.1 * t;
+        wc.strokeRect(leftX + 0.5 * t, topBackY + 0.5 * t, w - 1 * t, topDepth);
+        wc.beginPath();
+        wc.moveTo(leftX, topBackY + topDepth * 0.5);
+        wc.lineTo(rightX, topBackY + topDepth * 0.5);
+        wc.moveTo(0, topBackY);
+        wc.lineTo(0, topBackY + topDepth * 0.5);
+        wc.moveTo(-6 * t, topBackY + topDepth * 0.5);
+        wc.lineTo(-6 * t, topFrontY);
+        wc.moveTo(6 * t, topBackY + topDepth * 0.5);
+        wc.lineTo(6 * t, topFrontY);
+        wc.stroke();
+
+        // Cornija frontal iluminada separando o topo 2.5D da face vertical sul
+        wc.fillStyle = "#94a3b8";
+        wc.fillRect(leftX, topFrontY - 2.2 * t, w, 2.5 * t);
+        wc.fillStyle = "#cbd5e1";
+        wc.fillRect(leftX, topFrontY - 2.6 * t, w, 1 * t);
+
+        if (!nT) {
+          wc.fillStyle = "#0f172a";
+          wc.fillRect(leftX, topBackY, w, 2.2 * t);
+        }
+        if (!nL) {
+          wc.fillStyle = "rgba(15, 23, 42, 0.55)";
+          wc.fillRect(leftX, topBackY, 2.2 * t, baseY - topBackY);
+        }
+        if (!nR) {
+          wc.fillStyle = "rgba(2, 6, 23, 0.65)";
+          wc.fillRect(rightX - 2.2 * t, topBackY, 2.2 * t, baseY - topBackY);
+        }
+
+        // Manchas de umidade e musgo na base da muralha
+        if (!nB) {
+          wc.fillStyle = "rgba(22, 101, 52, 0.42)";
+          wc.fillRect(leftX, baseY - 5 * t, w, 2 * t);
+        }
+      }
+
+      cached = { canvas: can, padX, padTop };
+      drawDungeonWall25D._cache.set(key, cached);
     }
 
-    // 2. Face frontal 2.5D da muralha de granito escuro (muito mais alta!)
-    const frontGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
-    frontGrad.addColorStop(0, "#64748b");
-    frontGrad.addColorStop(0.28, "#475569");
-    frontGrad.addColorStop(0.68, "#334155");
-    frontGrad.addColorStop(1, "#1e293b");
-    e.fillStyle = frontGrad;
-    e.fillRect(leftX, topFrontY, w, wallH);
-
-    // Rodapé reforçado de cantaria bruta na base
-    e.fillStyle = "#0f172a";
-    e.fillRect(leftX, baseY - 4 * t, w, 4 * t);
-
-    // 4 fileiras de blocos de pedra (cantaria pesada 2.5D) na face frontal alta
-    e.strokeStyle = "rgba(15, 23, 42, 0.95)";
-    e.lineWidth = 1.3 * t;
-    e.beginPath();
-    e.moveTo(leftX, topFrontY + 8 * t);
-    e.lineTo(rightX, topFrontY + 8 * t);
-    e.moveTo(leftX, topFrontY + 16 * t);
-    e.lineTo(rightX, topFrontY + 16 * t);
-    e.moveTo(leftX, topFrontY + 24 * t);
-    e.lineTo(rightX, topFrontY + 24 * t);
-    // Juntas verticais alternadas
-    e.moveTo(0, topFrontY);
-    e.lineTo(0, topFrontY + 8 * t);
-    e.moveTo(-6 * t, topFrontY + 8 * t);
-    e.lineTo(-6 * t, topFrontY + 16 * t);
-    e.moveTo(6 * t, topFrontY + 8 * t);
-    e.lineTo(6 * t, topFrontY + 16 * t);
-    e.moveTo(0, topFrontY + 16 * t);
-    e.lineTo(0, topFrontY + 24 * t);
-    e.moveTo(-6 * t, topFrontY + 24 * t);
-    e.lineTo(-6 * t, baseY - 4 * t);
-    e.moveTo(6 * t, topFrontY + 24 * t);
-    e.lineTo(6 * t, baseY - 4 * t);
-    e.stroke();
-
-    // Destaques de luz no topo de cada fiada de pedra
-    e.strokeStyle = "rgba(148, 163, 184, 0.35)";
-    e.lineWidth = 1 * t;
-    e.beginPath();
-    e.moveTo(leftX + 1, topFrontY + 1 * t);
-    e.lineTo(rightX - 1, topFrontY + 1 * t);
-    e.moveTo(leftX + 1, topFrontY + 9 * t);
-    e.lineTo(rightX - 1, topFrontY + 9 * t);
-    e.moveTo(leftX + 1, topFrontY + 17 * t);
-    e.lineTo(rightX - 1, topFrontY + 17 * t);
-    e.moveTo(leftX + 1, topFrontY + 25 * t);
-    e.lineTo(rightX - 1, topFrontY + 25 * t);
-    e.stroke();
-
-    // 3. Topo 2.5D da muralha (plano superior elevado visto de cima, de topBackY até topFrontY!)
-    const topGrad = e.createLinearGradient(0, topBackY, 0, topFrontY);
-    topGrad.addColorStop(0, "#1e293b");
-    topGrad.addColorStop(0.5, "#334155");
-    topGrad.addColorStop(1, "#475569");
-    e.fillStyle = topGrad;
-    e.fillRect(leftX, topBackY, w, topDepth + 1.5 * t);
-
-    // Lajes de cobertura no topo 2.5D
-    e.strokeStyle = "rgba(15, 23, 42, 0.85)";
-    e.lineWidth = 1.1 * t;
-    e.strokeRect(leftX + 0.5 * t, topBackY + 0.5 * t, w - 1 * t, topDepth);
-    e.beginPath();
-    e.moveTo(leftX, topBackY + topDepth * 0.5);
-    e.lineTo(rightX, topBackY + topDepth * 0.5);
-    e.moveTo(0, topBackY);
-    e.lineTo(0, topBackY + topDepth * 0.5);
-    e.moveTo(-6 * t, topBackY + topDepth * 0.5);
-    e.lineTo(-6 * t, topFrontY);
-    e.moveTo(6 * t, topBackY + topDepth * 0.5);
-    e.lineTo(6 * t, topFrontY);
-    e.stroke();
-
-    // Cornija frontal iluminada separando o topo 2.5D da face vertical sul
-    e.fillStyle = "#94a3b8";
-    e.fillRect(leftX, topFrontY - 2.2 * t, w, 2.5 * t);
-    e.fillStyle = "#cbd5e1";
-    e.fillRect(leftX, topFrontY - 2.6 * t, w, 1 * t);
-
-    if (!nT) {
-      e.fillStyle = "#0f172a";
-      e.fillRect(leftX, topBackY, w, 2.2 * t);
-    }
-    if (!nL) {
-      e.fillStyle = "rgba(15, 23, 42, 0.55)";
-      e.fillRect(leftX, topBackY, 2.2 * t, baseY - topBackY);
-    }
-    if (!nR) {
-      e.fillStyle = "rgba(2, 6, 23, 0.65)";
-      e.fillRect(rightX - 2.2 * t, topBackY, 2.2 * t, baseY - topBackY);
-    }
-
-    // Manchas de umidade e musgo na base da muralha
-    if (!nB) {
-      e.fillStyle = "rgba(22, 101, 52, 0.42)";
-      e.fillRect(leftX, baseY - 5 * t, w, 2 * t);
-    }
-
-    e.restore();
+    e.drawImage(cached.canvas, -cached.padX, -cached.padTop);
   }
 
   function drawCaveRockWall25D(e, t = 1, wallTheme = "cave_rock", detailHash = 0.5, neighbors = null) {
     t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
-    e.save();
     const nL = !!(neighbors && neighbors.left);
     const nR = !!(neighbors && neighbors.right);
     const nT = !!(neighbors && neighbors.top);
     const nB = !!(neighbors && neighbors.bottom);
 
-    const half = 18 * t;
-    const leftX = nL ? -half - 1.5 * t : -half;
-    const rightX = nR ? half + 1.5 * t : half;
-    const w = rightX - leftX;
-
-    // Paredão 2.5D alto de caverna: 40*t de elevação vertical para parecer bem mais alto e imponente!
-    const wallH = 40 * t;
-    const baseY = 18 * t;
-    const topFrontY = baseY - wallH; // -22 * t
-    const topBackY = -half - wallH;  // -58 * t
-    const topDepth = topFrontY - topBackY; // 36 * t
-
-    // Paleta de cores conforme o bioma/tipo de caverna
-    let pal;
-    if (wallTheme === "desert_cave") {
-      // Arenito estratificado dourado/avermelhado das cavernas do deserto
-      pal = {
-        faceTop: "#b45309",
-        faceUpper: "#92400e",
-        faceMid: "#78350f",
-        faceBot: "#3b1806",
-        baseFoot: "#240d03",
-        topBack: "#5c280b",
-        topMid: "#7c340f",
-        topFront: "#9a4212",
-        ridgeLight: "#d97706",
-        ridgeBright: "#f59e0b",
-        crackCol: "rgba(36, 13, 3, 0.85)",
-        stratumLight: "rgba(251, 191, 36, 0.22)",
-        sideL: "rgba(245, 158, 11, 0.16)",
-        sideR: "rgba(24, 10, 2, 0.55)",
-      };
-    } else if (wallTheme === "earth_mine") {
-      // Terra escavada profunda e barro compactado da mina
-      pal = {
-        faceTop: "#694122",
-        faceUpper: "#523118",
-        faceMid: "#3b2210",
-        faceBot: "#1f1108",
-        baseFoot: "#120904",
-        topBack: "#26150a",
-        topMid: "#361e0f",
-        topFront: "#4a2a16",
-        ridgeLight: "#7c4d28",
-        ridgeBright: "#9a6234",
-        crackCol: "rgba(15, 7, 3, 0.88)",
-        stratumLight: "rgba(180, 120, 70, 0.2)",
-        sideL: "rgba(154, 98, 52, 0.18)",
-        sideR: "rgba(12, 6, 2, 0.6)",
-      };
-    } else {
-      // Rocha cavernosa escura / basalto e ardósia subterrânea (cavernas comuns e caverna dos mortos)
-      pal = {
-        faceTop: "#57534e",
-        faceUpper: "#44403c",
-        faceMid: "#292524",
-        faceBot: "#141210",
-        baseFoot: "#090807",
-        topBack: "#171513",
-        topMid: "#262320",
-        topFront: "#36322e",
-        ridgeLight: "#78716c",
-        ridgeBright: "#a8a29e",
-        crackCol: "rgba(5, 5, 5, 0.9)",
-        stratumLight: "rgba(168, 162, 158, 0.2)",
-        sideL: "rgba(168, 162, 158, 0.15)",
-        sideR: "rgba(0, 0, 0, 0.6)",
-      };
+    // [PERF] Quantiza detailHash em 4 variações visuais determinísticas e cacheia todos os estados
+    // em canvas offscreen (3 temas x 16 máscaras de vizinhos x 4 variações = máx 192 mini-sprites).
+    // Isso elimina ~35 chamadas vetoriais/gradientes por bloco de parede a cada frame!
+    if (!drawCaveRockWall25D._cache) {
+      drawCaveRockWall25D._cache = new Map();
     }
+    const mask = (nL ? 1 : 0) | (nR ? 2 : 0) | (nT ? 4 : 0) | (nB ? 8 : 0);
+    const variant = Math.min(3, Math.max(0, Math.floor((detailHash || 0) * 4)));
+    const qHash = [0.2, 0.42, 0.65, 0.85][variant];
+    const key = `${t.toFixed(3)}_${wallTheme}_${mask}_${variant}`;
+    let cached = drawCaveRockWall25D._cache.get(key);
 
-    // 1. Sombra projetada no chão da caverna ao pé do paredão (quando o sul é piso aberto)
-    if (!nB) {
-      e.fillStyle = "rgba(0, 0, 0, 0.72)";
-      e.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 12 * t);
-    }
+    if (!cached) {
+      const padX = Math.ceil(22 * t);
+      const padTop = Math.ceil(64 * t);
+      const padBot = Math.ceil(32 * t);
+      const can = document.createElement("canvas");
+      can.width = Math.max(1, padX * 2);
+      can.height = Math.max(1, padTop + padBot);
+      const wc = can.getContext("2d");
 
-    // 2. Face Frontal Vertical 2.5D do Paredão (visível quando não há parede abaixo, ou na transição)
-    if (!nB) {
-      const faceGrad = e.createLinearGradient(0, topFrontY, 0, baseY);
-      faceGrad.addColorStop(0, pal.faceTop);
-      faceGrad.addColorStop(0.28, pal.faceUpper);
-      faceGrad.addColorStop(0.68, pal.faceMid);
-      faceGrad.addColorStop(1, pal.faceBot);
-      e.fillStyle = faceGrad;
-      e.fillRect(leftX, topFrontY, w, wallH);
+      if (wc) {
+        wc.translate(padX, padTop);
+        const half = 18 * t;
+        const leftX = nL ? -half - 1.5 * t : -half;
+        const rightX = nR ? half + 1.5 * t : half;
+        const w = rightX - leftX;
 
-      // Rodapé escarpado na base do paredão onde encontra o chão da caverna
-      e.fillStyle = pal.baseFoot;
-      e.fillRect(leftX, baseY - 5 * t, w, 5 * t);
+        // Paredão 2.5D alto de caverna: 40*t de elevação vertical para parecer bem mais alto e imponente!
+        const wallH = 40 * t;
+        const baseY = 18 * t;
+        const topFrontY = baseY - wallH; // -22 * t
+        const topBackY = -half - wallH;  // -58 * t
+        const topDepth = topFrontY - topBackY; // 36 * t
 
-      // Saliências e blocos rochosos esculpidos em 3 níveis na face frontal alta
-      const hStep = wallH / 3;
-      for (let tier = 0; tier < 3; tier++) {
-        const sy = topFrontY + tier * hStep;
-        const wob = ((detailHash * (tier + 3) * 7) % 1) * 3 * t - 1.5 * t;
+        // Paleta de cores conforme o bioma/tipo de caverna
+        let pal;
+        if (wallTheme === "desert_cave") {
+          pal = {
+            faceTop: "#b45309",
+            faceUpper: "#92400e",
+            faceMid: "#78350f",
+            faceBot: "#3b1806",
+            baseFoot: "#240d03",
+            topBack: "#5c280b",
+            topMid: "#7c340f",
+            topFront: "#9a4212",
+            ridgeLight: "#d97706",
+            ridgeBright: "#f59e0b",
+            crackCol: "rgba(36, 13, 3, 0.85)",
+            stratumLight: "rgba(251, 191, 36, 0.22)",
+            sideL: "rgba(245, 158, 11, 0.16)",
+            sideR: "rgba(24, 10, 2, 0.55)",
+          };
+        } else if (wallTheme === "earth_mine") {
+          pal = {
+            faceTop: "#694122",
+            faceUpper: "#523118",
+            faceMid: "#3b2210",
+            faceBot: "#1f1108",
+            baseFoot: "#120904",
+            topBack: "#26150a",
+            topMid: "#361e0f",
+            topFront: "#4a2a16",
+            ridgeLight: "#7c4d28",
+            ridgeBright: "#9a6234",
+            crackCol: "rgba(15, 7, 3, 0.88)",
+            stratumLight: "rgba(180, 120, 70, 0.2)",
+            sideL: "rgba(154, 98, 52, 0.18)",
+            sideR: "rgba(12, 6, 2, 0.6)",
+          };
+        } else {
+          pal = {
+            faceTop: "#57534e",
+            faceUpper: "#44403c",
+            faceMid: "#292524",
+            faceBot: "#141210",
+            baseFoot: "#090807",
+            topBack: "#171513",
+            topMid: "#262320",
+            topFront: "#36322e",
+            ridgeLight: "#78716c",
+            ridgeBright: "#a8a29e",
+            crackCol: "rgba(5, 5, 5, 0.9)",
+            stratumLight: "rgba(168, 162, 158, 0.2)",
+            sideL: "rgba(168, 162, 158, 0.15)",
+            sideR: "rgba(0, 0, 0, 0.6)",
+          };
+        }
 
-        // Luz na crista de cada camada rochosa
-        e.fillStyle = pal.stratumLight;
-        e.fillRect(leftX + 1.5 * t, sy + 1.2 * t, w - 3 * t, 2.2 * t);
+        // 1. Sombra projetada no chão da caverna ao pé do paredão (quando o sul é piso aberto)
+        if (!nB) {
+          wc.fillStyle = "rgba(0, 0, 0, 0.72)";
+          wc.fillRect(leftX - 1 * t, baseY - 2 * t, w + 2 * t, 12 * t);
+        }
 
-        // Fenda horizontal irregular dividindo os estratos do paredão
-        if (tier > 0) {
-          e.strokeStyle = pal.crackCol;
-          e.lineWidth = 1.5 * t;
-          e.beginPath();
-          e.moveTo(leftX, sy);
-          e.lineTo(-6 * t, sy + wob);
-          e.lineTo(6 * t, sy - wob * 0.8);
-          e.lineTo(rightX, sy);
-          e.stroke();
+        // 2. Face Frontal Vertical 2.5D do Paredão (visível quando não há parede abaixo, ou na transição)
+        if (!nB) {
+          const faceGrad = wc.createLinearGradient(0, topFrontY, 0, baseY);
+          faceGrad.addColorStop(0, pal.faceTop);
+          faceGrad.addColorStop(0.28, pal.faceUpper);
+          faceGrad.addColorStop(0.68, pal.faceMid);
+          faceGrad.addColorStop(1, pal.faceBot);
+          wc.fillStyle = faceGrad;
+          wc.fillRect(leftX, topFrontY, w, wallH);
+
+          // Rodapé escarpado na base do paredão onde encontra o chão da caverna
+          wc.fillStyle = pal.baseFoot;
+          wc.fillRect(leftX, baseY - 5 * t, w, 5 * t);
+
+          // Saliências e blocos rochosos esculpidos em 3 níveis na face frontal alta
+          const hStep = wallH / 3;
+          for (let tier = 0; tier < 3; tier++) {
+            const sy = topFrontY + tier * hStep;
+            const wob = ((qHash * (tier + 3) * 7) % 1) * 3 * t - 1.5 * t;
+
+            // Luz na crista de cada camada rochosa
+            wc.fillStyle = pal.stratumLight;
+            wc.fillRect(leftX + 1.5 * t, sy + 1.2 * t, w - 3 * t, 2.2 * t);
+
+            // Fenda horizontal irregular dividindo os estratos do paredão
+            if (tier > 0) {
+              wc.strokeStyle = pal.crackCol;
+              wc.lineWidth = 1.5 * t;
+              wc.beginPath();
+              wc.moveTo(leftX, sy);
+              wc.lineTo(-6 * t, sy + wob);
+              wc.lineTo(6 * t, sy - wob * 0.8);
+              wc.lineTo(rightX, sy);
+              wc.stroke();
+            }
+          }
+
+          // Fraturas verticais e fendas geológicas profundas ao longo da altura do paredão
+          const crackX = (qHash - 0.5) * 14 * t;
+          wc.strokeStyle = pal.crackCol;
+          wc.lineWidth = 1.4 * t;
+          wc.beginPath();
+          wc.moveTo(crackX, topFrontY + 2 * t);
+          wc.lineTo(crackX - 3.5 * t, topFrontY + wallH * 0.36);
+          wc.lineTo(crackX + 2.5 * t, topFrontY + wallH * 0.72);
+          wc.lineTo(crackX - 1 * t, baseY - 3 * t);
+          wc.stroke();
+        }
+
+        // 3. Topo 2.5D do Paredão (maciço rochoso superior elevado visto em perspectiva)
+        const topGrad = wc.createLinearGradient(0, topBackY, 0, topFrontY);
+        topGrad.addColorStop(0, pal.topBack);
+        topGrad.addColorStop(0.55, pal.topMid);
+        topGrad.addColorStop(1, pal.topFront);
+        wc.fillStyle = topGrad;
+        wc.fillRect(leftX, topBackY, w, topDepth + (nB ? 2 * t : 1 * t));
+
+        // Relevo rochoso orgânico no topo do paredão
+        if (qHash > 0.32) {
+          wc.fillStyle = pal.stratumLight;
+          wc.beginPath();
+          wc.ellipse(
+            (qHash - 0.5) * 10 * t,
+            topBackY + topDepth * 0.48,
+            8 * t,
+            4.5 * t,
+            qHash * Math.PI,
+            0,
+            Math.PI * 2
+          );
+          wc.fill();
+        }
+
+        wc.strokeStyle = pal.crackCol;
+        wc.lineWidth = 1.1 * t;
+        wc.beginPath();
+        wc.moveTo(leftX + 3 * t, topBackY + topDepth * (0.3 + qHash * 0.35));
+        wc.lineTo(0, topBackY + topDepth * 0.52);
+        wc.lineTo(rightX - 3 * t, topBackY + topDepth * (0.65 - qHash * 0.25));
+        wc.stroke();
+
+        // 4. Cristas e Escarpas de Borda 2.5D (destacam claramente o volume e a altura nas bordas expostas!)
+        if (!nB) {
+          wc.fillStyle = pal.ridgeLight;
+          wc.fillRect(leftX, topFrontY - 2.8 * t, w, 3.2 * t);
+          wc.fillStyle = pal.ridgeBright;
+          wc.fillRect(leftX, topFrontY - 3.2 * t, w, 1.2 * t);
+        }
+
+        if (!nT) {
+          wc.fillStyle = pal.baseFoot;
+          wc.fillRect(leftX, topBackY, w, 3.5 * t);
+          wc.fillStyle = pal.ridgeLight;
+          wc.fillRect(leftX, topBackY + 3.5 * t, w, 1.5 * t);
+        }
+
+        if (!nL) {
+          const sideH = (nB ? topFrontY : baseY) - topBackY;
+          wc.fillStyle = pal.sideL;
+          wc.fillRect(leftX, topBackY, 3.5 * t, sideH);
+          wc.fillStyle = pal.crackCol;
+          wc.fillRect(leftX, topBackY, 1.2 * t, sideH);
+        }
+
+        if (!nR) {
+          const sideH = (nB ? topFrontY : baseY) - topBackY;
+          wc.fillStyle = pal.sideR;
+          wc.fillRect(rightX - 3.8 * t, topBackY, 3.8 * t, sideH);
+          wc.fillStyle = pal.crackCol;
+          wc.fillRect(rightX - 1.2 * t, topBackY, 1.2 * t, sideH);
         }
       }
 
-      // Fraturas verticais e fendas geológicas profundas ao longo da altura do paredão
-      const crackX = (detailHash - 0.5) * 14 * t;
-      e.strokeStyle = pal.crackCol;
-      e.lineWidth = 1.4 * t;
-      e.beginPath();
-      e.moveTo(crackX, topFrontY + 2 * t);
-      e.lineTo(crackX - 3.5 * t, topFrontY + wallH * 0.36);
-      e.lineTo(crackX + 2.5 * t, topFrontY + wallH * 0.72);
-      e.lineTo(crackX - 1 * t, baseY - 3 * t);
-      e.stroke();
+      cached = { canvas: can, padX, padTop };
+      drawCaveRockWall25D._cache.set(key, cached);
     }
 
-    // 3. Topo 2.5D do Paredão (maciço rochoso superior elevado visto em perspectiva)
-    const topGrad = e.createLinearGradient(0, topBackY, 0, topFrontY);
-    topGrad.addColorStop(0, pal.topBack);
-    topGrad.addColorStop(0.55, pal.topMid);
-    topGrad.addColorStop(1, pal.topFront);
-    e.fillStyle = topGrad;
-    e.fillRect(leftX, topBackY, w, topDepth + (nB ? 2 * t : 1 * t));
-
-    // Relevo rochoso orgânico no topo do paredão
-    if (detailHash > 0.32) {
-      e.fillStyle = pal.stratumLight;
-      e.beginPath();
-      e.ellipse(
-        (detailHash - 0.5) * 10 * t,
-        topBackY + topDepth * 0.48,
-        8 * t,
-        4.5 * t,
-        detailHash * Math.PI,
-        0,
-        Math.PI * 2
-      );
-      e.fill();
-    }
-
-    e.strokeStyle = pal.crackCol;
-    e.lineWidth = 1.1 * t;
-    e.beginPath();
-    e.moveTo(leftX + 3 * t, topBackY + topDepth * (0.3 + detailHash * 0.35));
-    e.lineTo(0, topBackY + topDepth * 0.52);
-    e.lineTo(rightX - 3 * t, topBackY + topDepth * (0.65 - detailHash * 0.25));
-    e.stroke();
-
-    // 4. Cristas e Escarpas de Borda 2.5D (destacam claramente o volume e a altura nas bordas expostas!)
-    // Crista frontal sul (borda superior da face alta do paredão)
-    if (!nB) {
-      e.fillStyle = pal.ridgeLight;
-      e.fillRect(leftX, topFrontY - 2.8 * t, w, 3.2 * t);
-      e.fillStyle = pal.ridgeBright;
-      e.fillRect(leftX, topFrontY - 3.2 * t, w, 1.2 * t);
-    }
-
-    // Borda norte (quando há corredor/chão ao norte deste paredão)
-    if (!nT) {
-      e.fillStyle = pal.baseFoot;
-      e.fillRect(leftX, topBackY, w, 3.5 * t);
-      e.fillStyle = pal.ridgeLight;
-      e.fillRect(leftX, topBackY + 3.5 * t, w, 1.5 * t);
-    }
-
-    // Escarpa lateral esquerda (quando há corredor/chão a oeste)
-    if (!nL) {
-      const sideH = (nB ? topFrontY : baseY) - topBackY;
-      e.fillStyle = pal.sideL;
-      e.fillRect(leftX, topBackY, 3.5 * t, sideH);
-      e.fillStyle = pal.crackCol;
-      e.fillRect(leftX, topBackY, 1.2 * t, sideH);
-    }
-
-    // Escarpa lateral direita (quando há corredor/chão a leste)
-    if (!nR) {
-      const sideH = (nB ? topFrontY : baseY) - topBackY;
-      e.fillStyle = pal.sideR;
-      e.fillRect(rightX - 3.8 * t, topBackY, 3.8 * t, sideH);
-      e.fillStyle = pal.crackCol;
-      e.fillRect(rightX - 1.2 * t, topBackY, 1.2 * t, sideH);
-    }
-
-    e.restore();
+    e.drawImage(cached.canvas, -cached.padX, -cached.padTop);
   }
 
   function drawIronBarsGate(e, t = 1, isVert = !0, isOpened = !1) {
