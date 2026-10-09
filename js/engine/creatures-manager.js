@@ -647,10 +647,10 @@
         id: `dmg_${this.nextId++}`,
         x: l.x,
         y: l.y - 20,
-        text: t.isQueen ? `👑 Mordida da Rainha! -${c}` : `👄 Mordida! -${c}`,
-        color: t.isQueen ? "#fbbf24" : "#ef4444",
-        isCrit: !0,
-        life: 0.9,
+        text: `-${c}`,
+        color: "#ef4444",
+        isCrit: !!t.isQueen,
+        life: 0.85,
       });
       for (let g = 0; g < 7; g++) {
         const y = Math.random() * Math.PI * 2;
@@ -1366,7 +1366,7 @@
                     id: `fatal_bite_${this.nextId++}`,
                     x: l.x,
                     y: l.y - 26,
-                    text: "💀 DEVORADO! MORDIDA FATAL!",
+                    text: "💀 DEVORADO! ATAQUE FATAL!",
                     color: "#dc2626",
                     isCrit: !0,
                     life: 2.2,
