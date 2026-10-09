@@ -1882,6 +1882,53 @@
             p.attackPlayerDef = c;
             p.stingerAttackCooldown = 2.1;
           }
+        } else if (p.isQueen && (() => {
+          const pTx = Math.floor(l.x / this.engine.tileSize);
+          const pTy = Math.floor(l.y / this.engine.tileSize);
+          const pTile = this.engine.getTile(pTx, pTy);
+          const nest = typeof this.engine.getDesertTardigradeNest === "function"
+            ? this.engine.getDesertTardigradeNest(pTx, pTy)
+            : null;
+          const playerInNest = !!(
+            (pTile && pTile.isTardigradeNest) ||
+            (typeof this.engine.isTardigradeNest === "function" && this.engine.isTardigradeNest(pTx, pTy)) ||
+            (nest && Math.hypot(pTx - nest.cx, pTy - nest.cy) <= (nest.radius + 1.0))
+          );
+          return !playerInNest;
+        })()) {
+          // RAINHA DOS TARDÍGRADOS: NÃO PERSEGUE O JOGADOR SE ELE SAIR DO NINHO!
+          // Permanece guardando sua câmara, ninhada e ovos.
+          p.aggroTimer = 0;
+          const qTx = Math.floor(p.x / this.engine.tileSize);
+          const qTy = Math.floor(p.y / this.engine.tileSize);
+          const nest = typeof this.engine.getDesertTardigradeNest === "function"
+            ? this.engine.getDesertTardigradeNest(qTx, qTy)
+            : null;
+          if (nest) {
+            const nestCenterX = nest.cx * this.engine.tileSize + 16;
+            const nestCenterY = nest.cy * this.engine.tileSize + 16;
+            const distFromNestCenter = Math.hypot(p.x - nestCenterX, p.y - nestCenterY);
+            if (distFromNestCenter > 3.2 * this.engine.tileSize) {
+              const returnAngle = this.steerAroundObstacles(p, nestCenterX, nestCenterY, p.speed * 0.75, !1);
+              p.vx = Math.cos(returnAngle) * (p.speed * 0.75);
+              p.vy = Math.sin(returnAngle) * (p.speed * 0.75);
+              p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+            } else {
+              p.wanderTimer = (p.wanderTimer || 0) - t;
+              if (p.wanderTimer <= 0) {
+                p.wanderTimer = 2.0 + Math.random() * 2.5;
+                if (Math.random() < 0.35) {
+                  p.vx = 0;
+                  p.vy = 0;
+                } else {
+                  p.targetAngle = Math.random() * Math.PI * 2;
+                  p.vx = Math.cos(p.targetAngle) * (p.speed * 0.55);
+                  p.vy = Math.sin(p.targetAngle) * (p.speed * 0.55);
+                  p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+                }
+              }
+            }
+          }
         } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.type === "tardigrade" ? Math.round(220 * Math.max(1, (p.scale || 1) * 0.75)) : (p.isGiantScorpion ? 260 : 150)))) && j > chaseStopDist && z.canAttack) {
           const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1);
           const chaseSpeed = p.speed * de;
@@ -1904,7 +1951,7 @@
               ((p.attackCooldown =
                 (creatureBehavior(p.type).attackCooldown ?? 1.25)),
               this.monsterAttackPlayer(p, l, c)));
-        else if (creatureBehavior(p.type).hunter && (!p.aggroTimer || p.aggroTimer <= 0)) {
+        else if (creatureBehavior(p.type).hunter && (!p.aggroTimer || p.aggroTimer <= 0) && !p.isQueen) {
           const hunterAI = creatureBehavior(p.type).hunter;
           const G = this.getNearestPreyForWolf(p.x, p.y, hunterAI.huntRadius, p.isUnderground, p);
           if (G)
@@ -2336,13 +2383,13 @@
         type: "tardigrade",
         x: x,
         y: y,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: (Math.random() - 0.5) * 1.5,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
         hp: 18,
         maxHp: 18,
-        attack: 3,
+        attack: 2,
         defense: 4,
-        speed: 1.25,
+        speed: 0.48, // Filhotes lentos e fofos!
         color: "#f59e0b",
         accentColor: "#fef08a",
         scale: Math.round(babySize * 100) / 100,
@@ -2393,37 +2440,51 @@
             y: nestWorldY,
             vx: 0,
             vy: 0,
-            hp: 220,
-            maxHp: 220,
-            attack: 18,
-            defense: 16,
-            speed: 0.76,
+            hp: 350,
+            maxHp: 350,
+            attack: 24,
+            defense: 18,
+            speed: 0.38, // Lenta e colossal!
             color: "#b45309",
             accentColor: "#fef08a",
-            scale: 2.85, // 3 VEZES MAIOR!
-            maxScale: 3.2,
+            scale: 5.7, // DOBRO DO TAMANHO ANTERIOR!
+            maxScale: 6.2,
             isUnderground: true,
             isQueen: true,
             isBoss: true,
             isMoving: false,
             hitFlashTimer: 0,
             animTimer: Math.random() * 10,
-            wanderTimer: 2.0,
+            wanderTimer: 2.2,
             targetAngle: Math.random() * Math.PI * 2,
             facing: "down",
           };
           this.monsters.push(queenMonster);
+
+          // Inicializa o ninho com ninhada numerosa de filhotes lentos!
+          for (let k = 0; k < 8; k++) {
+            const ang = Math.random() * Math.PI * 2;
+            const dist = (1.5 + Math.random() * 5.0) * this.engine.tileSize;
+            const bx = nestWorldX + Math.cos(ang) * dist;
+            const by = nestWorldY + Math.sin(ang) * dist;
+            const bTx = Math.floor(bx / this.engine.tileSize);
+            const bTy = Math.floor(by / this.engine.tileSize);
+            if (this.engine.isTileCreaturePassable(bTx, bTy)) {
+              this.spawnBabyTardigradeAt(bx, by);
+            }
+          }
         }
 
         const babyCount = this.monsters.filter(
-          (m) => m.type === "tardigrade" && m.isBaby && m.isUnderground && Math.hypot(m.x - nestWorldX, m.y - nestWorldY) < 550
+          (m) => m.type === "tardigrade" && m.isBaby && m.isUnderground && Math.hypot(m.x - nestWorldX, m.y - nestWorldY) < 650
         ).length;
 
-        if (babyCount < 5) {
-          const needed = 5 - babyCount;
+        const maxBabies = 12; // Maior quantidade de filhotes no ninho!
+        if (babyCount < maxBabies) {
+          const needed = Math.min(3, maxBabies - babyCount);
           for (let k = 0; k < needed; k++) {
             const ang = Math.random() * Math.PI * 2;
-            const dist = (2.2 + Math.random() * 4.8) * this.engine.tileSize;
+            const dist = (1.8 + Math.random() * 5.2) * this.engine.tileSize;
             const bx = nestWorldX + Math.cos(ang) * dist;
             const by = nestWorldY + Math.sin(ang) * dist;
             const bTx = Math.floor(bx / this.engine.tileSize);
@@ -2594,9 +2655,9 @@
             S = "#f59e0b";
             p = "#fef08a";
             j = 18;
-            P = 3;
+            P = 2;
             customDef = 4;
-            A = 1.22;
+            A = 0.48; // Filhotes lentos!
           } else {
             // Túneis normais fora do ninho
             const K = Math.random();

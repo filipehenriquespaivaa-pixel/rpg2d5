@@ -203,39 +203,32 @@ CREATURES.tardigrade = {
     // Corpo vivo no mundo (8 patas, corpo rechonchudo com 4 segmentos e disco bucal)
     body: function (e, t, o, l) {
       e.save();
-      const isMoving = Math.hypot(t.vx || 0, t.vy || 0) > 0.05;
-      const walkAnim = isMoving ? t.animTimer * 6.0 : t.animTimer * 1.8;
-      const bobY = Math.sin(walkAnim) * 0.7 * o;
-      const facing = t.facing || "down";
       const isQueen = !!(t.isQueen || (t.name && t.name.includes("Rainha")));
       const isBaby = !!(t.isBaby || (t.name && t.name.includes("Filhote")));
+      const isMoving = Math.hypot(t.vx || 0, t.vy || 0) > 0.05;
+      const walkAnim = isMoving ? (isQueen ? t.animTimer * 3.2 : t.animTimer * 6.0) : (isQueen ? t.animTimer * 1.4 : t.animTimer * 1.8);
+      const bobY = Math.sin(walkAnim) * (isQueen ? 0.45 : 0.7) * o;
+      const facing = t.facing || "down";
       const mainCol = l ? "#ffffff" : (t.color || "#d97706");
       const darkCol = l ? "#e2e8f0" : "#92400e";
       const lightCol = l ? "#ffffff" : (t.accentColor || "#fef08a");
       const deepCol = l ? "#94a3b8" : "#78350f";
 
-      // Aura bioluminescente dourada da Rainha
-      if (isQueen) {
-        const auraPhase = (t.animTimer || 0) * 2.5;
-        const auraAlpha = 0.22 + Math.sin(auraPhase) * 0.08;
-        e.save();
-        e.fillStyle = `rgba(245, 158, 11, ${auraAlpha})`;
-        e.beginPath();
-        e.ellipse(0, bobY, 17 * o, 13 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.strokeStyle = `rgba(254, 240, 138, ${auraAlpha * 1.6})`;
-        e.lineWidth = 1.6 * o;
-        e.stroke();
-        e.restore();
-      }
-
-      // Sombra suave sob o tardígrado
+      // Sombra suave sob o tardígrado (sem círculo brilhante abaixo para a Rainha)
       e.fillStyle = "rgba(15, 23, 42, 0.42)";
       e.beginPath();
-      e.ellipse(0, 4.5 * o, (isQueen ? 15 : isBaby ? 10 : 13) * o, (isQueen ? 8 : isBaby ? 5 : 7) * o, 0, 0, Math.PI * 2);
+      if (isQueen) {
+        if (facing === "left" || facing === "right") {
+          e.ellipse(0, 4.5 * o, 18 * o, 9 * o, 0, 0, Math.PI * 2);
+        } else {
+          e.ellipse(0, -1.0 * o, 12 * o, 18 * o, 0, 0, Math.PI * 2);
+        }
+      } else {
+        e.ellipse(0, 4.5 * o, (isBaby ? 10 : 13) * o, (isBaby ? 5 : 7) * o, 0, 0, Math.PI * 2);
+      }
       e.fill();
 
-      // Desenho de uma pata rechonchuda com 3 micro-garras
+      // Desenho de uma pata rechonchuda com micro-garras
       function drawStubbyLeg(lx, ly, angle, scaleLeg = 1) {
         e.save();
         e.translate(lx, ly);
@@ -251,7 +244,7 @@ CREATURES.tardigrade = {
         e.fill();
         // Extremidade com garras
         e.strokeStyle = lightCol;
-        e.lineWidth = 1.0 * o;
+        e.lineWidth = (isQueen ? 1.3 : 1.0) * o;
         e.lineCap = "round";
         for (const clawOff of [-1.3, 0, 1.3]) {
           e.beginPath();
@@ -263,152 +256,271 @@ CREATURES.tardigrade = {
       }
 
       if (facing === "down") {
-        // Visto de frente / diagonal superior
-        // 8 PATAS (4 pares: 3 pares laterais + 1 par traseiro)
-        const legOffsetsY = [-5 * o, -0.5 * o, 4.2 * o, 8.5 * o];
-        for (let i = 0; i < 4; i++) {
-          const legPhase = walkAnim + i * 1.35;
-          const swingL = Math.sin(legPhase) * 0.42;
-          const swingR = Math.sin(legPhase + Math.PI) * 0.42;
-          const ly = legOffsetsY[i] + bobY;
-          // Pata esquerda
-          drawStubbyLeg(-8.5 * o, ly, -0.6 + swingL, i === 3 ? 0.9 : 1);
-          // Pata direita
-          drawStubbyLeg(8.5 * o, ly, 0.6 + swingR, i === 3 ? 0.9 : 1);
+        if (isQueen) {
+          // =================================================================
+          // RAINHA: MAIS SEGMENTOS (7 segmentos no total) E 6 PARES DE PATAS!
+          // =================================================================
+          const queenLegOffsetsY = [-13 * o, -9 * o, -5 * o, -1 * o, 3.5 * o, 7.5 * o];
+          for (let i = 0; i < 6; i++) {
+            const legPhase = walkAnim + i * 0.95;
+            const swingL = Math.sin(legPhase) * 0.38;
+            const swingR = Math.sin(legPhase + Math.PI) * 0.38;
+            const ly = queenLegOffsetsY[i] + bobY;
+            drawStubbyLeg(-9.2 * o, ly, -0.6 + swingL, i === 5 ? 0.95 : 1.1);
+            drawStubbyLeg(9.2 * o, ly, 0.6 + swingR, i === 5 ? 0.95 : 1.1);
+          }
+
+          // CORPO DA RAINHA: 7 segmentos robustos sobrepostos de trás para frente
+          const segDefs = [
+            { y: -14.0 * o, rx: 7.2 * o, ry: 4.5 * o }, // Seg 7 (Traseiro da ninhada)
+            { y: -10.5 * o, rx: 8.5 * o, ry: 5.0 * o }, // Seg 6
+            { y: -7.0 * o, rx: 9.6 * o, ry: 5.5 * o },  // Seg 5
+            { y: -3.5 * o, rx: 10.4 * o, ry: 5.8 * o }, // Seg 4 (Câmara central)
+            { y: 0.2 * o, rx: 9.8 * o, ry: 5.5 * o },   // Seg 3
+            { y: 3.8 * o, rx: 9.0 * o, ry: 5.0 * o },   // Seg 2
+            { y: 7.4 * o, rx: 7.8 * o, ry: 4.6 * o },   // Seg 1 (Cabeça Real)
+          ];
+
+          for (let i = 0; i < segDefs.length; i++) {
+            const s = segDefs[i];
+            e.fillStyle = darkCol;
+            e.beginPath();
+            e.ellipse(0, s.y + bobY, s.rx, s.ry, 0, 0, Math.PI * 2);
+            e.fill();
+
+            e.fillStyle = mainCol;
+            e.beginPath();
+            e.ellipse(0, s.y - 0.5 * o + bobY, s.rx * 0.88, s.ry * 0.84, 0, 0, Math.PI * 2);
+            e.fill();
+
+            // Placas quitinosas dorsais da Rainha
+            e.strokeStyle = lightCol;
+            e.lineWidth = 1.2 * o;
+            e.beginPath();
+            e.arc(0, s.y + bobY, s.rx * 0.72, 0.25, Math.PI - 0.25);
+            e.stroke();
+          }
+
+          // Focinho e disco bucal colossal da Rainha
+          const mouthY = 10.8 * o + bobY;
+          e.fillStyle = deepCol;
+          e.beginPath();
+          e.arc(0, mouthY, 3.2 * o, 0, Math.PI * 2);
+          e.fill();
+          e.strokeStyle = lightCol;
+          e.lineWidth = 1.2 * o;
+          e.beginPath();
+          e.arc(0, mouthY, 2.3 * o, 0, Math.PI * 2);
+          e.stroke();
+          e.fillStyle = "#1e1b4b";
+          e.beginPath();
+          e.arc(0, mouthY, 1.2 * o, 0, Math.PI * 2);
+          e.fill();
+
+          // Olhos imperiais da Rainha
+          const eyeR = 1.5 * o;
+          const pupilR = 0.65 * o;
+          e.fillStyle = "#0f172a";
+          e.beginPath();
+          e.arc(-3.6 * o, 7.6 * o + bobY, eyeR, 0, Math.PI * 2);
+          e.arc(3.6 * o, 7.6 * o + bobY, eyeR, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = lightCol;
+          e.beginPath();
+          e.arc(-3.8 * o, 7.3 * o + bobY, pupilR, 0, Math.PI * 2);
+          e.arc(3.4 * o, 7.3 * o + bobY, pupilR, 0, Math.PI * 2);
+          e.fill();
+
+        } else {
+          // Visto de frente / diagonal superior (Tardígrado Comum / Filhote: 4 segmentos)
+          const legOffsetsY = [-5 * o, -0.5 * o, 4.2 * o, 8.5 * o];
+          for (let i = 0; i < 4; i++) {
+            const legPhase = walkAnim + i * 1.35;
+            const swingL = Math.sin(legPhase) * 0.42;
+            const swingR = Math.sin(legPhase + Math.PI) * 0.42;
+            const ly = legOffsetsY[i] + bobY;
+            drawStubbyLeg(-8.5 * o, ly, -0.6 + swingL, i === 3 ? 0.9 : 1);
+            drawStubbyLeg(8.5 * o, ly, 0.6 + swingR, i === 3 ? 0.9 : 1);
+          }
+
+          // CORPO: 4 segmentos arredondados e rechonchudos sobrepostos de trás para frente
+          // Segmento 4 (Traseiro)
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, -6.5 * o + bobY, 8.5 * o, 5.0 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(0, -7.0 * o + bobY, 7.5 * o, 4.2 * o, 0, 0, Math.PI * 2);
+          e.fill();
+
+          // Segmento 3
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, -2.5 * o + bobY, 9.8 * o, 5.6 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(0, -2.9 * o + bobY, 8.8 * o, 4.8 * o, 0, 0, Math.PI * 2);
+          e.fill();
+
+          // Segmento 2
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, 1.8 * o + bobY, 9.2 * o, 5.4 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(0, 1.4 * o + bobY, 8.2 * o, 4.6 * o, 0, 0, Math.PI * 2);
+          e.fill();
+
+          // Segmento 1 (Cabeça)
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, 6.2 * o + bobY, 7.8 * o, 5.0 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(0, 5.8 * o + bobY, 7.0 * o, 4.2 * o, 0, 0, Math.PI * 2);
+          e.fill();
+
+          // Linhas de cutícula/rugas de flexão nos segmentos
+          e.strokeStyle = lightCol;
+          e.lineWidth = 1.1 * o;
+          e.beginPath();
+          e.arc(0, -4.5 * o + bobY, 6.5 * o, 0.2, Math.PI - 0.2);
+          e.arc(0, 0.0 * o + bobY, 7.0 * o, 0.2, Math.PI - 0.2);
+          e.arc(0, 4.2 * o + bobY, 5.8 * o, 0.2, Math.PI - 0.2);
+          e.stroke();
+
+          // Disco Bucal característico do Tardígrado
+          const mouthY = 9.4 * o + bobY;
+          e.fillStyle = deepCol;
+          e.beginPath();
+          e.arc(0, mouthY, 2.8 * o, 0, Math.PI * 2);
+          e.fill();
+          e.strokeStyle = lightCol;
+          e.lineWidth = 1.0 * o;
+          e.beginPath();
+          e.arc(0, mouthY, 2.0 * o, 0, Math.PI * 2);
+          e.stroke();
+          e.fillStyle = "#1e1b4b";
+          e.beginPath();
+          e.arc(0, mouthY, 1.0 * o, 0, Math.PI * 2);
+          e.fill();
+
+          // Olhos/ocelos pequeninos
+          const eyeR = (isBaby ? 1.6 : 1.1) * o;
+          const pupilR = (isBaby ? 0.7 : 0.45) * o;
+          e.fillStyle = "#0f172a";
+          e.beginPath();
+          e.arc(-3.2 * o, 6.2 * o + bobY, eyeR, 0, Math.PI * 2);
+          e.arc(3.2 * o, 6.2 * o + bobY, eyeR, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = "#ffffff";
+          e.beginPath();
+          e.arc(-3.5 * o, 5.9 * o + bobY, pupilR, 0, Math.PI * 2);
+          e.arc(2.9 * o, 5.9 * o + bobY, pupilR, 0, Math.PI * 2);
+          e.fill();
         }
-
-        // CORPO: 4 segmentos arredondados e rechonchudos sobrepostos de trás para frente
-        // Segmento 4 (Traseiro)
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, -6.5 * o + bobY, 8.5 * o, 5.0 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(0, -7.0 * o + bobY, 7.5 * o, 4.2 * o, 0, 0, Math.PI * 2);
-        e.fill();
-
-        // Segmento 3
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, -2.5 * o + bobY, 9.8 * o, 5.6 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(0, -2.9 * o + bobY, 8.8 * o, 4.8 * o, 0, 0, Math.PI * 2);
-        e.fill();
-
-        // Segmento 2
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, 1.8 * o + bobY, 9.2 * o, 5.4 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(0, 1.4 * o + bobY, 8.2 * o, 4.6 * o, 0, 0, Math.PI * 2);
-        e.fill();
-
-        // Segmento 1 (Cabeça)
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, 6.2 * o + bobY, 7.8 * o, 5.0 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(0, 5.8 * o + bobY, 7.0 * o, 4.2 * o, 0, 0, Math.PI * 2);
-        e.fill();
-
-        // Linhas de cutícula/rugas de flexão nos segmentos
-        e.strokeStyle = lightCol;
-        e.lineWidth = 1.1 * o;
-        e.beginPath();
-        e.arc(0, -4.5 * o + bobY, 6.5 * o, 0.2, Math.PI - 0.2);
-        e.arc(0, 0.0 * o + bobY, 7.0 * o, 0.2, Math.PI - 0.2);
-        e.arc(0, 4.2 * o + bobY, 5.8 * o, 0.2, Math.PI - 0.2);
-        e.stroke();
-
-        // Disco Bucal característico do Tardígrado (focinho redondo com estilete mineral)
-        const mouthY = 9.4 * o + bobY;
-        e.fillStyle = deepCol;
-        e.beginPath();
-        e.arc(0, mouthY, 2.8 * o, 0, Math.PI * 2);
-        e.fill();
-        e.strokeStyle = lightCol;
-        e.lineWidth = 1.0 * o;
-        e.beginPath();
-        e.arc(0, mouthY, 2.0 * o, 0, Math.PI * 2);
-        e.stroke();
-        e.fillStyle = "#1e1b4b";
-        e.beginPath();
-        e.arc(0, mouthY, 1.0 * o, 0, Math.PI * 2);
-        e.fill();
-
-        // Olhos/ocelos pequeninos e curiosos
-        const eyeR = (isBaby ? 1.6 : 1.1) * o;
-        const pupilR = (isBaby ? 0.7 : 0.45) * o;
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.arc(-3.2 * o, 6.2 * o + bobY, eyeR, 0, Math.PI * 2);
-        e.arc(3.2 * o, 6.2 * o + bobY, eyeR, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#ffffff";
-        e.beginPath();
-        e.arc(-3.5 * o, 5.9 * o + bobY, pupilR, 0, Math.PI * 2);
-        e.arc(2.9 * o, 5.9 * o + bobY, pupilR, 0, Math.PI * 2);
-        e.fill();
 
       } else if (facing === "up") {
-        // Visto de costas
-        const legOffsetsY = [-8 * o, -3.5 * o, 1.5 * o, 6.5 * o];
-        for (let i = 0; i < 4; i++) {
-          const legPhase = walkAnim + i * 1.35;
-          const swingL = Math.sin(legPhase) * 0.42;
-          const swingR = Math.sin(legPhase + Math.PI) * 0.42;
-          const ly = legOffsetsY[i] + bobY;
-          drawStubbyLeg(-8.5 * o, ly, -2.4 + swingL, i === 0 ? 0.9 : 1);
-          drawStubbyLeg(8.5 * o, ly, 2.4 + swingR, i === 0 ? 0.9 : 1);
+        if (isQueen) {
+          // =================================================================
+          // RAINHA VISTA DE COSTAS: 6 PARES DE PATAS E 7 SEGMENTOS
+          // =================================================================
+          const queenLegOffsetsY = [-13 * o, -9 * o, -5 * o, -1 * o, 3.5 * o, 7.5 * o];
+          for (let i = 0; i < 6; i++) {
+            const legPhase = walkAnim + i * 0.95;
+            const swingL = Math.sin(legPhase) * 0.38;
+            const swingR = Math.sin(legPhase + Math.PI) * 0.38;
+            const ly = queenLegOffsetsY[i] + bobY;
+            drawStubbyLeg(-9.2 * o, ly, -2.4 + swingL, i === 0 ? 0.95 : 1.1);
+            drawStubbyLeg(9.2 * o, ly, 2.4 + swingR, i === 0 ? 0.95 : 1.1);
+          }
+
+          // 7 segmentos desenhados da cabeça até o traseiro
+          const segDefsUp = [
+            { y: -13.5 * o, rx: 7.4 * o, ry: 4.4 * o }, // Seg 1 (Cabeça no fundo)
+            { y: -10.0 * o, rx: 8.6 * o, ry: 4.8 * o }, // Seg 2
+            { y: -6.5 * o, rx: 9.6 * o, ry: 5.4 * o },  // Seg 3
+            { y: -3.0 * o, rx: 10.4 * o, ry: 5.8 * o }, // Seg 4
+            { y: 0.8 * o, rx: 9.8 * o, ry: 5.6 * o },   // Seg 5
+            { y: 4.6 * o, rx: 9.0 * o, ry: 5.2 * o },   // Seg 6
+            { y: 8.4 * o, rx: 8.2 * o, ry: 4.8 * o },   // Seg 7 (Traseiro no topo)
+          ];
+
+          for (let i = 0; i < segDefsUp.length; i++) {
+            const s = segDefsUp[i];
+            e.fillStyle = darkCol;
+            e.beginPath();
+            e.ellipse(0, s.y + bobY, s.rx, s.ry, 0, 0, Math.PI * 2);
+            e.fill();
+            e.fillStyle = mainCol;
+            e.beginPath();
+            e.ellipse(0, s.y - 0.4 * o + bobY, s.rx * 0.88, s.ry * 0.84, 0, 0, Math.PI * 2);
+            e.fill();
+
+            e.strokeStyle = lightCol;
+            e.lineWidth = 1.2 * o;
+            e.beginPath();
+            e.arc(0, s.y + bobY, s.rx * 0.72, 0.25, Math.PI - 0.25);
+            e.stroke();
+          }
+
+        } else {
+          // Visto de costas (Tardígrado Comum / Filhote: 4 segmentos)
+          const legOffsetsY = [-8 * o, -3.5 * o, 1.5 * o, 6.5 * o];
+          for (let i = 0; i < 4; i++) {
+            const legPhase = walkAnim + i * 1.35;
+            const swingL = Math.sin(legPhase) * 0.42;
+            const swingR = Math.sin(legPhase + Math.PI) * 0.42;
+            const ly = legOffsetsY[i] + bobY;
+            drawStubbyLeg(-8.5 * o, ly, -2.4 + swingL, i === 0 ? 0.9 : 1);
+            drawStubbyLeg(8.5 * o, ly, 2.4 + swingR, i === 0 ? 0.9 : 1);
+          }
+
+          // Segmento 1 (Cabeça ao fundo)
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, -6.5 * o + bobY, 7.5 * o, 4.5 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          // Segmento 2
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, -2.5 * o + bobY, 8.8 * o, 5.2 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(0, -2.8 * o + bobY, 8.0 * o, 4.4 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          // Segmento 3
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, 1.8 * o + bobY, 9.6 * o, 5.6 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(0, 1.4 * o + bobY, 8.6 * o, 4.8 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          // Segmento 4 (Traseiro rechonchudo no topo)
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(0, 6.5 * o + bobY, 8.8 * o, 5.4 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(0, 6.0 * o + bobY, 7.8 * o, 4.6 * o, 0, 0, Math.PI * 2);
+          e.fill();
+
+          // Dobras da cutícula
+          e.strokeStyle = lightCol;
+          e.lineWidth = 1.1 * o;
+          e.beginPath();
+          e.arc(0, -0.5 * o + bobY, 7.0 * o, 0.2, Math.PI - 0.2);
+          e.arc(0, 3.8 * o + bobY, 6.5 * o, 0.2, Math.PI - 0.2);
+          e.stroke();
         }
-
-        // Segmento 1 (Cabeça ao fundo)
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, -6.5 * o + bobY, 7.5 * o, 4.5 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        // Segmento 2
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, -2.5 * o + bobY, 8.8 * o, 5.2 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(0, -2.8 * o + bobY, 8.0 * o, 4.4 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        // Segmento 3
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, 1.8 * o + bobY, 9.6 * o, 5.6 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(0, 1.4 * o + bobY, 8.6 * o, 4.8 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        // Segmento 4 (Traseiro rechonchudo no topo)
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(0, 6.5 * o + bobY, 8.8 * o, 5.4 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(0, 6.0 * o + bobY, 7.8 * o, 4.6 * o, 0, 0, Math.PI * 2);
-        e.fill();
-
-        // Dobras da cutícula
-        e.strokeStyle = lightCol;
-        e.lineWidth = 1.1 * o;
-        e.beginPath();
-        e.arc(0, -0.5 * o + bobY, 7.0 * o, 0.2, Math.PI - 0.2);
-        e.arc(0, 3.8 * o + bobY, 6.5 * o, 0.2, Math.PI - 0.2);
-        e.stroke();
 
       } else {
         // Perfil Lateral (facing === "left" ou "right")
@@ -416,110 +528,194 @@ CREATURES.tardigrade = {
           e.scale(-1, 1);
         }
 
-        // 4 Patas visíveis do lado em primeiro plano + 4 patas ao fundo
-        const legOffsetsX = [7.5 * o, 2.5 * o, -2.8 * o, -8.2 * o];
-        // Patas do fundo (mais escuras e ligeiramente menores)
-        for (let i = 0; i < 4; i++) {
-          const legPhase = walkAnim + i * 1.35 + Math.PI;
-          const swing = Math.sin(legPhase) * 0.45;
-          const lx = legOffsetsX[i];
-          const ly = -1.2 * o + bobY;
-          drawStubbyLeg(lx, ly, -0.2 + swing, 0.82);
-        }
+        if (isQueen) {
+          // =================================================================
+          // RAINHA EM PERFIL: 7 SEGMENTOS ALONGADOS E 6 PARES DE PATAS
+          // =================================================================
+          const queenLegOffsetsX = [9.5 * o, 6.0 * o, 2.5 * o, -1.5 * o, -5.5 * o, -9.5 * o];
+          // Patas de trás
+          for (let i = 0; i < 6; i++) {
+            const legPhase = walkAnim + i * 0.95 + Math.PI;
+            const swing = Math.sin(legPhase) * 0.40;
+            const lx = queenLegOffsetsX[i];
+            const ly = -1.2 * o + bobY;
+            drawStubbyLeg(lx, ly, -0.2 + swing, 0.88);
+          }
 
-        // CORPO LATERAL RECHONCHUDO (4 segmentos em perfil horizontal)
-        // Segmento 4 (Traseiro)
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(-8.0 * o, 1.0 * o + bobY, 5.2 * o, 6.4 * o, 0.1, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(-8.2 * o, 0.6 * o + bobY, 4.4 * o, 5.6 * o, 0.1, 0, Math.PI * 2);
-        e.fill();
+          // 7 segmentos ao longo do eixo horizontal (do traseiro até a cabeça)
+          const segDefsSide = [
+            { x: -13.5 * o, rx: 4.8 * o, ry: 6.2 * o }, // Seg 7 (Traseiro)
+            { x: -10.0 * o, rx: 5.2 * o, ry: 6.8 * o }, // Seg 6
+            { x: -6.2 * o, rx: 5.6 * o, ry: 7.4 * o },  // Seg 5
+            { x: -2.2 * o, rx: 5.8 * o, ry: 7.8 * o },  // Seg 4 (Centro)
+            { x: 2.0 * o, rx: 5.5 * o, ry: 7.4 * o },   // Seg 3
+            { x: 6.0 * o, rx: 5.0 * o, ry: 6.8 * o },   // Seg 2
+            { x: 9.8 * o, rx: 4.4 * o, ry: 5.8 * o },   // Seg 1 (Cabeça)
+          ];
 
-        // Segmento 3
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(-2.5 * o, 0.5 * o + bobY, 5.6 * o, 7.2 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(-2.7 * o, 0.0 * o + bobY, 4.8 * o, 6.4 * o, 0, 0, Math.PI * 2);
-        e.fill();
+          for (let i = 0; i < segDefsSide.length; i++) {
+            const s = segDefsSide[i];
+            e.fillStyle = darkCol;
+            e.beginPath();
+            e.ellipse(s.x, 0.8 * o + bobY, s.rx, s.ry, 0, 0, Math.PI * 2);
+            e.fill();
+            e.fillStyle = mainCol;
+            e.beginPath();
+            e.ellipse(s.x - 0.2 * o, 0.4 * o + bobY, s.rx * 0.88, s.ry * 0.86, 0, 0, Math.PI * 2);
+            e.fill();
+          }
 
-        // Segmento 2
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(3.0 * o, 0.5 * o + bobY, 5.4 * o, 7.0 * o, -0.05, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(2.8 * o, 0.0 * o + bobY, 4.6 * o, 6.2 * o, -0.05, 0, Math.PI * 2);
-        e.fill();
+          // Focinho e disco bucal
+          const mouthX = 14.2 * o;
+          const mouthY = 2.4 * o + bobY;
+          e.fillStyle = deepCol;
+          e.beginPath();
+          e.ellipse(mouthX, mouthY, 2.4 * o, 3.0 * o, 0.2, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = lightCol;
+          e.beginPath();
+          e.arc(mouthX + 0.6 * o, mouthY, 1.4 * o, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = "#1e1b4b";
+          e.beginPath();
+          e.arc(mouthX + 0.9 * o, mouthY, 0.75 * o, 0, Math.PI * 2);
+          e.fill();
 
-        // Segmento 1 (Cabeça)
-        e.fillStyle = darkCol;
-        e.beginPath();
-        e.ellipse(8.0 * o, 1.5 * o + bobY, 4.6 * o, 5.5 * o, -0.15, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = mainCol;
-        e.beginPath();
-        e.ellipse(7.8 * o, 1.0 * o + bobY, 3.8 * o, 4.8 * o, -0.15, 0, Math.PI * 2);
-        e.fill();
+          // Olho lateral da Rainha
+          e.fillStyle = "#0f172a";
+          e.beginPath();
+          e.arc(10.2 * o, -1.0 * o + bobY, 1.4 * o, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = lightCol;
+          e.beginPath();
+          e.arc(10.5 * o, -1.3 * o + bobY, 0.65 * o, 0, Math.PI * 2);
+          e.fill();
 
-        // Focinho e disco bucal voltado para a frente
-        const mouthX = 12.0 * o;
-        const mouthY = 2.8 * o + bobY;
-        e.fillStyle = deepCol;
-        e.beginPath();
-        e.ellipse(mouthX, mouthY, 2.0 * o, 2.6 * o, 0.2, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = lightCol;
-        e.beginPath();
-        e.arc(mouthX + 0.5 * o, mouthY, 1.2 * o, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#1e1b4b";
-        e.beginPath();
-        e.arc(mouthX + 0.8 * o, mouthY, 0.65 * o, 0, Math.PI * 2);
-        e.fill();
+          // Dobras dorsais entre os 7 segmentos
+          e.strokeStyle = lightCol;
+          e.lineWidth = 1.1 * o;
+          for (let i = 1; i < segDefsSide.length; i++) {
+            const sx = (segDefsSide[i - 1].x + segDefsSide[i].x) / 2;
+            e.beginPath();
+            e.moveTo(sx, -5.5 * o + bobY);
+            e.quadraticCurveTo(sx + 0.8 * o, 0, sx, 6.0 * o + bobY);
+            e.stroke();
+          }
 
-        // Olho lateral
-        const latEyeR = (isBaby ? 1.6 : 1.1) * o;
-        const latPupilR = (isBaby ? 0.7 : 0.45) * o;
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.arc(8.2 * o, -0.8 * o + bobY, latEyeR, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#ffffff";
-        e.beginPath();
-        e.arc(8.5 * o, -1.1 * o + bobY, latPupilR, 0, Math.PI * 2);
-        e.fill();
+          // Patas do primeiro plano
+          for (let i = 0; i < 6; i++) {
+            const legPhase = walkAnim + i * 0.95;
+            const swing = Math.sin(legPhase) * 0.40;
+            const lx = queenLegOffsetsX[i];
+            const ly = 3.6 * o + bobY;
+            drawStubbyLeg(lx, ly, 0.35 + swing, 1.1);
+          }
 
-        // Dobras dorsais entre os gomos
-        e.strokeStyle = lightCol;
-        e.lineWidth = 1.0 * o;
-        e.beginPath();
-        e.moveTo(-5.5 * o, -5.5 * o + bobY);
-        e.quadraticCurveTo(-4.8 * o, 0, -5.5 * o, 5.5 * o + bobY);
-        e.moveTo(0.5 * o, -6.0 * o + bobY);
-        e.quadraticCurveTo(1.2 * o, 0, 0.5 * o, 5.8 * o + bobY);
-        e.moveTo(5.8 * o, -4.8 * o + bobY);
-        e.quadraticCurveTo(6.4 * o, 0, 5.8 * o, 4.5 * o + bobY);
-        e.stroke();
+        } else {
+          // 4 Patas visíveis do lado em primeiro plano + 4 patas ao fundo (Tardígrado Comum)
+          const legOffsetsX = [7.5 * o, 2.5 * o, -2.8 * o, -8.2 * o];
+          for (let i = 0; i < 4; i++) {
+            const legPhase = walkAnim + i * 1.35 + Math.PI;
+            const swing = Math.sin(legPhase) * 0.45;
+            const lx = legOffsetsX[i];
+            const ly = -1.2 * o + bobY;
+            drawStubbyLeg(lx, ly, -0.2 + swing, 0.82);
+          }
 
-        // Patas do primeiro plano
-        for (let i = 0; i < 4; i++) {
-          const legPhase = walkAnim + i * 1.35;
-          const swing = Math.sin(legPhase) * 0.45;
-          const lx = legOffsetsX[i];
-          const ly = 3.6 * o + bobY;
-          drawStubbyLeg(lx, ly, 0.35 + swing, 1.05);
+          // CORPO LATERAL RECHONCHUDO (4 segmentos em perfil horizontal)
+          // Segmento 4 (Traseiro)
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(-8.0 * o, 1.0 * o + bobY, 5.2 * o, 6.4 * o, 0.1, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(-8.2 * o, 0.6 * o + bobY, 4.4 * o, 5.6 * o, 0.1, 0, Math.PI * 2);
+          e.fill();
+
+          // Segmento 3
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(-2.5 * o, 0.5 * o + bobY, 5.6 * o, 7.2 * o, 0, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(-2.7 * o, 0.0 * o + bobY, 4.8 * o, 6.4 * o, 0, 0, Math.PI * 2);
+          e.fill();
+
+          // Segmento 2
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(3.0 * o, 0.5 * o + bobY, 5.4 * o, 7.0 * o, -0.05, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(2.8 * o, 0.0 * o + bobY, 4.6 * o, 6.2 * o, -0.05, 0, Math.PI * 2);
+          e.fill();
+
+          // Segmento 1 (Cabeça)
+          e.fillStyle = darkCol;
+          e.beginPath();
+          e.ellipse(8.0 * o, 1.5 * o + bobY, 4.6 * o, 5.5 * o, -0.15, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = mainCol;
+          e.beginPath();
+          e.ellipse(7.8 * o, 1.0 * o + bobY, 3.8 * o, 4.8 * o, -0.15, 0, Math.PI * 2);
+          e.fill();
+
+          // Focinho e disco bucal voltado para a frente
+          const mouthX = 12.0 * o;
+          const mouthY = 2.8 * o + bobY;
+          e.fillStyle = deepCol;
+          e.beginPath();
+          e.ellipse(mouthX, mouthY, 2.0 * o, 2.6 * o, 0.2, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = lightCol;
+          e.beginPath();
+          e.arc(mouthX + 0.5 * o, mouthY, 1.2 * o, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = "#1e1b4b";
+          e.beginPath();
+          e.arc(mouthX + 0.8 * o, mouthY, 0.65 * o, 0, Math.PI * 2);
+          e.fill();
+
+          // Olho lateral
+          const latEyeR = (isBaby ? 1.6 : 1.1) * o;
+          const latPupilR = (isBaby ? 0.7 : 0.45) * o;
+          e.fillStyle = "#0f172a";
+          e.beginPath();
+          e.arc(8.2 * o, -0.8 * o + bobY, latEyeR, 0, Math.PI * 2);
+          e.fill();
+          e.fillStyle = "#ffffff";
+          e.beginPath();
+          e.arc(8.5 * o, -1.1 * o + bobY, latPupilR, 0, Math.PI * 2);
+          e.fill();
+
+          // Dobras dorsais entre os gomos
+          e.strokeStyle = lightCol;
+          e.lineWidth = 1.0 * o;
+          e.beginPath();
+          e.moveTo(-5.5 * o, -5.5 * o + bobY);
+          e.quadraticCurveTo(-4.8 * o, 0, -5.5 * o, 5.5 * o + bobY);
+          e.moveTo(0.5 * o, -6.0 * o + bobY);
+          e.quadraticCurveTo(1.2 * o, 0, 0.5 * o, 5.8 * o + bobY);
+          e.moveTo(5.8 * o, -4.8 * o + bobY);
+          e.quadraticCurveTo(6.4 * o, 0, 5.8 * o, 4.5 * o + bobY);
+          e.stroke();
+
+          // Patas do primeiro plano
+          for (let i = 0; i < 4; i++) {
+            const legPhase = walkAnim + i * 1.35;
+            const swing = Math.sin(legPhase) * 0.45;
+            const lx = legOffsetsX[i];
+            const ly = 3.6 * o + bobY;
+            drawStubbyLeg(lx, ly, 0.35 + swing, 1.05);
+          }
         }
       }
 
-      // Auréola mineral de Criptobiose (ao levar dano ou quando provocado)
-      if (l || (t.aggroTimer && t.aggroTimer > 0)) {
+      // Auréola mineral de Criptobiose (ao levar dano ou quando provocado; apenas para tardígrados normais, sem círculo para a Rainha)
+      if (!isQueen && (l || (t.aggroTimer && t.aggroTimer > 0))) {
         const pulse = 0.5 + Math.sin(t.animTimer * 8) * 0.3;
         e.strokeStyle = `rgba(254, 240, 138, ${pulse * 0.75})`;
         e.lineWidth = 1.6 * o;

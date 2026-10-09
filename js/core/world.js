@@ -3665,7 +3665,7 @@
           if (distToNestCenter + nestWobble <= nest.radius) {
             inNestRoom = true;
             isNestTile = true;
-            if (distToNestCenter <= 2.8) {
+            if (distToNestCenter <= 3.8) {
               isNestCenter = true;
             }
           }
