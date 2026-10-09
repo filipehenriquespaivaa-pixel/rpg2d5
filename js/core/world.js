@@ -922,6 +922,11 @@
       this.activeCaveEntranceCoords = { tx: t, ty: l };
       const surfB = this._computeSurfaceBaseBiome(t, l);
       const ent = this.getCaveEntranceAt(t, l);
+      // Caverna do Deserto: galerias de arenito com tuneis estreitos e longos, SEM criaturas!
+      this.activeCaveIsDesert = !!(
+        (ent && ent.isDesertCave) ||
+        (surfB && surfB.id === BiomeId.DESERT)
+      );
       this.enteredViaStaircase = !!(
         (ent && ent.isStaircase) ||
         (surfB && surfB.id === BiomeId.MEADOW)
@@ -1095,6 +1100,18 @@
                     ? "Degraus antigos de mármore que levam às galerias subterrâneas. Pressione [F] para explorar."
                     : "Uma fenda geológica entre os rochedos conectada às galerias subterrâneas. Pressione [F] para explorar.",
                 };
+              } else if (b.id === BiomeId.DESERT && g > 0.0125 && g < 0.0165) {
+                // Cavernas do Deserto: tema arenoso, túneis estreitos e longos, SEM criaturas!
+                res = {
+                  tx: t,
+                  ty: l,
+                  subType: 3,
+                  isDesertCave: !0,
+                  scale: 1.25,
+                  namePt: "Boca da Caverna do Deserto",
+                  descriptionPt:
+                    "Uma abertura na duna revela túneis estreitos e intermináveis escavados na areia compactada. O silêncio é absoluto — nenhuma criatura habita estas galerias. Pressione [F] para explorar!",
+                };
               }
             }
           }
@@ -1185,6 +1202,7 @@
           kind: "cave_entrance",
           namePt: merged.namePt || "Entrada da Caverna",
           subType: merged.subType || 0,
+          isDesertCave: !!merged.isDesertCave,
           isStaircase: !!merged.isStaircase,
           isMerged: !!merged.isMerged,
           mergedCount: merged.mergedCount || 1,
@@ -2575,6 +2593,64 @@
       }
       return null;
     }
+    // =========================================================================
+    // GERADOR DA CAVERNA DO DESERTO:
+    // - Tema arenito/areia compactada (DESERT_CAVE_FLOOR / DESERT_CAVE_WALL)
+    // - Tuneis ESTREITOS (1 tile de largura) e LONGOS, serpenteando pelo subsolo
+    // - SEM criaturas, SEM lagos, SEM cristais, SEM minerios, SEM props
+    // - A boca da caverna (tile da entrada) permanece como saida interativa
+    // =========================================================================
+    _getDesertCaveTile(t, l, u) {
+      const entrance = this.activeCaveEntranceCoords || { tx: 0, ty: 0 };
+      const dx = t - entrance.tx,
+        dy = l - entrance.ty;
+      // Boca da caverna: mantem a saida interativa original
+      if (dx === 0 && dy === 0) return null;
+
+      // Semente especifica do deserto: tuneis independentes das cavernas normais
+      const dSeed = ((this.seed ^ 0x5eed77) + 91234) >>> 0;
+      // Eixo principal longo na diagonal + dois ramais ortogonais igualmente longos
+      const diag = (dx + dy) * 0.7071067811865476;
+      const perp = (dx - dy) * 0.7071067811865476;
+      const w1 = this.caveWallNoise.noise2D(diag * 0.045, dSeed % 97) +
+        0.5 * this.caveDetailNoise.noise2D(diag * 0.11, (dSeed >> 3) % 71);
+      const c1 = Math.abs(perp - w1 * 3.2);
+      const w2 = this.caveRoomNoise.noise2D(dx * 0.05, dSeed % 83) +
+        0.5 * this.caveDetailNoise.noise2D(dx * 0.13, (dSeed >> 5) % 61);
+      const c2 = Math.abs(dy - w2 * 3.0);
+      const w3 = this.caveWallNoise.noise2D(dy * 0.05, (dSeed >> 7) % 89) +
+        0.5 * this.caveRoomNoise.noise2D(dy * 0.13, (dSeed >> 11) % 53);
+      const c3 = Math.abs(dx - w3 * 3.0);
+      const corridorDist = Math.min(c1, c2, c3);
+      // Tunel estreito: apenas ~1-2 tiles de largura de areia compactada
+      const isOpen = corridorDist < 0.85;
+
+      if (!isOpen) {
+        return {
+          tx: t,
+          ty: l,
+          elevation: 0.9,
+          moisture: 0.15,
+          temperature: 0.55,
+          biome: BIOMES[BiomeId.DESERT_CAVE_WALL],
+          isDesertCave: !0,
+          isDesertCaveWall: !0,
+          prop: null,
+          detailHash: u,
+        };
+      }
+      return {
+        tx: t,
+        ty: l,
+        elevation: 0.1,
+        moisture: 0.2,
+        temperature: 0.55,
+        biome: BIOMES[BiomeId.DESERT_CAVE_FLOOR],
+        isDesertCave: !0,
+        prop: null,
+        detailHash: u,
+      };
+    }
     _getUndergroundGreekSanctuaryCellAt(t, l) {
       // Verifica se este ponto subterrâneo está ESTRITAMENTE abaixo do bioma que tem Ruínas Gregas (MEADOW).
       // Cavernas abaixo de quaisquer outros biomas continuam sendo cavernas naturais normais!
@@ -3256,6 +3332,15 @@
       const thisCave = this.getCaveEntranceAt(t, l);
       if (thisCave) {
         const surfBiome = this._computeSurfaceBaseBiome(t, l);
+        // =========================================================================
+        // CAVERNA DO DESERTO: saida na boca, mas o interior e gerado pelo
+        // gerador de tuneis estreitos e longos de arenito (SEM criaturas)!
+        // =========================================================================
+        if (this.activeCaveIsDesert) {
+          const dTile = this._getDesertCaveTile(t, l, u);
+          if (dTile) return dTile;
+          // Boca da caverna (dx=dy=0): cai no bloco abaixo e vira saida interativa
+        }
         const isStair = !!(
           thisCave.isStaircase ||
           thisCave.subType === 2 ||
@@ -3310,6 +3395,15 @@
       // Assim NUNCA surgem rochedos (CAVE_WALL / stalagmites) neste subsolo!
       // =========================================================================
       const p = `cave_${t},${l}`;
+      // =========================================================================
+      // CAVERNA DO DESERTO (interior): tuneis estreitos e longos de areia
+      // compactada, SEM lagos, cristais, minerios ou props. Apenas caminhos!
+      // Dispara para QUALQUER tile do subsolo quando a caverna ativa e do deserto.
+      // =========================================================================
+      if (this.activeCaveIsDesert) {
+        const dTile2 = this._getDesertCaveTile(t, l, u);
+        if (dTile2) return dTile2;
+      }
       const sanctuary = this._getUndergroundGreekSanctuaryCellAt(t, l);
       if (sanctuary) {
         const dStair = this.isDungeonEntranceStairAt(t, l);
@@ -3668,6 +3762,39 @@
         prop: w,
         detailHash: u,
       };
+    }
+    // =========================================================================
+    // RENDERIZACAO DOS TILES DA CAVERNA DO DESERTO (chamada pelo renderer):
+    // Piso = faixa central de areia compactada dourada com ondulas de vento;
+    // Parede = arenito avermelhado IMPOSSIVEL de atravessar, sempre continuo.
+    // NUNCA desenha props/estalagmites/cristais aqui — apenas caminhos de terra!
+    // =========================================================================
+    renderDesertCaveTile(g, t, x, y, size) {
+      const u = t.detailHash || 0,
+        isWall = !!t.isDesertCaveWall || t.biome.id === BiomeId.DESERT_CAVE_WALL;
+      if (isWall) {
+        g.fillStyle = "#7c2d12";
+        g.fillRect(x, y, size + 1.2, size + 1.2);
+        g.fillStyle = "rgba(120, 53, 15, 0.85)";
+        g.fillRect(x, y, size + 1.2, 5);
+        g.fillStyle = "rgba(69, 26, 3, 0.55)";
+        g.fillRect(x, y + size - 5, size + 1.2, 5);
+        g.strokeStyle = "rgba(45, 15, 5, 0.6)";
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(x + 2, y + 8 + u * 8);
+        g.lineTo(x + size - 2, y + 11 + u * 6);
+        g.stroke();
+        return;
+      }
+      g.fillStyle = "rgba(146, 64, 14, 0.30)";
+      g.fillRect(x + 4 + u * 12, y + 5 + u * 9, 5, 2);
+      g.fillStyle = "rgba(253, 230, 138, 0.22)";
+      g.fillRect(x + 3 + u * 14, y + 14 + u * 8, 7, 2);
+      if (u > 0.6) {
+        g.fillStyle = "rgba(255, 255, 255, 0.10)";
+        g.fillRect(x + 8 + u * 10, y + 9 + u * 12, 3, 2);
+      }
     }
     _getDungeonCellAt(dx, dy) {
       // 1. Vestíbulo da Escadaria: dx in [-3, 3], dy in [-4, 2]
