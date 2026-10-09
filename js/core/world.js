@@ -88,6 +88,8 @@
       ((this.tileSize = 36),
         (this.isUnderground = !1),
         (this.activeCaveSeed = 0),
+        (this.isDesertCave = !1),
+        (this.activeCaveSurfaceBiomeId = null),
         (this.surfaceCoords = { x: 0, y: 0 }),
         (this.minedCrystals = 0),
         (this.interactedProps = new Map()),
@@ -134,7 +136,9 @@
         this._dungeonStairCache && this._dungeonStairCache.clear(),
         this.clearTileCache(),
         (this.isUnderground = !1),
-        (this.undergroundLevel = 0));
+        (this.undergroundLevel = 0),
+        (this.isDesertCave = !1),
+        (this.activeCaveSurfaceBiomeId = null));
     }
     _tk(t, l, c) {
       const lvl = typeof c === "number" ? c : (c ? (this.undergroundLevel || 1) : 0);
@@ -921,6 +925,8 @@
       this.surfaceCoords = { x: o, y: u };
       this.activeCaveEntranceCoords = { tx: t, ty: l };
       const surfB = this._computeSurfaceBaseBiome(t, l);
+      this.activeCaveSurfaceBiomeId = surfB ? surfB.id : null;
+      this.isDesertCave = !!(surfB && surfB.id === BiomeId.DESERT);
       const ent = this.getCaveEntranceAt(t, l);
       this.enteredViaStaircase = !!(
         (ent && ent.isStaircase) ||
@@ -937,6 +943,8 @@
     exitCave(t, l) {
       this.isUnderground = !1;
       this.undergroundLevel = 0;
+      this.isDesertCave = !1;
+      this.activeCaveSurfaceBiomeId = null;
       this.clearTileCache();
       if (t !== undefined && l !== undefined) {
         return {
@@ -3303,6 +3311,45 @@
         };
       }
 
+      // =========================================================================
+      // CAVERNAS DO DESERTO: corredores longos de terra, com largura variável
+      // de 1 a 3 blocos, sem lagos, cristais, fungos ou decoração cavernosa.
+      if (this.isDesertCave) {
+        const nearEntrance = this.activeCaveEntranceCoords &&
+          Math.hypot(t - this.activeCaveEntranceCoords.tx, l - this.activeCaveEntranceCoords.ty) <= 4;
+        const widthA = 1 + Math.floor(this.hash2D(Math.floor(t / 6), Math.floor(l / 6), 711) * 3);
+        const widthB = 1 + Math.floor(this.hash2D(Math.floor(t / 9), Math.floor(l / 9), 712) * 3);
+        const corridorA = Math.abs(this.caveRoomNoise.noise2D(t * 0.018, l * 0.018)) < 0.026 + widthA * 0.014;
+        const corridorB = Math.abs(this.caveDetailNoise.noise2D(t * 0.026 + 41, l * 0.026 + 41)) < 0.022 + widthB * 0.012;
+        const isOpen = !!nearEntrance || corridorA || corridorB;
+        if (!isOpen) {
+          return {
+            tx: t,
+            ty: l,
+            elevation: 0.9,
+            moisture: 0.08,
+            temperature: 0.7,
+            biome: BIOMES[BiomeId.CAVE_WALL],
+            isDesertCave: !0,
+            isDesertCaveWall: !0,
+            prop: null,
+            detailHash: u,
+          };
+        }
+        return {
+          tx: t,
+          ty: l,
+          elevation: 0.1,
+          moisture: 0.08,
+          temperature: 0.75,
+          biome: BIOMES[BiomeId.CAVE_FLOOR],
+          isDesertCave: !0,
+          isDesertCavePath: !0,
+          desertCaveWidth: Math.max(widthA, widthB),
+          prop: null,
+          detailHash: u,
+        };
+      }
       // =========================================================================
       // PRIORIDADE MÁXIMA NO SUBSOLO DO BIOMA DE RUÍNAS (MEADOW):
       // Avalia a grande estrutura temática de Corredores, Salões de Tamanhos

@@ -699,6 +699,7 @@
       let count = 0;
       for (const m of this.monsters) {
         if (m.hp <= 0) continue;
+        if (toUnderground && this.engine.isDesertCave) continue;
         const dist = Math.hypot(m.x - fromX, m.y - fromY);
         const isHostile = !isPreyType(m.type);
         const isChasing = m.attached || (isHostile && dist <= (m.isGiantScorpion ? 340 : 180));
@@ -826,6 +827,11 @@
     }
     update(t, l, o, u, m = 0.5, c = 2) {
       var w, v, T;
+      if (o && this.engine.isDesertCave) {
+        for (let i = this.monsters.length - 1; i >= 0; i--) {
+          if (this.monsters[i].isUnderground) this.monsters.splice(i, 1);
+        }
+      }
       if (l.paralyzedTimer && l.paralyzedTimer > 0) {
         l.paralyzedTimer = Math.max(0, l.paralyzedTimer - t);
       }
@@ -2146,6 +2152,7 @@
       }
     }
     spawnMonsterNearPlayer(t, l, o, u = 0.5) {
+      if (l && this.engine.isDesertCave) return;
       const m = Math.random() * Math.PI * 2,
         c = 180 + Math.random() * 180;
       let f = t.x + Math.cos(m) * c,
@@ -2491,6 +2498,7 @@
       this.monsters.push(z);
     }
     spawnSwarmSlimeNearPlayer(t, l, o) {
+      if (l && this.engine.isDesertCave) return;
       const u = o === BiomeId.SNOW_TAIGA || o === BiomeId.SNOW_PEAK || o === BiomeId.GLACIER,
         m =
           o === BiomeId.DESERT ||

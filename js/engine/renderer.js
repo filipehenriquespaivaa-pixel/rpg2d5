@@ -1236,7 +1236,24 @@
               (g.lineWidth = 0.8),
               g.stroke());
           }
-        } else if (y.id === BiomeId.CAVE_WALL)
+        } else if (t.isDesertCaveWall)
+          ((g.fillStyle = "#6b3418"),
+            g.fillRect(l, o, u, u),
+            (g.fillStyle = "#a85f2a"),
+            g.fillRect(l, o, u, 4),
+            (g.fillStyle = "rgba(245, 158, 11, 0.24)"),
+            g.fillRect(l + 3 + T * 12, o + 8 + T * 14, u - 8, 2),
+            (g.fillStyle = "rgba(67, 33, 14, 0.55)"),
+            g.fillRect(l, o + u - 6, u, 6))
+        else if (t.isDesertCavePath)
+          ((g.fillStyle = "rgba(180, 102, 42, 0.38)"),
+            g.fillRect(l + 2, o + 5 + T * 16, u - 4, 2),
+            (g.fillStyle = "rgba(245, 158, 11, 0.28)"),
+            g.fillRect(l + 6 + T * 12, o + 10 + T * 10, 4, 2),
+            T > 0.72 &&
+              ((g.fillStyle = "rgba(254, 215, 170, 0.38)"),
+              g.fillRect(l + 17, o + 6 + T * 16, 3, 1.5)))
+        else if (y.id === BiomeId.CAVE_WALL)
           ((g.fillStyle = "#11100f"),
             g.fillRect(l, o, u, u),
             (g.fillStyle = "#292524"),
