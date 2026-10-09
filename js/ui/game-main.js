@@ -1354,7 +1354,7 @@
           const Q = BIOMES[E] || (isSpecialTarget ? { namePt: "Calabouço / Escadaria", passable: true } : null);
           if (!Q) return;
           c.current.reset();
-          const isCave = Q.category === "cave" || E.startsWith("CAVE_");
+          const isCave = Q.category === "cave" || E.startsWith("CAVE_") || E.startsWith("DESERT_CAVE_");
           if (isCave && !D.isUnderground) {
             const ge = Math.floor(f.current.x / D.tileSize),
               re = Math.floor(f.current.y / D.tileSize);
@@ -1366,6 +1366,13 @@
             f.current.y = ge.y;
             m.current.playCaveExit();
           }
+          // Se o alvo for um bioma de caverna natural (ex: CAVE_CRYSTAL, CAVE_MUSHROOM, CAVE_LAKE, CAVE_FLOOR, CAVE_WALL),
+          // garante que o subsolo não esteja preso no modo deserto estrito
+          if (isCave && !E.startsWith("DESERT_CAVE")) {
+            D.activeCaveEntranceIsDesert = !1;
+            D.undergroundLevel = 1;
+            D.clearTileCache();
+          }
           const isImpassable = !Q.passable;
           const originTx = Math.floor(f.current.x / D.tileSize);
           const originTy = Math.floor(f.current.y / D.tileSize);
@@ -1375,11 +1382,63 @@
             targetPixelY = 0,
             foundDist = 0;
 
-          const tiers = [
-            { minR: 0, maxR: 1500, rStep: 50, arcStep: 60 },
-            { minR: 1500, maxR: 5000, rStep: 100, arcStep: 100 },
-            { minR: 5000, maxR: 15000, rStep: 200, arcStep: 200 }
-          ];
+          // Passos calibrados conforme o tamanho real do bioma no gerador procedural:
+          // - Cavernas (CAVE_*): câmaras variam a cada 6~15 tiles
+          // - Lagos / Oásis / Vulcão / Cânion / Pântano: manchas de 25~120 tiles
+          // - Biomas continentais: manchas de 300~2500 tiles
+          const isSmallFeatureBiome =
+            E.endsWith("_LAKE") ||
+            E === "OASIS" ||
+            E === "VOLCANIC" ||
+            E === "CANYON" ||
+            E === "SWAMP" ||
+            E === "BEACH" ||
+            E === "COAST_WATER";
+          const tiers = isCave
+            ? [
+                { minR: 0, maxR: 250, rStep: 4, arcStep: 5 },
+                { minR: 250, maxR: 1200, rStep: 10, arcStep: 12 },
+                { minR: 1200, maxR: 4000, rStep: 25, arcStep: 28 },
+              ]
+            : isSmallFeatureBiome
+              ? [
+                  { minR: 0, maxR: 1800, rStep: 24, arcStep: 28 },
+                  { minR: 1800, maxR: 7500, rStep: 55, arcStep: 65 },
+                  { minR: 7500, maxR: 28000, rStep: 120, arcStep: 140 },
+                ]
+              : [
+                  { minR: 0, maxR: 2500, rStep: 45, arcStep: 55 },
+                  { minR: 2500, maxR: 10000, rStep: 110, arcStep: 130 },
+                  { minR: 10000, maxR: 32000, rStep: 240, arcStep: 260 },
+                ];
+
+          // Refina um tile encontrado (tx, ty) para o centro da mancha daquele bioma,
+          // evitando pousar na borda exata onde 1 passo já trocaria de bioma!
+          const refineBiomeCenter = (startTx, startTy, targetBiomeId) => {
+            const checkMatch = (x, y) => {
+              if (D.isUnderground) {
+                const tb = D.getTile(x, y).biome;
+                return !!(tb && tb.id === targetBiomeId);
+              }
+              const sb = D._computeSurfaceBaseBiome(x, y);
+              return !!(sb && sb.id === targetBiomeId);
+            };
+            const maxSpan = isCave ? 18 : isSmallFeatureBiome ? 45 : 90;
+            let minX = startTx,
+              maxX = startTx,
+              minY = startTy,
+              maxY = startTy;
+            while (startTx - minX < maxSpan && checkMatch(minX - 1, startTy)) minX--;
+            while (maxX - startTx < maxSpan && checkMatch(maxX + 1, startTy)) maxX++;
+            const midX = Math.round((minX + maxX) * 0.5);
+            while (startTy - minY < maxSpan && checkMatch(midX, minY - 1)) minY--;
+            while (maxY - startTy < maxSpan && checkMatch(midX, maxY + 1)) maxY++;
+            const midY = Math.round((minY + maxY) * 0.5);
+            if (checkMatch(midX, midY)) {
+              return { tx: midX, ty: midY };
+            }
+            return { tx: startTx, ty: startTy };
+          };
 
           if (E === "DUNGEON_LOWER") {
             let stair = null;
@@ -1510,8 +1569,36 @@
             }
             if (targetCave) {
               D.enterCave(targetCave.tx, targetCave.ty, targetCave.tx * D.tileSize + 14, targetCave.ty * D.tileSize + 14);
-              targetPixelX = targetCave.tx * D.tileSize + 14;
-              targetPixelY = targetCave.ty * D.tileSize + 20;
+              if (E === "DESERT_CAVE_WALL") {
+                // Posiciona em um piso adjacente a um paredão de arenito para não prender o jogador dentro da rocha
+                let wallAdjFound = !1;
+                for (let sr = 1; sr <= 12 && !wallAdjFound; sr++) {
+                  for (let sdy = -sr; sdy <= sr && !wallAdjFound; sdy++) {
+                    for (let sdx = -sr; sdx <= sr && !wallAdjFound; sdx++) {
+                      const cx = targetCave.tx + sdx, cy = targetCave.ty + sdy;
+                      const ct = D.getTile(cx, cy);
+                      if (ct && ct.biome && ct.biome.id === BiomeId.DESERT_CAVE_WALL) {
+                        for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+                          const ft = D.getTile(cx + ox, cy + oy);
+                          if (ft && ft.biome && ft.biome.passable && !D.getNearbyCaveDoorwayAt((cx + ox) * D.tileSize + 14, (cy + oy) * D.tileSize + 14)) {
+                            targetPixelX = (cx + ox) * D.tileSize + 14;
+                            targetPixelY = (cy + oy) * D.tileSize + 14;
+                            wallAdjFound = !0;
+                            break;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                if (!wallAdjFound) {
+                  targetPixelX = targetCave.tx * D.tileSize + 14;
+                  targetPixelY = (targetCave.ty + 2) * D.tileSize + 14;
+                }
+              } else {
+                targetPixelX = targetCave.tx * D.tileSize + 14;
+                targetPixelY = (targetCave.ty + 2) * D.tileSize + 14;
+              }
               foundDist = Math.round(Math.hypot(targetCave.tx - originTx, targetCave.ty - originTy));
               found = !0;
               ve(`🦂 Teleportado para os túneis estreitos da Caverna do Deserto em [${targetCave.tx}, ${targetCave.ty}]!`);
@@ -1543,66 +1630,110 @@
             }
           }
 
+          // Para biomas de caverna natural (CAVE_FLOOR, CAVE_CRYSTAL, CAVE_MUSHROOM, CAVE_LAKE, CAVE_WALL),
+          // se a posição atual estiver debaixo de Planície (Santuário Grego) ou Quartel Glacial,
+          // desloca a origem de busca para uma região fora de MEADOW para achar cavernas naturais imediatamente!
+          let searchOriginTx = originTx;
+          let searchOriginTy = originTy;
+          if (isCave && !E.startsWith("DESERT_CAVE")) {
+            const surfAtOrigin = D._computeSurfaceBaseBiome(searchOriginTx, searchOriginTy);
+            if (surfAtOrigin && (surfAtOrigin.id === BiomeId.MEADOW || surfAtOrigin.id === BiomeId.MEADOW_LAKE || surfAtOrigin.id === BiomeId.DESERT || surfAtOrigin.id === BiomeId.CANYON)) {
+              for (let sr = 1; sr <= 40; sr++) {
+                let shifted = !1;
+                for (let i = 0; i < 16; i++) {
+                  const ang = (i / 16) * Math.PI * 2;
+                  const candX = Math.round(originTx + Math.cos(ang) * sr * 35);
+                  const candY = Math.round(originTy + Math.sin(ang) * sr * 35);
+                  const sb = D._computeSurfaceBaseBiome(candX, candY);
+                  if (sb && sb.id !== BiomeId.MEADOW && sb.id !== BiomeId.MEADOW_LAKE && sb.id !== BiomeId.DESERT && sb.id !== BiomeId.CANYON && !sb.hasWater) {
+                    searchOriginTx = candX;
+                    searchOriginTy = candY;
+                    shifted = !0;
+                    break;
+                  }
+                }
+                if (shifted) break;
+              }
+            }
+          }
+
           for (const tier of tiers) {
             if (found) break;
             for (let r = tier.minR; r <= tier.maxR; r += tier.rStep) {
               if (r === 0) {
-                const b0 = D.isUnderground ? D.getTile(originTx, originTy).biome : D._computeSurfaceBaseBiome(originTx, originTy);
+                const b0 = D.isUnderground ? D.getTile(searchOriginTx, searchOriginTy).biome : D._computeSurfaceBaseBiome(searchOriginTx, searchOriginTy);
                 if (b0 && b0.id === E && (isImpassable || b0.passable)) {
-                  const landingTile = D.getTile(originTx, originTy);
-                  if (isImpassable || (landingTile.biome.passable && !landingTile.isCliffWall)) {
-                    targetPixelX = originTx * D.tileSize + D.tileSize / 2;
-                    targetPixelY = originTy * D.tileSize + D.tileSize / 2;
-                    foundDist = 0;
+                  const centered = refineBiomeCenter(searchOriginTx, searchOriginTy, E);
+                  const landingTile = D.getTile(centered.tx, centered.ty);
+                  if (isImpassable || (landingTile.biome.passable && !landingTile.isCliffWall && D.isTilePassable(centered.tx, centered.ty))) {
+                    targetPixelX = centered.tx * D.tileSize + D.tileSize / 2;
+                    targetPixelY = centered.ty * D.tileSize + D.tileSize / 2;
+                    foundDist = Math.round(Math.hypot(centered.tx - originTx, centered.ty - originTy));
                     found = !0;
                     break;
                   }
                 }
                 continue;
               }
-              const steps = Math.max(12, Math.floor((2 * Math.PI * r) / tier.arcStep));
+              const steps = Math.max(16, Math.floor((2 * Math.PI * r) / tier.arcStep));
               for (let i = 0; i < steps; i++) {
                 const angle = (i / steps) * 2 * Math.PI;
-                const me = Math.round(originTx + Math.cos(angle) * r);
-                const ce = Math.round(originTy + Math.sin(angle) * r);
+                const me = Math.round(searchOriginTx + Math.cos(angle) * r);
+                const ce = Math.round(searchOriginTy + Math.sin(angle) * r);
                 const b = D.isUnderground ? D.getTile(me, ce).biome : D._computeSurfaceBaseBiome(me, ce);
                 if (b && b.id === E) {
-                  if (E === "CAVE_WALL") {
+                  if (E === "CAVE_WALL" || E === "DESERT_CAVE_WALL") {
                     let foundFloor = !1;
-                    for (let dx = -1; dx <= 1 && !foundFloor; dx++) {
-                      for (let dy = -1; dy <= 1 && !foundFloor; dy++) {
-                        const adj = D.getTile(me + dx, ce + dy);
-                        if (adj.biome.passable) {
-                          targetPixelX = (me + dx) * D.tileSize;
-                          targetPixelY = (ce + dy) * D.tileSize;
-                          foundFloor = !0;
+                    for (let sr = 1; sr <= 4 && !foundFloor; sr++) {
+                      for (let dx = -sr; dx <= sr && !foundFloor; dx++) {
+                        for (let dy = -sr; dy <= sr && !foundFloor; dy++) {
+                          const adj = D.getTile(me + dx, ce + dy);
+                          if (adj && adj.biome && adj.biome.passable && D.isTilePassable(me + dx, ce + dy)) {
+                            targetPixelX = (me + dx) * D.tileSize + D.tileSize / 2;
+                            targetPixelY = (ce + dy) * D.tileSize + D.tileSize / 2;
+                            foundFloor = !0;
+                          }
                         }
                       }
                     }
-                    if (!foundFloor) {
-                      targetPixelX = me * D.tileSize;
-                      targetPixelY = ce * D.tileSize;
-                    }
-                    foundDist = r;
+                    if (!foundFloor) continue;
+                    foundDist = Math.round(Math.hypot(me - originTx, ce - originTy));
                     found = !0;
                     break;
                   }
-                  // Encontra um ponto seguro e passável no bioma encontrado
-                  let landingTx = me, landingTy = ce, landedSafe = !1;
-                  for (let dy = -2; dy <= 2 && !landedSafe; dy++) {
-                    for (let dx = -2; dx <= 2 && !landedSafe; dx++) {
-                      const candX = me + dx, candY = ce + dy;
-                      const candTile = D.getTile(candX, candY);
-                      if (isImpassable || (candTile.biome.passable && !candTile.isCliffWall)) {
-                        landingTx = candX;
-                        landingTy = candY;
-                        landedSafe = !0;
+                  // Centraliza na mancha do bioma para não pousar na borda!
+                  const centered = refineBiomeCenter(me, ce, E);
+                  let landingTx = centered.tx,
+                    landingTy = centered.ty,
+                    landedSafe = !1;
+                  for (let sr = 0; sr <= 6 && !landedSafe; sr++) {
+                    for (let dy = -sr; dy <= sr && !landedSafe; dy++) {
+                      for (let dx = -sr; dx <= sr && !landedSafe; dx++) {
+                        if (sr > 0 && Math.abs(dx) !== sr && Math.abs(dy) !== sr) continue;
+                        const candX = centered.tx + dx,
+                          candY = centered.ty + dy;
+                        const candTile = D.getTile(candX, candY);
+                        if (candTile && candTile.biome && candTile.biome.id === E) {
+                          if (
+                            isImpassable ||
+                            (candTile.biome.passable &&
+                              !candTile.isCliffWall &&
+                              D.isTilePassable(candX, candY) &&
+                              !D.isTrunkAt(candX * D.tileSize + D.tileSize / 2, candY * D.tileSize + D.tileSize / 2) &&
+                              !D.getNearbyCaveDoorwayAt(candX * D.tileSize + D.tileSize / 2, candY * D.tileSize + D.tileSize / 2))
+                          ) {
+                            landingTx = candX;
+                            landingTy = candY;
+                            landedSafe = !0;
+                          }
+                        }
                       }
                     }
                   }
+                  if (!landedSafe && !isImpassable) continue;
                   targetPixelX = landingTx * D.tileSize + D.tileSize / 2;
                   targetPixelY = landingTy * D.tileSize + D.tileSize / 2;
-                  foundDist = r;
+                  foundDist = Math.round(Math.hypot(landingTx - originTx, landingTy - originTy));
                   found = !0;
                   break;
                 }
@@ -1613,18 +1744,33 @@
           }
 
           if (found) {
+            __autoCaveTimer.current = 1.2;
             f.current.x = targetPixelX;
             f.current.y = targetPixelY;
             f.current.vx = 0;
             f.current.vy = 0;
             Oa.current = { x: 0, y: 0 };
+            Et(!1);
             D.clearTileCache();
+            const finalTx = Math.floor(targetPixelX / D.tileSize),
+              finalTy = Math.floor(targetPixelY / D.tileSize),
+              finalTile = D.getTile(finalTx, finalTy);
+            if (finalTile && finalTile.biome) {
+              Be.current = finalTile.biome.id;
+              v(finalTile.biome);
+            }
+            je.current = { tx: finalTx, ty: finalTy };
+            S({ tx: finalTx, ty: finalTy });
+            // Remove o foco de qualquer <select> ou <button> para que pressionar WASD ou Setas não troque o bioma sozinho!
+            if (typeof document !== "undefined" && document.activeElement && typeof document.activeElement.blur === "function") {
+              document.activeElement.blur();
+            }
             if (!isSpecialTarget) {
               ve(`Teletransportado para ${Q.namePt} (${foundDist} blocos de distância)!`);
             }
             m.current.playShrineActivation();
           } else {
-            ve(isSpecialTarget ? "Escadaria do calabouço não localizada nas proximidades." : `Nenhum ${Q.namePt} localizado no raio de 15000 blocos.`);
+            ve(isSpecialTarget ? "Escadaria do calabouço não localizada nas proximidades." : `Nenhum ${Q.namePt} localizado nas proximidades.`);
           }
         },
         [ve],
@@ -3708,6 +3854,15 @@
       }),
       J.useEffect(() => {
         const E = (q) => {
+            if (
+              typeof document !== "undefined" &&
+              document.activeElement &&
+              document.activeElement.tagName === "SELECT" &&
+              /^(Key[WASDEFIRTLGCUQPBJM]|Arrow|Space|Digit)/i.test(q.code || "")
+            ) {
+              q.preventDefault();
+              document.activeElement.blur();
+            }
             const isArrowKey =
               ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(q.code) ||
               ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Up", "Down", "Left", "Right"].includes(q.key);

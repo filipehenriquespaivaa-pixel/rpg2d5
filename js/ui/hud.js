@@ -488,7 +488,21 @@
                     id: "hud-top-dev-biome-select",
                     value: (e && e.id) || "",
                     onChange: (We) => {
-                      if (We.target.value && p) p(We.target.value);
+                      const val = We.target.value;
+                      if (We.target && typeof We.target.blur === "function") {
+                        We.target.blur();
+                      }
+                      if (val && p) p(val);
+                    },
+                    onKeyDown: (We) => {
+                      if (
+                        ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(We.code)
+                      ) {
+                        We.preventDefault();
+                        if (We.target && typeof We.target.blur === "function") {
+                          We.target.blur();
+                        }
+                      }
                     },
                     className:
                       "bg-slate-900 text-amber-200 font-bold rounded-lg px-2 py-0.5 border border-amber-500/40 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-400 max-w-[190px] sm:max-w-[230px]",
@@ -1266,7 +1280,15 @@
                               id: "hud-dev-biome-select",
                               value: (e && e.id) || "",
                               onChange: (We) => {
-                                if (We.target.value && p) p(We.target.value);
+                                const val = We.target.value;
+                                if (We.target && typeof We.target.blur === "function") We.target.blur();
+                                if (val && p) p(val);
+                              },
+                              onKeyDown: (We) => {
+                                if (/^(Key[WASD]|Arrow|Space)/i.test(We.code || "")) {
+                                  We.preventDefault();
+                                  if (We.currentTarget && typeof We.currentTarget.blur === "function") We.currentTarget.blur();
+                                }
                               },
                               className:
                                 "bg-slate-800 text-sky-100 text-[10px] font-medium rounded px-1.5 py-0.5 border border-sky-400/40 cursor-pointer focus:outline-none focus:ring-1 focus:ring-sky-400 max-w-[130px] truncate",
