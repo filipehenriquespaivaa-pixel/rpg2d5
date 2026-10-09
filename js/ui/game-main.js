@@ -1549,23 +1549,23 @@
             let fissure = D.getDesertGeodeFissure ? D.getDesertGeodeFissure() : null;
             if (fissure) {
               if (!D.isUnderground) {
-                D.enterCave(fissure.tx, fissure.ty + 1, fissure.tx * D.tileSize + 14, (fissure.ty + 1) * D.tileSize + 14);
+                D.enterCave(fissure.tx, fissure.ty + 2, fissure.tx * D.tileSize + 18, (fissure.ty + 2) * D.tileSize + 18);
               }
-              D.enterGeode(fissure.tx, fissure.ty, fissure.tx * D.tileSize + 14, (fissure.ty + 1) * D.tileSize + 14);
-              targetPixelX = fissure.tx * D.tileSize + 14;
-              targetPixelY = (fissure.ty + 2) * D.tileSize + 14;
+              D.enterGeode(fissure.tx, fissure.ty, fissure.tx * D.tileSize + 18, (fissure.ty + 2) * D.tileSize + 18);
+              targetPixelX = fissure.tx * D.tileSize + D.tileSize / 2;
+              targetPixelY = (fissure.ty - 2) * D.tileSize + D.tileSize / 2;
               foundDist = Math.round(Math.hypot(fissure.tx - originTx, fissure.ty - originTy));
               found = !0;
-              ve(`💎 Teleportado diretamente para dentro do Geodo de Cristais em [${fissure.tx}, ${fissure.ty}]!`);
+              ve(`💎 Teleportado diretamente para dentro do Geodo de Cristais em [${fissure.tx}, ${fissure.ty - 2}]!`);
             }
           }
 
           if (E === "DESERT_CAVE" || E === "DESERT_CAVE_FLOOR" || E === "DESERT_CAVE_WALL") {
             const fissure = D.getDesertGeodeFissure ? D.getDesertGeodeFissure() : null;
             if (E === "DESERT_CAVE_WALL" && fissure) {
-              D.enterCave(fissure.tx, fissure.ty + 1, fissure.tx * D.tileSize + 14, (fissure.ty + 1) * D.tileSize + 14);
-              targetPixelX = fissure.tx * D.tileSize + 14;
-              targetPixelY = (fissure.ty + 1) * D.tileSize + 20;
+              D.enterCave(fissure.tx, fissure.ty + 2, fissure.tx * D.tileSize + 18, (fissure.ty + 2) * D.tileSize + 18);
+              targetPixelX = fissure.tx * D.tileSize + D.tileSize / 2;
+              targetPixelY = (fissure.ty + 2) * D.tileSize + D.tileSize / 2;
               foundDist = Math.round(Math.hypot(fissure.tx - originTx, fissure.ty - originTy));
               found = !0;
               ve(`💎 Teleportado para o Paredão do Deserto com a Fenda do Geodo em [${fissure.tx}, ${fissure.ty}]!`);
@@ -2894,11 +2894,11 @@
               E.enterGeode(targetTx, targetTy, oldX, oldY);
               Oa.current = { x: 0, y: 0 };
               Et(!1);
-              D.x = targetTx * Q + 14;
-              D.y = (targetTy + 1) * Q + 18;
+              D.x = targetTx * Q + Q / 2;
+              D.y = (targetTy - 2) * Q + Q / 2;
               D.vx = 0;
               D.vy = 0;
-              D.direction = "down";
+              D.direction = "up";
               const qe = Math.floor(D.x / Q),
                 Ze = Math.floor(D.y / Q);
               v(E.getTile(qe, Ze).biome);
@@ -4585,11 +4585,11 @@
                   Q.enterGeode(autoC.tx, autoC.ty, oldX, oldY);
                   Oa.current = { x: 0, y: 0 };
                   Et(!1);
-                  he.x = autoC.tx * Q.tileSize + 14;
-                  he.y = (autoC.ty + 1) * Q.tileSize + 18;
+                  he.x = autoC.tx * Q.tileSize + Q.tileSize / 2;
+                  he.y = (autoC.ty - 2) * Q.tileSize + Q.tileSize / 2;
                   he.vx = 0;
                   he.vy = 0;
-                  he.direction = "down";
+                  he.direction = "up";
                   const qe_t = Math.floor(he.x / Q.tileSize),
                     Ze_t = Math.floor(he.y / Q.tileSize);
                   v(Q.getTile(qe_t, Ze_t).biome);

@@ -1008,10 +1008,10 @@
       if (t !== undefined && l !== undefined) {
         return {
           x: t * this.tileSize + this.tileSize / 2,
-          y: (l + 1) * this.tileSize + 20,
+          y: (l + 2) * this.tileSize + this.tileSize / 2,
         };
       }
-      return this.desertCaveCoords || { x: (t || 0) * this.tileSize + 18, y: ((l || 0) + 1) * this.tileSize + 20 };
+      return this.desertCaveCoords || { x: (t || 0) * this.tileSize + 18, y: ((l || 0) + 2) * this.tileSize + 18 };
     }
     _isRawCaveCandidateAt(t, l) {
       if (!this.rawCaveCandidateCache) this.rawCaveCandidateCache = new Map();
@@ -1496,8 +1496,8 @@
         };
       }
 
-      // Passagem de entrada logo ao norte da fenda de saída (garante corredor livre para entrar e sair)
-      const inEntryVestibule = Math.abs(t - exitTx) <= 1 && l >= exitTy - 3 && l < exitTy;
+      // Passagem de entrada logo ao norte da fenda de saída (garante corredor amplo e livre para entrar e sair)
+      const inEntryVestibule = Math.abs(t - exitTx) <= 2 && l >= exitTy - 4 && l < exitTy;
 
       const angle = Math.atan2(dy, dx);
       const wobble =
@@ -4054,7 +4054,7 @@
         let inGeodeAccess = !1;
         if (nearGeodeFissure) {
           // Garante clareira diante da face frontal sul da fenda do paredão e corredor ligado ao túnel ou entrada
-          if (Math.abs(t - nearGeodeFissure.tx) <= 1 && l >= nearGeodeFissure.ty + 1 && l <= nearGeodeFissure.ty + 2) {
+          if (Math.abs(t - nearGeodeFissure.tx) <= 1 && l >= nearGeodeFissure.ty + 1 && l <= nearGeodeFissure.ty + 3) {
             inGeodeAccess = !0;
           } else if (
             nearGeodeFissure.anchorTx !== undefined &&
