@@ -395,8 +395,8 @@
       for (const f of this.monsters) {
         if (f.hp <= 0 || f.isUnderground !== u) continue;
         if (isTardigrade) {
-          // Tardígrados caçam especificamente escorpiões da caverna!
-          if (f.type !== "scorpion" || f.isGiantScorpion) continue;
+          // Tardígrados caçam ativamente escorpiões e aranhas da caverna!
+          if ((f.type !== "scorpion" && f.type !== "spider") || f.isGiantScorpion) continue;
         } else {
           if (!isPreyType(f.type)) continue;
         }
@@ -405,7 +405,8 @@
       }
       return m;
     }
-    tardigradeDevourScorpion(t, l) {
+    tardigradeDevourPrey(t, l) {
+      const isSpider = l.type === "spider";
       const o = t.attack + (Math.random() * 3 - 1),
         u = Math.max(4, Math.round(o - (l.defense || 2) * 0.4));
       ((l.hp -= u),
@@ -426,7 +427,7 @@
           vx: (Math.random() - 0.5) * 2.5,
           vy: -Math.random() * 2.5,
           life: 0.4,
-          color: "#f59e0b",
+          color: isSpider ? "#fbbf24" : "#f59e0b",
           size: 2,
         });
       if (l.hp <= 0) {
@@ -440,22 +441,23 @@
             vx: Math.cos(f) * g,
             vy: Math.sin(f) * g,
             life: 0.75,
-            color: c % 2 === 0 ? "#f59e0b" : "#4ade80",
+            color: c % 2 === 0 ? (isSpider ? "#a855f7" : "#f59e0b") : "#4ade80",
             size: 2.6 + Math.random() * 2,
           });
         }
         var audio;
         (audio = this.audio) == null || audio.playSlimePickup?.();
-        const healAmt = 22;
+        const healAmt = isSpider ? 18 : 22;
         t.hp = Math.min(t.maxHp, t.hp + healAmt);
         if (t.scale < (t.maxScale || t.scale * 1.25)) {
           t.scale = Math.min((t.maxScale || t.scale * 1.25), Math.round((t.scale + 0.05) * 100) / 100);
         }
+        const preyName = isSpider ? "Aranha" : "Escorpião";
         this.floatingTexts.push({
           id: `feed_${this.nextId++}`,
           x: t.x,
           y: t.y - 28,
-          text: `🍴 Devorou Escorpião! (+${healAmt} HP)`,
+          text: `🍴 Devorou ${preyName}! (+${healAmt} HP)`,
           color: "#facc15",
           isCrit: !0,
           life: 1.4,
@@ -463,7 +465,7 @@
         const m = this.monsters.findIndex((c) => c.id === l.id);
         m >= 0 && this.monsters.splice(m, 1);
       } else {
-        // Escorpião sobrevivente entra em pânico e foge em alta velocidade!
+        // Presa sobrevivente (escorpião ou aranha) entra em pânico e foge em alta velocidade!
         l.fleeTimer = 4.5;
         l.lastThreatX = t.x;
         l.lastThreatY = t.y;
@@ -477,9 +479,12 @@
         l.facing = this.getMonsterFacing(l.vx, l.vy, l.facing);
       }
     }
+    tardigradeDevourScorpion(t, l) {
+      this.tardigradeDevourPrey(t, l);
+    }
     wolfAttackPrey(t, l) {
-      if (t.type === "tardigrade" && l.type === "scorpion") {
-        this.tardigradeDevourScorpion(t, l);
+      if (t.type === "tardigrade" && (l.type === "scorpion" || l.type === "spider")) {
+        this.tardigradeDevourPrey(t, l);
         return;
       }
       const o = t.attack + (Math.random() * 2 - 1),
@@ -610,7 +615,68 @@
         return;
       }
 
+      if (t.type === "tardigrade") {
+        this.tardigradeAttackPlayer(t, l, o);
+        return;
+      }
+
       this.applyMonsterHitToPlayer(t, l, o, !1);
+    }
+    tardigradeAttackPlayer(t, l, o = 2) {
+      if (
+        l.isDead ||
+        (l.invulnerableTimer && l.invulnerableTimer > 0) ||
+        !this.getAnimalFireDeterrence(t, l).canAttack
+      )
+        return;
+      const baseAtk = t.attack + (Math.random() * 3 - 1.2);
+      const c = Math.max(2, Math.round(baseAtk - o * 0.42));
+      l.hp = Math.max(0, (l.hp ?? 100) - c);
+      var f;
+      (f = this.audio) == null || f.playPlayerHurt?.();
+      t.animTimer = (t.animTimer || 0) + 1.2;
+      this.floatingTexts.push({
+        id: `dmg_${this.nextId++}`,
+        x: l.x,
+        y: l.y - 20,
+        text: `👄 Mordida! -${c}`,
+        color: "#ef4444",
+        isCrit: !0,
+        life: 0.9,
+      });
+      for (let g = 0; g < 7; g++) {
+        const y = Math.random() * Math.PI * 2;
+        const spd = 3.5 + Math.random() * 2;
+        this.hitParticles.push({
+          x: l.x,
+          y: l.y - 6,
+          vx: Math.cos(y) * spd,
+          vy: Math.sin(y) * spd,
+          life: 0.45,
+          color: g % 2 === 0 ? "#ef4444" : "#f59e0b",
+          size: 2.2,
+        });
+      }
+      if (l.hp <= 0) {
+        // Devorou o jogador!
+        const healAmt = 35;
+        t.hp = Math.min(t.maxHp, t.hp + healAmt);
+        if (t.scale < (t.maxScale || t.scale * 1.25)) {
+          t.scale = Math.min((t.maxScale || t.scale * 1.25), Math.round((t.scale + 0.08) * 100) / 100);
+        }
+        var audio;
+        (audio = this.audio) == null || audio.playSlimePickup?.();
+        this.floatingTexts.push({
+          id: `feed_${this.nextId++}`,
+          x: t.x,
+          y: t.y - 32,
+          text: `🍴 Tardígrado Devorou o Jogador! (+${healAmt} HP)`,
+          color: "#f87171",
+          isCrit: !0,
+          life: 1.8,
+        });
+        if (!l.isDead) this.handlePlayerDeath(l);
+      }
     }
     applyMonsterHitToPlayer(t, l, o = 2, isStinger = !1, impactX = l.x, impactY = l.y) {
       var f;
@@ -1677,13 +1743,13 @@
           p.fireFearTimer = 0;
           p.attackCooldown = Math.min(p.attackCooldown || 0, 0.3);
         }
-        // Escorpiões da caverna detectam Tardígrados (seus predadores naturais) e fogem apavorados!
+        // Escorpiões e aranhas da caverna detectam Tardígrados (seus predadores naturais) e fogem apavorados!
         let tardigradeThreat = null;
-        if (p.type === "scorpion" && !p.isGiantScorpion && !p.burrowing) {
+        if ((p.type === "scorpion" || p.type === "spider") && !p.isGiantScorpion && !p.burrowing) {
           for (const m of this.monsters) {
             if (m.type === "tardigrade" && m.hp > 0 && m.isUnderground === p.isUnderground) {
               const d = Math.hypot(m.x - p.x, m.y - p.y);
-              if (d < 165) {
+              if (d < (160 + (m.scale || 1) * 30)) {
                 tardigradeThreat = m;
                 break;
               }
@@ -1708,8 +1774,8 @@
           O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
           _ = K || V || O,
           NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack);
-        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : p.type === "tardigrade" ? 28 : 26,
-          chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 18 : 24) : p.type === "tardigrade" ? 22 : 22;
+        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : p.type === "tardigrade" ? Math.max(28, Math.round(30 * (p.scale || 1) * 0.95)) : 26,
+          chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 18 : 24) : p.type === "tardigrade" ? Math.max(20, Math.round(22 * (p.scale || 1) * 0.95)) : 22;
         if (_) {
           ((!p.fleeFireTimer || p.fleeFireTimer <= 0) &&
             (p.fleeFireTimer = 3.5),
@@ -1807,7 +1873,7 @@
             p.attackPlayerDef = c;
             p.stingerAttackCooldown = 2.1;
           }
-        } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.type === "tardigrade" ? 0 : (p.isGiantScorpion ? 260 : 150)))) && j > chaseStopDist && z.canAttack) {
+        } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.type === "tardigrade" ? Math.round(220 * Math.max(1, (p.scale || 1) * 0.75)) : (p.isGiantScorpion ? 260 : 150)))) && j > chaseStopDist && z.canAttack) {
           const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1);
           const chaseSpeed = p.speed * de;
           const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
@@ -2408,17 +2474,17 @@
             v = "tardigrade";
             const sizeRoll = Math.random();
             let sizeMult = 1.0;
-            if (sizeRoll < 0.40) {
+            if (sizeRoll < 0.35) {
               // Porte Comum / Pequeno: 1.0x a 1.35x
               sizeMult = 1.0 + Math.random() * 0.35;
               T = "Tardígrado Cavernoso";
-            } else if (sizeRoll < 0.75) {
-              // Porte Grande: 1.6x a 2.15x
-              sizeMult = 1.6 + Math.random() * 0.55;
+            } else if (sizeRoll < 0.70) {
+              // Porte Grande: 1.5x a 2.15x
+              sizeMult = 1.5 + Math.random() * 0.65;
               T = "Tardígrado Cavernoso Grande";
             } else {
-              // Porte Titânico: 2.5x a 3.0x (até 3 vezes maiores!)
-              sizeMult = 2.5 + Math.random() * 0.5;
+              // Porte Titânico: 2.4x a 3.0x (até 3 vezes maiores!)
+              sizeMult = 2.4 + Math.random() * 0.6;
               T = "Tardígrado Cavernoso Titânico";
             }
             const baseScale = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.scale : 0.95;
@@ -2428,9 +2494,9 @@
             const baseHp = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.hp : 42;
             const baseAtk = (typeof CREATURES !== "undefined" && CREATURES.tardigrade) ? CREATURES.tardigrade.spawn.attack : 5;
             j = Math.round(baseHp * (0.75 + sizeMult * 0.65));
-            P = Math.round(baseAtk * (0.75 + sizeMult * 0.55));
-            customDef = Math.round(6 + (sizeMult - 1) * 1.5);
-            A = Math.max(0.68, Math.round((0.85 - (sizeMult - 1) * 0.07) * 100) / 100);
+            P = Math.round(baseAtk * (0.75 + sizeMult * 0.65));
+            customDef = Math.round(6 + (sizeMult - 1) * 2.0);
+            A = Math.max(0.66, Math.round((0.85 - (sizeMult - 1) * 0.07) * 100) / 100);
           } else {
             v = "spider";
             T = "Aranha das Fendas Arenosas";
@@ -2657,7 +2723,7 @@
         color: S,
         accentColor: p,
         scale: x,
-        maxScale: (v === "tardigrade" ? Math.min(3.0, x * 1.15) : x),
+        maxScale: (v === "tardigrade" ? Math.max(x, Math.min(3.2, x * 1.15)) : x),
         isUnderground: l,
         isMoving: !1,
         hitFlashTimer: 0,

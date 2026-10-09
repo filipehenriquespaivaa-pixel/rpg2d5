@@ -20,23 +20,23 @@ CREATURES.tardigrade = {
     scale: 0.95,
     defense: 6,
   },
-  // Comportamento: criatura neutra contra o jogador, predadora voraz de escorpiões da caverna!
+  // Comportamento: predador voraz das cavernas! Devora escorpiões, aranhas e o próprio jogador!
   behavior: {
-    neutral: true,
+    neutral: false, // Caça ativamente invasores/jogador, escorpiões e aranhas!
     prey: false,
-    predator: true, // Predador de escorpiões da caverna
+    predator: true, // Predador voraz da caverna
     threatName: "tardígrado",
     fearsFire: false, // Tardígrados resistem a extremos de calor, frio e dessecação!
     deathParticles: 14,
     attackCooldown: 1.25,
     hunter: {
-      huntRadius: 260,
-      meleeRange: 28,
+      huntRadius: 290,
+      meleeRange: 32,
       huntSpeedMult: 1.45,
       attackCooldownPrey: 1.1,
       wanderWait: [1.8, 2.8],
-      idleChance: 0.3,
-      wanderSpeedMult: 0.65,
+      idleChance: 0.25,
+      wanderSpeedMult: 0.7,
     },
   },
   // Carcaça deixada ao morrer (entra em estado "tun" de criptobiose)
@@ -53,7 +53,7 @@ CREATURES.tardigrade = {
     icon: "🔬",
     badgeColor: "text-amber-300 border-amber-500/40 bg-amber-950/60",
     description:
-      "Invertebrado arcaico adaptado às cavernas do deserto. Varia em portes colossais de até 3 vezes o tamanho comum, devora escorpiões com seu disco bucal circular e possui 8 patas com micro-garras e extrema resistência.",
+      "Invertebrado arcaico colossal adaptado exclusivamente às cavernas do deserto. Varia em portes titânicos de até 3 vezes o tamanho comum, dotado de 8 patas com micro-garras, carapaça quase indestrutível e disco bucal com estilete que devora escorpiões, aranhas e aventureiros desavisados.",
     exclusiveNote:
       "Item Exclusivo: Membrana Criptobiótica de Tardígrado (resiste a dessecação, vácuo e altas pressões; nobre para forja e alquimia).",
   },
