@@ -72,7 +72,7 @@ CREATURES.tardigrade = {
       items.push({
         id: `butcher_tardigrade_queen_jelly_${t}_${l()}`,
         isExclusive: true,
-        exclusiveLabel: "👑 Tesouro Real da Rainha",
+        exclusiveLabel: "⭐ Geleia Real da Matriarca",
         status: "pending",
         item: {
           isCreaturePart: true,
@@ -92,7 +92,7 @@ CREATURES.tardigrade = {
       items.push({
         id: `butcher_tardigrade_queen_membrane_${t}_${l()}`,
         isExclusive: true,
-        exclusiveLabel: "👑 Membrana Real",
+        exclusiveLabel: "⭐ Cutícula da Rainha",
         status: "pending",
         item: {
           isCreaturePart: true,
@@ -235,37 +235,6 @@ CREATURES.tardigrade = {
       e.ellipse(0, 4.5 * o, (isQueen ? 15 : isBaby ? 10 : 13) * o, (isQueen ? 8 : isBaby ? 5 : 7) * o, 0, 0, Math.PI * 2);
       e.fill();
 
-      // Função auxiliar para desenhar a Coroa Quitinosa Régia da Rainha
-      function drawQueenCrown(cx, cy, scaleCrown = 1, angle = 0) {
-        e.save();
-        e.translate(cx, cy);
-        if (angle) e.rotate(angle);
-        e.fillStyle = l ? "#ffffff" : "#fbbf24";
-        e.strokeStyle = l ? "#cbd5e1" : "#92400e";
-        e.lineWidth = 1.0 * o * scaleCrown;
-        e.beginPath();
-        e.moveTo(-5.2 * o * scaleCrown, 0);
-        e.lineTo(-4.0 * o * scaleCrown, -5.5 * o * scaleCrown);
-        e.lineTo(-2.0 * o * scaleCrown, -2.5 * o * scaleCrown);
-        e.lineTo(0, -7.5 * o * scaleCrown);
-        e.lineTo(2.0 * o * scaleCrown, -2.5 * o * scaleCrown);
-        e.lineTo(4.0 * o * scaleCrown, -5.5 * o * scaleCrown);
-        e.lineTo(5.2 * o * scaleCrown, 0);
-        e.closePath();
-        e.fill();
-        e.stroke();
-        // Rubi/gema no centro da coroa
-        e.fillStyle = "#ef4444";
-        e.beginPath();
-        e.arc(0, -3.2 * o * scaleCrown, 1.2 * o * scaleCrown, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#ffffff";
-        e.beginPath();
-        e.arc(-0.4 * o * scaleCrown, -3.5 * o * scaleCrown, 0.45 * o * scaleCrown, 0, Math.PI * 2);
-        e.fill();
-        e.restore();
-      }
-
       // Desenho de uma pata rechonchuda com 3 micro-garras
       function drawStubbyLeg(lx, ly, angle, scaleLeg = 1) {
         e.save();
@@ -388,11 +357,6 @@ CREATURES.tardigrade = {
         e.arc(2.9 * o, 5.9 * o + bobY, pupilR, 0, Math.PI * 2);
         e.fill();
 
-        // Coroa Real se for a Rainha
-        if (isQueen) {
-          drawQueenCrown(0, 2.8 * o + bobY, 0.95);
-        }
-
       } else if (facing === "up") {
         // Visto de costas
         const legOffsetsY = [-8 * o, -3.5 * o, 1.5 * o, 6.5 * o];
@@ -445,11 +409,6 @@ CREATURES.tardigrade = {
         e.arc(0, -0.5 * o + bobY, 7.0 * o, 0.2, Math.PI - 0.2);
         e.arc(0, 3.8 * o + bobY, 6.5 * o, 0.2, Math.PI - 0.2);
         e.stroke();
-
-        // Coroa Real se for a Rainha (vista de costas)
-        if (isQueen) {
-          drawQueenCrown(0, -10.5 * o + bobY, 0.9, Math.PI);
-        }
 
       } else {
         // Perfil Lateral (facing === "left" ou "right")
@@ -536,11 +495,6 @@ CREATURES.tardigrade = {
         e.beginPath();
         e.arc(8.5 * o, -1.1 * o + bobY, latPupilR, 0, Math.PI * 2);
         e.fill();
-
-        // Coroa Real se for a Rainha (perfil lateral)
-        if (isQueen) {
-          drawQueenCrown(7.5 * o, -4.5 * o + bobY, 0.9, 0.25);
-        }
 
         // Dobras dorsais entre os gomos
         e.strokeStyle = lightCol;

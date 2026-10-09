@@ -931,6 +931,25 @@
         (ent && ent.isDesertCave) ||
         (surfB && (surfB.id === BiomeId.DESERT || surfB.id === BiomeId.CANYON))
       );
+      if (this.activeCaveEntranceIsDesert) {
+        const entTx = t;
+        const entTy = l;
+        const hX = this.hash2D(entTx, entTy, 11);
+        const hY = this.hash2D(entTy, entTx, 19);
+        const signX = hX > 0.5 ? 1 : -1;
+        const signY = hY > 0.5 ? 1 : -1;
+        const dx = signX * (14 + Math.floor(hX * 4));
+        const dy = signY * (12 + Math.floor(hY * 4));
+        this._singleDesertTardigradeNest = {
+          cx: entTx + dx,
+          cy: entTy + dy,
+          entTx: entTx,
+          entTy: entTy,
+          radius: 8.5,
+        };
+      } else {
+        this._singleDesertTardigradeNest = null;
+      }
       this.isUnderground = !0;
       this.undergroundLevel = 1;
       this.activeCaveSeed = (this.seed + 88888) >>> 0;
@@ -942,6 +961,7 @@
     exitCave(t, l) {
       this.isUnderground = !1;
       this.undergroundLevel = 0;
+      this._singleDesertTardigradeNest = null;
       this.clearTileCache();
       if (t !== undefined && l !== undefined) {
         return {
@@ -1259,68 +1279,35 @@
       return Math.hypot(px - nx, py - ny);
     }
     getDesertTardigradeNest(t, l) {
-      if (!this._tardigradeNestCache) this._tardigradeNestCache = new Map();
-      const chunkKey = `${Math.floor(t / 24)},${Math.floor(l / 24)}`;
-      if (this._tardigradeNestCache.has(chunkKey)) {
-        return this._tardigradeNestCache.get(chunkKey);
+      if (this._singleDesertTardigradeNest) {
+        return this._singleDesertTardigradeNest;
       }
 
-      let nests = [];
-      // 1. Ninho principal garantido conectado à entrada da caverna ativa do deserto
-      if (this.activeCaveEntranceCoords && this.activeCaveEntranceIsDesert) {
-        const entTx = this.activeCaveEntranceCoords.tx;
-        const entTy = this.activeCaveEntranceCoords.ty;
-        const hX = this.hash2D(entTx, entTy, 11);
-        const hY = this.hash2D(entTx, entTy, 19);
-        const signX = hX > 0.5 ? 1 : -1;
-        const signY = hY > 0.5 ? 1 : -1;
-        const dx = signX * (14 + Math.floor(hX * 5));
-        const dy = signY * (12 + Math.floor(hY * 5));
-        nests.push({
-          cx: entTx + dx,
-          cy: entTy + dy,
-          entTx: entTx,
-          entTy: entTy,
-          radius: 8.5,
-          isPrimary: true,
-        });
+      // Ninho ÚNICO da caverna do deserto (ancorado determinísticamente à entrada)
+      let entTx = 50;
+      let entTy = 50;
+      if (this.activeCaveEntranceCoords && this.activeCaveEntranceCoords.tx !== undefined) {
+        entTx = this.activeCaveEntranceCoords.tx;
+        entTy = this.activeCaveEntranceCoords.ty;
       }
 
-      // 2. Ninhos em grade procedural pelo deserto subterrâneo (cada bloco de 48x48 tiles)
-      const bx = Math.floor((t + 24) / 48);
-      const by = Math.floor((l + 24) / 48);
-      for (let ox = -1; ox <= 1; ox++) {
-        for (let oy = -1; oy <= 1; oy++) {
-          const cbx = bx + ox;
-          const cby = by + oy;
-          const rHashX = this.hash2D(cbx, cby, 71);
-          const rHashY = this.hash2D(cbx, cby, 83);
-          const rCx = cbx * 48 + 14 + Math.floor(rHashX * 20);
-          const rCy = cby * 48 + 14 + Math.floor(rHashY * 20);
-          const surfB = this._computeSurfaceBaseBiome(rCx, rCy);
-          if (surfB && (surfB.id === BiomeId.DESERT || surfB.id === BiomeId.CANYON)) {
-            nests.push({
-              cx: rCx,
-              cy: rCy,
-              radius: 8.5,
-              isPrimary: false,
-            });
-          }
-        }
-      }
+      const hX = this.hash2D(entTx, entTy, 11);
+      const hY = this.hash2D(entTy, entTx, 19);
+      const signX = hX > 0.5 ? 1 : -1;
+      const signY = hY > 0.5 ? 1 : -1;
+      const dx = signX * (14 + Math.floor(hX * 4));
+      const dy = signY * (12 + Math.floor(hY * 4));
 
-      let best = null;
-      let minD = Infinity;
-      for (const n of nests) {
-        const d = Math.hypot(t - n.cx, l - n.cy);
-        if (d < minD) {
-          minD = d;
-          best = n;
-        }
-      }
+      this._singleDesertTardigradeNest = {
+        cx: entTx + dx,
+        cy: entTy + dy,
+        entTx: entTx,
+        entTy: entTy,
+        radius: 8.5,
+        isPrimary: true,
+      };
 
-      this._tardigradeNestCache.set(chunkKey, best);
-      return best;
+      return this._singleDesertTardigradeNest;
     }
     isTardigradeNest(t, l) {
       const tile = this.getTile(t, l);

@@ -20,6 +20,7 @@
         (this.lastPlayerX = 0),
         (this.lastPlayerY = 0),
         (this.lastIsUnderground = !1),
+        (this.hasSpawnedTardigradeQueen = !1),
         (this.animTimer = 0),
         (this.engine = t),
         (this.audio = l));
@@ -2379,13 +2380,14 @@
         const nestWorldX = nest.cx * this.engine.tileSize + 16;
         const nestWorldY = nest.cy * this.engine.tileSize + 16;
 
-        const hasQueen = this.monsters.some(
-          (m) => m.type === "tardigrade" && m.isQueen && m.isUnderground && Math.hypot(m.x - nestWorldX, m.y - nestWorldY) < 650
-        );
+        const hasQueen = !!(this.hasSpawnedTardigradeQueen || this.monsters.some(
+          (m) => m.type === "tardigrade" && m.isQueen
+        ));
         if (!hasQueen) {
+          this.hasSpawnedTardigradeQueen = !0;
           const queenMonster = {
             id: `mob_${this.nextId++}_${Date.now()}`,
-            name: "👑 Rainha dos Tardígrados",
+            name: "Rainha dos Tardígrados",
             type: "tardigrade",
             x: nestWorldX,
             y: nestWorldY,
@@ -2583,43 +2585,18 @@
           );
 
           if (isNest) {
+            // TARDÍGRADOS PEQUENOS (Filhotes andando na área do ninho):
             v = "tardigrade";
-            const nestCx = (spawnTile && spawnTile.nestCx !== undefined) ? spawnTile.nestCx : y;
-            const nestCy = (spawnTile && spawnTile.nestCy !== undefined) ? spawnTile.nestCy : w;
-            const nestWorldX = nestCx * this.engine.tileSize + 16;
-            const nestWorldY = nestCy * this.engine.tileSize + 16;
-            const hasQueen = this.monsters.some(
-              (m) => m.type === "tardigrade" && m.isQueen && m.isUnderground && Math.hypot(m.x - nestWorldX, m.y - nestWorldY) < 650
-            );
-            const isAtCenter = (spawnTile && spawnTile.isNestCenter) || Math.hypot(f - nestWorldX, g - nestWorldY) < 100;
-
-            if (!hasQueen && (isAtCenter || Math.random() < 0.45)) {
-              // A RAINHA DOS TARDÍGRADOS: 3 VEZES MAIOR!
-              T = "👑 Rainha dos Tardígrados";
-              isQueen = true;
-              isBoss = true;
-              f = nestWorldX;
-              g = nestWorldY;
-              x = 2.85; // 3 VEZES MAIOR que a base!
-              S = "#b45309";
-              p = "#fef08a";
-              j = 220;
-              P = 18;
-              customDef = 16;
-              A = 0.75;
-            } else {
-              // TARDÍGRADOS PEQUENOS (Filhotes andando na área):
-              T = "Tardígrado Filhote";
-              isBaby = true;
-              const babySize = 0.44 + Math.random() * 0.12;
-              x = Math.round(babySize * 100) / 100;
-              S = "#f59e0b";
-              p = "#fef08a";
-              j = 18;
-              P = 3;
-              customDef = 4;
-              A = 1.22;
-            }
+            T = "Tardígrado Filhote";
+            isBaby = true;
+            const babySize = 0.44 + Math.random() * 0.12;
+            x = Math.round(babySize * 100) / 100;
+            S = "#f59e0b";
+            p = "#fef08a";
+            j = 18;
+            P = 3;
+            customDef = 4;
+            A = 1.22;
           } else {
             // Túneis normais fora do ninho
             const K = Math.random();
