@@ -177,6 +177,19 @@
       [At, Et] = J.useState(!1),
       Ka = J.useRef(K);
     Ka.current = K;
+    const isDevModeActive = Boolean(
+      typeof (props && props.devMode) === "boolean"
+        ? props.devMode
+        : window.__devMode
+    );
+    J.useEffect(() => {
+      if (!isDevModeActive) {
+        Ka.current = 1;
+        V(1);
+        Oa.current = { x: 0, y: 0 };
+        Et(!1);
+      }
+    }, [isDevModeActive]);
     const oc = !!(
         ((ur = Oe.mao_esquerda) != null && ur.id.includes("torch")) ||
         ((Vo = Oe.mao_direita) != null && Vo.id.includes("torch")) ||
@@ -4695,8 +4708,13 @@
               }
             }
           }
+          if (!window.__devMode) {
+            Oa.current.x = 0;
+            Oa.current.y = 0;
+            Ka.current = 1;
+          }
           const Nt = { x: he.x + Oa.current.x, y: he.y + Oa.current.y },
-            rt = Ka.current,
+            rt = window.__devMode ? Ka.current : 1,
             ka = { ...rr.current, zoom: rt },
             ht = window.innerWidth,
             ho = window.innerHeight;
@@ -4766,18 +4784,21 @@
                 (Q = Pe.touches[0].clientY),
                 (q = Oa.current.x),
                 (F = Oa.current.y));
-              const aa = Date.now();
-              (aa - me < 320 && Oo(), (me = aa));
-            } else
-              Pe.touches.length === 2 &&
-                ((ie = !1),
+              if (window.__devMode) {
+                const aa = Date.now();
+                (aa - me < 320 && Oo(), (me = aa));
+              }
+            } else if (Pe.touches.length === 2 && window.__devMode) {
+              ((ie = !1),
                 (ge = Math.hypot(
                   Pe.touches[0].clientX - Pe.touches[1].clientX,
                   Pe.touches[0].clientY - Pe.touches[1].clientY,
                 )),
                 (re = Ka.current));
+            }
           },
           Re = (Pe) => {
+            if (!window.__devMode) return;
             if (Pe.touches.length === 1 && ie) {
               const aa = Pe.touches[0].clientX - D,
                 Ke = Pe.touches[0].clientY - Q,
@@ -4872,7 +4893,7 @@
               });
               updatePebbleAim(angle, Math.max(35, Math.min(hasSlingshot ? 660 : 330, worldDist)));
             }
-            if (!ze) return;
+            if (!ze || !window.__devMode) return;
             const aa = Pe.clientX - la,
               Ke = Pe.clientY - na;
             if (Math.hypot(aa, Ke) > 4) {
@@ -4908,6 +4929,7 @@
             }
           },
           Ye = () => {
+            if (!window.__devMode) return;
             Oo();
           },
           noContext = (Pe) => {
@@ -4915,6 +4937,7 @@
           },
           Ge = (Pe) => {
             Pe.preventDefault();
+            if (!window.__devMode) return;
             const aa = Pe.deltaY < 0 ? 1.15 : 0.87;
             V((Ke) => {
               const De = Math.min(2.5, Math.max(0.25, +(Ke * aa).toFixed(2)));
@@ -4964,7 +4987,8 @@
             ref: t,
             id: "game-canvas",
             className:
-              "block w-full h-full cursor-grab active:cursor-grabbing touch-none select-none",
+              "block w-full h-full touch-none select-none " +
+              (isDevModeActive ? "cursor-grab active:cursor-grabbing" : "cursor-default"),
           }),
           h.jsx(Hud, {
             currentBiome: w,
