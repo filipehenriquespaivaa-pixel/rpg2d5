@@ -966,82 +966,221 @@ window.Game = window.Game || {};
     _citizensInitialized = true;
     CITIZENS.length = 0;
     const ts = tileSize || 36;
+    let profileIdx = 0;
 
     for (let i = 0; i < HOUSES.length; i++) {
       const h = HOUSES[i];
-      const prof = PORT_PROFILES[i % PORT_PROFILES.length];
-      const id = i + 1;
-      const doorTx = h.cx;
-      const doorTy = h.cy + h.halfH;
-      const outsideTy = doorTy + 1.5;
+      const count = h.halfW >= 3 && i % 2 === 0 ? 2 : 1;
 
-      const startOnPier = i < PIERS.length;
-      const pier = PIERS[i % PIERS.length];
-      const startX = startOnPier
-        ? (pier.cx + 0.5) * ts
-        : (doorTx + ((i % 3) - 1) * 1.2 + 0.5) * ts;
-      const startY = startOnPier
-        ? (pier.startY + 5 + (i * 3) % 8 + 0.5) * ts
-        : (outsideTy + 0.5) * ts;
+      for (let r = 0; r < count; r++) {
+        const id = CITIZENS.length + 1;
+        const prof = PORT_PROFILES[profileIdx % PORT_PROFILES.length];
+        profileIdx++;
 
-      const cit = {
-        id,
-        name: `${prof.name} (${prof.title})`,
-        shortName: prof.name,
-        title: prof.title,
-        gender: prof.gender,
-        style: prof.style,
-        propInHand: prof.prop,
-        houseId: h.id,
-        house: h,
-        skinColor: SKIN_TONES[(id * 3) % SKIN_TONES.length],
-        hairColor: ["#1c1917", "#451a03", "#78350f", "#92400e", "#cbd5e1"][id % 5],
-        outfit: OUTFIT_COLORS[id % OUTFIT_COLORS.length],
-        x: startX,
-        y: startY,
-        facing: "down",
-        isMoving: false,
-        walkPhase: id * 1.3,
-        speed: 0.9 + (id % 4) * 0.05,
-        doorTx,
-        doorTy,
-        hammockTx: h.cx - h.halfW + 1,
-        hammockTy: h.cy - h.halfH + 1,
-        hallTx: h.cx,
-        hallTy: h.cy + h.halfH - 0.8,
-        isInsideHouse: false,
-        state: "strolling",
-        stateTimer: 8 + (id % 10),
-        pauseTimer: 0,
-        chatCooldown: 4 + (id % 6),
-        chatText: "",
-        waypoints: [],
-      };
+        const isSouthDoor = h.doorSide === "south";
+        const doorTx = h.cx;
+        const doorTy = h.cy + (isSouthDoor ? h.halfH : -h.halfH);
+        const outsideTy = doorTy + (isSouthDoor ? 1.35 : -1.35);
 
-      _assignPortStroll(cit, ts);
-      CITIZENS.push(cit);
+        const hammockTx = h.cx - h.halfW + 1;
+        const hammockTy = h.cy + (isSouthDoor ? -h.halfH + 1 : h.halfH - 1);
+        const cargoTx = h.cx + h.halfW - 1;
+        const cargoTy = h.cy + (isSouthDoor ? -h.halfH + 1 : h.halfH - 1);
+        const hallTx = h.cx;
+        const hallTy = h.cy + (isSouthDoor ? h.halfH - 0.9 : -h.halfH + 0.9);
+        const centerTx = h.cx + (r === 0 ? -0.35 : 0.35);
+        const centerTy = h.cy;
+
+        const startOnPier = r === 0 && i < PIERS.length;
+        const startOutside = startOnPier || (id + r) % 4 !== 0;
+        const pier = PIERS[i % Math.max(1, PIERS.length)];
+
+        let startX, startY;
+        if (startOnPier && pier) {
+          startX = (pier.cx + 0.5) * ts;
+          startY = (pier.startY + 4 + ((i * 3) % 7) + 0.5) * ts;
+        } else if (startOutside) {
+          startX = (h.cx + (r === 0 ? -1.2 : 1.2) + 0.5) * ts;
+          startY = (outsideTy + 0.5) * ts;
+        } else {
+          startX = ((r === 0 ? hammockTx : centerTx) + 0.5) * ts;
+          startY = ((r === 0 ? hammockTy : centerTy) + 0.5) * ts;
+        }
+
+        const cit = {
+          id,
+          name: `${prof.name} (${prof.title})`,
+          shortName: prof.name,
+          title: prof.title,
+          gender: prof.gender,
+          style: prof.style,
+          propInHand: prof.prop,
+          houseId: h.id,
+          house: h,
+          residentIndex: r,
+          skinColor: SKIN_TONES[(id * 3 + r * 5 + i) % SKIN_TONES.length],
+          hairColor: ["#1c1917", "#451a03", "#78350f", "#92400e", "#cbd5e1"][(id * 2 + r) % 5],
+          outfit: OUTFIT_COLORS[(id + r) % OUTFIT_COLORS.length],
+          x: startX,
+          y: startY,
+          facing: "down",
+          isMoving: false,
+          walkPhase: id * 1.6,
+          speed: 0.88 + ((id * 7) % 5) * 0.04,
+          doorTx,
+          doorTy,
+          outsideTy,
+          hammockTx,
+          hammockTy,
+          cargoTx,
+          cargoTy,
+          hallTx,
+          hallTy,
+          centerTx,
+          centerTy,
+          isInsideHouse: !startOutside,
+          state: startOutside ? "strolling" : "inside_home",
+          stateTimer: startOutside ? 10 + (id % 14) : 4 + (id % 6),
+          pauseTimer: 0,
+          chatCooldown: 4 + (id % 6),
+          chatPartnerId: null,
+          chatText: "",
+          waypoints: [],
+        };
+
+        if (startOutside) {
+          _assignPortStroll(cit, ts);
+        }
+        CITIZENS.push(cit);
+      }
     }
+  }
+
+  // Encontra qual píer contém a posição (tx, ty) caso o morador esteja sobre um píer
+  function _findPierContaining(tx, ty) {
+    for (let i = 0; i < PIERS.length; i++) {
+      const p = PIERS[i];
+      if (ty >= p.startY - 0.5 && ty <= p.endY + 0.5 && Math.abs(tx - p.cx) <= p.halfW + 1.2) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  // Cria uma rota segura que NUNCA atravessa a água nem paredes das casas (usando o Calçadão como eixo)
+  function _buildSafePortRoute(cit, targetX, targetY, ts) {
+    const waypoints = [];
+    const curTx = cit.x / ts - 0.5;
+    const curTy = cit.y / ts - 0.5;
+    const destTx = targetX / ts - 0.5;
+    const destTy = targetY / ts - 0.5;
+    const boardwalkY = (CITY_CY - 0.5 + 0.5) * ts;
+
+    // 1. Se o morador está em um píer (curTy > CITY_CY + 0.5), primeiro sobe pelo próprio píer até o Calçadão!
+    const curPier = curTy > CITY_CY + 0.5 ? _findPierContaining(curTx, curTy) : null;
+    const destPier = destTy > CITY_CY + 0.5 ? _findPierContaining(destTx, destTy) : null;
+
+    if (curPier && (!destPier || destPier.id !== curPier.id)) {
+      waypoints.push({ x: (curPier.cx + 0.5) * ts, y: boardwalkY });
+    }
+
+    // 2. Se o destino é em um píer diferente da posição atual, vai pelo Calçadão até a entrada do píer de destino!
+    if (destPier && (!curPier || curPier.id !== destPier.id)) {
+      waypoints.push({ x: (destPier.cx + 0.5) * ts, y: boardwalkY });
+      waypoints.push({ x: targetX, y: targetY });
+      return waypoints;
+    }
+
+    // 3. Se ambos estão na areia/calçadão (fora dos píeres), adiciona ponto intermediário suave evitando casas
+    const midX = (cit.x + targetX) * 0.5 + (Math.random() * 10 - 5);
+    let midY = (cit.y + targetY) * 0.5 + (Math.random() * 8 - 4);
+    const midTx = Math.round(midX / ts - 0.5);
+    const midTy = Math.round(midY / ts - 0.5);
+    const hitHouse = getHouseAt(midTx, midTy);
+    if (hitHouse) {
+      midY = (hitHouse.cy + hitHouse.halfH + 1.5 + 0.5) * ts;
+    }
+    if (midY > (CITY_CY + 1.2) * ts && !destPier && !curPier) {
+      midY = boardwalkY;
+    }
+    waypoints.push({ x: midX, y: midY });
+    waypoints.push({ x: targetX, y: targetY });
+    return waypoints;
   }
 
   function _assignPortStroll(cit, ts) {
     const roll = Math.random();
     let targetX, targetY;
-    if (roll < 0.4 && PIERS.length > 0) {
-      // Passeia até um dos píeres de madeira para observar os navios
+    if (roll < 0.38 && PIERS.length > 0) {
+      // Passeia até um dos píeres de madeira ou convés de embarcação atracada
       const p = PIERS[Math.floor(Math.random() * PIERS.length)];
-      targetX = (p.cx + (Math.random() * 1.2 - 0.6) + 0.5) * ts;
-      targetY = (p.startY + 2 + Math.random() * (p.endY - p.startY - 3) + 0.5) * ts;
-    } else if (roll < 0.75) {
+      targetX = (p.cx + (Math.random() * 1.0 - 0.5) + 0.5) * ts;
+      targetY = (p.startY + 2 + Math.random() * Math.max(2, p.endY - p.startY - 3) + 0.5) * ts;
+    } else if (roll < 0.72) {
       // Passeia pelo Calçadão Portuário da Praia Tropical
-      targetX = (CITY_CX + (Math.random() * 70 - 35) + 0.5) * ts;
-      targetY = (CITY_CY + (Math.random() * 4 - 1.5) + 0.5) * ts;
-    } else {
-      // Passeia pela Praça do Farol
+      targetX = (CITY_CX + (Math.random() * 68 - 34) + 0.5) * ts;
+      targetY = (CITY_CY + (Math.random() * 2.6 - 1.8) + 0.5) * ts;
+    } else if (roll < 0.90) {
+      // Passeia pela Praça do Farol e da Grande Âncora
       targetX = (CITY_CX + (Math.random() * 12 - 6) + 0.5) * ts;
-      targetY = (CITY_CY - 8 + (Math.random() * 6 - 3) + 0.5) * ts;
+      targetY = (CITY_CY - 8 + (Math.random() * 5 - 2.5) + 0.5) * ts;
+    } else {
+      // Visita a frente de uma casa portuária na praia
+      const th = HOUSES[Math.floor(Math.random() * HOUSES.length)];
+      targetX = (th.cx + (Math.random() * 2.2 - 1.1) + 0.5) * ts;
+      targetY = (th.cy + th.halfH + 1.6 + 0.5) * ts;
     }
 
-    cit.waypoints = [{ x: targetX, y: targetY }];
+    cit.waypoints = _buildSafePortRoute(cit, targetX, targetY, ts);
+    cit.isMoving = true;
+  }
+
+  // Envia o morador de volta para sua casa na Praia Tropical
+  function _sendPortCitizenHome(cit, ts, forNight) {
+    cit.state = forNight ? "returning_home_night" : "entering_house";
+    cit.chatPartnerId = null;
+    cit.chatText = "";
+    cit.pauseTimer = 0;
+
+    if (cit.isInsideHouse) {
+      const destTx = forNight ? cit.hammockTx : (Math.random() < 0.5 ? cit.cargoTx : cit.centerTx);
+      const destTy = forNight ? cit.hammockTy : (Math.random() < 0.5 ? cit.cargoTy : cit.centerTy);
+      cit.waypoints = [
+        { x: (cit.hallTx + 0.5) * ts, y: (cit.hallTy + 0.5) * ts },
+        { x: (destTx + 0.5) * ts, y: (destTy + 0.5) * ts },
+      ];
+      cit.isMoving = true;
+      return;
+    }
+
+    const doorStepX = (cit.doorTx + 0.5) * ts;
+    const doorStepY = (cit.outsideTy + 0.5) * ts;
+    const routeToDoor = _buildSafePortRoute(cit, doorStepX, doorStepY, ts);
+    const destTx = forNight ? cit.hammockTx : (Math.random() < 0.5 ? cit.cargoTx : cit.centerTx);
+    const destTy = forNight ? cit.hammockTy : (Math.random() < 0.5 ? cit.cargoTy : cit.centerTy);
+
+    cit.waypoints = [
+      ...routeToDoor,
+      { x: (cit.doorTx + 0.5) * ts, y: (cit.doorTy + 0.5) * ts, isDoorCrossing: true },
+      { x: (cit.hallTx + 0.5) * ts, y: (cit.hallTy + 0.5) * ts, markInside: true },
+      { x: (destTx + 0.5) * ts, y: (destTy + 0.5) * ts },
+    ];
+    cit.isMoving = true;
+  }
+
+  // Faz o morador sair de sua casa portuária para passear no cais
+  function _sendPortCitizenOutside(cit, ts) {
+    cit.state = "exiting_house";
+    cit.chatPartnerId = null;
+    cit.chatText = "";
+    cit.pauseTimer = 0;
+
+    cit.waypoints = [
+      { x: (cit.hallTx + 0.5) * ts, y: (cit.hallTy + 0.5) * ts },
+      { x: (cit.doorTx + 0.5) * ts, y: (cit.doorTy + 0.5) * ts, isDoorCrossing: true },
+      { x: (cit.doorTx + 0.5) * ts, y: (cit.outsideTy + 0.5) * ts, markOutside: true },
+      { x: (cit.doorTx + 0.5) * ts, y: (cit.outsideTy + 1.2 + 0.5) * ts, markOutside: true },
+    ];
     cit.isMoving = true;
   }
 
@@ -1072,7 +1211,7 @@ window.Game = window.Game || {};
     best.isMoving = false;
     const phrase = PORT_GREETINGS[Math.floor(Math.random() * PORT_GREETINGS.length)];
     best.chatText = phrase.slice(0, 48) + "...";
-    best.state = "interacting";
+    best.state = best.isInsideHouse ? best.state : "interacting";
     best.stateTimer = 4.5;
 
     return {
@@ -1092,10 +1231,31 @@ window.Game = window.Game || {};
       if (dist > (CITY_RADIUS + 90) * ts) return [];
     }
 
+    for (const [k, v] of _activeDoorwayTimers.entries()) {
+      if (v <= 1) _activeDoorwayTimers.delete(k);
+      else _activeDoorwayTimers.set(k, v - 1);
+    }
+
     const dt = 0.016;
+    const isNight = timeOfDay < 0.24 || timeOfDay > 0.78;
+    const activePlayerHouseId = player ? getActiveHouseForPlayer(player.x, player.y, ts) : null;
+
     for (let i = 0; i < CITIZENS.length; i++) {
       const c = CITIZENS[i];
       if (c.chatCooldown > 0) c.chatCooldown = Math.max(0, c.chatCooldown - dt);
+
+      // Rotina noturna: moradores recolhem-se para descansar nas redes de suas casas
+      if (isNight) {
+        if (c.state !== "returning_home_night" && c.state !== "night_at_home") {
+          _sendPortCitizenHome(c, ts, true);
+        }
+      } else {
+        if (c.state === "night_at_home" || c.state === "returning_home_night") {
+          c.state = c.isInsideHouse ? "inside_home" : "strolling";
+          c.stateTimer = 2.0 + (c.id % 6) * 0.7;
+          if (!c.isInsideHouse) _assignPortStroll(c, ts);
+        }
+      }
 
       if (c.state === "interacting") {
         c.isMoving = false;
@@ -1103,7 +1263,10 @@ window.Game = window.Game || {};
         if (c.stateTimer <= 0) {
           c.state = "strolling";
           c.chatText = "";
-          _assignPortStroll(c, ts);
+          c.chatCooldown = 8 + Math.random() * 8;
+          if (!c.waypoints || c.waypoints.length === 0) {
+            _assignPortStroll(c, ts);
+          }
         }
         continue;
       }
@@ -1114,16 +1277,20 @@ window.Game = window.Game || {};
         continue;
       }
 
-      if (c.chatCooldown <= 0 && c.state === "strolling") {
+      if (!isNight && !c.isInsideHouse && c.chatCooldown <= 0 && c.state === "strolling") {
         for (let j = i + 1; j < CITIZENS.length; j++) {
           const o = CITIZENS[j];
-          if (o.chatCooldown <= 0 && o.state === "strolling" && Math.hypot(c.x - o.x, c.y - o.y) < 42) {
+          if (!o.isInsideHouse && o.chatCooldown <= 0 && o.state === "strolling" && Math.hypot(c.x - o.x, c.y - o.y) < 42) {
             c.state = "chatting";
             o.state = "chatting";
-            c.stateTimer = 4.0;
-            o.stateTimer = 4.0;
-            c.chatCooldown = 16;
-            o.chatCooldown = 16;
+            c.chatPartnerId = o.id;
+            o.chatPartnerId = c.id;
+            c.isMoving = false;
+            o.isMoving = false;
+            c.stateTimer = 4.2;
+            o.stateTimer = 4.2;
+            c.chatCooldown = 16 + Math.random() * 8;
+            o.chatCooldown = 16 + Math.random() * 8;
             c.facing = c.x < o.x ? "right" : "left";
             o.facing = o.x < c.x ? "right" : "left";
             c.chatText = PORT_CHATTER[Math.floor(Math.random() * PORT_CHATTER.length)];
@@ -1137,6 +1304,7 @@ window.Game = window.Game || {};
         c.stateTimer -= dt;
         if (c.stateTimer <= 0) {
           c.state = "strolling";
+          c.chatPartnerId = null;
           c.chatText = "";
           _assignPortStroll(c, ts);
         }
@@ -1148,27 +1316,70 @@ window.Game = window.Game || {};
         const dx = wp.x - c.x;
         const dy = wp.y - c.y;
         const dist = Math.hypot(dx, dy);
+
+        const doorWorldX = (c.doorTx + 0.5) * ts;
+        const doorWorldY = (c.doorTy + 0.5) * ts;
+        if (Math.hypot(c.x - doorWorldX, c.y - doorWorldY) < ts * 1.25) {
+          _activeDoorwayTimers.set(`${c.doorTx},${c.doorTy}`, 12);
+        }
+
         if (dist <= c.speed * 1.5) {
           c.x = wp.x;
           c.y = wp.y;
+          if (wp.markInside) c.isInsideHouse = true;
+          if (wp.markOutside) c.isInsideHouse = false;
           c.waypoints.shift();
+
           if (c.waypoints.length === 0) {
             c.isMoving = false;
-            c.pauseTimer = 2.0 + Math.random() * 3.0;
+            if (c.state === "returning_home_night") {
+              c.isInsideHouse = true;
+              c.state = "night_at_home";
+              c.facing = "down";
+            } else if (c.state === "entering_house") {
+              c.isInsideHouse = true;
+              c.state = "inside_home";
+              c.stateTimer = 5 + Math.random() * 8;
+            } else if (c.state === "exiting_house") {
+              c.isInsideHouse = false;
+              c.state = "strolling";
+              c.stateTimer = 12 + Math.random() * 15;
+              _assignPortStroll(c, ts);
+            } else if (c.state === "strolling") {
+              c.pauseTimer = 1.5 + Math.random() * 3.0;
+              c.stateTimer = 10 + Math.random() * 14;
+            }
           }
         } else {
           c.isMoving = true;
           c.walkPhase += 0.16;
-          c.x += (dx / dist) * c.speed;
-          c.y += (dy / dist) * c.speed;
+          const step = Math.min(dist, c.speed);
+          c.x += (dx / dist) * step;
+          c.y += (dy / dist) * step;
           c.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
         }
       } else {
         c.isMoving = false;
         c.stateTimer -= dt;
         if (c.stateTimer <= 0) {
-          _assignPortStroll(c, ts);
-          c.stateTimer = 10 + Math.random() * 14;
+          if (c.state === "inside_home") {
+            if (!isNight && Math.random() < 0.68) {
+              _sendPortCitizenOutside(c, ts);
+            } else {
+              const destTx = Math.random() < 0.5 ? c.hammockTx : c.cargoTx;
+              const destTy = Math.random() < 0.5 ? c.hammockTy : c.cargoTy;
+              c.waypoints = [{ x: (destTx + 0.5) * ts, y: (destTy + 0.5) * ts }];
+              c.isMoving = true;
+              c.stateTimer = 4 + Math.random() * 6;
+            }
+          } else if (c.state === "strolling") {
+            if (!isNight && Math.random() < 0.22) {
+              _sendPortCitizenHome(c, ts, false);
+            } else {
+              _assignPortStroll(c, ts);
+              c.stateTimer = 12 + Math.random() * 15;
+            }
+          }
         }
       }
     }
@@ -1179,94 +1390,378 @@ window.Game = window.Game || {};
       if (c.x < viewLeft - 48 || c.x > viewRight + 48 || c.y < viewTop - 48 || c.y > viewBottom + 48) {
         continue;
       }
+      if (c.isInsideHouse && activePlayerHouseId !== c.houseId) {
+        const doorWorldY = (c.doorTy + 0.5) * ts;
+        if (Math.abs(c.y - doorWorldY) > ts * 0.85) {
+          continue;
+        }
+      }
       items.push({
         y: c.y,
-        draw: () => _renderPortCitizen(ctx, c, animTimer, player),
+        draw: () => _renderPortCitizen(ctx, c, timeOfDay, animTimer, player),
       });
     }
     return items;
   }
 
-  function _renderPortCitizen(c, npc, animTimer, player) {
+  // =========================================================================
+  // RENDERIZAÇÃO DO MORADOR PORTUÁRIO NO CANVAS
+  // - Proporções humanas e caminhada anatômica IDÊNTICAS aos moradores de DesertCity e SnowPeakCity:
+  //   * Pernas com balanço pendular rotacionado no pivô do quadril (y = -3.5) nas vistas laterais (left / right)
+  //     e passada vertical alternada nas vistas frontal e traseira (down / up).
+  //   * Tronco estreito em perfil lateral e largo de frente/costas.
+  //   * Braços com pivô rotacional no ombro nas vistas laterais e topo fixo no ombro de frente/costas.
+  //   * Pescoço, cabeça, cabelo direcional, chapéus navais e acessórios nas mãos.
+  // =========================================================================
+  function _renderPortCitizen(c, npc, timeOfDay, animTimer, player) {
     c.save();
     c.translate(npc.x, npc.y);
 
     const w = npc.facing || "down";
     const isMoving = !!npc.isMoving;
+    const isSleeping = npc.state === "night_at_home" && npc.isInsideHouse;
+    const isInteracting = npc.state === "interacting";
+    const isChatting = npc.state === "chatting";
+
     const walkSin = isMoving ? Math.sin(npc.walkPhase) : 0;
-    const bob = isMoving ? Math.abs(walkSin) * 1.7 : Math.sin(animTimer * 2 + npc.id) * 0.35;
+    const bob = isMoving
+      ? Math.abs(Math.sin(npc.walkPhase)) * 1.8
+      : isInteracting || isChatting
+        ? Math.sin(animTimer * 4 + npc.id) * 0.7
+        : Math.sin(animTimer * 2 + npc.id) * 0.35;
+
     const pal = npc.outfit;
+    const bootsColor = "#451a03";
 
-    // Sombra
-    c.fillStyle = "rgba(15, 23, 42, 0.32)";
+    // 1. Sombra padrão no solo
+    c.fillStyle = "rgba(15, 23, 42, 0.35)";
     c.beginPath();
-    c.ellipse(0, 2.5, 7.5, 4.0, 0, 0, Math.PI * 2);
+    c.ellipse(0, 2.5, 7.8, 4.2, 0, 0, Math.PI * 2);
     c.fill();
 
-    // Pernas com movimento pendular
-    const legSwing = walkSin * 2.6;
-    c.fillStyle = pal.pants;
-    c.fillRect(-4.8, -3.5 - legSwing, 3.6, 5.5);
-    c.fillRect(1.2, -3.5 + legSwing, 3.6, 5.5);
-    c.fillStyle = "#451a03";
-    c.fillRect(-5.0, 1.5 - legSwing, 4.0, 2.6);
-    c.fillRect(1.0, 1.5 + legSwing, 4.0, 2.6);
-
-    // Tronco: Camisa listrada de marinheiro / Colete naval
-    c.fillStyle = pal.shirt;
-    c.fillRect(-6.2, -15.5 - bob, 12.4, 12.2);
-    // Listras horizontais azuis clássicas de marinheiro
-    c.fillStyle = "rgba(3, 105, 161, 0.35)";
-    for (let sy = -14; sy < -5; sy += 3) {
-      c.fillRect(-6.0, sy - bob, 12.0, 1.2);
+    // 2. Capa de Capitão / Casaca Naval esvoaçando nas costas (para Capitães e Navegadores)
+    if ((npc.style === "captain" || npc.style === "navigator") && !isSleeping) {
+      const capeSway = isMoving ? Math.cos(npc.walkPhase) * 1.8 : 0;
+      if (w === "up") {
+        c.fillStyle = pal.vest;
+        c.fillRect(-7.0, -16.0 - bob, 14.0, 13.0);
+        c.fillStyle = pal.trim;
+        c.fillRect(-7.0, -4.0 - bob, 14.0, 1.4);
+      } else if (w === "down") {
+        c.fillStyle = pal.vest;
+        c.fillRect(-7.2 + capeSway * 0.25, -15.5 - bob, 14.4, 12.5);
+        c.fillStyle = pal.trim;
+        c.fillRect(-7.2 + capeSway * 0.25, -4.0 - bob, 14.4, 1.2);
+      } else {
+        const capeX = w === "left" ? 0.5 : -4.5;
+        c.fillStyle = pal.vest;
+        c.fillRect(capeX + capeSway * 0.2, -15.5 - bob, 4.2, 12.5);
+      }
     }
-    // Colete / Casaca Naval
-    c.fillStyle = pal.vest;
-    c.fillRect(-6.4, -15.5 - bob, 3.6, 12.0);
-    c.fillRect(2.8, -15.5 - bob, 3.6, 12.0);
-    // Faixa / Cinto com fivela de latão
-    c.fillStyle = "#b45309";
-    c.fillRect(-6.5, -6.5 - bob, 13.0, 2.4);
-    c.fillStyle = "#facc15";
-    c.fillRect(-1.2, -6.5 - bob, 2.4, 2.4);
 
-    // Braços
-    const armSwing = walkSin * 1.4;
-    c.fillStyle = pal.vest;
-    c.fillRect(-8.4, -15.0 - bob + armSwing, 2.5, 6.5);
-    c.fillRect(5.9, -15.0 - bob - armSwing, 2.5, 6.5);
-    c.fillStyle = npc.skinColor;
-    c.fillRect(-8.2, -8.5 - bob + armSwing, 2.2, 2.2);
-    c.fillRect(6.0, -8.5 - bob - armSwing, 2.2, 2.2);
+    // 3. Pernas e Botas Navais com Balanço Pendular Idêntico às outras cidades (Pivô no quadril y = -3.5)
+    const legMult = 2.8;
+    const legSwingL = isMoving ? -walkSin * legMult : 0;
+    const legSwingR = isMoving ? walkSin * legMult : 0;
 
-    // Cabeça e Rosto
-    const headY = -22 - bob;
+    if (w === "up") {
+      // VISTA TRASEIRA (COSTAS): Passada vertical alternada
+      // Perna Esquerda
+      c.fillStyle = pal.pants;
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.25)";
+      c.fillRect(-3.2, -3.5 + legSwingL, 0.9, 4.6);
+      c.fillStyle = bootsColor;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+      c.fillStyle = pal.trim;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = pal.pants;
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.25)";
+      c.fillRect(3.4, -3.5 + legSwingR, 0.9, 4.6);
+      c.fillStyle = bootsColor;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = pal.trim;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "down") {
+      // VISTA FRONTAL: Passada vertical alternada
+      // Perna Esquerda
+      c.fillStyle = pal.pants;
+      c.fillRect(-5.2, -3.5 + legSwingL, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.12)";
+      c.fillRect(-4.5, -1.7 + legSwingL, 2.4, 2.2);
+      c.fillStyle = bootsColor;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 3.8);
+      c.fillStyle = pal.trim;
+      c.fillRect(-5.2, 0.5 + legSwingL, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-5.2, 3.7 + legSwingL, 3.8, 1.2);
+
+      // Perna Direita
+      c.fillStyle = pal.pants;
+      c.fillRect(1.4, -3.5 + legSwingR, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.12)";
+      c.fillRect(2.1, -1.7 + legSwingR, 2.4, 2.2);
+      c.fillStyle = bootsColor;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 3.8);
+      c.fillStyle = pal.trim;
+      c.fillRect(1.4, 0.5 + legSwingR, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(1.4, 3.7 + legSwingR, 3.8, 1.2);
+    } else if (w === "left") {
+      // VISTA LATERAL ESQUERDA: Pêndulo anatômico com pivô fixo no quadril (y = -3.5) idêntico ao player e às outras cidades
+      const strideRange = 0.48;
+      const frontAngle = -walkSin * strideRange;
+      const backAngle = walkSin * strideRange;
+
+      // Perna de trás (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = pal.pants;
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.25)";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = bootsColor;
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
+      c.fillStyle = pal.trim;
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-3.0, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = pal.pants;
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.12)";
+      c.fillRect(-1.4, 1.8, 2.8, 2.0);
+      c.fillStyle = bootsColor;
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = pal.trim;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-3.3, 6.8, 5.2, 1.2);
+      c.restore();
+    } else {
+      // VISTA LATERAL DIREITA: Pêndulo anatômico com pivô fixo no quadril (y = -3.5) idêntico ao player e às outras cidades
+      const strideRange = 0.48;
+      const frontAngle = walkSin * strideRange;
+      const backAngle = -walkSin * strideRange;
+
+      // Perna de trás (esquerda, pivô em -1.6, -3.5)
+      c.save();
+      c.translate(-1.6, -3.5);
+      c.rotate(backAngle);
+      c.fillStyle = pal.pants;
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = "rgba(0, 0, 0, 0.25)";
+      c.fillRect(-1.8, 0, 3.6, 4.6);
+      c.fillStyle = bootsColor;
+      c.fillRect(-1.8, 4.0, 3.6, 3.2);
+      c.fillStyle = pal.trim;
+      c.fillRect(-1.8, 4.0, 3.6, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-1.8, 6.8, 4.8, 1.2);
+      c.restore();
+
+      // Perna da frente (direita, pivô em 1.6, -3.5)
+      c.save();
+      c.translate(1.6, -3.5);
+      c.rotate(frontAngle);
+      c.fillStyle = pal.pants;
+      c.fillRect(-1.9, 0, 3.8, 4.6);
+      c.fillStyle = "rgba(255, 255, 255, 0.12)";
+      c.fillRect(-1.4, 1.8, 2.8, 2.0);
+      c.fillStyle = bootsColor;
+      c.fillRect(-1.9, 4.0, 3.8, 3.2);
+      c.fillStyle = pal.trim;
+      c.fillRect(-1.9, 4.0, 3.8, 1.2);
+      c.fillStyle = "#1c1917";
+      c.fillRect(-1.9, 6.8, 5.2, 1.2);
+      c.restore();
+    }
+
+    // 4. Tronco: Camisa Listrada de Marinheiro e Colete / Casaca Naval (com perfil lateral estreito!)
+    if (w === "left" || w === "right") {
+      const isLeft = w === "left";
+      const profX = isLeft ? -4.8 : -4.2;
+      c.fillStyle = pal.shirt;
+      c.fillRect(profX, -16.0 - bob, 9.0, 12.5);
+      // Listras horizontais de marinheiro no perfil
+      c.fillStyle = "rgba(3, 105, 161, 0.35)";
+      for (let sy = -14.2; sy < -5.0; sy += 3.0) {
+        c.fillRect(profX + 0.2, sy - bob, 8.6, 1.2);
+      }
+      // Casaca / Colete lateral
+      c.fillStyle = pal.vest;
+      c.fillRect(profX + (isLeft ? 2.2 : 0), -16.0 - bob, 6.8, 12.2);
+      c.fillStyle = pal.trim;
+      c.fillRect(profX, -5.0 - bob, 9.0, 1.2);
+      // Cinto de couro com fivela lateral
+      c.fillStyle = "#b45309";
+      c.fillRect(profX - 0.2, -7.0 - bob, 9.4, 2.4);
+    } else {
+      // Vista Frontal / Traseira
+      c.fillStyle = pal.shirt;
+      c.fillRect(-6.5, -16.0 - bob, 13.0, 12.5);
+      // Listras horizontais azuis clássicas de marinheiro
+      c.fillStyle = "rgba(3, 105, 161, 0.35)";
+      for (let sy = -14.2; sy < -5.0; sy += 3.0) {
+        c.fillRect(-6.2, sy - bob, 12.4, 1.2);
+      }
+      if (w === "up") {
+        // Costas do colete / casaca naval
+        c.fillStyle = pal.vest;
+        c.fillRect(-6.5, -16.0 - bob, 13.0, 12.2);
+        c.fillStyle = pal.trim;
+        c.fillRect(-6.5, -4.8 - bob, 13.0, 1.2);
+      } else {
+        // Frente do colete / casaca naval aberta mostrando a camisa listrada
+        c.fillStyle = pal.vest;
+        c.fillRect(-6.5, -16.0 - bob, 3.8, 12.2);
+        c.fillRect(2.7, -16.0 - bob, 3.8, 12.2);
+        // Lapelas / botões dourados
+        c.fillStyle = pal.trim;
+        c.fillRect(-3.2, -14.5 - bob, 1.0, 1.0);
+        c.fillRect(-3.2, -11.5 - bob, 1.0, 1.0);
+        c.fillRect(2.2, -14.5 - bob, 1.0, 1.0);
+        c.fillRect(2.2, -11.5 - bob, 1.0, 1.0);
+      }
+      // Cinto naval com fivela dourada
+      c.fillStyle = "#b45309";
+      c.fillRect(-6.8, -7.0 - bob, 13.6, 2.4);
+      if (w !== "up") {
+        c.fillStyle = "#facc15";
+        c.fillRect(-1.2, -7.0 - bob, 2.4, 2.4);
+      }
+    }
+
+    // 5. Braços com Mangas, Punhos e Mãos (com rotação no ombro de lado e topo fixo de frente/costas, idêntico às outras cidades!)
+    const walkSwing = isMoving
+      ? walkSin
+      : isInteracting || isChatting
+        ? Math.sin(animTimer * 5 + npc.id) * 0.4
+        : 0;
+    const swingL = walkSwing * 0.75;
+    const swingR = -walkSwing * 0.75;
+    const shoulderTopY = -15.2 - bob;
+
+    if (w === "down" || w === "up") {
+      // Braço esquerdo (topo fixo no ombro)
+      const wristYL = shoulderTopY + 5.0 + swingL;
+      c.fillStyle = pal.vest;
+      c.fillRect(-8.4, shoulderTopY, 2.6, 6.2 + swingL);
+      c.fillStyle = pal.trim;
+      c.fillRect(-8.4, wristYL, 2.6, 1.5);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(-8.3, wristYL + 1.5, 2.4, 2.0);
+
+      // Braço direito (topo fixo no ombro)
+      const wristYR = shoulderTopY + 5.0 + swingR;
+      c.fillStyle = pal.vest;
+      c.fillRect(5.8, shoulderTopY, 2.6, 6.2 + swingR);
+      c.fillStyle = pal.trim;
+      c.fillRect(5.8, wristYR, 2.6, 1.5);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(5.9, wristYR + 1.5, 2.4, 2.0);
+    } else {
+      // Vista lateral (left / right): Braço com pivô de rotação no ombro idêntico a DesertCity e SnowPeakCity!
+      const isLeft = w === "left";
+      const shoulderPivotX = isLeft ? -1.0 : 0.8;
+      const armAngle = (isLeft ? 1 : -1) * walkSwing * 0.45;
+      c.save();
+      c.translate(shoulderPivotX, shoulderTopY);
+      c.rotate(armAngle);
+      c.fillStyle = pal.vest;
+      c.fillRect(-1.3, 0, 2.6, 6.2);
+      c.fillStyle = pal.trim;
+      c.fillRect(-1.3, 4.8, 2.6, 1.5);
+      c.fillStyle = npc.skinColor;
+      c.fillRect(-1.2, 6.3, 2.4, 2.0);
+      c.restore();
+    }
+
+    // 6. Acessórios Portuários na Mão (Luneta, Vara de Pesca, Lanterna, Cesto, Caneca)
+    if (npc.propInHand && !isSleeping && w !== "up") {
+      const propX = w === "left" ? -7.6 : 7.6;
+      const propY = -5.5 - bob;
+      if (npc.propInHand === "spyglass") {
+        c.fillStyle = "#d97706";
+        c.fillRect(propX - 1.5, propY - 1.5, 4.2, 1.8);
+        c.fillStyle = "#fde047";
+        c.fillRect(propX + 1.8, propY - 1.8, 1.5, 2.4);
+      } else if (npc.propInHand === "rod") {
+        c.strokeStyle = "#78350f";
+        c.lineWidth = 1.3;
+        c.beginPath();
+        c.moveTo(propX, propY + 2);
+        c.lineTo(propX + (w === "left" ? -6 : 6), propY - 14);
+        c.stroke();
+      } else if (npc.propInHand === "basket") {
+        c.fillStyle = "#b45309";
+        c.beginPath();
+        c.ellipse(propX, propY, 3.8, 2.8, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#38bdf8";
+        c.fillRect(propX - 2.2, propY - 2.5, 4.4, 1.2);
+      } else if (npc.propInHand === "lantern") {
+        c.fillStyle = "#facc15";
+        c.beginPath();
+        c.arc(propX, propY + 1.5, 2.2, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+
+    // 7. Cabeça, Pescoço Anatômico, Cabelo Direcional e Rosto Expressivo
+    const headX = 0;
+    const headY = -22.0 - bob;
+
+    // Pescoço de ligação anatômica
     c.fillStyle = npc.skinColor;
-    c.fillRect(-2.0, headY + 3.2, 4.0, 3.0);
+    c.fillRect(-2.2, headY + 3.2, 4.4, 3.0);
+
+    // Cabelo traseiro nas vistas de costas ou laterais
+    if (w === "up") {
+      c.fillStyle = npc.hairColor;
+      c.beginPath();
+      c.arc(headX, headY, 6.2, 0, Math.PI * 2);
+      c.fill();
+    } else if (w === "left") {
+      c.fillStyle = npc.hairColor;
+      c.fillRect(headX + 1.2, headY - 3.2, 4.6, 7.2);
+    } else if (w === "right") {
+      c.fillStyle = npc.hairColor;
+      c.fillRect(headX - 5.8, headY - 3.2, 4.6, 7.2);
+    }
+
+    // Rosto
+    c.fillStyle = npc.skinColor;
     c.beginPath();
-    c.arc(0, headY, 6.0, 0, Math.PI * 2);
+    c.arc(headX, headY, 6.1, 0, Math.PI * 2);
     c.fill();
 
-    // Olhos e expressão (quando não de costas)
-    if (w !== "up") {
-      const ex = w === "left" ? -1.2 : w === "right" ? 1.2 : 0;
-      c.fillStyle = "#ffffff";
-      c.fillRect(-3.2 + ex, headY - 0.4, 2.0, 1.8);
-      c.fillRect(1.2 + ex, headY - 0.4, 2.0, 1.8);
-      c.fillStyle = "#0f172a";
-      c.fillRect(-2.5 + ex, headY, 1.1, 1.2);
-      c.fillRect(1.5 + ex, headY, 1.1, 1.2);
-      c.fillStyle = "#78350f";
-      c.fillRect(-1.0 + ex * 0.5, headY + 2.4, 2.0, 0.8);
-    }
+    // Franja / topo do cabelo
+    c.fillStyle = npc.hairColor;
+    c.beginPath();
+    c.arc(headX, headY - 1.2, 6.2, Math.PI, 0);
+    c.fill();
 
-    // Chapéu Naval (Tricórnio de Capitão, Quepe de Marujo ou Chapéu de Palha Tropical)
+    // 8. Chapéu Naval (Tricórnio de Capitão, Chapéu de Palha de Pescador ou Bandana/Quepe de Marinheiro)
     if (npc.style === "captain") {
       c.fillStyle = pal.hat;
       c.beginPath();
-      c.moveTo(-7.5, headY - 2.2);
-      c.lineTo(0, headY - 7.5);
-      c.lineTo(7.5, headY - 2.2);
+      c.moveTo(-7.6, headY - 2.2);
+      c.lineTo(0, headY - 7.8);
+      c.lineTo(7.6, headY - 2.2);
       c.closePath();
       c.fill();
       c.strokeStyle = "#facc15";
@@ -1282,7 +1777,6 @@ window.Game = window.Game || {};
       c.arc(0, headY - 3.2, 4.8, Math.PI, 0);
       c.fill();
     } else {
-      // Bandana / Boina de Marinheiro
       c.fillStyle = pal.hat;
       c.beginPath();
       c.arc(0, headY - 2.0, 6.2, Math.PI, 0);
@@ -1291,12 +1785,41 @@ window.Game = window.Game || {};
       c.fillRect(-6.0, headY - 2.6, 12.0, 1.5);
     }
 
-    // Balão de diálogo
+    // 9. Olhos e Expressão Facial nas 4 direções
+    if (w !== "up") {
+      if (isSleeping) {
+        c.fillStyle = "#1e293b";
+        c.fillRect(-3.2, headY + 0.2, 2.2, 0.9);
+        c.fillRect(1.0, headY + 0.2, 2.2, 0.9);
+      } else {
+        const ex = w === "left" ? -1.4 : w === "right" ? 1.4 : 0;
+        c.fillStyle = "#ffffff";
+        c.fillRect(-3.2 + ex, headY - 0.3, 2.1, 1.8);
+        c.fillRect(1.1 + ex, headY - 0.3, 2.1, 1.8);
+        c.fillStyle = "#0f172a";
+        c.fillRect(-2.6 + ex, headY, 1.2, 1.3);
+        c.fillRect(1.5 + ex, headY, 1.2, 1.3);
+        c.fillStyle = npc.hairColor;
+        c.fillRect(-3.3 + ex, headY - 1.2, 2.2, 0.7);
+        c.fillRect(1.0 + ex, headY - 1.2, 2.2, 0.7);
+        c.fillStyle = "#78350f";
+        c.fillRect(-1.1 + ex * 0.5, headY + 2.4, 2.2, 0.8);
+      }
+    } else {
+      c.fillStyle = npc.hairColor;
+      c.beginPath();
+      c.arc(headX, headY - 0.4, 6.1, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = pal.trim;
+      c.fillRect(-5.8, headY - 2.4, 11.6, 1.5);
+    }
+
+    // 10. Balão de diálogo
     if (npc.chatText && player && Math.hypot(player.x - npc.x, player.y - npc.y) < 240) {
       c.font = "bold 7.2px sans-serif";
       const tw = Math.min(200, Math.max(64, c.measureText(npc.chatText).width + 12));
       const bx = -tw / 2;
-      const by = headY - 24;
+      const by = headY - 25;
       c.fillStyle = "rgba(9, 9, 11, 0.92)";
       c.strokeStyle = "#0ea5e9";
       c.lineWidth = 1.2;
