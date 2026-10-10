@@ -1553,7 +1553,7 @@
         !isImmersive &&
           h.jsxs("div", {
             className:
-              "pointer-events-auto hidden md:flex items-center gap-1 absolute bottom-28 left-4 z-20",
+              "pointer-events-auto hidden md:flex items-center gap-1 absolute bottom-36 left-4 z-20",
             children: [
               h.jsxs("button", {
                 id: "hud-toggle-help-legend-btn",
@@ -1704,7 +1704,8 @@
           h.jsxs("div", {
             id: "hud-belt-quickswap-bar",
             className:
-              "pointer-events-auto hidden md:flex items-center gap-2.5 absolute bottom-3 left-1/2 -translate-x-1/2 z-20 bg-slate-950/92 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-amber-500/50 shadow-2xl shadow-black/80 select-none animate-in fade-in slide-in-from-bottom-2 duration-200",
+              "pointer-events-auto hidden md:flex items-center gap-2.5 absolute bottom-9 left-1/2 -translate-x-1/2 z-20 bg-slate-950/92 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-amber-500/50 shadow-2xl shadow-black/80 select-none animate-in fade-in slide-in-from-bottom-2 duration-200",
+            style: { bottom: "calc(2.25rem + env(safe-area-inset-bottom, 0px))" },
             children: [
               h.jsxs("div", {
                 className:
@@ -1949,8 +1950,10 @@
             ],
           }),
         h.jsxs("div", {
+          id: "hud-bottom-left-controls",
           className:
-            "pointer-events-auto absolute bottom-4 left-4 z-30 flex flex-col items-start gap-2 select-none",
+            "pointer-events-auto absolute bottom-14 sm:bottom-10 left-4 z-30 flex flex-col items-start gap-2 select-none",
+          style: { bottom: "calc(3.25rem + env(safe-area-inset-bottom, 0px))" },
           children: [
             (_ == null ? void 0 : _.cinto) &&
               h.jsxs("div", {
@@ -2237,8 +2240,10 @@
           ],
         }),
         h.jsxs("div", {
+          id: "hud-bottom-right-controls",
           className:
-            "pointer-events-auto absolute bottom-4 right-4 z-30 flex flex-col items-center gap-2 select-none",
+            "pointer-events-auto absolute bottom-14 sm:bottom-10 right-4 z-30 flex flex-col items-center gap-2 select-none",
+          style: { bottom: "calc(3.25rem + env(safe-area-inset-bottom, 0px))" },
           children: [
             h.jsx("button", {
               id: "touch-extra-btn",
