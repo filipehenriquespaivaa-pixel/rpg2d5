@@ -5570,12 +5570,24 @@
             maxChops: 3,
             tx: t,
             ty: l,
+            treeKind: o.prop.kind,
+            treeSubType: o.prop.subType || 0,
+            treeScale: o.prop.scale || 1,
+            biomeId: o.biome ? o.biome.id : null,
+            offsetX: o.prop.offsetX || 0,
+            offsetY: o.prop.offsetY || 0,
             message: `🪓 Golpe de machado no tronco! (${chops}/3) Lascas de madeira voando!`,
           };
         }
+        const treeKind = o.prop.kind;
+        const treeSubType = o.prop.subType || 0;
+        const treeScale = o.prop.scale || 1;
+        const biomeId = o.biome ? o.biome.id : null;
+        const offsetX = o.prop.offsetX || 0;
+        const offsetY = o.prop.offsetY || 0;
         this.interactedProps.set(u, { ...m, chopped: !0, chops: 3 });
         this.invalidateTile(t, l);
-        const isPine = o.prop.kind === "tree_pine";
+        const isPine = treeKind === "tree_pine";
         const woodLogs = 2 + Math.floor(this.hash2D(t, l, 81) * 2);
         const sticks = 1 + Math.floor(this.hash2D(t, l, 83) * 2);
         const resin = isPine && this.hash2D(t, l, 85) < 0.65;
@@ -5584,6 +5596,12 @@
           action: "chop_tree_fell",
           tx: t,
           ty: l,
+          treeKind,
+          treeSubType,
+          treeScale,
+          biomeId,
+          offsetX,
+          offsetY,
           woodLogs,
           sticks,
           resin,

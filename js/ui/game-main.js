@@ -2190,12 +2190,31 @@
           const hitTy = Math.floor(hitY / Q.tileSize);
           const chopRes = Q.chopTreeAt && Q.chopTreeAt(hitTx, hitTy, true);
           if (chopRes) {
+            const treeCenterX = (chopRes.tx * Q.tileSize) + (Q.tileSize / 2) + (chopRes.offsetX || 0);
+            const treeCenterY = (chopRes.ty * Q.tileSize) + (Q.tileSize / 2) + (chopRes.offsetY || 0);
+            const hitDir = E.x < treeCenterX ? 1 : -1;
             if (chopRes.action === "chop_tree_hit") {
               m.current.playWoodChop && m.current.playWoodChop();
+              window.shakeTree && window.shakeTree(chopRes.tx, chopRes.ty, hitDir, 7.0);
+              window.__spawnWoodChips && window.__spawnWoodChips(treeCenterX, treeCenterY, 10);
+              window.__spawnLeavesBurst && window.__spawnLeavesBurst(treeCenterX, treeCenterY - 14, 6);
               ve(chopRes.message);
             } else if (chopRes.action === "chop_tree_fell") {
               m.current.playWoodChop && m.current.playWoodChop();
               m.current.playTreeFall && m.current.playTreeFall();
+              window.startFallingTree && window.startFallingTree({
+                tx: chopRes.tx,
+                ty: chopRes.ty,
+                x: treeCenterX,
+                y: treeCenterY,
+                kind: chopRes.treeKind || "tree_oak",
+                subType: chopRes.treeSubType || 0,
+                scale: chopRes.treeScale || 1,
+                biomeId: chopRes.biomeId,
+                dir: hitDir,
+              });
+              window.__spawnWoodChips && window.__spawnWoodChips(treeCenterX, treeCenterY, 14);
+              window.__spawnLeavesBurst && window.__spawnLeavesBurst(treeCenterX, treeCenterY - 16, 12);
               const woodLogsCount = chopRes.woodLogs || 2;
               const sticksCount = chopRes.sticks || 1;
               ra((prev) => {
@@ -3196,11 +3215,42 @@
               m.current.playPunchWhoosh && m.current.playPunchWhoosh();
               ve(Ke.message);
             } else if (Ke.action === "chop_tree_hit") {
+              // Ativa animação de corte de arma no personagem
+              D.attackTimer = 0.28;
+              D.attackDuration = 0.28;
+              D.attackCombo = ((D.attackCombo || 0) + 1) % 2;
+              D.attackType = "weapon";
+              const treeCenterX = (Ke.tx * E.tileSize) + (E.tileSize / 2) + (Ke.offsetX || 0);
+              const treeCenterY = (Ke.ty * E.tileSize) + (E.tileSize / 2) + (Ke.offsetY || 0);
+              const hitDir = D.x < treeCenterX ? 1 : -1;
               m.current.playWoodChop && m.current.playWoodChop();
+              window.shakeTree && window.shakeTree(Ke.tx, Ke.ty, hitDir, 7.0);
+              window.__spawnWoodChips && window.__spawnWoodChips(treeCenterX, treeCenterY, 10);
+              window.__spawnLeavesBurst && window.__spawnLeavesBurst(treeCenterX, treeCenterY - 14, 6);
               ve(Ke.message);
             } else if (Ke.action === "chop_tree_fell") {
+              D.attackTimer = 0.32;
+              D.attackDuration = 0.32;
+              D.attackCombo = ((D.attackCombo || 0) + 1) % 2;
+              D.attackType = "weapon";
+              const treeCenterX = (Ke.tx * E.tileSize) + (E.tileSize / 2) + (Ke.offsetX || 0);
+              const treeCenterY = (Ke.ty * E.tileSize) + (E.tileSize / 2) + (Ke.offsetY || 0);
+              const hitDir = D.x < treeCenterX ? 1 : -1;
               m.current.playWoodChop && m.current.playWoodChop();
               m.current.playTreeFall && m.current.playTreeFall();
+              window.startFallingTree && window.startFallingTree({
+                tx: Ke.tx,
+                ty: Ke.ty,
+                x: treeCenterX,
+                y: treeCenterY,
+                kind: Ke.treeKind || "tree_oak",
+                subType: Ke.treeSubType || 0,
+                scale: Ke.treeScale || 1,
+                biomeId: Ke.biomeId,
+                dir: hitDir,
+              });
+              window.__spawnWoodChips && window.__spawnWoodChips(treeCenterX, treeCenterY, 14);
+              window.__spawnLeavesBurst && window.__spawnLeavesBurst(treeCenterX, treeCenterY - 16, 12);
               const woodLogsCount = Ke.woodLogs || 2;
               const sticksCount = Ke.sticks || 1;
               ra((prev) => {

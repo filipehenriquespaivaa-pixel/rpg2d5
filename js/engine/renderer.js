@@ -27,6 +27,7 @@
           (this.ctx = t),
           (this.engine = l),
           this.initBirds());
+        if (typeof window !== "undefined") window.__worldRenderer = this;
       }
       initBirds() {
         this.birds = [];
@@ -511,6 +512,7 @@
         }
         Ee.sort((ne, ke) => ne.y - ke.y);
         for (const ne of Ee) ne.draw();
+        this.renderFallingTrees(c);
         if (!this.engine.isUnderground && typeof drawSnowCityHouseRoofs === "function") {
           drawSnowCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
         }
@@ -1933,10 +1935,34 @@
           f = (typeof t.scale === "number" && !isNaN(t.scale) && t.scale > 0) ? t.scale : 1,
           g = (m == null ? void 0 : m.timeOfDay) ?? 0.5,
           y = this.getSunVector(g);
+        c.save();
+        c.translate(l, o);
+        const isTreeKind =
+          t.kind === "tree_oak" ||
+          t.kind === "tree_pine" ||
+          t.kind === "tree_palm" ||
+          t.kind === "tree_willow" ||
+          t.kind === "tree_burnt";
+        if (isTreeKind && u && typeof window !== "undefined" && window.__treeShakes) {
+          const sKey = `${u.tx},${u.ty}`;
+          const sk = window.__treeShakes.get(sKey);
+          if (sk) {
+            const nowMs = performance.now();
+            const elapsed = nowMs - sk.startTime;
+            if (elapsed < sk.duration) {
+              const p = elapsed / sk.duration;
+              const decay = Math.pow(1 - p, 1.6);
+              const wobbleX = Math.sin(p * Math.PI * 12) * sk.intensity * decay * (sk.dir || 1);
+              const wobbleRot = Math.sin(p * Math.PI * 9) * (sk.intensity * 0.024) * decay * (sk.dir || 1);
+              c.translate(wobbleX, 0);
+              c.rotate(wobbleRot);
+            } else {
+              window.__treeShakes.delete(sKey);
+            }
+          }
+        }
         switch (
-          (c.save(),
-          c.translate(l, o),
-          t.kind !== "cliff_wall" &&
+          (t.kind !== "cliff_wall" &&
             t.kind !== "cliff_ramp" &&
             t.kind !== "greek_wall" &&
             t.kind !== "dungeon_wall" &&
@@ -5095,6 +5121,13 @@
               c.arc(g.x, g.y, g.size, 0, Math.PI * 2),
               c.fill(),
               (c.shadowBlur = 0));
+          } else if (g.type === "wood_chip") {
+            c.save();
+            c.translate(g.x, g.y);
+            c.rotate(g.life * 0.18 + (g.rotOffset || 0));
+            c.fillStyle = g.color;
+            c.fillRect(-g.size, -g.size * 0.55, g.size * 2, g.size * 1.1);
+            c.restore();
           } else
             g.type === "bubble"
               ? ((c.fillStyle = "rgba(255, 255, 255, 0.9)"),
@@ -5109,6 +5142,111 @@
                 c.fill());
         }
         c.globalAlpha = 1;
+      }
+      spawnWoodChips(x, y, count = 10) {
+        const colors = ["#d4a373", "#8b5e34", "#5c3826", "#a16207", "#78350f"];
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.0 + Math.random() * 2.6;
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          this.particles.push({
+            x: x + (Math.random() - 0.5) * 8,
+            y: y + (Math.random() - 0.5) * 8,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.2,
+            life: 0,
+            maxLife: 35 + Math.random() * 25,
+            size: 1.5 + Math.random() * 2.2,
+            color,
+            alpha: 0.95,
+            rotOffset: Math.random() * Math.PI,
+            type: "wood_chip",
+          });
+        }
+      }
+      spawnLeavesBurst(x, y, count = 12) {
+        const leafColors = ["#22c55e", "#15803d", "#16a34a", "#4ade80", "#86efac"];
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 0.8 + Math.random() * 2.2;
+          const color = leafColors[Math.floor(Math.random() * leafColors.length)];
+          this.particles.push({
+            x: x + (Math.random() - 0.5) * 16,
+            y: y + (Math.random() - 0.5) * 16,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 0.8,
+            life: 0,
+            maxLife: 45 + Math.random() * 30,
+            size: 2.0 + Math.random() * 2.5,
+            color,
+            alpha: 0.9,
+            type: "leaf",
+          });
+        }
+      }
+      renderFallingTrees(c) {
+        if (typeof window === "undefined" || !window.__fallingTrees || window.__fallingTrees.length === 0) return;
+        const now = performance.now();
+        for (let i = window.__fallingTrees.length - 1; i >= 0; i--) {
+          const ft = window.__fallingTrees[i];
+          const elapsed = now - ft.startTime;
+          const prog = Math.min(1, Math.max(0, elapsed / ft.duration));
+          const fallEase = Math.pow(prog, 2.2);
+          const targetAngle = (Math.PI / 2) * ft.dir;
+          const currentAngle = fallEase * targetAngle;
+
+          let alpha = 1;
+          if (prog > 0.82) {
+            alpha = Math.max(0, 1 - (prog - 0.82) / 0.18);
+          }
+
+          c.save();
+          c.translate(ft.x, ft.y);
+          c.rotate(currentAngle);
+          c.globalAlpha = alpha;
+
+          switch (ft.kind) {
+            case "tree_oak":
+              rg(c, ft.scale, this.animTimer);
+              break;
+            case "tree_pine":
+              lg(
+                c,
+                ft.scale,
+                ft.biomeId === BiomeId.SNOW_TAIGA || ft.biomeId === BiomeId.SNOW_PEAK,
+                this.animTimer,
+              );
+              break;
+            case "tree_palm":
+              ig(c, ft.scale, this.animTimer);
+              break;
+            case "tree_willow":
+              ng(c, ft.scale, this.animTimer);
+              break;
+            case "tree_burnt":
+              sg(c, ft.scale, this.animTimer);
+              break;
+          }
+          c.restore();
+
+          if (prog > 0.15 && prog < 0.9 && Math.random() < 0.35) {
+            const leafX = ft.x + Math.cos(currentAngle) * (ft.scale * 15 * ft.dir);
+            const leafY = ft.y - Math.sin(Math.abs(currentAngle)) * (ft.scale * 15);
+            this.spawnLeavesBurst(leafX, leafY, 2);
+          }
+
+          if (prog >= 0.92 && !ft.hasImpacted) {
+            ft.hasImpacted = true;
+            const impactX = ft.x + ft.dir * (ft.scale * 28);
+            const impactY = ft.y + 4;
+            this.spawnWoodChips(impactX, impactY, 14);
+            this.spawnLeavesBurst(impactX, impactY - 6, 16);
+          }
+
+          if (prog >= 1.0) {
+            window.__fallingTrees.splice(i, 1);
+          }
+        }
       }
       updateAndRenderBirds(t, l, o, u, m) {
         const c = this.ctx;
@@ -5442,3 +5580,41 @@
       BiomeId.VOLCANIC,
     ])));
   let Ws = WorldRenderer;
+  if (typeof window !== "undefined") {
+    window.__treeShakes = window.__treeShakes || new Map();
+    window.__fallingTrees = window.__fallingTrees || [];
+    window.shakeTree = (tx, ty, dir = 1, intensity = 6.0) => {
+      window.__treeShakes.set(`${tx},${ty}`, {
+        startTime: performance.now(),
+        duration: 380,
+        intensity: intensity,
+        dir: dir,
+      });
+    };
+    window.startFallingTree = (treeData) => {
+      window.__fallingTrees.push({
+        tx: treeData.tx,
+        ty: treeData.ty,
+        x: treeData.x,
+        y: treeData.y,
+        kind: treeData.kind,
+        subType: treeData.subType || 0,
+        scale: treeData.scale || 1,
+        biomeId: treeData.biomeId,
+        startTime: performance.now(),
+        duration: 920,
+        dir: treeData.dir || 1,
+        hasImpacted: false,
+      });
+    };
+    window.__spawnWoodChips = (x, y, count) => {
+      if (window.__worldRenderer && typeof window.__worldRenderer.spawnWoodChips === "function") {
+        window.__worldRenderer.spawnWoodChips(x, y, count);
+      }
+    };
+    window.__spawnLeavesBurst = (x, y, count) => {
+      if (window.__worldRenderer && typeof window.__worldRenderer.spawnLeavesBurst === "function") {
+        window.__worldRenderer.spawnLeavesBurst(x, y, count);
+      }
+    };
+  }
