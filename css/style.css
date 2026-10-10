@@ -833,15 +833,26 @@ html, body {
       animation: fadeIn 0.22s ease-out forwards;
     }
 
-    /* Suporte a flex-col-reverse e coluna vertical de botões da fogueira */
+    /* Suporte a flex-col-reverse e coluna vertical de botões da fogueira acima da tocha */
     .flex-col-reverse {
       display: flex;
       flex-direction: column-reverse;
     }
-    .campfire-vertical-col {
+    .campfire-vertical-col,
+    #touch-campfire-options-col {
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
+      justify-content: flex-end !important;
       gap: 8px !important;
+      width: auto !important;
+    }
+    #touch-campfire-options-col > button,
+    .campfire-vertical-col > button {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-shrink: 0 !important;
     }
 

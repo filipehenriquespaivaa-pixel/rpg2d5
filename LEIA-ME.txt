@@ -168,6 +168,15 @@ CONTROLES:
 - L: Ligar/Desligar Tocha
 - U: Coletar água na margem de lagos
 - P: Pesca com lança na margem da água
+- Fogueiras no Mapa:
+  * Ao se aproximar de uma fogueira, as opções formam uma fila vertical logo acima do botão de acionar tocha:
+    - SALVAR / DESCANSAR (ou ACENDER se estiver apagada)
+    - ALIMENTAR (+10 G com galhos para expandir o fogo)
+    - ASSAR / COLETAR peixe no espeto
+  * Chuva e Fogueiras:
+    - Sob chuva na superfície, as fogueiras comuns vão se enfraquecendo e se apagam aos poucos com o tempo.
+    - Fogueiras apagadas podem ser reacendidas com 2 Pederneiras.
+    - A FOGUEIRA AZUL (ponto de salve registrado do jogador) é mágica e NUNCA se apaga com a chuva!
 
 SISTEMA DE CORTE DE ÁRVORES E TRONCOS DE MADEIRA:
 - Obtenção do Machado: Forjado na Mesa de Fusão [I] (combinando Pedra Lascada + Corda de Fibra Pequena + Galho de Madeira) ou disponível no painel de Armas do Modo Desenvolvedor.

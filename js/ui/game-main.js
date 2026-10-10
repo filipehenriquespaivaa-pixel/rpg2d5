@@ -4619,6 +4619,16 @@
                 c.current,
                 aa.biome.id,
               )),
+            Q &&
+              typeof Q.updateRainExtinguishCampfires === "function" &&
+              Q.updateRainExtinguishCampfires(
+                Ye,
+                isRainingSurface,
+                ee.current,
+                he.x,
+                he.y,
+                ve,
+              ),
             c.current.update(
               Ye,
               he,

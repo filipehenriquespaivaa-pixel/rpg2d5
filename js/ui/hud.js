@@ -2076,6 +2076,7 @@
                               ? h.jsxs("button", {
                                   id: "touch-roast-fish-btn",
                                   onClick: Oe === 0 ? j : X,
+                                  style: { width: "44px", height: "44px", minWidth: "44px", minHeight: "44px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
                                   className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Oe === 0 ? "bg-gradient-to-br from-emerald-600 to-emerald-700 border-emerald-300 text-white shadow-emerald-950/60 animate-bounce" : "bg-amber-950/90 border-amber-500/80 text-amber-200"}`,
                                   title: Oe === 0 ? "Peixe assado e pronto! Toque para saborear" : `Assando na fogueira... Faltam ${Oe}s`,
                                   children: [
@@ -2094,6 +2095,7 @@
                                   id: "touch-roast-fish-btn",
                                   onClick: X,
                                   disabled: Ae === 0 || Se < 1,
+                                  style: { width: "44px", height: "44px", minWidth: "44px", minHeight: "44px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
                                   className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Ae > 0 && Se >= 1 ? "bg-gradient-to-br from-amber-600 to-amber-700 border-amber-300/90 text-white shadow-amber-950/60 animate-pulse" : "bg-slate-800/80 border-slate-700/60 text-slate-400 opacity-60"}`,
                                   title: Ae > 0 && Se >= 1 ? "Assar Peixe no Espeto (1 minuto) - Tecla T" : "Requer 1 Peixe Cru e 1 Galho para assar",
                                   children: [
@@ -2112,6 +2114,7 @@
                             id: "touch-feed-campfire-btn",
                             onClick: () => (Ne == null ? void 0 : Ne(10)),
                             disabled: Se < 10,
+                            style: { width: "44px", height: "44px", minWidth: "44px", minHeight: "44px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
                             className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Se >= 10 ? "bg-gradient-to-br from-emerald-600 to-emerald-700 active:from-emerald-700 border-emerald-400/90 text-white shadow-emerald-950/60 animate-pulse" : "bg-slate-800/80 border-slate-700/60 text-slate-400 opacity-60"}`,
                             title: `Alimentar Fogueira (+10 Galhos) - Tecla G (Você tem: ${Se}/10)`,
                             children: [
@@ -2126,6 +2129,7 @@
                           h.jsx("button", {
                             id: "touch-interact-btn",
                             onClick: j,
+                            style: { width: "44px", height: "44px", minWidth: "44px", minHeight: "44px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
                             className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 text-white font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${oa ? "bg-gradient-to-br from-emerald-600 to-teal-700 border-emerald-400/90 shadow-emerald-950/70 animate-pulse" : "bg-gradient-to-br from-amber-600 to-amber-700 border-amber-400/80 shadow-amber-950/60"}`,
                             title: oa
                               ? (ga ? "Salvar Novamente (Tecla F)" : "Descansar & Salvar Jogo (Tecla F)")
@@ -2157,6 +2161,7 @@
                     h.jsx("button", {
                       id: "touch-torch-btn",
                       onClick: K || (() => g(!f)),
+                      style: { width: "44px", height: "44px", minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" },
                       className: `flex items-center justify-center w-11 h-11 rounded-xl border text-sm font-bold shadow-lg transition-all backdrop-blur-sm active:scale-90 ${f ? "bg-amber-500/90 border-amber-300 text-slate-950 shadow-amber-500/40" : "bg-slate-800/80 border-white/20 text-amber-400"}`,
                       title: f ? "Desequipar e Guardar Tocha no Inventário (L)" : "Equipar Tocha (L)",
                       children: h.jsx(Lr, { className: "h-4 w-4" }),

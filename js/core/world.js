@@ -324,9 +324,124 @@
       const m = this.interactedProps.get(o) || {};
       return (
         this.interactedProps.set(o, { ...m, lit: !0 }),
+        (this._cachedCampfireTime = 0),
         this.invalidateTile(t, l),
         !0
       );
+    }
+    extinguishCampfire(t, l, reason = "rain") {
+      const o = `${this.isUnderground ? "cave_" : "surf_"}${t},${l}`;
+      let u = this.customPlacedProps.get(o);
+      if (!u) {
+        const c = this.getTile(t, l);
+        if (c.prop && (c.prop.kind === "campfire" || c.prop.kind === "clay_oven")) {
+          u = { ...c.prop };
+          this.customPlacedProps.set(o, u);
+        }
+      }
+      if (u && (u.kind === "campfire" || u.kind === "clay_oven")) {
+        u.lit = !1;
+        u.fireLevel = 1;
+        u.scale = 1;
+        u._rainExtinguishTimer = 0;
+        u.namePt = "Fogueira de Acampamento (Apagada)";
+        u.descriptionPt = "Uma fogueira apagada pela chuva. Pressione [F] tendo 2 Pederneiras para acendê-la com faíscas!";
+      }
+      const m = this.interactedProps.get(o) || {};
+      this.interactedProps.set(o, { ...m, lit: !1, fireLevel: 1, scale: 1 });
+      this._cachedCampfireTime = 0;
+      this.invalidateTile(t, l);
+      return !0;
+    }
+    updateRainExtinguishCampfires(dt, isRainingSurface, savedCampfire, playerX, playerY, notifyFn) {
+      if (this.isUnderground) return;
+
+      // Se não estiver chovendo na superfície, seca o acúmulo de água aos poucos
+      if (!isRainingSurface) {
+        for (const [key, prop] of this.customPlacedProps.entries()) {
+          if (key.startsWith("surf_") && prop && (prop.kind === "campfire" || prop.kind === "clay_oven")) {
+            if (prop._rainExtinguishTimer > 0) {
+              prop._rainExtinguishTimer = Math.max(0, prop._rainExtinguishTimer - dt * 0.5);
+            }
+          }
+        }
+        return;
+      }
+
+      // Está chovendo na superfície: rastreia fogueiras nos tiles carregados ao redor do jogador
+      const playerTx = Math.floor(playerX / this.tileSize);
+      const playerTy = Math.floor(playerY / this.tileSize);
+      const scanRadius = 16;
+
+      for (let dy = -scanRadius; dy <= scanRadius; dy++) {
+        for (let dx = -scanRadius; dx <= scanRadius; dx++) {
+          const tx = playerTx + dx;
+          const ty = playerTy + dy;
+          const key = `surf_${tx},${ty}`;
+          if (!this.customPlacedProps.has(key)) {
+            const tile = this.getTile(tx, ty);
+            if (tile && tile.prop && (tile.prop.kind === "campfire" || tile.prop.kind === "clay_oven")) {
+              this.customPlacedProps.set(key, { ...tile.prop });
+            }
+          }
+        }
+      }
+
+      // Processa fogueiras sob chuva
+      for (const [key, prop] of this.customPlacedProps.entries()) {
+        if (!key.startsWith("surf_")) continue;
+        if (!prop || (prop.kind !== "campfire" && prop.kind !== "clay_oven")) continue;
+        if (prop.lit === !1) continue;
+
+        const coords = key.replace("surf_", "").split(",");
+        const tx = parseInt(coords[0], 10);
+        const ty = parseInt(coords[1], 10);
+        if (isNaN(tx) || isNaN(ty)) continue;
+
+        // Fogueira AZUL (de salve do jogador): NUNCA se apaga com a chuva!
+        const isBlueSaveCampfire = !!(
+          savedCampfire &&
+          savedCampfire.tx === tx &&
+          savedCampfire.ty === ty &&
+          !savedCampfire.isUnderground
+        );
+        if (isBlueSaveCampfire) {
+          prop._rainExtinguishTimer = 0;
+          continue;
+        }
+
+        // Fogueira comum sob chuva: se apaga aos poucos!
+        prop._rainExtinguishTimer = (prop._rainExtinguishTimer || 0) + dt;
+
+        const propWorldX = tx * this.tileSize + this.tileSize / 2;
+        const propWorldY = ty * this.tileSize + this.tileSize / 2;
+        const distToPlayer = Math.hypot(playerX - propWorldX, playerY - propWorldY);
+
+        const fireLevel = prop.fireLevel || 1;
+        if (fireLevel > 1) {
+          if (prop._rainExtinguishTimer >= 6.0) {
+            prop._rainExtinguishTimer = 0;
+            prop.fireLevel = fireLevel - 1;
+            prop.sticksFed = Math.max(10, (prop.sticksFed || 10) - 10);
+            prop.scale = Math.max(1, (prop.scale || 1) - 0.5);
+            prop.namePt = prop.fireLevel === 1 ? "Fogueira Crepitante" : `Fogueira (Nível ${prop.fireLevel})`;
+            prop.descriptionPt = `Fogueira diminuída pela chuva (Nível ${prop.fireLevel}). Alimente com galhos para mantê-la forte!`;
+            this._cachedCampfireTime = 0;
+            this.invalidateTile(tx, ty);
+            if (distToPlayer <= 220 && typeof notifyFn === "function") {
+              notifyFn("🌧️ A chuva constante está diminuindo o fogo da fogueira!");
+            }
+          }
+        } else {
+          if (prop._rainExtinguishTimer >= 8.0) {
+            this.extinguishCampfire(tx, ty, "rain");
+            this._cachedCampfireTime = 0;
+            if (distToPlayer <= 260 && typeof notifyFn === "function") {
+              notifyFn("🌧️ A fogueira se apagou com a chuva! Use 2 Pederneiras para acendê-la quando a chuva passar.");
+            }
+          }
+        }
+      }
     }
     getNearbyCampfire(t, l, o = 85) {
       const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();

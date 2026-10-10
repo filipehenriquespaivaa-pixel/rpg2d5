@@ -53,14 +53,26 @@ function buildCombinedBundle(indexHtml) {
 
 function getAppBundle() {
   const indexPath = path.join(__dirname, 'index.html');
-  const stat = fs.statSync(indexPath);
-  if (cachedBundleBuf && stat.mtimeMs <= cachedBundleTime) {
+  const indexHtml = fs.readFileSync(indexPath, 'utf-8');
+  let maxMtime = fs.statSync(indexPath).mtimeMs;
+  const scriptRegex = /<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>\s*<\/script>/gi;
+  let match;
+  while ((match = scriptRegex.exec(indexHtml)) !== null) {
+    const rawSrc = match[1].split('?')[0].replace(/^\.\//, '').replace(/^\//, '');
+    const fullPath = path.normalize(path.join(__dirname, rawSrc));
+    if (fullPath.startsWith(__dirname) && fs.existsSync(fullPath)) {
+      try {
+        const s = fs.statSync(fullPath);
+        if (s.mtimeMs > maxMtime) maxMtime = s.mtimeMs;
+      } catch (_) {}
+    }
+  }
+  if (cachedBundleBuf && maxMtime <= cachedBundleTime) {
     return cachedBundleBuf;
   }
-  const indexHtml = fs.readFileSync(indexPath, 'utf-8');
   const bundle = buildCombinedBundle(indexHtml);
   cachedBundleBuf = Buffer.from(bundle, 'utf-8');
-  cachedBundleTime = stat.mtimeMs;
+  cachedBundleTime = maxMtime;
   return cachedBundleBuf;
 }
 
