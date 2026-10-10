@@ -3760,14 +3760,14 @@
             mergedCount: thisMergedCave.mergedCount || 1,
             surfaceBiome: surfBiome,
             offsetX: 0,
-            offsetY: -4,
+            offsetY: 0,
             scale: thisMergedCave.scale || 1.35,
             interactive: !0,
             namePt: thisMergedCave.isMerged
-              ? "Grande Formação de Estalactites"
-              : "Estalactites do Teto da Caverna",
+              ? "Grande Formação de Estalagmites"
+              : "Estalagmites do Chão da Caverna",
             descriptionPt:
-              "Pontas calcárias e minerais milenares que pendem da abóbada rochosa logo abaixo de um grande rochedo maciço da superfície, gotejando água mineral na base.",
+              "Cones rochosos e calcários milenares que brotam diretamente do chão da caverna logo abaixo de um grande rochedo maciço da superfície.",
           },
           detailHash: u,
         };
@@ -5424,8 +5424,8 @@
         return {
           success: !0,
           message:
-            "💧 Longas estalactites pontiagudas pendem do teto da caverna onde acima repousa uma grande rocha maciça, gotejando água fria nas pedras.",
-          reward: "Estalactites Examinadas (+35 XP)",
+            "🪨 Grandes estalagmites pontiagudas erguem-se do chão da caverna exatamente abaixo da grande rocha maciça da superfície.",
+          reward: "Estalagmites Examinadas (+35 XP)",
         };
       if (o.prop.kind === "geode_fissure")
         return {

@@ -2501,133 +2501,74 @@
   }
   function drawCaveExitStalactites(e, t = 1, subType = 0, animTimer = 0, isMerged = !1, surfaceBiome = null) {
     t = (typeof t === "number" && isFinite(t) && t > 0) ? t : 1;
-    const safeT = (typeof animTimer === "number" && isFinite(animTimer)) ? animTimer : 0;
     const wMul = isMerged ? 1.25 : 1;
     const hMul = isMerged ? 1.2 : 1;
     const isDesert = surfaceBiome && (surfaceBiome.id === "DESERT" || surfaceBiome.id === "CANYON");
 
-    const colDark = isDesert ? "#451a03" : "#1c1917";
+    const colBase = isDesert ? "#2e1205" : "#1c1917";
+    const colDark = isDesert ? "#451a03" : "#292524";
     const colMid = isDesert ? "#78350f" : "#44403c";
     const colLight = isDesert ? "#b45309" : "#78716c";
-    const colHighlight = isDesert ? "#f59e0b" : "#d6d3d1";
+    const colHighlight = isDesert ? "#fde68a" : "#e7e5e4";
 
     e.save();
 
-    // 1. Sombra e poça mineral de gotejamento no chão da caverna
+    // 1. Sombra e base rochosa somente no CHÃO da caverna (sem nada pendurado do teto!)
     e.fillStyle = "rgba(0, 0, 0, 0.55)";
     e.beginPath();
-    e.ellipse(0, 4 * t, 18 * wMul * t, 7.5 * t, 0, 0, Math.PI * 2);
+    e.ellipse(0, 4.5 * t, 17 * wMul * t, 7 * t, 0, 0, Math.PI * 2);
     e.fill();
 
-    // Anel úmido de calcário e gotejamento no piso
-    e.fillStyle = isDesert ? "rgba(180, 83, 9, 0.28)" : "rgba(56, 189, 248, 0.18)";
+    e.fillStyle = colBase;
     e.beginPath();
-    e.ellipse(0, 4 * t, 12 * wMul * t, 4.8 * t, 0, 0, Math.PI * 2);
+    e.ellipse(0, 3.5 * t, 14 * wMul * t, 5.5 * t, 0, 0, Math.PI * 2);
     e.fill();
 
-    // Pequenas bases de estalagmite/calcário formadas pelo gotejamento no chão
-    const floorCones = [
-      { x: -7 * wMul, y: 4, w: 5.5, h: 7 },
-      { x: 6.5 * wMul, y: 4.5, w: 5, h: 6.5 },
-      { x: 0, y: 5, w: 6.5, h: 8.5 },
-    ];
-    for (let i = 0; i < floorCones.length; i++) {
-      const fc = floorCones[i];
-      e.fillStyle = colMid;
-      e.beginPath();
-      e.moveTo((fc.x - fc.w * 0.5) * t, fc.y * t);
-      e.lineTo(fc.x * t, (fc.y - fc.h) * t);
-      e.lineTo((fc.x + fc.w * 0.5) * t, fc.y * t);
-      e.closePath();
-      e.fill();
-    }
-
-    // 2. Abóbada / Base rochosa superior presa ao teto da caverna
-    const topY = -36 * hMul * t;
-    e.fillStyle = colDark;
-    e.beginPath();
-    e.ellipse(0, topY, 21 * wMul * t, 6.5 * t, 0, 0, Math.PI * 2);
-    e.fill();
-
-    // 3. Conjunto de Estalactites penduradas apontando para BAIXO (do teto em direção ao chão!)
-    const spikes = [
-      { x: -14 * wMul, topW: 6.5, len: 21 * hMul },
-      { x: -8.5 * wMul, topW: 8.0, len: 29 * hMul },
-      { x: 8.5 * wMul, topW: 7.8, len: 27 * hMul },
-      { x: 14 * wMul, topW: 6.0, len: 19 * hMul },
-      { x: -3.2 * wMul, topW: 7.2, len: 24 * hMul },
-      { x: 3.5 * wMul, topW: 7.0, len: 23 * hMul },
-      { x: 0, topW: 9.8, len: 35 * hMul },
+    // 2. Aglomerado de Estalagmites brotando do chão para cima (estilo Tg ampliado)
+    const cones = [
+      { x: -9.5 * wMul, y: 2.5, w: 6.8 * wMul, h: 15 * hMul },
+      { x: 9.2 * wMul, y: 2.8, w: 6.5 * wMul, h: 14 * hMul },
+      { x: -4.8 * wMul, y: 3.2, w: 7.8 * wMul, h: 21 * hMul },
+      { x: 4.8 * wMul, y: 3.2, w: 7.5 * wMul, h: 19.5 * hMul },
+      { x: 0, y: 3.8, w: 9.6 * wMul, h: 26 * hMul },
     ];
 
-    for (let i = 0; i < spikes.length; i++) {
-      const sp = spikes[i];
-      const sx = sp.x * t;
-      const hw = (sp.topW * 0.5) * t;
-      const tipY = topY + sp.len * t;
+    for (let i = 0; i < cones.length; i++) {
+      const c = cones[i];
+      const cx = c.x * t;
+      const baseY = c.y * t;
+      const hw = (c.w * 0.5) * t;
+      const tipY = baseY - c.h * t;
 
-      // Sombra/corpo principal da estalactite apontando para baixo
+      // Base circular de cada estalagmite no chão
       e.fillStyle = colDark;
       e.beginPath();
-      e.moveTo(sx - hw, topY);
-      e.lineTo(sx, tipY);
-      e.lineTo(sx + hw, topY);
-      e.closePath();
+      e.ellipse(cx, baseY + 0.8 * t, hw * 0.95, 2.8 * t, 0, 0, Math.PI * 2);
       e.fill();
 
-      // Face média iluminada
+      // Corpo principal da estalagmite apontando para cima
       e.fillStyle = colMid;
       e.beginPath();
-      e.moveTo(sx - hw * 0.85, topY);
-      e.lineTo(sx, tipY);
-      e.lineTo(sx + hw * 0.25, topY);
+      e.moveTo(cx - hw, baseY);
+      e.lineTo(cx, tipY);
+      e.lineTo(cx + hw, baseY);
       e.closePath();
       e.fill();
 
-      // Aresta de luz lateral
+      // Face esquerda iluminada (igual às estalagmites do chão da caverna)
       e.fillStyle = colLight;
       e.beginPath();
-      e.moveTo(sx - hw * 0.55, topY);
-      e.lineTo(sx, tipY);
-      e.lineTo(sx - hw * 0.1, topY);
+      e.moveTo(cx - hw, baseY);
+      e.lineTo(cx, tipY);
+      e.lineTo(cx, baseY);
       e.closePath();
       e.fill();
 
-      // Brilho mineral úmido na ponta inferior da estalactite
+      // Ponto de brilho mineral no topo da estalagmite
       e.fillStyle = colHighlight;
       e.beginPath();
-      e.arc(sx, tipY - 1.2 * t, 0.9 * t, 0, Math.PI * 2);
+      e.arc(cx, tipY + 1.5 * t, 1.1 * t, 0, Math.PI * 2);
       e.fill();
-    }
-
-    // Anéis horizontais de calcário nas estalactites maiores
-    e.strokeStyle = "rgba(0, 0, 0, 0.35)";
-    e.lineWidth = 1 * t;
-    e.beginPath();
-    e.moveTo(-4 * wMul * t, topY + 10 * t);
-    e.lineTo(4 * wMul * t, topY + 10 * t);
-    e.moveTo(-2.5 * wMul * t, topY + 19 * t);
-    e.lineTo(2.5 * wMul * t, topY + 19 * t);
-    e.stroke();
-
-    // 4. Animação de gota d'água caindo da ponta da estalactite central até a poça no chão
-    const dropPhase = (safeT * 1.35 + (subType || 0) * 0.37) % 1;
-    const centralTipY = topY + 35 * hMul * t;
-    const floorImpactY = 4 * t;
-    if (dropPhase < 0.75) {
-      const p = dropPhase / 0.75;
-      const dropY = centralTipY + p * p * (floorImpactY - centralTipY);
-      e.fillStyle = "#7dd3fc";
-      e.beginPath();
-      e.arc(0, dropY, 1.3 * t, 0, Math.PI * 2);
-      e.fill();
-    } else {
-      const rippleP = (dropPhase - 0.75) / 0.25;
-      e.strokeStyle = `rgba(125, 211, 252, ${(1 - rippleP) * 0.75})`;
-      e.lineWidth = 1.1 * t;
-      e.beginPath();
-      e.ellipse(0, floorImpactY, (2 + rippleP * 7) * t, (0.8 + rippleP * 2.8) * t, 0, 0, Math.PI * 2);
-      e.stroke();
     }
 
     e.restore();
@@ -4535,14 +4476,6 @@
     e.lineTo(4.2 * t, topBackY + 16 * t);
     e.lineTo(2.2 * t, topFrontY);
     e.stroke();
-
-    // Indicador sutil pulsante em tom ocre/terra acima da fenda
-    const floatY = Math.sin(safeTimer * 4.5) * 1.8 * t;
-    e.fillStyle = `rgba(217, 119, 6, ${0.92 * pulse})`;
-    e.font = `bold ${Math.round(6.5 * t)}px monospace`;
-    e.textAlign = "center";
-    e.textBaseline = "middle";
-    e.fillText(isExit ? "▼ SAÍDA DO GEODO ▼" : "▲ FENDA DO GEODO ▲", 0, (isExit ? topBackY - 7 * t : topFrontY - 8 * t) + floatY);
 
     e.restore();
   }
