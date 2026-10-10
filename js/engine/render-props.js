@@ -7408,7 +7408,7 @@
       if (!drawSnowCityHouseRoofs._houseRoofCache) {
         drawSnowCityHouseRoofs._houseRoofCache = new Map();
       }
-      const hCacheKey = `h_${h.id}_${tileSize}`;
+      const hCacheKey = `h_${h.id}_${h.halfW}_${h.halfH}_${h.doorOnSouth ? 1 : 0}_${tileSize}`;
       let hCached = drawSnowCityHouseRoofs._houseRoofCache.get(hCacheKey);
 
       if (!hCached) {

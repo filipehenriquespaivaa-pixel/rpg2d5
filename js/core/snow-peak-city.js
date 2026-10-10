@@ -22,7 +22,7 @@ window.Game = window.Game || {};
   // Centro e raio territorial da Cidade dos Picos Gelados (no coração do Bioma Gelado e Taiga Nevada)
   const CITY_CX = -380;
   const CITY_CY = -1220;
-  const CITY_RADIUS = 96;
+  const CITY_RADIUS = 132;
 
   // Coordenadas da Escadaria do Subsolo do Quartel Militar (liga a Ala da Prisão na superfície ao Subsolo de Tortura e Solitárias!)
   const BARRACKS_STAIR_TX = CITY_CX;      // relX === 0
@@ -34,98 +34,250 @@ window.Game = window.Game || {};
   const PRISON_MINE_TY = CITY_CY + 56;
 
   // =========================================================================
-  // URBANISMO ORGÂNICO E ASSIMÉTRICO DA VILA GLACIAL (24 CASAS):
-  // - Mistura casas geminadas (coladas umas nas outras) com casas separadas por
-  //   BECOS ESTREITOS (alguns com saída para o norte/sul, outros becos sem saída!).
-  // - As casas NÃO são todas alinhadas nem do mesmo tamanho:
-  //   * Tamanhos variados: Chalés Compactos (halfW: 5, halfH: 5), Chalés Largos (halfW: 6, halfH: 5),
-  //     Chalés Compridos (halfW: 5, halfH: 6) e Casarões Familiares de 2 Quartos (halfW: 7, halfH: 5 ou 6).
-  //   * Alinhamento orgânico: recuos e avanços variados em Y, mas todas conectadas às
-  //     Ruas Norte (relY = -12..-11) e Sul (relY = +11..+12) e à Praça Central!
-  //   * Algumas casas possuem DOIS QUARTOS mobiliados (Quarto Principal + 2º Quarto de Hóspedes/Filhos).
+  // GERADOR PSEUDOALEATÓRIO DETERMINÍSTICO POR SEED (Mulberry32)
+  // Garante que a posição das casas (especialmente as casas espalhadas ao redor
+  // do centro pavimentado, estilo deserto, e os recuos das casas do centro)
+  // mude automaticamente de acordo com a seed do mundo!
   // =========================================================================
-  const HOUSE_SPECS = [
+  let _currentSeed = 4289;
+  const HOUSES = [];
+
+  function _createSeededRng(seedVal) {
+    let a = (Number(seedVal) || 4289) >>> 0;
+    if (a === 0) a = 4289;
+    return function () {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // =========================================================================
+  // URBANISMO DA VILA GLACIAL (40 CASAS NO TOTAL):
+  // 1) 24 Casas no Centro Pavimentado (#1 a #24): ao redor da Praça Central e
+  //    das Ruas Norte e Sul de paralelepípedos, com variações sutis por seed.
+  // 2) 16 Novas Casas Espalhadas ao Redor do Centro Pavimentado (#25 a #40):
+  //    posicionadas organicamente sobre a neve ao redor do núcleo pavimentado
+  //    (Norte, Noroeste, Nordeste, Oeste, Leste e Sudoeste), com distância
+  //    mínima garantida entre elas (estilo as casas espalhadas do Deserto!) e
+  //    cujas posições, dimensões e layout interno mudam de acordo com a seed!
+  // =========================================================================
+  const BASE_PAVED_CENTER_SPECS = [
     // --- QUARTEIRÃO NOROESTE (Lado Norte da Rua Norte, portas para o Sul) ---
-    // Casa #1 (Casarão de 2 Quartos) -> Beco sem saída em X = -31..-30 -> Casas #2 e #3 geminadas -> Beco com saída em X = -8 -> Casa #4 (recuada)
-    { relX: -39, relY: -18, halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true  }, // [-46..-32], sul em -13
-    { relX: -24, relY: -19, halfW: 5, halfH: 6, doorOnSouth: true,  twoBedrooms: false, openConcept: false }, // [-29..-19], sul em -13 (mais comprida!)
-    { relX: -14, relY: -18, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [-19..-9],  sul em -13 (geminada na #2)
-    // Beco com saída em X = -8
-    { relX: -2,  relY: -19, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: false }, // [-7..+3],   sul em -14 (recuada 1 bloco!)
+    { relX: -39, relY: -18, halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true,  canJitterY: -1 },
+    { relX: -24, relY: -19, halfW: 5, halfH: 6, doorOnSouth: true,  twoBedrooms: false, openConcept: false, canJitterY: 0 },
+    { relX: -14, relY: -18, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true,  canJitterY: -1 },
+    { relX: -2,  relY: -19, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: false, canJitterY: 1 },
 
     // --- QUARTEIRÃO NORDESTE (Lado Norte da Rua Norte, portas para o Sul) ---
-    // Passagem Norte da Praça em X = +4..+5 -> Casas #5 e #6 geminadas -> Beco sem saída em X = +28..+29 -> Casa #7 (2 Quartos)
-    { relX: 11,  relY: -18, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [+6..+16],  sul em -13
-    { relX: 21,  relY: -19, halfW: 6, halfH: 6, doorOnSouth: true,  twoBedrooms: true,  openConcept: false }, // [+15..+27 -> ajustado +16..+28: relX: 22, halfW: 6], geminada na #5!
-    { relX: 37,  relY: -18, halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true  }, // [+30..+44], sul em -13 (separada por beco sem saída em +29!)
+    { relX: 11,  relY: -18, halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true,  canJitterY: -1 },
+    { relX: 22,  relY: -19, halfW: 6, halfH: 6, doorOnSouth: true,  twoBedrooms: true,  openConcept: false, canJitterY: 0 },
+    { relX: 37,  relY: -18, halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true,  canJitterY: -1 },
 
     // --- QUARTEIRÃO CENTRO-OESTE (Lado Sul da Rua Norte, portas para o Norte + Coladas na Praça) ---
-    // Casa #8 -> Beco com saída em X = -33..-32 -> Casas #9 (2 Quartos) e #10 geminadas coladas na Praça!
-    { relX: -39, relY: -5,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [-44..-34], norte em -10
-    // Beco em X = -33..-32
-    { relX: -24, relY: -4,  halfW: 7, halfH: 6, doorOnSouth: false, twoBedrooms: true,  openConcept: true  }, // [-31..-17], norte em -10 (Casarão 2 Quartos!)
-    { relX: -11, relY: -5,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [-17..-5],  norte em -10 (geminada na #9 e colada na Praça em X = -5!)
+    { relX: -39, relY: -5,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false, canJitterY: 1 },
+    { relX: -24, relY: -4,  halfW: 7, halfH: 6, doorOnSouth: false, twoBedrooms: true,  openConcept: true,  canJitterY: 0 },
+    { relX: -11, relY: -5,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false, canJitterY: 0 },
 
     // --- QUARTEIRÃO CENTRO-LESTE (Lado Sul da Rua Norte, portas para o Norte + Coladas na Praça) ---
-    // Casa #11 colada na Praça -> Beco sem saída em X = +16..+17 -> Casas #12 e #13 (2 Quartos) geminadas!
-    { relX: 10,  relY: -5,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true  }, // [+5..+15],  norte em -10 (colada na Praça em X = +5!)
-    // Beco sem saída em X = +16..+17
-    { relX: 23,  relY: -4,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [+18..+28], norte em -9 (recuada 1 bloco!)
-    { relX: 35,  relY: -5,  halfW: 7, halfH: 5, doorOnSouth: false, twoBedrooms: true,  openConcept: true  }, // [+28..+42], norte em -10 (geminada na #12, 2 Quartos!)
+    { relX: 10,  relY: -5,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true,  canJitterY: 0 },
+    { relX: 23,  relY: -4,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false, canJitterY: -1 },
+    { relX: 35,  relY: -5,  halfW: 7, halfH: 5, doorOnSouth: false, twoBedrooms: true,  openConcept: true,  canJitterY: 1 },
 
     // --- QUARTEIRÃO CENTRO-SUL OESTE (Lado Norte da Rua Sul, portas para o Sul + Coladas na Praça) ---
-    // Casas #14 e #15 geminadas -> Beco sem saída em X = -18..-17 -> Casa #16 (2 Quartos) colada na Praça!
-    { relX: -38, relY: 5,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [-43..-33], sul em +10
-    { relX: -26, relY: 4,   halfW: 7, halfH: 6, doorOnSouth: true,  twoBedrooms: true,  openConcept: false }, // [-33..-19], sul em +10 (geminada na #14, 2 Quartos!)
-    // Beco sem saída em X = -18..-17
-    { relX: -11, relY: 5,   halfW: 6, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true  }, // [-17..-5],  sul em +10 (colada na Praça em X = -5!)
+    { relX: -38, relY: 5,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true,  canJitterY: -1 },
+    { relX: -26, relY: 4,   halfW: 7, halfH: 6, doorOnSouth: true,  twoBedrooms: true,  openConcept: false, canJitterY: 0 },
+    { relX: -11, relY: 5,   halfW: 6, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: true,  canJitterY: 0 },
 
     // --- QUARTEIRÃO CENTRO-SUL LESTE (Lado Norte da Rua Sul, portas para o Sul + Coladas na Praça) ---
-    // Casas #17 e #18 geminadas coladas na Praça -> Beco com saída em X = +27..+28 -> Casa #19
-    { relX: 10,  relY: 5,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: false }, // [+5..+15],  sul em +10 (colada na Praça em X = +5!)
-    { relX: 21,  relY: 6,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true  }, // [+16..+26], sul em +11 (avançada 1 bloco na rua, geminada na #17!)
-    // Beco em X = +27..+28
-    { relX: 36,  relY: 5,   halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: false }, // [+29..+43], sul em +10 (Casarão 2 Quartos!)
+    { relX: 10,  relY: 5,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: false, canJitterY: 0 },
+    { relX: 21,  relY: 6,   halfW: 5, halfH: 5, doorOnSouth: true,  twoBedrooms: false, openConcept: true,  canJitterY: -1 },
+    { relX: 36,  relY: 5,   halfW: 7, halfH: 5, doorOnSouth: true,  twoBedrooms: true,  openConcept: false, canJitterY: -1 },
 
     // --- QUARTEIRÃO SUDOESTE (Lado Sul da Rua Sul, portas para o Norte) ---
-    // Casa #20 -> Beco sem saída em X = -29..-28 -> Casas #21 (2 Quartos) e #22 geminadas!
-    { relX: -36, relY: 18,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true  }, // [-42..-30], norte em +13
-    // Beco sem saída em X = -29..-28
-    { relX: -20, relY: 19,  halfW: 7, halfH: 6, doorOnSouth: false, twoBedrooms: true,  openConcept: false }, // [-27..-13], norte em +13 (2 Quartos, mais funda!)
-    { relX: -7,  relY: 18,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true  }, // [-12..-2],  norte em +13 (geminada na #21!)
+    { relX: -36, relY: 18,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true,  canJitterY: 1 },
+    { relX: -20, relY: 19,  halfW: 7, halfH: 6, doorOnSouth: false, twoBedrooms: true,  openConcept: false, canJitterY: 0 },
+    { relX: -7,  relY: 18,  halfW: 5, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: true,  canJitterY: 1 },
 
     // --- QUARTEIRÃO SUDESTE (Lado Sul da Rua Sul, portas para o Norte) ---
-    // Passagem Sul da Praça em X = -1..+2 -> Casa #23 (recuada) -> Beco com saída em X = +16..+17 -> Casas #24 (2 Quartos) e #25 geminadas!
-    { relX: 9,   relY: 19,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [+3..+15],  norte em +14 (recuada 1 bloco!)
-    // Beco com saída em X = +16..+17
-    { relX: 25,  relY: 18,  halfW: 7, halfH: 5, doorOnSouth: false, twoBedrooms: true,  openConcept: true  }, // [+18..+32], norte em +13 (Casarão 2 Quartos!)
-    { relX: 38,  relY: 19,  halfW: 5, halfH: 6, doorOnSouth: false, twoBedrooms: false, openConcept: false }, // [+33..+43], norte em +13 (geminada na #24!)
+    { relX: 9,   relY: 19,  halfW: 6, halfH: 5, doorOnSouth: false, twoBedrooms: false, openConcept: false, canJitterY: -1 },
+    { relX: 25,  relY: 18,  halfW: 7, halfH: 5, doorOnSouth: false, twoBedrooms: true,  openConcept: true,  canJitterY: 1 },
+    { relX: 38,  relY: 19,  halfW: 5, halfH: 6, doorOnSouth: false, twoBedrooms: false, openConcept: false, canJitterY: 0 },
   ];
 
-  // Corrige sobreposição exata da Casa #6 para compartilhar parede em X = +16 com a Casa #5
-  HOUSE_SPECS[5].relX = 22;
+  // Âncoras base para as 16 novas casas espalhadas ao redor do centro pavimentado (como no Deserto, mas variando com a seed!)
+  const SCATTERED_OUTER_ZONES = [
+    // Arco Norte / Noroeste / Nordeste (acima da Rua Norte pavimentada, relY entre -34 e -76)
+    { baseX: -68, baseY: -36, rangeX: 10, rangeY: 8,  doorOnSouth: true  }, // #25
+    { baseX: -42, baseY: -44, rangeX: 12, rangeY: 8,  doorOnSouth: true  }, // #26
+    { baseX: -14, baseY: -46, rangeX: 12, rangeY: 9,  doorOnSouth: true  }, // #27
+    { baseX:  16, baseY: -45, rangeX: 12, rangeY: 9,  doorOnSouth: true  }, // #28
+    { baseX:  44, baseY: -43, rangeX: 12, rangeY: 8,  doorOnSouth: true  }, // #29
+    { baseX:  70, baseY: -35, rangeX: 10, rangeY: 8,  doorOnSouth: true  }, // #30
 
-  const HOUSES = HOUSE_SPECS.map((spec, idx) => {
-    const id = idx + 1;
-    const layoutDesc = spec.twoBedrooms
-      ? `2 Quartos • ${spec.openConcept ? "Sala/Cozinha Integradas" : "Cômodos Separados"}`
-      : spec.openConcept
-        ? "Sala e Cozinha Integradas"
-        : "Cômodos Separados";
-    return {
-      id,
-      name: `Casa Glacial #${id} (${layoutDesc})`,
-      cx: CITY_CX + spec.relX,
-      cy: CITY_CY + spec.relY,
-      relX: spec.relX,
-      relY: spec.relY,
-      halfW: spec.halfW,
-      halfH: spec.halfH,
-      openConcept: spec.openConcept,
-      twoBedrooms: !!spec.twoBedrooms,
-      doorOnSouth: spec.doorOnSouth,
-    };
-  });
+    // Arco Norte Distante (encostas geladas ao norte, relY entre -66 e -82)
+    { baseX: -54, baseY: -70, rangeX: 12, rangeY: 8,  doorOnSouth: true  }, // #31
+    { baseX: -18, baseY: -74, rangeX: 12, rangeY: 8,  doorOnSouth: true  }, // #32
+    { baseX:  20, baseY: -73, rangeX: 12, rangeY: 8,  doorOnSouth: true  }, // #33
+    { baseX:  56, baseY: -69, rangeX: 12, rangeY: 8,  doorOnSouth: true  }, // #34
+
+    // Flanco Oeste (a oeste do centro pavimentado, relX entre -62 e -88)
+    { baseX: -74, baseY: -10, rangeX: 10, rangeY: 9,  doorOnSouth: true  }, // #35
+    { baseX: -76, baseY:  16, rangeX: 10, rangeY: 9,  doorOnSouth: false }, // #36
+    { baseX: -66, baseY:  42, rangeX: 10, rangeY: 9,  doorOnSouth: false }, // #37
+    { baseX: -62, baseY:  68, rangeX: 10, rangeY: 8,  doorOnSouth: false }, // #38
+
+    // Flanco Leste (a leste do centro pavimentado e ao norte da Mina Profunda)
+    { baseX:  72, baseY: -10, rangeX: 10, rangeY: 9,  doorOnSouth: true  }, // #39
+    { baseX:  74, baseY:  16, rangeX: 10, rangeY: 8,  doorOnSouth: false }, // #40
+  ];
+
+  // Verifica se um retângulo de casa espalhada [relX - halfW .. relX + halfW, relY - halfH .. relY + halfH]
+  // conflita com o centro pavimentado, o Quartel/Prisão, a Mina Profunda ou com outras casas já posicionadas.
+  function _isValidScatteredHouseBox(relX, relY, halfW, halfH, placedList, minGap) {
+    const left = relX - halfW;
+    const right = relX + halfW;
+    const top = relY - halfH;
+    const bottom = relY + halfH;
+
+    // 1. Mantém distância do Centro Pavimentado (Ruas Norte/Sul e casas centrais: X in [-50..+49], Y in [-27..+27])
+    if (right >= -51 && left <= 50 && bottom >= -27 && top <= 27) return false;
+
+    // 2. Mantém distância do Grande Quartel Militar e Prisão (X in [-40..+40], Y in [24..78])
+    if (right >= -41 && left <= 41 && bottom >= 24 && top <= 79) return false;
+
+    // 3. Mantém distância da Grande Mina Profunda e Monte de Terra a Sudeste (X >= 36, Y >= 22)
+    if (right >= 36 && bottom >= 23) return false;
+
+    // 4. Garante que fique inteiramente dentro do território da Cidade da Neve (com folga de 6 blocos da borda)
+    const maxCornerDist = Math.hypot(Math.max(Math.abs(left), Math.abs(right)), Math.max(Math.abs(top), Math.abs(bottom)));
+    if (maxCornerDist > CITY_RADIUS - 6) return false;
+
+    // 5. Garante espaçamento mínimo de `minGap` quadrados (4 a 8 blocos, igual ao deserto!) de todas as outras casas
+    for (let i = 0; i < placedList.length; i++) {
+      const o = placedList[i];
+      const oLeft = o.relX - o.halfW - minGap;
+      const oRight = o.relX + o.halfW + minGap;
+      const oTop = o.relY - o.halfH - minGap;
+      const oBottom = o.relY + o.halfH + minGap;
+      if (right >= oLeft && left <= oRight && bottom >= oTop && top <= oBottom) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function _buildHousesForSeed(seedVal) {
+    _currentSeed = (Number(seedVal) || 4289) >>> 0;
+    const rng = _createSeededRng(_currentSeed ^ 0x5f3759df);
+    HOUSES.length = 0;
+
+    // 1. Constrói as 25 casas do Centro Pavimentado (com leve variação de seed nos recuos e conceitos abertos/fechados)
+    for (let idx = 0; idx < BASE_PAVED_CENTER_SPECS.length; idx++) {
+      const base = BASE_PAVED_CENTER_SPECS[idx];
+      const id = idx + 1;
+      const jitterY = base.canJitterY !== 0 && rng() < 0.45 ? base.canJitterY : 0;
+      const openConcept = rng() < 0.5 ? base.openConcept : !base.openConcept;
+      const relX = base.relX;
+      const relY = base.relY + jitterY;
+      const layoutDesc = base.twoBedrooms
+        ? `2 Quartos • ${openConcept ? "Sala/Cozinha Integradas" : "Cômodos Separados"}`
+        : openConcept
+          ? "Sala e Cozinha Integradas"
+          : "Cômodos Separados";
+
+      HOUSES.push({
+        id,
+        name: `Casa Glacial #${id} (${layoutDesc})`,
+        cx: CITY_CX + relX,
+        cy: CITY_CY + relY,
+        relX,
+        relY,
+        halfW: base.halfW,
+        halfH: base.halfH,
+        openConcept,
+        twoBedrooms: !!base.twoBedrooms,
+        doorOnSouth: base.doorOnSouth,
+        isScattered: false,
+      });
+    }
+
+    // 2. Constrói as 16 Novas Casas Espalhadas ao redor do Centro Pavimentado (estilo Deserto, mudando com a seed!)
+    // Embaralha levemente a ordem de estilos com base na seed e calcula a posição de cada casa em sua zona
+    for (let sIdx = 0; sIdx < SCATTERED_OUTER_ZONES.length; sIdx++) {
+      const zone = SCATTERED_OUTER_ZONES[sIdx];
+      const id = HOUSES.length + 1;
+
+      // Tamanho e configuração interna sorteados pela seed
+      const sizeRoll = rng();
+      const halfW = sizeRoll < 0.45 ? 5 : sizeRoll < 0.80 ? 6 : 7;
+      const halfH = rng() < 0.72 ? 5 : 6;
+      const twoBedrooms = halfW >= 6 && rng() < 0.55;
+      const openConcept = rng() < 0.52;
+      // Orientação da porta (voltada preferencialmente para o centro pavimentado da cidade, mas pode variar com a seed)
+      const doorOnSouth = zone.baseY < -20 ? true : zone.baseY > 20 ? false : (rng() < 0.5 ? zone.doorOnSouth : !zone.doorOnSouth);
+
+      let chosenX = zone.baseX;
+      let chosenY = zone.baseY;
+      let found = false;
+
+      // Tenta posicionar com deslocamento determinístico da seed mantendo distância de 5 a 8 quadrados das outras casas
+      for (let attempt = 0; attempt < 45; attempt++) {
+        const shrink = attempt > 25 ? 0.5 : 1.0;
+        const dx = Math.round((rng() * 2 - 1) * zone.rangeX * shrink);
+        const dy = Math.round((rng() * 2 - 1) * zone.rangeY * shrink);
+        const candX = zone.baseX + dx;
+        const candY = zone.baseY + dy;
+        const minGap = attempt < 20 ? 6 : attempt < 35 ? 4 : 3;
+        if (_isValidScatteredHouseBox(candX, candY, halfW, halfH, HOUSES, minGap)) {
+          chosenX = candX;
+          chosenY = candY;
+          found = true;
+          break;
+        }
+      }
+
+      // Fallback seguro na âncora se todas as tentativas aleatórias colidirem
+      if (!found) {
+        for (let r = 0; r <= 12 && !found; r += 2) {
+          const dirs = [[0, 0], [-r, 0], [r, 0], [0, -r], [0, r], [-r, -r], [r, -r]];
+          for (let d = 0; d < dirs.length; d++) {
+            const cx = zone.baseX + dirs[d][0];
+            const cy = zone.baseY + dirs[d][1];
+            if (_isValidScatteredHouseBox(cx, cy, halfW, halfH, HOUSES, 3)) {
+              chosenX = cx;
+              chosenY = cy;
+              found = true;
+              break;
+            }
+          }
+        }
+      }
+
+      const layoutDesc = twoBedrooms
+        ? `Chalé Afastado • 2 Quartos • ${openConcept ? "Conceito Aberto" : "Cômodos Separados"}`
+        : `Chalé Afastado • ${openConcept ? "Sala/Cozinha Integradas" : "Cômodos Separados"}`;
+
+      HOUSES.push({
+        id,
+        name: `Casa Glacial #${id} (${layoutDesc})`,
+        cx: CITY_CX + chosenX,
+        cy: CITY_CY + chosenY,
+        relX: chosenX,
+        relY: chosenY,
+        halfW,
+        halfH,
+        openConcept,
+        twoBedrooms,
+        doorOnSouth,
+        isScattered: true,
+      });
+    }
+  }
+
+  // Inicializa o layout das casas com a seed padrão (será atualizado automaticamente quando World(seed) ou world.setSeed(seed) for chamado)
+  _buildHousesForSeed(4289);
 
   // =========================================================================
   // TELHADOS ALPINOS MILITARES 2.5D DO QUARTEL E PRISÃO (COBERTOS DE NEVE):
@@ -1872,14 +2024,16 @@ window.Game = window.Game || {};
       (relX === -18 && relY >= 5 && relY <= 12) ||
       ((relX === -29 || relX === -28) && relY >= 11 && relY <= 20);
 
-    // - Entradas de calçada automáticas ligando a porta de cada casa (mesmo as recuadas/desalinhadas) até a rua principal!
+    // - Entradas de calçada automáticas ligando a porta de cada casa do centro pavimentado até a rua principal!
+    //   (As casas espalhadas ao redor do centro pavimentado ficam diretamente sobre a neve, estilo Deserto!)
     let isHouseDoorStep = false;
     for (let i = 0; i < HOUSES.length; i++) {
       const h = HOUSES[i];
+      if (h.isScattered) continue;
       const doorY = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
       const dirY = h.doorOnSouth ? 1 : -1;
       const stepDist = (ty - doorY) * dirY;
-      if (Math.abs(tx - h.cx) <= 1 && stepDist >= 1 && stepDist <= 4) {
+      if (Math.abs(tx - h.cx) <= 1 && stepDist >= 1 && stepDist <= 5) {
         isHouseDoorStep = true;
         break;
       }
@@ -2425,13 +2579,27 @@ window.Game = window.Game || {};
     ],
   };
 
+  function setSeed(seedVal) {
+    const nextSeed = (Number(seedVal) || 4289) >>> 0;
+    if (nextSeed === _currentSeed && HOUSES.length > 0) return;
+    _buildHousesForSeed(nextSeed);
+    _citizensInitialized = false;
+    CITIZENS.length = 0;
+    PRISONERS.length = 0;
+    SOLDIERS.length = 0;
+    _activeDoorwayTimers.clear();
+  }
+
   function _initCitizens(tileSize) {
     if (_citizensInitialized) return;
     _citizensInitialized = true;
+    CITIZENS.length = 0;
+    PRISONERS.length = 0;
+    SOLDIERS.length = 0;
     const ts = tileSize || 36;
     let nameIdx = 0;
 
-    // 1. INICIALIZA AS 38 MORADORAS DAS 24 CASAS
+    // 1. INICIALIZA AS MORADORAS DE TODAS AS CASAS (Centro Pavimentado + Casas Espalhadas ao Redor)
     for (let i = 0; i < HOUSES.length; i++) {
       const h = HOUSES[i];
       const count = h.twoBedrooms || h.id % 2 === 0 ? 2 : 1;
@@ -2443,7 +2611,9 @@ window.Game = window.Game || {};
 
         const doorTx = h.cx;
         const doorTy = h.cy + (h.doorOnSouth ? h.halfH : -h.halfH);
-        const streetRelY = h.relY < 0 ? -11.15 : 11.15;
+        const streetRelY = h.isScattered
+          ? (h.relY + (h.doorOnSouth ? h.halfH + 1.8 : -h.halfH - 1.8))
+          : (h.relY < 0 ? -11.15 : 11.15);
         const streetTy = CITY_CY + streetRelY;
 
         const northSide = h.doorOnSouth;
@@ -2687,7 +2857,7 @@ window.Game = window.Game || {};
     }
   }
 
-  // Constrói uma rota limpa pelas ruas de paralelepípedo e Praça Central (evitando paredes, casas e a fogueira central)
+  // Constrói uma rota limpa pelas ruas de paralelepípedo, Praça Central e arredores nevados (evitando paredes, casas e a fogueira central)
   function _buildStreetRoute(fromX, fromY, targetRelX, targetRelY, ts) {
     const curRelX = fromX / ts - 0.5 - CITY_CX;
     const curRelY = fromY / ts - 0.5 - CITY_CY;
@@ -2696,11 +2866,22 @@ window.Game = window.Game || {};
       pts.push({ x: (CITY_CX + rx + 0.5) * ts, y: (CITY_CY + ry + 0.5) * ts });
     };
 
+    // Se tanto origem quanto destino estão na zona externa espalhada ao norte (relY < -26), caminha direto pela neve
+    if (curRelY < -26 && targetRelY < -26) {
+      pushTile((curRelX + targetRelX) * 0.5, Math.min(curRelY, targetRelY) - 1.5);
+      pushTile(targetRelX, targetRelY);
+      return pts;
+    }
+
     const curStreetY = curRelY < 0 ? -11.15 : 11.15;
     const targetStreetY = targetRelY < -5 ? -11.15 : targetRelY > 5 ? 11.15 : 0;
 
-    // 1. Se não estiver alinhada na rua nem na praça, vai primeiro para a rua mais próxima
-    if (Math.abs(curRelX) > 3.9 && Math.abs(curRelY - curStreetY) > 0.8) {
+    // 1. Se estiver vindo de uma casa espalhada fora do centro pavimentado, entra na rua principal pela extremidade ou pelo conector norte
+    if (Math.abs(curRelX) > 45 || Math.abs(curRelY) > 25) {
+      const entryX = curRelX < -44 ? -45 : curRelX > 44 ? 44 : 4.5;
+      pushTile(entryX, curRelY < 0 ? -25 : 11.15);
+      pushTile(entryX, curStreetY);
+    } else if (Math.abs(curRelX) > 3.9 && Math.abs(curRelY - curStreetY) > 0.8) {
       pushTile(curRelX, curStreetY);
     }
 
@@ -2715,13 +2896,19 @@ window.Game = window.Game || {};
       return pts;
     }
 
-    // 3. Se estiver na Praça Central e quiser ir para uma das ruas
+    // 3. Se estiver na Praça Central e quiser ir para uma das ruas ou casas espalhadas
     if (Math.abs(curRelX) <= 3.9 && Math.abs(curRelY) < 9.5) {
       const exitX = Math.abs(curRelX) > 1.5 ? (curRelX < 0 ? -3.6 : 3.6) : 0;
       pushTile(exitX, targetStreetY < 0 ? -4.1 : 4.1);
       pushTile(0, targetStreetY);
-      pushTile(targetRelX, targetStreetY);
-      if (Math.abs(targetRelY - targetStreetY) > 0.3) {
+      const clampedX = Math.max(-45, Math.min(44, targetRelX));
+      pushTile(clampedX, targetStreetY);
+      if (Math.abs(targetRelX) > 45 || Math.abs(targetRelY) > 25) {
+        const outGateX = targetRelX < -44 ? -45 : targetRelX > 44 ? 44 : 4.5;
+        pushTile(outGateX, targetStreetY);
+        if (targetRelY < -25) pushTile(outGateX, -26);
+      }
+      if (Math.abs(targetRelY - targetStreetY) > 0.3 || Math.abs(targetRelX - clampedX) > 0.3) {
         pushTile(targetRelX, targetRelY);
       }
       return pts;
@@ -2738,18 +2925,25 @@ window.Game = window.Game || {};
       pushTile(0, targetStreetY);
     }
 
-    // 5. Caminha pela rua alvo até o X de destino
-    pushTile(targetRelX, targetStreetY);
-    if (Math.abs(targetRelY - targetStreetY) > 0.25) {
+    // 5. Caminha pela rua alvo até o X de destino (ou sai pela extremidade da rua se o destino for uma casa espalhada)
+    if (Math.abs(targetRelX) > 45 || Math.abs(targetRelY) > 25) {
+      const exitX = targetRelX < -44 ? -45 : targetRelX > 44 ? 44 : 4.5;
+      pushTile(exitX, targetStreetY);
+      if (targetRelY < -25) pushTile(exitX, -26);
       pushTile(targetRelX, targetRelY);
+    } else {
+      pushTile(targetRelX, targetStreetY);
+      if (Math.abs(targetRelY - targetStreetY) > 0.25) {
+        pushTile(targetRelX, targetRelY);
+      }
     }
     return pts;
   }
 
-  // Escolhe um novo destino de passeio pela cidade (Rua Norte, Rua Sul, Praça Central, Becos ou frente de casas vizinhas)
+  // Escolhe um novo destino de passeio pela cidade (Rua Norte, Rua Sul, Praça Central, Becos ou frente das casas espalhadas)
   function _assignStrollDestination(cit, ts) {
     const roll = Math.random();
-    if (roll < 0.32) {
+    if (roll < 0.30) {
       // Passear até a Praça Central (ao redor da Grande Fogueira e bancos)
       const plazaSpots = [
         { rx: -3.5, ry: -3.8 },
@@ -2765,7 +2959,7 @@ window.Game = window.Game || {};
       ];
       const sp = plazaSpots[Math.floor(Math.random() * plazaSpots.length)];
       cit.waypoints = _buildStreetRoute(cit.x, cit.y, sp.rx, sp.ry, ts);
-    } else if (roll < 0.52) {
+    } else if (roll < 0.48) {
       // Passear por um dos becos (com ou sem saída)
       const alleySpots = [
         { rx: -30.5, ry: -16.5 },
@@ -2780,10 +2974,12 @@ window.Game = window.Game || {};
       const sp = alleySpots[Math.floor(Math.random() * alleySpots.length)];
       cit.waypoints = _buildStreetRoute(cit.x, cit.y, sp.rx, sp.ry, ts);
     } else {
-      // Passear ao longo da Rua Norte ou Rua Sul visitando a calçada de outras casas
+      // Passear visitando a frente de outras casas (tanto do centro pavimentado quanto das casas espalhadas ao redor)
       const targetHouse = HOUSES[Math.floor(Math.random() * HOUSES.length)];
-      const rx = targetHouse.relX + (Math.random() * 4 - 2);
-      const ry = targetHouse.relY < 0 ? -11.15 + (Math.random() * 0.7 - 0.35) : 11.15 + (Math.random() * 0.7 - 0.35);
+      const rx = targetHouse.relX + (Math.random() * 3 - 1.5);
+      const ry = targetHouse.isScattered
+        ? targetHouse.relY + (targetHouse.doorOnSouth ? targetHouse.halfH + 1.8 : -targetHouse.halfH - 1.8)
+        : (targetHouse.relY < 0 ? -11.15 + (Math.random() * 0.7 - 0.35) : 11.15 + (Math.random() * 0.7 - 0.35));
       cit.waypoints = _buildStreetRoute(cit.x, cit.y, rx, ry, ts);
     }
   }
@@ -5063,6 +5259,7 @@ window.Game = window.Game || {};
     houses: HOUSES,
     barracksRoofs: BARRACKS_ROOFS,
     citizens: CITIZENS,
+    setSeed,
     isCityTerritory,
     isCityBiomeArea,
     isPrisonMineArea,

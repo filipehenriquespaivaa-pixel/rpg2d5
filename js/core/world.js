@@ -107,6 +107,7 @@
         (this.featureNoise = new SimplexNoise(t + 808)),
         (this.canyonNoise = new SimplexNoise(t + 909)),
         (this.lakeNoise = new SimplexNoise(t + 1010)),
+        (typeof SnowPeakCity !== "undefined" && SnowPeakCity.setSeed && SnowPeakCity.setSeed(t)),
         (this.undergroundLevel = 0),
         (this.timeOfDay = 0.5),
         (this.nightCount = 0),
@@ -114,6 +115,7 @@
     }
     setSeed(t) {
       ((this.seed = t),
+        (typeof SnowPeakCity !== "undefined" && SnowPeakCity.setSeed && SnowPeakCity.setSeed(t)),
         this.elevNoise.seed(t),
         this.moistNoise.seed(t + 101),
         this.tempNoise.seed(t + 202),
