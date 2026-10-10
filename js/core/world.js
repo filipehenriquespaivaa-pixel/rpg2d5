@@ -1804,6 +1804,10 @@
         return BIOMES.DESERT;
       }
       if (typeof window !== "undefined" && window.PortCity && (window.PortCity.isCityBiomeArea ? window.PortCity.isCityBiomeArea(t, l) : window.PortCity.isCityTerritory(t, l))) {
+        if (window.PortCity.getBiomeForTile) {
+          const pb = window.PortCity.getBiomeForTile(t, l);
+          if (pb) return pb;
+        }
         return window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l)
           ? BIOMES.COAST_WATER
           : BIOMES.BEACH;
@@ -2603,9 +2607,11 @@
       } else if (isDesertCityArea) {
         K = BIOMES.DESERT;
       } else if (isPortCityArea) {
-        K = window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l)
-          ? BIOMES.COAST_WATER
-          : BIOMES.BEACH;
+        K =
+          (window.PortCity.getBiomeForTile && window.PortCity.getBiomeForTile(t, l)) ||
+          (window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l)
+            ? BIOMES.COAST_WATER
+            : BIOMES.BEACH);
       } else {
         K = Jp(T, A, P, {
           isIsland: S,
@@ -3020,8 +3026,11 @@
         }
       }
       if (typeof window !== "undefined" && window.PortCity && (window.PortCity.isCityBiomeArea ? window.PortCity.isCityBiomeArea(t, l) : window.PortCity.isCityTerritory(t, l))) {
-        const isHarborWater = !!(window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l));
-        se.biome = isHarborWater ? BIOMES.COAST_WATER : BIOMES.BEACH;
+        se.biome =
+          (window.PortCity.getBiomeForTile && window.PortCity.getBiomeForTile(t, l)) ||
+          (window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l)
+            ? BIOMES.COAST_WATER
+            : BIOMES.BEACH);
         se.isElevatedBiome = !1;
         se.isPerimeterCliff = !1;
         se.isSecondFloorCliff = !1;
@@ -3037,8 +3046,8 @@
             se.portCityRoom = pcCell.roomName;
             se.portCityHouseIndex = pcCell.houseIndex;
             se.portCityRoofTheme = pcCell.roofTheme;
-            if (pcCell.isPier || pcCell.isBoatDeck) se.isPortPier = !0;
-            if (pcCell.isBoatDeck) se.isPortBoatDeck = !0;
+            if (pcCell.isPortPier || pcCell.isPier || pcCell.isPortBoat || pcCell.isBoatDeck) se.isPortPier = !0;
+            if (pcCell.isPortBoat || pcCell.isBoatDeck) se.isPortBoatDeck = !0;
             if (pcCell.isWall) se.isPortCityWall = !0;
             if (pcCell.isCollider) se.isPortCityCollider = !0;
             if (pcCell.isDoor) {
@@ -6115,18 +6124,18 @@
           reward: "Banquete Tropical (+35 XP)",
         };
       }
-      if (o.prop.kind === "port_city_crates") {
+      if (o.prop.kind === "port_city_cargo" || o.prop.kind === "port_city_crates") {
         return {
           success: !0,
           message: "📦 Baú de marinheiro, barris de carvalho com rum tropical, cordas navais e especiarias recém-desembarcadas no porto.",
           reward: "Suprimentos Portuários (+30 XP)",
         };
       }
-      if (o.prop.kind === "port_city_fountain") {
+      if (o.prop.kind === "port_city_monument" || o.prop.kind === "port_city_fountain" || o.prop.kind === "port_city_lighthouse") {
         return {
           success: !0,
           action: "rest_campfire",
-          message: "⚓ Você descansou junto ao Chafariz da Âncora Dourada no coração da Praça do Porto! Vigor renovado.",
+          message: "⚓ Você descansou junto ao Farol Portuário & Monumento da Grande Âncora no coração da Cidade Portuária! Saúde e vigor restaurados.",
           reward: "Brisa Marítima (+HP / Vigor)",
         };
       }
@@ -6134,15 +6143,15 @@
         return {
           success: !0,
           action: "rest_campfire",
-          message: "🪑 Você sentou no banco do calçadão admirando as embarcações ancoradas nas águas cristalinas da praia tropical!",
+          message: "🪑 Você sentou no banco do calçadão admirando as embarcações ancoradas entre a praia tropical e o oceano!",
           reward: "Descanso à Beira-Mar (+HP / Vigor)",
         };
       }
-      if (o.prop.kind === "port_city_lighthouse") {
+      if (o.prop.kind === "port_city_lamppost") {
         return {
           success: !0,
-          message: "🚨 A Lanterna do Farol Portuário brilha intensamente sobre os píeres, guiando caravelas, escunas e jangadas pelas águas tropicais!",
-          reward: "Luz do Farol (+45 XP)",
+          message: "🏮 Lampião portuário de bronze com chama protegida do vento marítimo para guiar os marinheiros no cais.",
+          reward: "",
         };
       }
       if (o.prop.kind === "port_city_bollard") {
@@ -6152,24 +6161,24 @@
           reward: "",
         };
       }
-      if (o.prop.kind === "port_city_ship_mast") {
+      if (o.prop.kind === "port_city_boat_mast" || o.prop.kind === "port_city_ship_mast") {
         return {
           success: !0,
-          message: "⛵ Mastro principal da grande embarcação à vela com gávea de vigia, cordame de cânhamo e velas latinas brancas.",
+          message: "⛵ Mastro principal da embarcação à vela com gávea de vigia, cordame de cânhamo e velas enfunadas pela brisa do oceano!",
           reward: "Mastro da Embarcação (+40 XP)",
         };
       }
-      if (o.prop.kind === "port_city_ship_wheel") {
+      if (o.prop.kind === "port_city_boat_helm" || o.prop.kind === "port_city_ship_wheel") {
         return {
           success: !0,
-          message: "☸️ Você segurou o timão de madeira nobre e latão no tombadilho de comando do navio, sentindo o balanço das águas costeiras!",
+          message: "☸️ Você segurou o timão de madeira nobre e latão no convés de comando do navio, olhando para o oceano aberto!",
           reward: "Timão do Capitão (+50 XP)",
         };
       }
       if (o.prop.kind === "port_city_boat") {
         return {
           success: !0,
-          message: `⛵ Você examinou ${o.prop.namePt || "a embarcação costeira"}: casco de madeira calafetada flutuando suavemente nas águas cristalinas da baía tropical!`,
+          message: `⛵ Você examinou ${o.prop.namePt || "a embarcação costeira"}: casco de madeira calafetada flutuando nas águas da baía tropical!`,
           reward: "Embarcação Inspecionada (+45 XP)",
         };
       }
@@ -6396,6 +6405,7 @@
       const o = this.getTile(t, l);
       if (!o) return !1;
       if (this.isUnderground && (o.biome.id === BiomeId.CAVE_WALL || o.biome.id === BiomeId.DESERT_CAVE_WALL || (o.biome && !o.biome.passable))) return !1;
+      if (!this.isUnderground && o.biome && !o.biome.passable && !o.isPortPier && !o.isPortBoatDeck) return !1;
       if (o && o.isGreekWall) return !1;
       if (o && o.isGreekDoor && !o.isGreekDoorOpen) return !1;
       if (o && o.isSnowCityWall) return !1;

@@ -1546,10 +1546,10 @@
           }
 
           if ((E === "BEACH" || E === "PORT_CITY") && !D.isUnderground) {
-            // Ao teleportar para Praia Tropical (BEACH) ou Porto, leva diretamente para a Praça/Calçadão da Cidade Portuária das Palmeiras!
+            // Ao teleportar para Praia Tropical (BEACH) ou Cidade Portuária, leva diretamente para o Calçadão Costeiro entre a Praia, os Píeres e o Oceano!
             const portCity = typeof window !== "undefined" && window.PortCity;
-            const targetTx = portCity ? portCity.centerX : -520;
-            const targetTy = (portCity ? portCity.centerY : 340) - 2;
+            const targetTx = portCity ? portCity.centerX : -680;
+            const targetTy = portCity ? portCity.centerY : 620;
             targetPixelX = targetTx * D.tileSize + D.tileSize / 2;
             targetPixelY = targetTy * D.tileSize + D.tileSize / 2;
             foundDist = Math.round(Math.hypot(targetTx - originTx, targetTy - originTy));
@@ -4146,7 +4146,15 @@
               const Pa = Ye + Math.floor((sa - De) * 0.9),
                 va = Ge + Math.floor((Ze - qe) * 0.9),
                 tileAt = Q.getTile(Pa, va),
-                rt = tileAt.isCliffWall ? "#1e293b" : tileAt.biome.groundColor;
+                rt = tileAt.isCliffWall
+                  ? "#1e293b"
+                  : tileAt.isPortBoatDeck
+                    ? "#b45309"
+                    : tileAt.isPortPier
+                      ? "#78350f"
+                      : tileAt.isPortCityWall
+                        ? "#f8fafc"
+                        : tileAt.biome.groundColor;
               let ka = me[rt];
               ka ||
                 ((ka = [
@@ -4480,7 +4488,7 @@
             const Xr = Math.floor(he.x / Q.tileSize),
               fr = Math.floor(he.y / Q.tileSize),
               wn = Q.getTile(Xr, fr),
-              Si = wn.biome.moveSpeedMultiplier,
+              Si = wn.isPortPier || wn.isPortBoatDeck ? 1 : wn.biome.moveSpeedMultiplier,
               ki = 1 + (De.speedBonusPercent || 0) / 100,
               Fr = c.current.getPlayerSpeedMultiplier(),
               Cl = he.poisonTimer && he.poisonTimer > 0 ? 0.88 : 1,

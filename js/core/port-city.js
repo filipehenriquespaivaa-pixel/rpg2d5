@@ -49,14 +49,24 @@ window.Game = window.Game || {};
   let _citizensInitialized = false;
   const _activeDoorwayTimers = new Map();
 
-  // Linha costeira sinuosa determinística por seed (divide BEACH ao norte e COAST_WATER ao sul)
+  // Linha costeira sinuosa determinística por seed (divide BEACH ao norte e COAST_WATER / DEEP_OCEAN ao sul)
   function getShorelineY(tx) {
     const dx = tx - CITY_CX;
-    const wave1 = Math.sin(dx * 0.085 + (_currentSeed % 97) * 0.13) * 2.2;
-    const wave2 = Math.cos(dx * 0.042 + (_currentSeed % 53) * 0.29) * 1.6;
-    // Enseada natural (baía portuária ligeiramente recuada no centro)
-    const bayIndent = Math.abs(dx) < 38 ? -Math.cos((dx / 38) * (Math.PI * 0.5)) * 2.5 : 0;
-    return Math.round(CITY_CY + 6 + wave1 + wave2 + bayIndent);
+    const wave1 = Math.sin(dx * 0.085 + (_currentSeed % 97) * 0.13) * 1.8;
+    const wave2 = Math.cos(dx * 0.042 + (_currentSeed % 53) * 0.29) * 1.4;
+    // Enseada natural (baía portuária na divisa exata entre a Praia e o Mar)
+    const bayIndent = Math.abs(dx) < 42 ? -Math.cos((dx / 42) * (Math.PI * 0.5)) * 2.2 : 0;
+    return Math.round(CITY_CY + 3 + wave1 + wave2 + bayIndent);
+  }
+
+  // Linha onde a Água Rasa da Baía Portuária encontra o Oceano Profundo (DEEP_OCEAN)
+  function getDeepOceanStartY(tx) {
+    const shoreY = getShorelineY(tx);
+    const dx = tx - CITY_CX;
+    // Na frente dos píeres (|dx| <= 46) a baía rasa tem ~24 a 28 blocos para abrigar as docas; nas laterais o oceano já começa a ~12 blocos da praia!
+    const harborReach = Math.abs(dx) < 52 ? Math.cos((dx / 52) * (Math.PI * 0.5)) * 14 : 0;
+    const wave = Math.sin(tx * 0.06 + (_currentSeed % 41)) * 2.5;
+    return Math.round(shoreY + 12 + harborReach + wave);
   }
 
   // Verifica se o tile está na área de bioma garantido da Cidade Portuária
@@ -66,7 +76,16 @@ window.Game = window.Game || {};
     return dx * dx + dy * dy <= CITY_BIOME_RADIUS * CITY_BIOME_RADIUS;
   }
 
-  // Retorna o bioma exato do tile na região da Cidade Portuária (Praia Tropical, Águas Rasas da Baía ou Oceano)
+  // Verifica se o tile na região da Cidade Portuária é água (COAST_WATER ou DEEP_OCEAN)
+  function isCityWaterArea(tx, ty) {
+    if (!isCityBiomeArea(tx, ty)) return false;
+    return ty > getShorelineY(tx);
+  }
+
+  // Retorna o bioma exato do tile na região da Cidade Portuária:
+  // - Ao norte da orla (ty <= shoreY): Praia Tropical (BEACH) onde ficam as casas e o calçadão
+  // - Entre a praia e o oceano (shoreY < ty <= deepOceanY): Águas Rasas (COAST_WATER) onde avançam os píeres
+  // - Ao sul (ty > deepOceanY): Oceano Profundo (DEEP_OCEAN) aberto!
   function getBiomeForTile(tx, ty) {
     if (!isCityBiomeArea(tx, ty)) return null;
     if (typeof BIOMES === "undefined") return null;
@@ -74,10 +93,8 @@ window.Game = window.Game || {};
     if (ty <= shoreY) {
       return BIOMES.BEACH;
     }
-    const waterDepth = ty - shoreY;
-    // Ampla baía de Águas Rasas (COAST_WATER) para os píeres e embarcações, e depois Oceano Profundo
-    const deepThreshold = 52 + Math.round(Math.sin(tx * 0.06 + (_currentSeed % 41)) * 6);
-    if (waterDepth <= deepThreshold) {
+    const deepOceanY = getDeepOceanStartY(tx);
+    if (ty <= deepOceanY) {
       return BIOMES.COAST_WATER;
     }
     return BIOMES.DEEP_OCEAN;
@@ -99,14 +116,14 @@ window.Game = window.Game || {};
     PIERS.length = 0;
     BOATS.length = 0;
 
-    // 1. GERA OS PÍERES DE MADEIRA (3 a 4 Píeres principais avançando sobre a água rasa de acordo com a seed)
+    // 1. GERA OS PÍERES DE MADEIRA (4 Píeres principais saindo da Praia Tropical, cruzando a Água Rasa até a borda do Oceano Profundo!)
     const pierCount = 4;
     const basePierXs = [-28, -9, 10, 29];
     for (let p = 0; p < pierCount; p++) {
       const shiftX = Math.round((_seedHash(p, 11, 101) - 0.5) * 6);
       const px = CITY_CX + basePierXs[p] + shiftX;
-      const startY = CITY_CY + 2; // Conecta no calçadão portuário da praia
-      const len = 18 + Math.floor(_seedHash(p, 23, 103) * 10); // 18 a 27 blocos mar adentro
+      const startY = CITY_CY + 1; // Conecta diretamente no calçadão portuário na areia da praia
+      const len = 18 + Math.floor(_seedHash(p, 23, 103) * 8); // Avança pelas Águas Rasas até a divisa com o Oceano Profundo
       const endY = startY + len;
       const halfW = p === 1 || p === 2 ? 2 : 1; // Píeres centrais mais largos (5 blocos), laterais (3 blocos)
       const hasCrossT = _seedHash(p, 37, 107) > 0.35;
@@ -126,7 +143,7 @@ window.Game = window.Game || {};
     // 2. GERA AS EMBARCAÇÕES NA ÁGUA DE ACORDO COM A SEED:
     //    - Galeões / Caravelas Mercantes atracados nos píeres principais (com prancha de embarque caminhável!)
     //    - Escunas e Barcos Pesqueiros atracados nas laterais dos píeres
-    //    - Embarcações ancoradas nas águas rasas da baía tropical
+    //    - Embarcações ancoradas na transição entre as Águas Rasas e o Oceano Profundo!
     let boatIdCounter = 1;
 
     for (let p = 0; p < PIERS.length; p++) {
@@ -139,7 +156,7 @@ window.Game = window.Game || {};
       const bHalfH = isGalleon ? 5 : 3; // Comprimento do casco: 11 blocos (Galeão) ou 7 blocos (Barco)
       const gangplankLen = 2;
       const boatCx = pier.cx + dockSide * (pier.halfW + gangplankLen + bHalfW);
-      const boatCy = pier.startY + Math.min(pier.endY - pier.startY - bHalfH - 1, 9 + Math.floor(_seedHash(p, 71, 209) * 5));
+      const boatCy = pier.startY + Math.min(pier.endY - pier.startY - bHalfH - 1, 8 + Math.floor(_seedHash(p, 71, 209) * 5));
       const sailColorIdx = Math.floor(_seedHash(p, 83, 211) * 5);
       const hullStyle = Math.floor(_seedHash(p, 97, 223) * 3);
 
@@ -164,7 +181,7 @@ window.Game = window.Game || {};
         facingDir: _seedHash(p, 109, 227) < 0.5 ? "south" : "north",
       });
 
-      // Embarcação secundária (Barco Pesqueiro / Saveiro) do outro lado do píer ou na ponta de acordo com a seed
+      // Embarcação secundária (Barco Pesqueiro / Saveiro) do outro lado do píer de acordo com a seed
       if (_seedHash(p, 131, 233) > 0.25) {
         const oppSide = -dockSide;
         const fHalfW = 1;
@@ -209,14 +226,14 @@ window.Game = window.Game || {};
       }
     }
 
-    // 3. EMBARCAÇÕES ANCORADAS NA BAÍA DE ÁGUAS RASAS (Fora dos píeres, espalhadas de acordo com a seed)
+    // 3. EMBARCAÇÕES ANCORADAS NA BAÍA E NO OCEANO PROFUNDO LOGO À FRENTE DO PORTO (espalhadas de acordo com a seed)
     const anchoredZones = [
-      { baseX: -44, baseY: 16, type: "galleon", orient: "horizontal" },
-      { baseX: -19, baseY: 33, type: "schooner", orient: "horizontal" },
-      { baseX: 2, baseY: 35, type: "galleon", orient: "horizontal" },
-      { baseX: 24, baseY: 32, type: "fishing_boat", orient: "vertical" },
-      { baseX: 44, baseY: 17, type: "schooner", orient: "horizontal" },
-      { baseX: -36, baseY: 30, type: "fishing_boat", orient: "horizontal" },
+      { baseX: -44, baseY: 14, type: "galleon", orient: "horizontal" },
+      { baseX: -19, baseY: 31, type: "schooner", orient: "horizontal" },
+      { baseX: 2, baseY: 34, type: "galleon", orient: "horizontal" },
+      { baseX: 24, baseY: 30, type: "fishing_boat", orient: "vertical" },
+      { baseX: 44, baseY: 15, type: "schooner", orient: "horizontal" },
+      { baseX: -36, baseY: 28, type: "fishing_boat", orient: "horizontal" },
     ];
 
     for (let a = 0; a < anchoredZones.length; a++) {
@@ -1256,6 +1273,7 @@ window.Game = window.Game || {};
   }
 
   const PortCity = {
+    CITY_CENTER: { tx: CITY_CX, ty: CITY_CY },
     centerX: CITY_CX,
     centerY: CITY_CY,
     radius: CITY_RADIUS,
@@ -1266,7 +1284,9 @@ window.Game = window.Game || {};
     citizens: CITIZENS,
     setSeed,
     getShorelineY,
+    getDeepOceanStartY,
     isCityBiomeArea,
+    isCityWaterArea,
     getBiomeForTile,
     isCityTerritory,
     getHouseAt,

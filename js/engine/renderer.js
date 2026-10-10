@@ -156,7 +156,7 @@
                   intensity: 0.9,
                   isCampfire: !0,
                 });
-              else if (G.prop.kind === "port_city_lighthouse")
+              else if (G.prop.kind === "port_city_lighthouse" || G.prop.kind === "port_city_monument")
                 K.push({
                   x: ke * f + f / 2,
                   y: ne * f + f / 2 - 12,
@@ -165,13 +165,13 @@
                   intensity: 0.98,
                   isCampfire: !0,
                 });
-              else if (G.prop.kind === "port_city_boat")
+              else if (G.prop.kind === "port_city_lamppost" || G.prop.kind === "port_city_boat" || G.prop.kind === "port_city_boat_mast")
                 K.push({
                   x: ke * f + f / 2,
                   y: ne * f + f / 2,
-                  radius: 115 + Math.sin(this.animTimer * 3.5 + ke) * 4,
-                  color: "rgba(251, 146, 60, 0.32)",
-                  intensity: 0.82,
+                  radius: 130 + Math.sin(this.animTimer * 3.5 + ke) * 4,
+                  color: "rgba(251, 146, 60, 0.34)",
+                  intensity: 0.85,
                   isCampfire: !0,
                 });
               else if (G.prop.kind === "cave_entrance")
@@ -2263,27 +2263,29 @@
             }
             break;
           }
+          case "port_city_cargo":
           case "port_city_crates": {
-            if (typeof drawPortCityCrates === "function") {
+            if (typeof drawPortCityCargo === "function") {
+              drawPortCityCargo(c, f, t.subType || 0);
+            } else if (typeof drawPortCityCrates === "function") {
               drawPortCityCrates(c, f, t.subType || 0);
             }
             break;
           }
-          case "port_city_fountain": {
-            if (typeof drawPortCityFountain === "function") {
-              drawPortCityFountain(c, f, this.animTimer);
-            }
-            break;
-          }
-          case "port_city_bench": {
-            if (typeof drawPortCityBench === "function") {
-              drawPortCityBench(c, f);
-            }
-            break;
-          }
+          case "port_city_monument":
+          case "port_city_fountain":
           case "port_city_lighthouse": {
-            if (typeof drawPortCityLighthouse === "function") {
+            if (typeof drawPortCityMonument === "function") {
+              drawPortCityMonument(c, f, this.animTimer);
+            } else if (typeof drawPortCityLighthouse === "function") {
               drawPortCityLighthouse(c, f, this.animTimer);
+            }
+            break;
+          }
+          case "port_city_lamppost":
+          case "port_city_bench": {
+            if (typeof drawPortCityLamppost === "function") {
+              drawPortCityLamppost(c, f, this.animTimer);
             }
             break;
           }
@@ -2293,21 +2295,29 @@
             }
             break;
           }
+          case "port_city_boat_mast":
           case "port_city_ship_mast": {
-            if (typeof drawPortCityShipMast === "function") {
-              drawPortCityShipMast(c, f, t.subType || 0, this.animTimer);
+            if (typeof drawPortCityBoatStructure === "function") {
+              const bSpec =
+                t.boatSpec ||
+                (typeof window !== "undefined" &&
+                  window.PortCity &&
+                  window.PortCity.getBoatAt &&
+                  window.PortCity.getBoatAt(u.tx, u.ty));
+              drawPortCityBoatStructure(c, f, bSpec, this.animTimer);
             }
             break;
           }
+          case "port_city_boat_helm":
           case "port_city_ship_wheel": {
-            if (typeof drawPortCityShipWheel === "function") {
-              drawPortCityShipWheel(c, f);
+            if (typeof drawPortCityBoatHelm === "function") {
+              drawPortCityBoatHelm(c, f);
             }
             break;
           }
           case "port_city_boat": {
-            if (typeof drawPortCityBoat === "function") {
-              drawPortCityBoat(c, f, t.subType || 0, this.animTimer, !!t.moored);
+            if (typeof drawPortCityBoatStructure === "function") {
+              drawPortCityBoatStructure(c, f, t.boatSpec, this.animTimer);
             }
             break;
           }
