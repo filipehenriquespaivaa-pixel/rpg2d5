@@ -156,6 +156,24 @@
                   intensity: 0.9,
                   isCampfire: !0,
                 });
+              else if (G.prop.kind === "port_city_lighthouse")
+                K.push({
+                  x: ke * f + f / 2,
+                  y: ne * f + f / 2 - 12,
+                  radius: 260 + Math.sin(this.animTimer * 4.5 + ke) * 10,
+                  color: "rgba(251, 191, 36, 0.45)",
+                  intensity: 0.98,
+                  isCampfire: !0,
+                });
+              else if (G.prop.kind === "port_city_boat")
+                K.push({
+                  x: ke * f + f / 2,
+                  y: ne * f + f / 2,
+                  radius: 115 + Math.sin(this.animTimer * 3.5 + ke) * 4,
+                  color: "rgba(251, 146, 60, 0.32)",
+                  intensity: 0.82,
+                  isCampfire: !0,
+                });
               else if (G.prop.kind === "cave_entrance")
                 K.push({
                   x: ke * f + f / 2,
@@ -270,6 +288,13 @@
           typeof window.DesertCity.getActiveHouseForPlayer === "function"
             ? window.DesertCity.getActiveHouseForPlayer(t.x, t.y, f)
             : null;
+        const activePortRoofId =
+          !this.engine.isUnderground &&
+          typeof window !== "undefined" &&
+          window.PortCity &&
+          typeof window.PortCity.getActiveHouseForPlayer === "function"
+            ? window.PortCity.getActiveHouseForPlayer(t.x, t.y, f)
+            : null;
         for (const ne of z) {
           if (ne.prop) {
             const ke = ne.prop;
@@ -290,6 +315,14 @@
               ne.desertCityHouseIndex !== activeDesertRoofId &&
               ke.kind !== "desert_city_wall" &&
               ke.kind !== "desert_city_door"
+            ) {
+              continue;
+            }
+            if (
+              ne.portCityHouseIndex !== void 0 &&
+              ne.portCityHouseIndex !== activePortRoofId &&
+              ke.kind !== "port_city_wall" &&
+              ke.kind !== "port_city_door"
             ) {
               continue;
             }
@@ -351,6 +384,7 @@
             !ne.isDungeonFloor &&
             !ne.isDungeonWall &&
             !ne.dungeonRole &&
+            !ne.isPortCity &&
             this.engine.undergroundLevel !== 2 &&
             !this.engine.isGroundItemCollected(ne.tx, ne.ty)
           ) {
@@ -456,6 +490,25 @@
           );
           for (const dci of dcCitItems) Ee.push(dci);
         }
+        if (
+          typeof window !== "undefined" &&
+          window.PortCity &&
+          typeof window.PortCity.updateAndGetCitizenRenderItems === "function"
+        ) {
+          const pcCitItems = window.PortCity.updateAndGetCitizenRenderItems(
+            c,
+            f,
+            t,
+            u.timeOfDay,
+            this.animTimer,
+            S,
+            p,
+            j,
+            P,
+            !!this.engine.isUnderground,
+          );
+          for (const pci of pcCitItems) Ee.push(pci);
+        }
         Ee.sort((ne, ke) => ne.y - ke.y);
         for (const ne of Ee) ne.draw();
         if (!this.engine.isUnderground && typeof drawSnowCityHouseRoofs === "function") {
@@ -463,6 +516,9 @@
         }
         if (!this.engine.isUnderground && typeof drawDesertCityHouseRoofs === "function") {
           drawDesertCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
+        }
+        if (!this.engine.isUnderground && typeof drawPortCityHouseRoofs === "function") {
+          drawPortCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
         }
         (u.combatManager && u.combatManager.renderEffects(c),
           typeof window !== "undefined" &&
@@ -972,6 +1028,8 @@
           }
         } else if (t.isSnowCity) {
           drawSnowCityFloor(g, l, o, u, t, this.animTimer);
+        } else if (t.isPortCity && typeof drawPortCityFloor === "function") {
+          drawPortCityFloor(g, l, o, u, t, this.animTimer);
         } else if (t.isGreekRuin) {
           // Pisos em tons de Terracota Helênica, Travertino Dourado e Calcário Escuro para contrastar fortemente
           // com as Paredes de Mármore Branco/Marfim e Topo de Telha/Cornija!
@@ -1638,7 +1696,24 @@
               c.fillRect(l + u - 8, o, 8, u));
           }
         }
-        if ((y || w || v || T || S) && t.detailHash > 0.66) {
+        const isWithin3OfLand = (() => {
+          if (!y) return !0;
+          if (ne || ke || G || de) return !0;
+          for (let dy = -3; dy <= 3; dy++) {
+            for (let dx = -3; dx <= 3; dx++) {
+              if (Math.max(Math.abs(dx), Math.abs(dy)) > 3) continue;
+              const nt = this.engine.getTile(t.tx + dx, t.ty + dy);
+              if (nt && nt.biome && !nt.biome.hasWater) return !0;
+            }
+          }
+          return !1;
+        })();
+        if (
+          !t.isPortPier &&
+          !(t.prop && t.prop.kind && t.prop.kind.startsWith("port_city_")) &&
+          (w || v || T || S || (y && isWithin3OfLand)) &&
+          t.detailHash > (y ? 0.87 : 0.78)
+        ) {
           const X = Math.sin(x * 1.6 + t.detailHash * 8) * 1.5,
             C = l + 8 + t.detailHash * 16,
             I = o + 8 + t.detailHash * 14 + X,
@@ -1734,6 +1809,9 @@
               (c.fillStyle = Te),
               c.fillRect(I - 0.75, be - 0.75, 1.5, 1.5));
           }
+        }
+        if (t.isPortCity && (t.isPortPier || t.isPortBoatDeck) && typeof drawPortCityFloor === "function") {
+          drawPortCityFloor(c, l, o, u, t, this.animTimer);
         }
       }
       getSunVector(t = 0.5) {
@@ -2140,6 +2218,96 @@
           case "desert_city_floor": {
             if (typeof drawDesertCityFloor === "function") {
               drawDesertCityFloor(c, f);
+            }
+            break;
+          }
+          case "port_city_wall": {
+            let nb = u._pcwNb;
+            if (!nb) {
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty;
+              nb = u._pcwNb = {
+                left: !!(eng.getTile(tx - 1, ty) && eng.getTile(tx - 1, ty).isPortCityWall),
+                right: !!(eng.getTile(tx + 1, ty) && eng.getTile(tx + 1, ty).isPortCityWall),
+                top: !!(eng.getTile(tx, ty - 1) && eng.getTile(tx, ty - 1).isPortCityWall),
+                bottom: !!(eng.getTile(tx, ty + 1) && eng.getTile(tx, ty + 1).isPortCityWall),
+              };
+            }
+            if (typeof drawPortCityWall === "function") {
+              drawPortCityWall(c, f, t.subType || 0, nb, t.roofTheme || u.portCityRoofTheme || "terracotta");
+            }
+            break;
+          }
+          case "port_city_door": {
+            const isDoorOpenByNpc = !!(
+              typeof window !== "undefined" &&
+              window.PortCity &&
+              typeof window.PortCity.isDoorwayUsedByCitizen === "function" &&
+              window.PortCity.isDoorwayUsedByCitizen(u.tx, u.ty)
+            );
+            if (typeof drawPortCityDoor === "function") {
+              drawPortCityDoor(c, f, !!t.opened || isDoorOpenByNpc, !!t.doorVertical);
+            }
+            break;
+          }
+          case "port_city_hammock": {
+            if (typeof drawPortCityHammock === "function") {
+              drawPortCityHammock(c, f, this.animTimer);
+            }
+            break;
+          }
+          case "port_city_table": {
+            if (typeof drawPortCityTable === "function") {
+              drawPortCityTable(c, f);
+            }
+            break;
+          }
+          case "port_city_crates": {
+            if (typeof drawPortCityCrates === "function") {
+              drawPortCityCrates(c, f, t.subType || 0);
+            }
+            break;
+          }
+          case "port_city_fountain": {
+            if (typeof drawPortCityFountain === "function") {
+              drawPortCityFountain(c, f, this.animTimer);
+            }
+            break;
+          }
+          case "port_city_bench": {
+            if (typeof drawPortCityBench === "function") {
+              drawPortCityBench(c, f);
+            }
+            break;
+          }
+          case "port_city_lighthouse": {
+            if (typeof drawPortCityLighthouse === "function") {
+              drawPortCityLighthouse(c, f, this.animTimer);
+            }
+            break;
+          }
+          case "port_city_bollard": {
+            if (typeof drawPortCityBollard === "function") {
+              drawPortCityBollard(c, f);
+            }
+            break;
+          }
+          case "port_city_ship_mast": {
+            if (typeof drawPortCityShipMast === "function") {
+              drawPortCityShipMast(c, f, t.subType || 0, this.animTimer);
+            }
+            break;
+          }
+          case "port_city_ship_wheel": {
+            if (typeof drawPortCityShipWheel === "function") {
+              drawPortCityShipWheel(c, f);
+            }
+            break;
+          }
+          case "port_city_boat": {
+            if (typeof drawPortCityBoat === "function") {
+              drawPortCityBoat(c, f, t.subType || 0, this.animTimer, !!t.moored);
             }
             break;
           }
@@ -2551,7 +2719,7 @@
             Math.floor(f / this.engine.tileSize),
             Math.floor(g / this.engine.tileSize),
           ),
-          te = le.biome.hasWater;
+          te = le.biome.hasWater && !le.isPortPier && !le.isPortBoatDeck;
         if (te)
           for (let ga = 0; ga < 2; ga++) {
             const we = (this.animTimer * 2 + ga * 1.25) % 2.5,
@@ -4834,10 +5002,13 @@
           }
         t.isMoving &&
           Math.random() < 0.35 &&
-          (this.engine.getTile(
-            Math.floor(t.x / this.engine.tileSize),
-            Math.floor(t.y / this.engine.tileSize),
-          ).biome.hasWater
+          ((() => {
+            const curT = this.engine.getTile(
+              Math.floor(t.x / this.engine.tileSize),
+              Math.floor(t.y / this.engine.tileSize),
+            );
+            return curT && curT.biome.hasWater && !curT.isPortPier && !curT.isPortBoatDeck;
+          })()
             ? this.particles.push({
                 x: t.x + (Math.random() - 0.5) * 12,
                 y: t.y + 2 + (Math.random() - 0.5) * 4,

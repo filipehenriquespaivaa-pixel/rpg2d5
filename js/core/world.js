@@ -108,6 +108,7 @@
         (this.canyonNoise = new SimplexNoise(t + 909)),
         (this.lakeNoise = new SimplexNoise(t + 1010)),
         (typeof SnowPeakCity !== "undefined" && SnowPeakCity.setSeed && SnowPeakCity.setSeed(t)),
+        (typeof PortCity !== "undefined" && PortCity.setSeed && PortCity.setSeed(t)),
         (this.undergroundLevel = 0),
         (this.timeOfDay = 0.5),
         (this.nightCount = 0),
@@ -116,6 +117,7 @@
     setSeed(t) {
       ((this.seed = t),
         (typeof SnowPeakCity !== "undefined" && SnowPeakCity.setSeed && SnowPeakCity.setSeed(t)),
+        (typeof PortCity !== "undefined" && PortCity.setSeed && PortCity.setSeed(t)),
         this.elevNoise.seed(t),
         this.moistNoise.seed(t + 101),
         this.tempNoise.seed(t + 202),
@@ -1050,12 +1052,18 @@
         const b = this._computeSurfaceBaseBiome(t, l);
         if (b && !b.hasWater && b.category === "land") {
           const gCell = this._getGreekRuinCellAt(t, l);
+          const isInOtherCity = !!(
+            (typeof window !== "undefined" && window.SnowPeakCity && window.SnowPeakCity.isCityTerritory && window.SnowPeakCity.isCityTerritory(t, l)) ||
+            (typeof window !== "undefined" && window.DesertCity && window.DesertCity.isCityTerritory && window.DesertCity.isCityTerritory(t, l)) ||
+            (typeof window !== "undefined" && window.PortCity && window.PortCity.isCityTerritory && window.PortCity.isCityTerritory(t, l))
+          );
           const isBlockedByRuinWallOrDoor =
-            gCell &&
-            (gCell.role === "wall" ||
-              gCell.role === "rubble_wall" ||
-              gCell.role === "door" ||
-              gCell.role === "column");
+            isInOtherCity ||
+            (gCell &&
+              (gCell.role === "wall" ||
+                gCell.role === "rubble_wall" ||
+                gCell.role === "door" ||
+                gCell.role === "column"));
 
           // 1. Garante uma Escadaria para o Subsolo na praça de entrada de cada Cidade de Ruínas Gregas!
           if (b.id === BiomeId.MEADOW) {
@@ -1794,6 +1802,11 @@
       }
       if (typeof window !== "undefined" && window.DesertCity && (window.DesertCity.isCityBiomeArea ? window.DesertCity.isCityBiomeArea(t, l) : window.DesertCity.isCityTerritory(t, l))) {
         return BIOMES.DESERT;
+      }
+      if (typeof window !== "undefined" && window.PortCity && (window.PortCity.isCityBiomeArea ? window.PortCity.isCityBiomeArea(t, l) : window.PortCity.isCityTerritory(t, l))) {
+        return window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l)
+          ? BIOMES.COAST_WATER
+          : BIOMES.BEACH;
       }
       return Jp(T, A, P, {
         isIsland: S,
@@ -2583,11 +2596,16 @@
               );
       const isSnowCityArea = typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l));
       const isDesertCityArea = typeof window !== "undefined" && window.DesertCity && (window.DesertCity.isCityBiomeArea ? window.DesertCity.isCityBiomeArea(t, l) : window.DesertCity.isCityTerritory(t, l));
+      const isPortCityArea = typeof window !== "undefined" && window.PortCity && (window.PortCity.isCityBiomeArea ? window.PortCity.isCityBiomeArea(t, l) : window.PortCity.isCityTerritory(t, l));
       let K;
       if (isSnowCityArea) {
         K = BIOMES.SNOW_PEAK;
       } else if (isDesertCityArea) {
         K = BIOMES.DESERT;
+      } else if (isPortCityArea) {
+        K = window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l)
+          ? BIOMES.COAST_WATER
+          : BIOMES.BEACH;
       } else {
         K = Jp(T, A, P, {
           isIsland: S,
@@ -2995,6 +3013,40 @@
             }
             if (dcCell.prop) {
               se.prop = dcCell.prop;
+            } else {
+              se.prop = null;
+            }
+          }
+        }
+      }
+      if (typeof window !== "undefined" && window.PortCity && (window.PortCity.isCityBiomeArea ? window.PortCity.isCityBiomeArea(t, l) : window.PortCity.isCityTerritory(t, l))) {
+        const isHarborWater = !!(window.PortCity.isCityWaterArea && window.PortCity.isCityWaterArea(t, l));
+        se.biome = isHarborWater ? BIOMES.COAST_WATER : BIOMES.BEACH;
+        se.isElevatedBiome = !1;
+        se.isPerimeterCliff = !1;
+        se.isSecondFloorCliff = !1;
+        se.isOuterCliffEdge = !1;
+        se.isCliffWall = !1;
+        se.isCliffRamp = !1;
+        se.mountainTier = 0;
+        if (window.PortCity.isCityTerritory(t, l)) {
+          const pcCell = window.PortCity.getCellAt(t, l, this.interactedProps);
+          if (pcCell) {
+            se.isPortCity = !0;
+            se.portCityRole = pcCell.role;
+            se.portCityRoom = pcCell.roomName;
+            se.portCityHouseIndex = pcCell.houseIndex;
+            se.portCityRoofTheme = pcCell.roofTheme;
+            if (pcCell.isPier || pcCell.isBoatDeck) se.isPortPier = !0;
+            if (pcCell.isBoatDeck) se.isPortBoatDeck = !0;
+            if (pcCell.isWall) se.isPortCityWall = !0;
+            if (pcCell.isCollider) se.isPortCityCollider = !0;
+            if (pcCell.isDoor) {
+              se.isPortCityDoor = !0;
+              se.isPortCityDoorOpen = !!pcCell.isDoorOpen;
+            }
+            if (pcCell.prop) {
+              se.prop = pcCell.prop;
             } else {
               se.prop = null;
             }
@@ -6037,6 +6089,90 @@
           reward: "Descanso na Praça (+HP / Vigor)",
         };
       }
+      if (o.prop.kind === "port_city_door") {
+        const nextOpen = !o.prop.opened;
+        this.interactedProps.set(u, { ...m, opened: nextOpen });
+        this.invalidateTile(t, l);
+        return {
+          success: !0,
+          action: "port_city_door",
+          message: nextOpen ? "🚪 Você abriu a porta da casa costeira." : "🚪 Você fechou a porta contra a brisa do mar.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "port_city_hammock") {
+        return {
+          success: !0,
+          action: "rest_campfire",
+          message: "🛌 Você deitou na rede de algodão trançado ao som suave das ondas da praia tropical! Saúde e vigor restaurados.",
+          reward: "Descanso na Rede (+HP / Vigor)",
+        };
+      }
+      if (o.prop.kind === "port_city_table") {
+        return {
+          success: !0,
+          message: "🍹 Mesa rústica com abacaxis frescos, cocos verdes gelados e peixe grelhado na folha de bananeira.",
+          reward: "Banquete Tropical (+35 XP)",
+        };
+      }
+      if (o.prop.kind === "port_city_crates") {
+        return {
+          success: !0,
+          message: "📦 Baú de marinheiro, barris de carvalho com rum tropical, cordas navais e especiarias recém-desembarcadas no porto.",
+          reward: "Suprimentos Portuários (+30 XP)",
+        };
+      }
+      if (o.prop.kind === "port_city_fountain") {
+        return {
+          success: !0,
+          action: "rest_campfire",
+          message: "⚓ Você descansou junto ao Chafariz da Âncora Dourada no coração da Praça do Porto! Vigor renovado.",
+          reward: "Brisa Marítima (+HP / Vigor)",
+        };
+      }
+      if (o.prop.kind === "port_city_bench") {
+        return {
+          success: !0,
+          action: "rest_campfire",
+          message: "🪑 Você sentou no banco do calçadão admirando as embarcações ancoradas nas águas cristalinas da praia tropical!",
+          reward: "Descanso à Beira-Mar (+HP / Vigor)",
+        };
+      }
+      if (o.prop.kind === "port_city_lighthouse") {
+        return {
+          success: !0,
+          message: "🚨 A Lanterna do Farol Portuário brilha intensamente sobre os píeres, guiando caravelas, escunas e jangadas pelas águas tropicais!",
+          reward: "Luz do Farol (+45 XP)",
+        };
+      }
+      if (o.prop.kind === "port_city_bollard") {
+        return {
+          success: !0,
+          message: "⚓ Cabeço de amarração de ferro fundido e madeira naval com grossos cabos segurando as embarcações no píer.",
+          reward: "",
+        };
+      }
+      if (o.prop.kind === "port_city_ship_mast") {
+        return {
+          success: !0,
+          message: "⛵ Mastro principal da grande embarcação à vela com gávea de vigia, cordame de cânhamo e velas latinas brancas.",
+          reward: "Mastro da Embarcação (+40 XP)",
+        };
+      }
+      if (o.prop.kind === "port_city_ship_wheel") {
+        return {
+          success: !0,
+          message: "☸️ Você segurou o timão de madeira nobre e latão no tombadilho de comando do navio, sentindo o balanço das águas costeiras!",
+          reward: "Timão do Capitão (+50 XP)",
+        };
+      }
+      if (o.prop.kind === "port_city_boat") {
+        return {
+          success: !0,
+          message: `⛵ Você examinou ${o.prop.namePt || "a embarcação costeira"}: casco de madeira calafetada flutuando suavemente nas águas cristalinas da baía tropical!`,
+          reward: "Embarcação Inspecionada (+45 XP)",
+        };
+      }
       if (o.prop.kind === "greek_statue") {
         return {
           success: !0,
@@ -6273,6 +6409,17 @@
           window.DesertCity &&
           typeof window.DesertCity.isDoorwayUsedByCitizen === "function" &&
           window.DesertCity.isDoorwayUsedByCitizen(t, l)
+        );
+        if (!isDoorOpenByNpc) return !1;
+      }
+      if (o && o.isPortCityWall) return !1;
+      if (o && o.isPortCityCollider) return !1;
+      if (o && o.isPortCityDoor && !o.isPortCityDoorOpen) {
+        const isDoorOpenByNpc = !!(
+          typeof window !== "undefined" &&
+          window.PortCity &&
+          typeof window.PortCity.isDoorwayUsedByCitizen === "function" &&
+          window.PortCity.isDoorwayUsedByCitizen(t, l)
         );
         if (!isDoorOpenByNpc) return !1;
       }

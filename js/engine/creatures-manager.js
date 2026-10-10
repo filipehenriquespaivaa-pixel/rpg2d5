@@ -2576,6 +2576,18 @@
           ))
       )
         return;
+      if (
+        !l &&
+        typeof window !== "undefined" &&
+        window.PortCity &&
+        typeof window.PortCity.isCityTerritory === "function" &&
+        (window.PortCity.isCityTerritory(y, w) ||
+          window.PortCity.isCityTerritory(
+            Math.floor(t.x / this.engine.tileSize),
+            Math.floor(t.y / this.engine.tileSize),
+          ))
+      )
+        return;
       let v = "slime",
         T = "Gosma Verde da Floresta",
         S = "#22c55e",

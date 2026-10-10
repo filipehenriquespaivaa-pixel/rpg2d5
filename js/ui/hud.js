@@ -600,6 +600,14 @@
                     title: "Teleportar direto para a Cidade dos Picos Gelados",
                     children: "❄️ Ir p/ Cidade Glacial",
                   }),
+                  h.jsx("button", {
+                    type: "button",
+                    onClick: () => p && p("PORT_CITY"),
+                    className:
+                      "px-2 py-0.5 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10px] transition cursor-pointer active:scale-95 whitespace-nowrap shadow",
+                    title: "Teleportar direto para a Cidade Portuária na Praia Tropical e suas Embarcações",
+                    children: "⚓ Ir p/ Cidade Portuária",
+                  }),
                   h.jsxs("div", {
                     className:
                       "flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 border border-sky-500/50 text-[10px]",

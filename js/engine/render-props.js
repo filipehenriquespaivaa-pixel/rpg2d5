@@ -8736,6 +8736,666 @@
     ctx.restore();
   }
 
+  // =========================================================================
+  // CIDADE PORTUÁRIA DAS PALMEIRAS (PRAIA TROPICAL & EMBARCAÇÕES NA ÁGUA):
+  // 1. Pisos do Calçadão, Praça do Porto, Píeres de Madeira sobre a Água e Convés de Embarcações
+  // 2. Paredes Coloniais Caiadas 2.5D com Vigas de Madeira Tropical
+  // 3. Portas Navais com Vigia de Latão
+  // 4. Telhados 2.5D de Telha Colonial Terracota / Palha Trançada (desaparecem ao entrar)
+  // 5. Embarcações na Água (Galeões Mercantes, Escunas Costeiras e Barcos Pesqueiros com Velas, Mastros, Timão, Casco e Ondas)
+  // 6. Monumento do Farol-Lanterna & Grande Âncora, Postes Navais, Cabeços de Amarração, Redes e Barris
+  // =========================================================================
+
+  function drawPortCityFloor(g, l, o, u, t, animTimer = 0) {
+    const role = t.portCityRole || "boardwalk";
+    const isAlt = (Math.abs(t.tx + t.ty) % 2) === 0;
+
+    if (role === "pier" || role === "gangplank") {
+      // Estacas submersas e sombra projetada na água rasa
+      g.fillStyle = "rgba(12, 34, 63, 0.45)";
+      g.fillRect(l + 1, o + u - 4, u - 2, 5);
+      // Tábuas rústicas de madeira do píer sobre a água
+      g.fillStyle = isAlt ? "#78350f" : "#713f12";
+      g.fillRect(l, o, u + 0.8, u + 0.8);
+      g.strokeStyle = "rgba(28, 25, 23, 0.65)";
+      g.lineWidth = 1.1;
+      for (let py = 4; py < u; py += 6) {
+        g.beginPath();
+        g.moveTo(l, o + py);
+        g.lineTo(l + u, o + py);
+        g.stroke();
+      }
+      // Vigas laterais e pregos de latão do píer
+      g.fillStyle = "#451a03";
+      g.fillRect(l, o, 3, u);
+      g.fillRect(l + u - 3, o, 3, u);
+      g.fillStyle = "#d97706";
+      g.fillRect(l + 1, o + 4, 1.5, 1.5);
+      g.fillRect(l + u - 2.5, o + 4, 1.5, 1.5);
+      g.fillRect(l + 1, o + u - 6, 1.5, 1.5);
+      g.fillRect(l + u - 2.5, o + u - 6, 1.5, 1.5);
+      return;
+    }
+
+    if (role === "boat_deck" || role === "boat_center" || role === "boat_helm" || role === "boat_chest" || role === "boat_rail") {
+      // Convés de madeira naval calafetada da embarcação flutuando na água
+      g.fillStyle = role === "boat_rail" ? "#451a03" : (isAlt ? "#92400e" : "#854d0e");
+      g.fillRect(l, o, u + 0.8, u + 0.8);
+      g.strokeStyle = "rgba(41, 37, 36, 0.55)";
+      g.lineWidth = 1;
+      for (let px = 5; px < u; px += 6) {
+        g.beginPath();
+        g.moveTo(l + px, o);
+        g.lineTo(l + px, o + u);
+        g.stroke();
+      }
+      if (role === "boat_rail") {
+        // Amurada / Borda do casco naval com friso dourado
+        g.strokeStyle = "#b45309";
+        g.lineWidth = 2;
+        g.strokeRect(l + 1, o + 1, u - 2, u - 2);
+      }
+      return;
+    }
+
+    if (role === "floor" || role === "hammock" || role === "cargo" || role === "table" || role === "door") {
+      // Piso interno das casas portuárias (assoalho naval claro e fresco)
+      g.fillStyle = isAlt ? "#b45309" : "#a16207";
+      g.fillRect(l, o, u + 0.8, u + 0.8);
+      g.strokeStyle = "rgba(69, 26, 3, 0.45)";
+      g.lineWidth = 1;
+      g.strokeRect(l + 0.5, o + 0.5, u - 1, u - 1);
+      return;
+    }
+
+    // Calçadão Portuário e Praça da Capitania (pedra calcária coralina clara e madeira)
+    g.fillStyle = role === "plaza" ? (isAlt ? "#d6d3d1" : "#e7e5e4") : (isAlt ? "#c7b299" : "#d6c5b3");
+    g.fillRect(l, o, u + 0.8, u + 0.8);
+    g.strokeStyle = "rgba(87, 83, 78, 0.42)";
+    g.lineWidth = 1.1;
+    g.strokeRect(l + 1, o + 1, u - 2, u - 2);
+    if (role === "plaza" && Math.abs(t.tx - (window.PortCity ? window.PortCity.centerX : -680)) <= 2 && Math.abs(t.ty - ((window.PortCity ? window.PortCity.centerY : 620) - 6)) <= 2) {
+      // Rosa dos Ventos em mosaico náutico ao redor do Farol Central
+      g.fillStyle = "rgba(2, 132, 199, 0.28)";
+      g.fillRect(l + 3, o + 3, u - 6, u - 6);
+      g.strokeStyle = "rgba(217, 119, 6, 0.65)";
+      g.strokeRect(l + 4, o + 4, u - 8, u - 8);
+    }
+  }
+
+  function drawPortCityWall(ctx, tileSize, subType = 0, neighbors = null) {
+    const nL = !!(neighbors && neighbors.left);
+    const nR = !!(neighbors && neighbors.right);
+    const nB = !!(neighbors && neighbors.bottom);
+
+    if (!drawPortCityWall._cache) {
+      drawPortCityWall._cache = new Map();
+    }
+    const mask = (nL ? 1 : 0) | (nR ? 2 : 0) | (nB ? 4 : 0);
+    const key = `${tileSize.toFixed(2)}_${subType}_${mask}`;
+    let cached = drawPortCityWall._cache.get(key);
+
+    if (!cached) {
+      const padX = Math.ceil(24 * tileSize);
+      const padTop = Math.ceil(16 * tileSize);
+      const padBot = Math.ceil(30 * tileSize);
+      const can = document.createElement("canvas");
+      can.width = Math.max(1, padX * 2);
+      can.height = Math.max(1, padTop + padBot);
+      const wc = can.getContext("2d");
+
+      if (wc) {
+        wc.translate(padX, padTop);
+        const half = 18 * tileSize;
+        const leftX = nL ? -half - 1 * tileSize : -half + 1 * tileSize;
+        const rightX = nR ? half + 1 * tileSize : half - 1 * tileSize;
+        const w = rightX - leftX;
+        const wallH = 26 * tileSize;
+        const baseY = 18 * tileSize;
+        const topFrontY = baseY - wallH;
+
+        if (!nB) {
+          wc.fillStyle = "rgba(45, 28, 12, 0.38)";
+          wc.fillRect(leftX - 1 * tileSize, baseY - 2 * tileSize, w + 2 * tileSize, 7 * tileSize);
+        }
+
+        // Alvenaria colonial caiada (Branco Perolado, Creme Coralino ou Azul Celeste Costeiro)
+        const wallGrad = wc.createLinearGradient(0, topFrontY, 0, baseY);
+        if (subType % 3 === 1) {
+          wallGrad.addColorStop(0, "#fef3c7");
+          wallGrad.addColorStop(1, "#fde68a");
+        } else if (subType % 3 === 2) {
+          wallGrad.addColorStop(0, "#e0f2fe");
+          wallGrad.addColorStop(1, "#bae6fd");
+        } else {
+          wallGrad.addColorStop(0, "#f8fafc");
+          wallGrad.addColorStop(1, "#e2e8f0");
+        }
+        wc.fillStyle = wallGrad;
+        wc.fillRect(leftX, topFrontY, w, wallH);
+
+        // Barrado inferior de pedra coralina / azulejo marítimo e vigas de madeira tropical
+        wc.fillStyle = "#0369a1";
+        wc.fillRect(leftX, baseY - 6 * tileSize, w, 6 * tileSize);
+        wc.fillStyle = "#78350f";
+        wc.fillRect(leftX, topFrontY, w, 3 * tileSize);
+        wc.fillRect(leftX, baseY - 2.5 * tileSize, w, 2.5 * tileSize);
+
+        // Pilares verticais de madeira nas extremidades
+        if (!nL) wc.fillRect(leftX, topFrontY, 3 * tileSize, wallH);
+        if (!nR) wc.fillRect(rightX - 3 * tileSize, topFrontY, 3 * tileSize, wallH);
+
+        // Topo da parede 2.5D
+        wc.fillStyle = "#92400e";
+        wc.fillRect(leftX, topFrontY - 2 * tileSize, w, 3 * tileSize);
+        wc.strokeStyle = "#451a03";
+        wc.lineWidth = 1.2 * tileSize;
+        wc.strokeRect(leftX, topFrontY - 2 * tileSize, w, wallH + 2 * tileSize);
+      }
+
+      cached = { canvas: can, padX, padTop };
+      drawPortCityWall._cache.set(key, cached);
+    }
+
+    ctx.drawImage(cached.canvas, -cached.padX, -cached.padTop);
+  }
+
+  function drawPortCityDoor(ctx, tileSize, isOpen = false) {
+    ctx.save();
+    const w = 18 * tileSize;
+    const h = 26 * tileSize;
+    const baseY = 16 * tileSize;
+    const topY = baseY - h;
+
+    // Batente colonial de madeira nobre e pedra
+    ctx.fillStyle = "#451a03";
+    ctx.fillRect(-w / 2 - 2, topY - 2, w + 4, h + 4);
+
+    if (isOpen) {
+      ctx.fillStyle = "#1e1b18";
+      ctx.fillRect(-w / 2, topY, w, h);
+      ctx.save();
+      ctx.translate(-w / 2 + 2, baseY - 2);
+      ctx.rotate(-0.82);
+      ctx.fillStyle = "#78350f";
+      ctx.fillRect(0, -h + 2, 6 * tileSize, h - 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "#92400e";
+      ctx.fillRect(-w / 2, topY, w, h);
+      ctx.strokeStyle = "#451a03";
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(-w / 2, topY, w, h);
+      // Vigia redonda de navio em latão e vidro azul-marinho no topo da porta
+      ctx.fillStyle = "#38bdf8";
+      ctx.beginPath();
+      ctx.arc(0, topY + h * 0.34, 4.2 * tileSize, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#facc15";
+      ctx.lineWidth = 1.8 * tileSize;
+      ctx.stroke();
+      // Maçaneta de latão
+      ctx.fillStyle = "#facc15";
+      ctx.beginPath();
+      ctx.arc(w / 2 - 4 * tileSize, topY + h * 0.58, 1.8 * tileSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPortCityHammock(ctx, tileSize) {
+    ctx.save();
+    // Rede tropical / leito naval com listras azuis e brancas
+    ctx.fillStyle = "rgba(15, 23, 42, 0.3)";
+    ctx.beginPath();
+    ctx.ellipse(0, 4 * tileSize, 13 * tileSize, 6 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#78350f";
+    ctx.lineWidth = 2 * tileSize;
+    ctx.beginPath();
+    ctx.moveTo(-14 * tileSize, -6 * tileSize);
+    ctx.lineTo(-10 * tileSize, -2 * tileSize);
+    ctx.moveTo(14 * tileSize, -6 * tileSize);
+    ctx.lineTo(10 * tileSize, -2 * tileSize);
+    ctx.stroke();
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.beginPath();
+    ctx.ellipse(0, -1 * tileSize, 11 * tileSize, 5.5 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#0284c7";
+    ctx.lineWidth = 1.6 * tileSize;
+    ctx.stroke();
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.fillRect(-6 * tileSize, -4 * tileSize, 3 * tileSize, 6 * tileSize);
+    ctx.fillRect(3 * tileSize, -4 * tileSize, 3 * tileSize, 6 * tileSize);
+    ctx.restore();
+  }
+
+  function drawPortCityCargo(ctx, tileSize, subType = 0) {
+    ctx.save();
+    // Caixote de madeira naval e barril de carvalho com aros de ferro
+    ctx.fillStyle = "rgba(15, 23, 42, 0.38)";
+    ctx.beginPath();
+    ctx.ellipse(0, 5 * tileSize, 14 * tileSize, 7 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Caixote naval
+    ctx.fillStyle = "#92400e";
+    ctx.fillRect(-12 * tileSize, -9 * tileSize, 13 * tileSize, 13 * tileSize);
+    ctx.strokeStyle = "#451a03";
+    ctx.lineWidth = 1.3 * tileSize;
+    ctx.strokeRect(-12 * tileSize, -9 * tileSize, 13 * tileSize, 13 * tileSize);
+    ctx.beginPath();
+    ctx.moveTo(-12 * tileSize, -9 * tileSize);
+    ctx.lineTo(1 * tileSize, 4 * tileSize);
+    ctx.stroke();
+
+    // Barril de rum / água doce ao lado
+    ctx.fillStyle = "#78350f";
+    ctx.beginPath();
+    ctx.ellipse(6 * tileSize, -1 * tileSize, 6.5 * tileSize, 8 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 1.6 * tileSize;
+    ctx.beginPath();
+    ctx.moveTo(0, -4 * tileSize);
+    ctx.lineTo(12 * tileSize, -4 * tileSize);
+    ctx.moveTo(0, 2 * tileSize);
+    ctx.lineTo(12 * tileSize, 2 * tileSize);
+    ctx.stroke();
+
+    if (subType % 2 === 0) {
+      // Rede de pesca e boia azul-turquesa
+      ctx.fillStyle = "#06b6d4";
+      ctx.beginPath();
+      ctx.arc(-5 * tileSize, 6 * tileSize, 3 * tileSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPortCityTable(ctx, tileSize) {
+    ctx.save();
+    ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
+    ctx.fillRect(-13 * tileSize, -5 * tileSize, 26 * tileSize, 15 * tileSize);
+    ctx.fillStyle = "#78350f";
+    ctx.fillRect(-14 * tileSize, -9 * tileSize, 28 * tileSize, 14 * tileSize);
+    ctx.strokeStyle = "#451a03";
+    ctx.lineWidth = 1.4 * tileSize;
+    ctx.strokeRect(-14 * tileSize, -9 * tileSize, 28 * tileSize, 14 * tileSize);
+    // Mapa náutico aberto sobre a mesa e bússola dourada
+    ctx.fillStyle = "#fef3c7";
+    ctx.fillRect(-7 * tileSize, -6 * tileSize, 12 * tileSize, 8 * tileSize);
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(8 * tileSize, -2 * tileSize, 2.5 * tileSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPortCityMonument(ctx, tileSize, animTimer = 0) {
+    ctx.save();
+    // Base octogonal de pedra coralina e bronze
+    ctx.fillStyle = "rgba(15, 23, 42, 0.45)";
+    ctx.beginPath();
+    ctx.ellipse(0, 6 * tileSize, 24 * tileSize, 12 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#64748b";
+    ctx.beginPath();
+    ctx.ellipse(0, 2 * tileSize, 20 * tileSize, 10 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 2 * tileSize;
+    ctx.stroke();
+
+    // Torre do Farol Portuário (listrada de branco e vermelho-coral)
+    ctx.fillStyle = "#f8fafc";
+    ctx.beginPath();
+    ctx.moveTo(-9 * tileSize, 2 * tileSize);
+    ctx.lineTo(-6 * tileSize, -38 * tileSize);
+    ctx.lineTo(6 * tileSize, -38 * tileSize);
+    ctx.lineTo(9 * tileSize, 2 * tileSize);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(-8 * tileSize, -14 * tileSize, 16 * tileSize, 8 * tileSize);
+    ctx.fillRect(-7 * tileSize, -30 * tileSize, 14 * tileSize, 8 * tileSize);
+
+    // Cúpula e Lanterna Giratória do Farol
+    const pulse = (Math.sin(animTimer * 5) + 1) * 0.5;
+    ctx.fillStyle = `rgba(254, 240, 138, ${0.75 + pulse * 0.25})`;
+    ctx.beginPath();
+    ctx.arc(0, -43 * tileSize, 7.5 * tileSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1e293b";
+    ctx.beginPath();
+    ctx.moveTo(-8 * tileSize, -46 * tileSize);
+    ctx.lineTo(0, -55 * tileSize);
+    ctx.lineTo(8 * tileSize, -46 * tileSize);
+    ctx.closePath();
+    ctx.fill();
+
+    // Grande Âncora Naval de Bronze apoiada na frente do Farol
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 3 * tileSize;
+    ctx.beginPath();
+    ctx.moveTo(0, -10 * tileSize);
+    ctx.lineTo(0, 5 * tileSize);
+    ctx.moveTo(-7 * tileSize, -5 * tileSize);
+    ctx.lineTo(7 * tileSize, -5 * tileSize);
+    ctx.arc(0, 1 * tileSize, 8 * tileSize, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawPortCityLamppost(ctx, tileSize, animTimer = 0) {
+    ctx.save();
+    ctx.fillStyle = "#451a03";
+    ctx.fillRect(-2 * tileSize, -28 * tileSize, 4 * tileSize, 30 * tileSize);
+    ctx.fillRect(-2 * tileSize, -28 * tileSize, 10 * tileSize, 2.5 * tileSize);
+    const glow = (Math.sin(animTimer * 6) + 1) * 0.5;
+    ctx.fillStyle = `rgba(251, 191, 36, ${0.8 + glow * 0.2})`;
+    ctx.beginPath();
+    ctx.arc(6 * tileSize, -23 * tileSize, 3.8 * tileSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 1.2 * tileSize;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPortCityBollard(ctx, tileSize) {
+    ctx.save();
+    // Cabeço de amarração com corda naval enrolada
+    ctx.fillStyle = "#292524";
+    ctx.fillRect(-3.5 * tileSize, -8 * tileSize, 7 * tileSize, 10 * tileSize);
+    ctx.fillStyle = "#44403c";
+    ctx.beginPath();
+    ctx.ellipse(0, -8 * tileSize, 4.5 * tileSize, 2.2 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 2 * tileSize;
+    ctx.beginPath();
+    ctx.moveTo(-4 * tileSize, -4 * tileSize);
+    ctx.lineTo(4 * tileSize, -3 * tileSize);
+    ctx.moveTo(-4 * tileSize, -1.5 * tileSize);
+    ctx.lineTo(4 * tileSize, -0.5 * tileSize);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPortCityBoatHelm(ctx, tileSize) {
+    ctx.save();
+    // Suporte e Roda de Timão de Comando Naval
+    ctx.fillStyle = "#451a03";
+    ctx.fillRect(-3 * tileSize, -12 * tileSize, 6 * tileSize, 14 * tileSize);
+    ctx.strokeStyle = "#b45309";
+    ctx.lineWidth = 2.2 * tileSize;
+    ctx.beginPath();
+    ctx.arc(0, -12 * tileSize, 7.5 * tileSize, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+      ctx.beginPath();
+      ctx.moveTo(0, -12 * tileSize);
+      ctx.lineTo(Math.cos(a) * 9.5 * tileSize, -12 * tileSize + Math.sin(a) * 9.5 * tileSize);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.arc(0, -12 * tileSize, 2.2 * tileSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Renderiza o Casco 2.5D, Proa, Popa, Mastro, Cordame e Velas Enfunadas das Embarcações na Água!
+  function drawPortCityBoatStructure(ctx, tileSize, boatSpec, animTimer = 0) {
+    if (!boatSpec) return;
+    ctx.save();
+
+    const isHoriz = boatSpec.orientation === "horizontal";
+    const isGalleon = boatSpec.boatType === "galleon";
+    const isSchooner = boatSpec.boatType === "schooner";
+    const sway = Math.sin(animTimer * 2.2 + (boatSpec.id || 1) * 1.7) * 2.2 * tileSize;
+    const waveBob = Math.cos(animTimer * 2.6 + (boatSpec.id || 1)) * 1.5 * tileSize;
+    ctx.translate(0, waveBob);
+
+    const halfW = (boatSpec.halfW + 0.55) * 36 * tileSize;
+    const halfH = (boatSpec.halfH + 0.55) * 36 * tileSize;
+
+    // 1. Marolas e espuma branca ao redor do casco da embarcação na água
+    const ripple = (Math.sin(animTimer * 3.2 + (boatSpec.id || 1)) + 1) * 0.5;
+    ctx.strokeStyle = `rgba(224, 242, 254, ${0.45 + ripple * 0.3})`;
+    ctx.lineWidth = 2.2 * tileSize;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, halfW + 8 * tileSize, halfH + 8 * tileSize, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2. Borda curva da Proa e Popa do Casco Naval
+    const hullColors = [
+      { outer: "#451a03", trim: "#f59e0b" },
+      { outer: "#3b1d0a", trim: "#38bdf8" },
+      { outer: "#4c1d1d", trim: "#facc15" },
+    ];
+    const hc = hullColors[(boatSpec.hullStyle || 0) % hullColors.length];
+
+    ctx.strokeStyle = hc.outer;
+    ctx.lineWidth = 4.5 * tileSize;
+    ctx.strokeRect(-halfW + 4 * tileSize, -halfH + 4 * tileSize, (halfW - 4 * tileSize) * 2, (halfH - 4 * tileSize) * 2);
+    ctx.strokeStyle = hc.trim;
+    ctx.lineWidth = 1.6 * tileSize;
+    ctx.strokeRect(-halfW + 6 * tileSize, -halfH + 6 * tileSize, (halfW - 6 * tileSize) * 2, (halfH - 6 * tileSize) * 2);
+
+    // Gurupés / Bico de Proa alongado do navio
+    ctx.strokeStyle = "#78350f";
+    ctx.lineWidth = 4 * tileSize;
+    ctx.beginPath();
+    if (isHoriz) {
+      const dir = boatSpec.facingDir === "west" ? -1 : 1;
+      ctx.moveTo(dir * (halfW - 6 * tileSize), 0);
+      ctx.lineTo(dir * (halfW + 26 * tileSize), -4 * tileSize);
+    } else {
+      ctx.moveTo(0, halfH - 6 * tileSize);
+      ctx.lineTo(0, halfH + 26 * tileSize);
+    }
+    ctx.stroke();
+
+    // 3. Mastro Principal de Madeira Maciça, Vergas e Velas Infladas ao Vento
+    const sailPalettes = [
+      { main: "#fef3c7", stripe: "#dc2626" }, // Vela Real com listras escarlates
+      { main: "#f8fafc", stripe: "#0284c7" }, // Vela Alva com listras azul-oceano
+      { main: "#fef08a", stripe: "#d97706" }, // Vela Solar Dourada
+      { main: "#f1f5f9", stripe: "#15803d" }, // Vela Tropical Esmeralda
+      { main: "#ffedd5", stripe: "#7c2d12" }, // Vela Mercante Terracota
+    ];
+    const sp = sailPalettes[(boatSpec.sailColorIdx || 0) % sailPalettes.length];
+
+    const mastPositions = isGalleon
+      ? (isHoriz ? [{ x: -52 * tileSize, y: 0, s: 0.85 }, { x: 8 * tileSize, y: 0, s: 1.15 }, { x: 64 * tileSize, y: 0, s: 0.9 }]
+                  : [{ x: 0, y: -52 * tileSize, s: 0.85 }, { x: 0, y: 8 * tileSize, s: 1.15 }, { x: 0, y: 64 * tileSize, s: 0.9 }])
+      : isSchooner
+        ? (isHoriz ? [{ x: -26 * tileSize, y: 0, s: 0.9 }, { x: 28 * tileSize, y: 0, s: 1.0 }]
+                    : [{ x: 0, y: -26 * tileSize, s: 0.9 }, { x: 0, y: 28 * tileSize, s: 1.0 }])
+        : [{ x: 0, y: 0, s: 0.82 }];
+
+    for (let m = 0; m < mastPositions.length; m++) {
+      const mp = mastPositions[m];
+      const ms = mp.s;
+      const mx = mp.x;
+      const my = mp.y;
+      const mastTopY = my - 56 * tileSize * ms;
+
+      // Sombra da vela no convés
+      ctx.fillStyle = "rgba(15, 23, 42, 0.24)";
+      ctx.beginPath();
+      ctx.ellipse(mx + 6 * tileSize, my + 4 * tileSize, 26 * tileSize * ms, 12 * tileSize * ms, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Base do mastro no convés
+      ctx.fillStyle = "#451a03";
+      ctx.beginPath();
+      ctx.arc(mx, my, 5.5 * tileSize * ms, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Coluna do mastro subindo em 2.5D
+      ctx.fillStyle = "#78350f";
+      ctx.fillRect(mx - 2.8 * tileSize * ms, mastTopY, 5.6 * tileSize * ms, 56 * tileSize * ms);
+
+      // Verga transversal e Vela Enfunada pelo vento marítimo
+      const sailW = 46 * tileSize * ms;
+      const sailH = 34 * tileSize * ms;
+      const sailTop = mastTopY + 8 * tileSize * ms;
+      const billow = 7 * tileSize * ms + sway * 0.35;
+
+      ctx.fillStyle = sp.main;
+      ctx.beginPath();
+      ctx.moveTo(mx - sailW / 2, sailTop);
+      ctx.quadraticCurveTo(mx, sailTop - 4 * tileSize, mx + sailW / 2, sailTop);
+      ctx.quadraticCurveTo(mx + sailW / 2 + billow * 0.4, sailTop + sailH * 0.5, mx + sailW * 0.46, sailTop + sailH);
+      ctx.quadraticCurveTo(mx, sailTop + sailH + billow, mx - sailW * 0.46, sailTop + sailH);
+      ctx.quadraticCurveTo(mx - sailW / 2 - billow * 0.2, sailTop + sailH * 0.5, mx - sailW / 2, sailTop);
+      ctx.closePath();
+      ctx.fill();
+
+      // Listras verticais coloridas da vela
+      ctx.fillStyle = sp.stripe;
+      ctx.globalAlpha = 0.82;
+      ctx.fillRect(mx - sailW * 0.28, sailTop + 2 * tileSize, sailW * 0.14, sailH - 2 * tileSize);
+      ctx.fillRect(mx + sailW * 0.14, sailTop + 2 * tileSize, sailW * 0.14, sailH - 2 * tileSize);
+      ctx.globalAlpha = 1;
+
+      ctx.strokeStyle = "#92400e";
+      ctx.lineWidth = 1.4 * tileSize;
+      ctx.stroke();
+
+      // Verga de madeira superior
+      ctx.fillStyle = "#451a03";
+      ctx.fillRect(mx - sailW * 0.54, sailTop - 2 * tileSize, sailW * 1.08, 3.5 * tileSize);
+
+      // Flâmula / Bandeira tremulando no topo do mastro
+      const flagWave = Math.sin(animTimer * 6 + m) * 3 * tileSize;
+      ctx.fillStyle = sp.stripe;
+      ctx.beginPath();
+      ctx.moveTo(mx, mastTopY);
+      ctx.lineTo(mx + 16 * tileSize * ms, mastTopY + 3 * tileSize + flagWave);
+      ctx.lineTo(mx, mastTopY + 7 * tileSize * ms);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // Telhados 2.5D das Casas da Cidade Portuária (desaparecem quando o jogador entra na casa)
+  function drawPortCityHouseRoofs(ctx, tileSize, playerX, playerY, viewLeft, viewRight, viewTop, viewBottom, animTimer = 0) {
+    if (typeof window === "undefined" || !window.PortCity || !window.PortCity.houses) return;
+
+    const city = window.PortCity;
+    const houses = city.houses;
+    const activeHouseId = city.getActiveHouseForPlayer
+      ? city.getActiveHouseForPlayer(playerX, playerY, tileSize)
+      : null;
+
+    if (!window.__portRoofAlphaMap) {
+      window.__portRoofAlphaMap = {};
+    }
+    const alphaMap = window.__portRoofAlphaMap;
+
+    for (let i = 0; i < houses.length; i++) {
+      const h = houses[i];
+      const minTileX = h.cx - h.halfW;
+      const maxTileX = h.cx + h.halfW;
+      const minTileY = h.cy - h.halfH;
+      const maxTileY = h.cy + h.halfH;
+
+      const houseLeftPx = minTileX * tileSize;
+      const houseRightPx = (maxTileX + 1) * tileSize;
+      const houseTopPx = minTileY * tileSize;
+      const houseBottomPx = (maxTileY + 1) * tileSize;
+
+      if (
+        houseRightPx + tileSize < viewLeft ||
+        houseLeftPx - tileSize > viewRight ||
+        houseBottomPx + tileSize < viewTop ||
+        houseTopPx - tileSize > viewBottom
+      ) {
+        continue;
+      }
+
+      const isInside = activeHouseId === h.id;
+      const targetAlpha = isInside ? 0 : 1;
+      const prevAlpha = alphaMap[h.id] !== undefined ? alphaMap[h.id] : targetAlpha;
+      const nextAlpha =
+        Math.abs(prevAlpha - targetAlpha) < 0.08
+          ? targetAlpha
+          : prevAlpha + (targetAlpha - prevAlpha) * 0.28;
+      alphaMap[h.id] = nextAlpha;
+
+      if (nextAlpha <= 0.02) continue;
+
+      ctx.save();
+      ctx.globalAlpha = nextAlpha;
+
+      const overhangX = 4;
+      const roofLeft = houseLeftPx - overhangX;
+      const roofRight = houseRightPx + overhangX;
+      const roofW = roofRight - roofLeft;
+      const roofTop = houseTopPx - tileSize * 0.68;
+      const roofBottom = houseBottomPx - tileSize * 0.72;
+      const roofH = roofBottom - roofTop;
+      const ridgeY = roofTop + roofH * 0.48;
+
+      // Sombra projetada pelo beiral colonial
+      ctx.fillStyle = "rgba(15, 23, 42, 0.36)";
+      ctx.beginPath();
+      ctx.roundRect(roofLeft + 3, roofBottom - 2, roofW - 6, 12, 4);
+      ctx.fill();
+
+      // Paleta de telha colonial terracota, azul-marítimo ou palha tropical trançada
+      const rStyle = (h.roofStyle || 0) % 3;
+      const northCol = rStyle === 0 ? "#9a3412" : rStyle === 1 ? "#854d0e" : "#075985";
+      const southCol = rStyle === 0 ? "#c2410c" : rStyle === 1 ? "#ca8a04" : "#0284c7";
+      const ridgeCol = rStyle === 0 ? "#fdba74" : rStyle === 1 ? "#fde047" : "#7dd3fc";
+
+      // Água norte
+      ctx.fillStyle = northCol;
+      ctx.beginPath();
+      ctx.roundRect(roofLeft, roofTop, roofW, ridgeY - roofTop + 2, [4, 4, 0, 0]);
+      ctx.fill();
+
+      // Água sul
+      ctx.fillStyle = southCol;
+      ctx.beginPath();
+      ctx.roundRect(roofLeft, ridgeY, roofW, roofBottom - ridgeY, [0, 0, 4, 4]);
+      ctx.fill();
+
+      // Ondulações das telhas coloniais
+      ctx.strokeStyle = "rgba(28, 25, 23, 0.28)";
+      ctx.lineWidth = 1.1;
+      for (let rx = roofLeft + 8; rx < roofRight - 4; rx += 9) {
+        ctx.beginPath();
+        ctx.moveTo(rx, roofTop + 2);
+        ctx.lineTo(rx, roofBottom - 2);
+        ctx.stroke();
+      }
+
+      // Cumeeira central caiada
+      ctx.fillStyle = ridgeCol;
+      ctx.fillRect(roofLeft + 3, ridgeY - 2, roofW - 6, 4);
+
+      ctx.strokeStyle = "#451a03";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(roofLeft, roofTop, roofW, roofH);
+
+      ctx.restore();
+    }
+  }
+
   // Torna as funções acessíveis globalmente
   window.drawDesertCityHouseRoofs = drawDesertCityHouseRoofs;
   window.drawDesertCityWall = drawDesertCityWall;
@@ -8744,4 +9404,17 @@
   window.drawDesertCityPots = drawDesertCityPots;
   window.drawDesertCityFloor = drawDesertCityFloor;
   window.drawTardigradeEggs = drawTardigradeEggs;
+  window.drawPortCityFloor = drawPortCityFloor;
+  window.drawPortCityWall = drawPortCityWall;
+  window.drawPortCityDoor = drawPortCityDoor;
+  window.drawPortCityHammock = drawPortCityHammock;
+  window.drawPortCityCargo = drawPortCityCargo;
+  window.drawPortCityTable = drawPortCityTable;
+  window.drawPortCityMonument = drawPortCityMonument;
+  window.drawPortCityLamppost = drawPortCityLamppost;
+  window.drawPortCityBollard = drawPortCityBollard;
+  window.drawPortCityBoatHelm = drawPortCityBoatHelm;
+  window.drawPortCityBoatStructure = drawPortCityBoatStructure;
+  window.drawPortCityHouseRoofs = drawPortCityHouseRoofs;
+
 

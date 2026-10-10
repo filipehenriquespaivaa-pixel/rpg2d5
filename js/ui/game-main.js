@@ -1545,6 +1545,17 @@
             found = !0;
           }
 
+          if ((E === "BEACH" || E === "PORT_CITY") && !D.isUnderground) {
+            // Ao teleportar para Praia Tropical (BEACH) ou Porto, leva diretamente para a Praça/Calçadão da Cidade Portuária das Palmeiras!
+            const portCity = typeof window !== "undefined" && window.PortCity;
+            const targetTx = portCity ? portCity.centerX : -520;
+            const targetTy = (portCity ? portCity.centerY : 340) - 2;
+            targetPixelX = targetTx * D.tileSize + D.tileSize / 2;
+            targetPixelY = targetTy * D.tileSize + D.tileSize / 2;
+            foundDist = Math.round(Math.hypot(targetTx - originTx, targetTy - originTy));
+            found = !0;
+          }
+
           if (E === "DESERT_GEODE") {
             let fissure = D.getDesertGeodeFissure ? D.getDesertGeodeFissure() : null;
             if (fissure) {
@@ -2680,6 +2691,22 @@
           if (desertChat && desertChat.success) {
             m.current.playChestChime && m.current.playChestChime();
             ve(desertChat.message);
+            return;
+          }
+        }
+        if (
+          typeof window !== "undefined" &&
+          window.PortCity &&
+          typeof window.PortCity.interactWithNearbyCitizen === "function"
+        ) {
+          const portChat = window.PortCity.interactWithNearbyCitizen(
+            D.x,
+            D.y,
+            !!E.isUnderground,
+          );
+          if (portChat && portChat.success) {
+            m.current.playChestChime && m.current.playChestChime();
+            ve(portChat.message);
             return;
           }
         }

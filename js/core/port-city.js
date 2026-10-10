@@ -1,0 +1,1285 @@
+/* js/core/port-city.js
+ * Cidade Portuária das Palmeiras — Cidade Portuária na Praia Tropical (BiomeId.BEACH e BiomeId.COAST_WATER).
+ *
+ * Características arquitetônicas e procedurais:
+ * - Gerada proceduralmente de acordo com a seed do mundo (setSeed(seed)).
+ * - A posição das casas, calçadão do porto, píeres e embarcações na água mudam dinamicamente conforme a seed!
+ * - Localizada na Praia Tropical (BEACH) fazendo fronteira direta ao sul com Águas Rasas (COAST_WATER) e Oceano Profundo (DEEP_OCEAN).
+ * - Calçadão Portuário e Praça do Porto pavimentados na beira-mar com Farol/Lanterna Portuária, Âncora Monumental, caixotes e barris.
+ * - Píeres de madeira (docas sobre estacas) que avançam sobre a água rasa (caminháveis sobre a água!).
+ * - Embarcações variadas na água (Galeões/Caravelas Mercantes com velas latinas e quadradas, Escunas Costeiras e Barcos Pesqueiros a vela e remo)
+ *   atracadas nos píeres e ancoradas na baía conforme a seed!
+ *   * As embarcações possuem conveses de madeira caminháveis ligados aos píeres por pranchas de embarque,
+ *     timão de comando, mastros com velas infladas ao vento, cabines, redes de pesca, canhões/barris e baús do capitão!
+ * - Casas Portuárias Tropicais espalhadas de acordo com a seed ao redor do porto, com telhados 2.5D de telha colonial terracota e palha trançada
+ *   que desaparecem suavemente quando o jogador entra na casa!
+ * - População viva de Marinheiros, Capitães, Pescadores e Mercadores do Porto que caminham pelas docas,
+ *   sobem nos barcos, conversam no cais e interagem com [F].
+ */
+"use strict";
+
+window.Game = window.Game || {};
+
+(function (G) {
+  // Centro territorial da Cidade Portuária (Praia Tropical ao norte e Baía de Águas Rasas ao sul)
+  const CITY_CX = -680;
+  const CITY_CY = 620;
+  const CITY_RADIUS = 105;
+  const CITY_BIOME_RADIUS = 460;
+
+  let _currentSeed = 54321;
+
+  // Hash determinístico baseado na seed do mundo
+  function _seedHash(a, b, salt = 0) {
+    let h =
+      (Math.imul(a | 0, 374761393) ^
+        Math.imul(b | 0, 668265263) ^
+        Math.imul(_currentSeed | 0, 1597334677) ^
+        Math.imul(salt | 0, 1013904223)) |
+      0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+
+  // Estruturas dinâmicas geradas pela seed
+  const HOUSES = [];
+  const PIERS = [];
+  const BOATS = [];
+  const CITIZENS = [];
+  let _citizensInitialized = false;
+  const _activeDoorwayTimers = new Map();
+
+  // Linha costeira sinuosa determinística por seed (divide BEACH ao norte e COAST_WATER ao sul)
+  function getShorelineY(tx) {
+    const dx = tx - CITY_CX;
+    const wave1 = Math.sin(dx * 0.085 + (_currentSeed % 97) * 0.13) * 2.2;
+    const wave2 = Math.cos(dx * 0.042 + (_currentSeed % 53) * 0.29) * 1.6;
+    // Enseada natural (baía portuária ligeiramente recuada no centro)
+    const bayIndent = Math.abs(dx) < 38 ? -Math.cos((dx / 38) * (Math.PI * 0.5)) * 2.5 : 0;
+    return Math.round(CITY_CY + 6 + wave1 + wave2 + bayIndent);
+  }
+
+  // Verifica se o tile está na área de bioma garantido da Cidade Portuária
+  function isCityBiomeArea(tx, ty) {
+    const dx = tx - CITY_CX;
+    const dy = ty - CITY_CY;
+    return dx * dx + dy * dy <= CITY_BIOME_RADIUS * CITY_BIOME_RADIUS;
+  }
+
+  // Retorna o bioma exato do tile na região da Cidade Portuária (Praia Tropical, Águas Rasas da Baía ou Oceano)
+  function getBiomeForTile(tx, ty) {
+    if (!isCityBiomeArea(tx, ty)) return null;
+    if (typeof BIOMES === "undefined") return null;
+    const shoreY = getShorelineY(tx);
+    if (ty <= shoreY) {
+      return BIOMES.BEACH;
+    }
+    const waterDepth = ty - shoreY;
+    // Ampla baía de Águas Rasas (COAST_WATER) para os píeres e embarcações, e depois Oceano Profundo
+    const deepThreshold = 52 + Math.round(Math.sin(tx * 0.06 + (_currentSeed % 41)) * 6);
+    if (waterDepth <= deepThreshold) {
+      return BIOMES.COAST_WATER;
+    }
+    return BIOMES.DEEP_OCEAN;
+  }
+
+  // Verifica se o tile está dentro do território construído da Cidade Portuária
+  function isCityTerritory(tx, ty) {
+    const dx = tx - CITY_CX;
+    const dy = ty - CITY_CY;
+    return dx * dx + dy * dy <= CITY_RADIUS * CITY_RADIUS;
+  }
+
+  // =========================================================================
+  // GERAÇÃO PROCEDURAL DA CIDADE PORTUÁRIA E EMBARCAÇÕES DE ACORDO COM A SEED
+  // =========================================================================
+  function _buildPortLayoutForSeed(seed) {
+    _currentSeed = (Number(seed) || 54321) | 0;
+    HOUSES.length = 0;
+    PIERS.length = 0;
+    BOATS.length = 0;
+
+    // 1. GERA OS PÍERES DE MADEIRA (3 a 4 Píeres principais avançando sobre a água rasa de acordo com a seed)
+    const pierCount = 4;
+    const basePierXs = [-28, -9, 10, 29];
+    for (let p = 0; p < pierCount; p++) {
+      const shiftX = Math.round((_seedHash(p, 11, 101) - 0.5) * 6);
+      const px = CITY_CX + basePierXs[p] + shiftX;
+      const startY = CITY_CY + 2; // Conecta no calçadão portuário da praia
+      const len = 18 + Math.floor(_seedHash(p, 23, 103) * 10); // 18 a 27 blocos mar adentro
+      const endY = startY + len;
+      const halfW = p === 1 || p === 2 ? 2 : 1; // Píeres centrais mais largos (5 blocos), laterais (3 blocos)
+      const hasCrossT = _seedHash(p, 37, 107) > 0.35;
+
+      PIERS.push({
+        id: p + 1,
+        cx: px,
+        startY,
+        endY,
+        halfW,
+        hasCrossT,
+        crossY: endY - 1,
+        crossHalfW: halfW + 3,
+      });
+    }
+
+    // 2. GERA AS EMBARCAÇÕES NA ÁGUA DE ACORDO COM A SEED:
+    //    - Galeões / Caravelas Mercantes atracados nos píeres principais (com prancha de embarque caminhável!)
+    //    - Escunas e Barcos Pesqueiros atracados nas laterais dos píeres
+    //    - Embarcações ancoradas nas águas rasas da baía tropical
+    let boatIdCounter = 1;
+
+    for (let p = 0; p < PIERS.length; p++) {
+      const pier = PIERS[p];
+      const dockSide = _seedHash(p, 51, 201) < 0.5 ? -1 : 1;
+
+      // Embarcação principal atracada ao lado deste píer
+      const isGalleon = p === 1 || p === 2 || _seedHash(p, 61, 203) > 0.45;
+      const bHalfW = isGalleon ? 2 : 1; // Largura do casco: 5 blocos (Galeão) ou 3 blocos (Barco Costeiro)
+      const bHalfH = isGalleon ? 5 : 3; // Comprimento do casco: 11 blocos (Galeão) ou 7 blocos (Barco)
+      const gangplankLen = 2;
+      const boatCx = pier.cx + dockSide * (pier.halfW + gangplankLen + bHalfW);
+      const boatCy = pier.startY + Math.min(pier.endY - pier.startY - bHalfH - 1, 9 + Math.floor(_seedHash(p, 71, 209) * 5));
+      const sailColorIdx = Math.floor(_seedHash(p, 83, 211) * 5);
+      const hullStyle = Math.floor(_seedHash(p, 97, 223) * 3);
+
+      BOATS.push({
+        id: boatIdCounter++,
+        name: isGalleon
+          ? `Galeão Mercante #${boatIdCounter - 1}`
+          : `Escuna Portuária #${boatIdCounter - 1}`,
+        boatType: isGalleon ? "galleon" : "schooner",
+        orientation: "vertical",
+        cx: boatCx,
+        cy: boatCy,
+        halfW: bHalfW,
+        halfH: bHalfH,
+        dockedPierId: pier.id,
+        dockSide: dockSide, // -1 = barco a oeste do píer, +1 = barco a leste do píer
+        gangplankY: boatCy,
+        gangplankMinX: dockSide > 0 ? pier.cx + pier.halfW + 1 : boatCx + bHalfW + 1,
+        gangplankMaxX: dockSide > 0 ? boatCx - bHalfW - 1 : pier.cx - pier.halfW - 1,
+        sailColorIdx,
+        hullStyle,
+        facingDir: _seedHash(p, 109, 227) < 0.5 ? "south" : "north",
+      });
+
+      // Embarcação secundária (Barco Pesqueiro / Saveiro) do outro lado do píer ou na ponta de acordo com a seed
+      if (_seedHash(p, 131, 233) > 0.25) {
+        const oppSide = -dockSide;
+        const fHalfW = 1;
+        const fHalfH = 3;
+        const fCx = pier.cx + oppSide * (pier.halfW + 2 + fHalfW);
+        const fCy = pier.startY + 6 + Math.floor(_seedHash(p, 149, 239) * 4);
+
+        // Verifica não colidir com outro píer ou barco
+        let conflict = false;
+        for (const ob of BOATS) {
+          if (Math.abs(fCx - ob.cx) <= fHalfW + ob.halfW + 3 && Math.abs(fCy - ob.cy) <= fHalfH + ob.halfH + 2) {
+            conflict = true;
+            break;
+          }
+        }
+        for (const op of PIERS) {
+          if (Math.abs(fCx - op.cx) <= fHalfW + op.halfW + 1 && fCy + fHalfH >= op.startY && fCy - fHalfH <= op.endY) {
+            conflict = true;
+            break;
+          }
+        }
+        if (!conflict) {
+          BOATS.push({
+            id: boatIdCounter++,
+            name: `Barco Pesqueiro #${boatIdCounter - 1}`,
+            boatType: "fishing_boat",
+            orientation: "vertical",
+            cx: fCx,
+            cy: fCy,
+            halfW: fHalfW,
+            halfH: fHalfH,
+            dockedPierId: pier.id,
+            dockSide: oppSide,
+            gangplankY: fCy,
+            gangplankMinX: oppSide > 0 ? pier.cx + pier.halfW + 1 : fCx + fHalfW + 1,
+            gangplankMaxX: oppSide > 0 ? fCx - fHalfW - 1 : pier.cx - pier.halfW - 1,
+            sailColorIdx: Math.floor(_seedHash(p, 163, 241) * 5),
+            hullStyle: Math.floor(_seedHash(p, 173, 251) * 3),
+            facingDir: "south",
+          });
+        }
+      }
+    }
+
+    // 3. EMBARCAÇÕES ANCORADAS NA BAÍA DE ÁGUAS RASAS (Fora dos píeres, espalhadas de acordo com a seed)
+    const anchoredZones = [
+      { baseX: -44, baseY: 16, type: "galleon", orient: "horizontal" },
+      { baseX: -19, baseY: 33, type: "schooner", orient: "horizontal" },
+      { baseX: 2, baseY: 35, type: "galleon", orient: "horizontal" },
+      { baseX: 24, baseY: 32, type: "fishing_boat", orient: "vertical" },
+      { baseX: 44, baseY: 17, type: "schooner", orient: "horizontal" },
+      { baseX: -36, baseY: 30, type: "fishing_boat", orient: "horizontal" },
+    ];
+
+    for (let a = 0; a < anchoredZones.length; a++) {
+      const az = anchoredZones[a];
+      const sx = Math.round((_seedHash(a, 191, 307) - 0.5) * 8);
+      const sy = Math.round((_seedHash(a, 199, 311) - 0.5) * 6);
+      const isHoriz = az.orient === "horizontal";
+      const isGal = az.type === "galleon";
+      const hw = isHoriz ? (isGal ? 5 : 3) : (isGal ? 2 : 1);
+      const hh = isHoriz ? (isGal ? 2 : 1) : (isGal ? 5 : 3);
+      const acx = CITY_CX + az.baseX + sx;
+      const acy = CITY_CY + az.baseY + sy;
+
+      let conflict = false;
+      for (const ob of BOATS) {
+        if (Math.abs(acx - ob.cx) <= hw + ob.halfW + 3 && Math.abs(acy - ob.cy) <= hh + ob.halfH + 3) {
+          conflict = true;
+          break;
+        }
+      }
+      for (const op of PIERS) {
+        if (Math.abs(acx - op.cx) <= hw + op.halfW + 2 && acy + hh >= op.startY - 1 && acy - hh <= op.endY + 2) {
+          conflict = true;
+          break;
+        }
+      }
+
+      if (!conflict) {
+        BOATS.push({
+          id: boatIdCounter++,
+          name: isGal
+            ? `Nau Mercante Ancorada #${boatIdCounter - 1}`
+            : az.type === "schooner"
+              ? `Caravela Costeira #${boatIdCounter - 1}`
+              : `Jangada / Saveiro de Pesca #${boatIdCounter - 1}`,
+          boatType: az.type,
+          orientation: az.orient,
+          cx: acx,
+          cy: acy,
+          halfW: hw,
+          halfH: hh,
+          dockedPierId: null,
+          sailColorIdx: Math.floor(_seedHash(a, 211, 313) * 5),
+          hullStyle: Math.floor(_seedHash(a, 223, 317) * 3),
+          facingDir: isHoriz ? (_seedHash(a, 229, 331) < 0.5 ? "east" : "west") : "south",
+        });
+      }
+    }
+
+    // 4. GERA AS CASAS PORTUÁRIAS NA PRAIA TROPICAL DE ACORDO COM A SEED
+    //    - Espalhadas ao redor do Calçadão do Porto e Praça Marítima sem sobrepor ruas ou costa
+    const houseAnchors = [
+      // Primeira fileira costeira (olhando para o Calçadão do Porto e para o Mar ao sul)
+      { rx: -42, ry: -9, hw: 3, hh: 2, doorSide: "south", style: 0, kind: "tavern" },
+      { rx: -28, ry: -10, hw: 3, hh: 2, doorSide: "south", style: 1, kind: "shop" },
+      { rx: -15, ry: -9, hw: 2, hh: 2, doorSide: "south", style: 2, kind: "house" },
+      { rx: 15, ry: -9, hw: 2, hh: 2, doorSide: "south", style: 0, kind: "house" },
+      { rx: 28, ry: -10, hw: 3, hh: 2, doorSide: "south", style: 1, kind: "warehouse" },
+      { rx: 42, ry: -9, hw: 3, hh: 2, doorSide: "south", style: 2, kind: "house" },
+
+      // Fileira intermediária da Praia Tropical (espalhadas conforme a seed)
+      { rx: -46, ry: -22, hw: 2, hh: 2, doorSide: "south", style: 1, kind: "house" },
+      { rx: -32, ry: -23, hw: 3, hh: 2, doorSide: "south", style: 2, kind: "house" },
+      { rx: -17, ry: -21, hw: 3, hh: 2, doorSide: "south", style: 0, kind: "house" },
+      { rx: 0, ry: -23, hw: 3, hh: 2, doorSide: "south", style: 0, kind: "captain_hall" },
+      { rx: 17, ry: -21, hw: 3, hh: 2, doorSide: "south", style: 1, kind: "house" },
+      { rx: 32, ry: -23, hw: 2, hh: 2, doorSide: "south", style: 2, kind: "house" },
+      { rx: 46, ry: -22, hw: 3, hh: 2, doorSide: "south", style: 0, kind: "house" },
+
+      // Fileira norte das dunas e palmeiras da praia (espalhadas conforme a seed)
+      { rx: -38, ry: -35, hw: 3, hh: 2, doorSide: "south", style: 2, kind: "house" },
+      { rx: -22, ry: -36, hw: 2, hh: 2, doorSide: "south", style: 0, kind: "house" },
+      { rx: -8, ry: -35, hw: 3, hh: 2, doorSide: "south", style: 1, kind: "house" },
+      { rx: 9, ry: -35, hw: 2, hh: 2, doorSide: "south", style: 2, kind: "house" },
+      { rx: 24, ry: -36, hw: 3, hh: 2, doorSide: "south", style: 0, kind: "house" },
+      { rx: 39, ry: -34, hw: 2, hh: 2, doorSide: "south", style: 1, kind: "house" },
+    ];
+
+    const HOUSE_TYPE_NAMES = {
+      tavern: "Taverna do Marujo Dourado",
+      shop: "Empório de Especiarias e Redes",
+      warehouse: "Armazém Naval da Companhia do Mar",
+      captain_hall: "Capitania dos Portos Tropicais",
+      house: "Casa Portuária Caiada",
+    };
+
+    for (let i = 0; i < houseAnchors.length; i++) {
+      const anc = houseAnchors[i];
+      let placed = null;
+
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const range = attempt < 8 ? 3 : 2;
+        const jx = attempt === 19 ? 0 : Math.round((_seedHash(i + 1, attempt * 7 + 3, 401) * 2 - 1) * range);
+        const jy = attempt === 19 ? 0 : Math.round((_seedHash(i + 1, attempt * 11 + 5, 409) * 2 - 1) * 2);
+        const cx = CITY_CX + anc.rx + jx;
+        const cy = CITY_CY + anc.ry + jy;
+        const hw = _seedHash(i + 1, attempt + 2, 419) > 0.45 ? 3 : 2;
+        const hh = 2;
+
+        // Não pode invadir o Calçadão Beira-Mar (ty >= CITY_CY - 3) nem a Praça Central (|dx| <= 9 e dy >= -14)
+        if (cy + hh >= CITY_CY - 4) continue;
+        if (Math.abs(cx - CITY_CX) <= 9 + hw && cy + hh >= CITY_CY - 15) continue;
+
+        // Garante distância mínima de 4 blocos entre casas vizinhas (espalhadas de acordo com a seed)
+        let overlap = false;
+        for (let j = 0; j < HOUSES.length; j++) {
+          const other = HOUSES[j];
+          const sepX = Math.abs(cx - other.cx) - (hw + other.halfW);
+          const sepY = Math.abs(cy - other.cy) - (hh + other.halfH);
+          if (sepX < 4 && sepY < 4) {
+            overlap = true;
+            break;
+          }
+        }
+        if (!overlap) {
+          placed = { cx, cy, hw, hh };
+          break;
+        }
+      }
+
+      if (!placed) {
+        placed = {
+          cx: CITY_CX + anc.rx,
+          cy: CITY_CY + anc.ry,
+          hw: anc.hw,
+          hh: anc.hh,
+        };
+      }
+
+      const id = HOUSES.length + 1;
+      const roofStyle = Math.floor(_seedHash(id, 17, 431) * 3);
+      const baseTitle = HOUSE_TYPE_NAMES[anc.kind] || "Casa Portuária Caiada";
+      HOUSES.push({
+        id,
+        name: `${baseTitle} #${id}`,
+        kind: anc.kind || "house",
+        cx: placed.cx,
+        cy: placed.cy,
+        relX: placed.cx - CITY_CX,
+        relY: placed.cy - CITY_CY,
+        halfW: placed.hw,
+        halfH: placed.hh,
+        doorSide: anc.doorSide || "south",
+        roofStyle,
+      });
+    }
+  }
+
+  // Inicializa o layout com a seed padrão e permite atualizar quando a seed mudar
+  _buildPortLayoutForSeed(_currentSeed);
+
+  function setSeed(newSeed) {
+    const s = (Number(newSeed) || 54321) | 0;
+    if (s === _currentSeed && HOUSES.length > 0) return;
+    _buildPortLayoutForSeed(s);
+    _citizensInitialized = false;
+    CITIZENS.length = 0;
+    if (typeof window !== "undefined") {
+      if (window.drawPortCityHouseRoofs && window.drawPortCityHouseRoofs._cache) {
+        window.drawPortCityHouseRoofs._cache.clear();
+      }
+    }
+  }
+
+  // Encontra casa no tile
+  function getHouseAt(tx, ty) {
+    for (let i = 0; i < HOUSES.length; i++) {
+      const h = HOUSES[i];
+      if (Math.abs(tx - h.cx) <= h.halfW && Math.abs(ty - h.cy) <= h.halfH) {
+        return h;
+      }
+    }
+    return null;
+  }
+
+  // Casa ativa onde o jogador está dentro (para ocultar o telhado 2.5D ao entrar)
+  function getActiveHouseForPlayer(playerX, playerY, tileSize) {
+    const ptx = Math.floor(playerX / tileSize);
+    const pty = Math.floor(playerY / tileSize);
+    for (let i = 0; i < HOUSES.length; i++) {
+      const h = HOUSES[i];
+      if (Math.abs(ptx - h.cx) < h.halfW && Math.abs(pty - h.cy) < h.halfH) {
+        return h.id;
+      }
+    }
+    return null;
+  }
+
+  // Encontra píer ou prancha de embarque no tile
+  function getPierAt(tx, ty) {
+    for (let i = 0; i < PIERS.length; i++) {
+      const p = PIERS[i];
+      if (ty >= p.startY && ty <= p.endY && Math.abs(tx - p.cx) <= p.halfW) {
+        return { pier: p, isEdge: Math.abs(tx - p.cx) === p.halfW || ty === p.endY, isGangplank: false };
+      }
+      if (p.hasCrossT && Math.abs(ty - p.crossY) <= 1 && Math.abs(tx - p.cx) <= p.crossHalfW) {
+        return { pier: p, isEdge: Math.abs(ty - p.crossY) === 1 || Math.abs(tx - p.cx) === p.crossHalfW, isGangplank: false };
+      }
+    }
+    // Pranchas de embarque que ligam os píeres aos barcos atracados
+    for (let i = 0; i < BOATS.length; i++) {
+      const b = BOATS[i];
+      if (b.dockedPierId && Math.abs(ty - b.gangplankY) <= 1 && tx >= b.gangplankMinX && tx <= b.gangplankMaxX) {
+        return { pier: PIERS[0], isEdge: false, isGangplank: true, boat: b };
+      }
+    }
+    return null;
+  }
+
+  // Encontra embarcação no tile
+  function getBoatAt(tx, ty) {
+    for (let i = 0; i < BOATS.length; i++) {
+      const b = BOATS[i];
+      if (Math.abs(tx - b.cx) <= b.halfW && Math.abs(ty - b.cy) <= b.halfH) {
+        return b;
+      }
+    }
+    return null;
+  }
+
+  // Verifica se o tile faz parte do Calçadão Portuário ou Praça Marítima
+  function isBoardwalkOrPlazaAt(tx, ty) {
+    const dx = tx - CITY_CX;
+    const dy = ty - CITY_CY;
+    const shoreY = getShorelineY(tx);
+    // Calçadão Portuário acompanhando a beira da praia (de CITY_CY - 2 até shoreY)
+    if (Math.abs(dx) <= 46 && ty >= CITY_CY - 2 && ty <= shoreY) {
+      return "boardwalk";
+    }
+    // Praça Central do Porto (entre as casas costeiras)
+    if (Math.abs(dx) <= 8 && dy >= -14 && dy < -2) {
+      return "plaza";
+    }
+    return null;
+  }
+
+  // =========================================================================
+  // RETORNA A CÉLULA ARQUITETÔNICA DA CIDADE PORTUÁRIA OU EMBARCAÇÃO EM (tx, ty)
+  // =========================================================================
+  function getCellAt(tx, ty, interactedProps) {
+    if (!isCityTerritory(tx, ty)) return null;
+
+    const tileKey = `${tx},${ty}`;
+    const intState =
+      interactedProps && interactedProps.get
+        ? interactedProps.get(tileKey) || {}
+        : {};
+
+    // 1. EMBARCAÇÕES NA ÁGUA (Galeões, Escunas e Barcos Pesqueiros)
+    const boat = getBoatAt(tx, ty);
+    if (boat) {
+      const rx = tx - boat.cx;
+      const ry = ty - boat.cy;
+      const W = boat.halfW;
+      const H = boat.halfH;
+      const isHoriz = boat.orientation === "horizontal";
+
+      // Verifica se este tile da borda do barco é a entrada da prancha de embarque
+      const isGangplankEntry =
+        !!boat.dockedPierId &&
+        Math.abs(ty - boat.gangplankY) <= 1 &&
+        ((boat.dockSide > 0 && rx === -W) || (boat.dockSide < 0 && rx === W));
+
+      // Centro do barco: Mastro Principal com Vela Latina / Redonda (desenha toda a estrutura 2.5D do navio!)
+      if (rx === 0 && ry === 0) {
+        return {
+          isPortCity: true,
+          isPortBoat: true,
+          isPortPier: true,
+          boatId: boat.id,
+          role: "boat_center",
+          roomName: boat.name,
+          isWall: false,
+          isCollider: true,
+          prop: {
+            kind: "port_city_boat_mast",
+            boatId: boat.id,
+            boatSpec: boat,
+            scale: 1,
+            interactive: true,
+            namePt: `${boat.name} (Mastro e Velame)`,
+            descriptionPt:
+              "Embarcação marítima de madeira nobre calafetada com velas enfunadas pela brisa tropical. Pressione [F] para inspecionar o navio!",
+          },
+        };
+      }
+
+      // Timão do Capitão / Leme na popa da embarcação
+      const helmRx = isHoriz ? -W + 1 : 0;
+      const helmRy = isHoriz ? 0 : -H + 1;
+      if (rx === helmRx && ry === helmRy) {
+        return {
+          isPortCity: true,
+          isPortBoat: true,
+          isPortPier: true,
+          boatId: boat.id,
+          role: "boat_helm",
+          roomName: `Convés de Comando (${boat.name})`,
+          isWall: false,
+          isCollider: false,
+          prop: {
+            kind: "port_city_boat_helm",
+            boatId: boat.id,
+            boatType: boat.boatType,
+            interactive: true,
+            namePt: `Timão de Comando (${boat.name})`,
+            descriptionPt:
+              "Roda de leme em madeira de lei com bússola de latão para navegar pelos mares tropicais. Pressione [F] para examinar a rota!",
+          },
+        };
+      }
+
+      // Baú do Capitão / Carga Naval na proa/convés dos Galeões e Escunas
+      const chestRx = isHoriz ? W - 1 : 0;
+      const chestRy = isHoriz ? 0 : H - 1;
+      if (rx === chestRx && ry === chestRy) {
+        const opened = !!intState.opened;
+        return {
+          isPortCity: true,
+          isPortBoat: true,
+          isPortPier: true,
+          boatId: boat.id,
+          role: "boat_chest",
+          roomName: `Proa de Carga (${boat.name})`,
+          isWall: false,
+          isCollider: false,
+          prop: {
+            kind: "chest",
+            subType: 0,
+            scale: 1.0,
+            interactive: !opened,
+            opened: opened,
+            namePt: opened
+              ? `Baú Marítimo (${boat.name} - Saqueado)`
+              : `Baú do Capitão (${boat.name})`,
+            descriptionPt: opened
+              ? "Os suprimentos e doblões deste baú naval já foram recolhidos."
+              : `Arca naval reforçada com latão a bordo de ${boat.name}. Pressione [F] para abrir!`,
+          },
+        };
+      }
+
+      // Bordas laterais da embarcação (Amuradas / Parapeito naval — bloqueia queda na água exceto na prancha de embarque)
+      const isHullBorder = Math.abs(rx) === W || Math.abs(ry) === H;
+      if (isHullBorder && !isGangplankEntry) {
+        return {
+          isPortCity: true,
+          isPortBoat: true,
+          isPortPier: true,
+          boatId: boat.id,
+          role: "boat_rail",
+          roomName: `Amurada de ${boat.name}`,
+          isWall: false,
+          isCollider: boat.halfW >= 2, // Nos galeões largos a borda tem amurada física e o meio é livre para caminhar
+          prop: null,
+        };
+      }
+
+      // Convés caminhável de tábuas navais calafetadas
+      return {
+        isPortCity: true,
+        isPortBoat: true,
+        isPortPier: true,
+        boatId: boat.id,
+        role: "boat_deck",
+        roomName: `Convés de ${boat.name}`,
+        isWall: false,
+        isCollider: false,
+        prop: null,
+      };
+    }
+
+    // 2. PÍERES DE MADEIRA E PRANCHAS DE EMBARQUE SOBRE A ÁGUA
+    const pierInfo = getPierAt(tx, ty);
+    if (pierInfo) {
+      const p = pierInfo.pier;
+      const isLampSpot =
+        !pierInfo.isGangplank &&
+        Math.abs(tx - p.cx) === p.halfW &&
+        (ty === p.startY + 4 || ty === p.startY + 12 || ty === p.endY - 1);
+      const isBollardSpot =
+        !pierInfo.isGangplank &&
+        Math.abs(tx - p.cx) === p.halfW &&
+        (ty === p.startY + 8 || ty === p.endY);
+
+      return {
+        isPortCity: true,
+        isPortPier: true,
+        role: pierInfo.isGangplank ? "gangplank" : "pier",
+        roomName: pierInfo.isGangplank
+          ? `Prancha de Embarque (${pierInfo.boat ? pierInfo.boat.name : "Navio"})`
+          : `Píer de Madeira #${p.id}`,
+        isWall: false,
+        isCollider: false,
+        prop: isLampSpot
+          ? {
+              kind: "port_city_lamppost",
+              interactive: true,
+              namePt: "Lanterna Naval do Píer",
+              descriptionPt:
+                "Poste de madeira naval com lampião de óleo de baleia que guia as embarcações à noite.",
+            }
+          : isBollardSpot
+            ? {
+                kind: "port_city_bollard",
+                interactive: true,
+                namePt: "Cabeço de Amarração Naval",
+                descriptionPt:
+                  " Tronco maciço com cabos de cânhamo grosso amarrando os navios atracados no porto.",
+              }
+            : null,
+      };
+    }
+
+    // 3. CASAS PORTUÁRIAS NA PRAIA TROPICAL
+    const house = getHouseAt(tx, ty);
+    if (house) {
+      const rx = tx - house.cx;
+      const ry = ty - house.cy;
+      const W = house.halfW;
+      const H = house.halfH;
+      const isSouthDoor = house.doorSide === "south";
+      const doorY = isSouthDoor ? H : -H;
+      const doorX = 0;
+      const houseId = house.id;
+
+      // Porta da casa portuária
+      if (ry === doorY && rx === doorX) {
+        const isDoorOpen = !!intState.opened;
+        return {
+          isPortCity: true,
+          houseIndex: houseId,
+          role: "door",
+          roomName: `Entrada — ${house.name}`,
+          isDoor: true,
+          isDoorOpen: isDoorOpen,
+          isWall: false,
+          prop: {
+            kind: "port_city_door",
+            houseIndex: houseId,
+            opened: isDoorOpen,
+            interactive: true,
+            namePt: isDoorOpen
+              ? `Porta Naval Aberta (${house.name})`
+              : `Porta de Madeira Naval (${house.name})`,
+            descriptionPt: isDoorOpen
+              ? "Porta colonial com detalhes de latão aberta para a brisa do mar. Pressione [F] para fechar."
+              : "Porta resistente de cedro marítimo com vigia redonda de latão. Pressione [F] para abrir!",
+          },
+        };
+      }
+
+      // Paredes externas (alvenaria caiada branca/creme com vigas de madeira tropical)
+      if (Math.abs(rx) === W || Math.abs(ry) === H) {
+        return {
+          isPortCity: true,
+          houseIndex: houseId,
+          role: "wall",
+          roomName: `Parede — ${house.name}`,
+          isWall: true,
+          prop: {
+            kind: "port_city_wall",
+            subType: house.roofStyle || 0,
+            houseIndex: houseId,
+            namePt: `Parede Colonial Portuária (${house.name})`,
+            descriptionPt:
+              "Parede caiada de cal branca e pedra coralina com vigamento de madeira tropical resistente à maresia.",
+          },
+        };
+      }
+
+      // Interior: Rede Tropical / Leito de Marinheiro no canto esquerdo
+      const hammockX = -W + 1;
+      const hammockY = isSouthDoor ? -H + 1 : H - 1;
+      if (rx === hammockX && ry === hammockY) {
+        return {
+          isPortCity: true,
+          houseIndex: houseId,
+          role: "hammock",
+          roomName: `Interior — ${house.name}`,
+          isWall: false,
+          prop: {
+            kind: "port_city_hammock",
+            houseIndex: houseId,
+            interactive: true,
+            namePt: "Rede de Algodão e Leito de Marinheiro",
+            descriptionPt:
+              "Leito fresco de fibras naturais embalado pela brisa da praia tropical. Pressione [F] para descansar e recuperar todas as forças!",
+          },
+        };
+      }
+
+      // Interior: Barris de Rum/Água Doce, Caixotes de Especiarias e Mapas Náuticos no canto direito
+      const cargoX = W - 1;
+      const cargoY = isSouthDoor ? -H + 1 : H - 1;
+      if (rx === cargoX && ry === cargoY) {
+        return {
+          isPortCity: true,
+          houseIndex: houseId,
+          role: "cargo",
+          roomName: `Suprimentos — ${house.name}`,
+          isWall: false,
+          isCollider: true,
+          prop: {
+            kind: "port_city_cargo",
+            houseIndex: houseId,
+            subType: houseId % 3,
+            interactive: true,
+            namePt: "Barris Navais e Caixotes do Porto",
+            descriptionPt:
+              "Barris de carvalho com água doce, frutas tropicais, pescado salgado e cartas náuticas. Pressione [F] para inspecionar!",
+          },
+        };
+      }
+
+      // Interior: Mesa de Taverna / Balcão de Mapas no centro-fundo de casas maiores (W === 3)
+      if (W >= 3 && rx === 0 && ry === (isSouthDoor ? -H + 1 : H - 1)) {
+        return {
+          isPortCity: true,
+          houseIndex: houseId,
+          role: "table",
+          roomName: `Salão — ${house.name}`,
+          isWall: false,
+          isCollider: true,
+          prop: {
+            kind: "port_city_table",
+            houseIndex: houseId,
+            interactive: true,
+            namePt: "Mesa Náutica de Carvalho",
+            descriptionPt:
+              "Mesa posta com bússola, luneta de latão, cartas marítimas da costa e canecas de madeira. Pressione [F] para examinar!",
+          },
+        };
+      }
+
+      // Piso interno de tábuas navais envernizadas
+      return {
+        isPortCity: true,
+        houseIndex: houseId,
+        role: "floor",
+        roomName: `Interior — ${house.name}`,
+        isWall: false,
+        prop: null,
+      };
+    }
+
+    // 4. CALÇADÃO PORTUÁRIO E PRAÇA CENTRAL DO PORTO
+    const bwRole = isBoardwalkOrPlazaAt(tx, ty);
+    if (bwRole) {
+      const dx = tx - CITY_CX;
+      const dy = ty - CITY_CY;
+
+      // Monumento Central da Praça do Porto: Farol-Lanterna e Grande Âncora de Bronze (em CITY_CX, CITY_CY - 6)
+      if (dx === 0 && dy === -6) {
+        return {
+          isPortCity: true,
+          role: "plaza",
+          roomName: "Praça do Farol e da Grande Âncora",
+          isWall: false,
+          isCollider: true,
+          prop: {
+            kind: "port_city_monument",
+            interactive: true,
+            namePt: "Farol Portuário & Monumento da Grande Âncora",
+            descriptionPt:
+              "Marco central da Cidade Portuária das Palmeiras com fogo de sinalização marítima. Pressione [F] para descansar à brisa do porto e restaurar vigor!",
+          },
+        };
+      }
+
+      // Bancos e postes de lanterna ao redor da Praça e Calçadão
+      if (
+        (Math.abs(dx) === 6 && (dy === -10 || dy === -3)) ||
+        (Math.abs(dx) === 18 && dy === 0) ||
+        (Math.abs(dx) === 34 && dy === 0)
+      ) {
+        return {
+          isPortCity: true,
+          role: bwRole,
+          roomName: "Calçadão da Cidade Portuária",
+          isWall: false,
+          isCollider: true,
+          prop: {
+            kind: "port_city_lamppost",
+            interactive: true,
+            namePt: "Poste de Lanterna Marítima",
+            descriptionPt: "Lampião portuário de bronze suspenso em haste de madeira naval.",
+          },
+        };
+      }
+
+      // Remessas de caixotes, redes de pesca e barris ao longo do cais
+      if (
+        (dx === -13 && dy === 0) ||
+        (dx === 14 && dy === 0) ||
+        (dx === -23 && dy === 0) ||
+        (dx === 23 && dy === 0)
+      ) {
+        return {
+          isPortCity: true,
+          role: bwRole,
+          roomName: "Cais de Mercadorias do Porto",
+          isWall: false,
+          isCollider: true,
+          prop: {
+            kind: "port_city_cargo",
+            subType: Math.abs(dx) % 3,
+            interactive: true,
+            namePt: "Carga Portuária e Redes de Pesca",
+            descriptionPt:
+              "Mercadorias recém-desembarcadas das caravelas: especiarias, cordas navais, cocos e redes de pesca.",
+          },
+        };
+      }
+
+      return {
+        isPortCity: true,
+        role: bwRole,
+        roomName:
+          bwRole === "plaza"
+            ? "Praça da Capitania do Porto"
+            : "Calçadão Portuário da Praia Tropical",
+        isWall: false,
+        isCollider: false,
+        prop: null,
+      };
+    }
+
+    return null;
+  }
+
+  // =========================================================================
+  // POPULAÇÃO DA CIDADE PORTUÁRIA (MARINHEIROS, CAPITÃES, PESCADORES E MERCADORES)
+  // =========================================================================
+  const PORT_PROFILES = [
+    { name: "Capitão Vasco", title: "Comandante da Frota Mercante", gender: "m", style: "captain", prop: "spyglass" },
+    { name: "Marina", title: "Navegadora das Estrelas do Sul", gender: "f", style: "navigator", prop: "compass" },
+    { name: "Tiago", title: "Mestre Pescador das Águas Rasas", gender: "m", style: "fisherman", prop: "rod" },
+    { name: "Coralina", title: "Mercadora de Pérolas e Conchas", gender: "f", style: "merchant", prop: "basket" },
+    { name: "Lourenço", title: "Contramestre do Cais Principal", gender: "m", style: "sailor", prop: "rope" },
+    { name: "Beatriz", title: "Cartógrafa da Capitania", gender: "f", style: "navigator", prop: "scroll" },
+    { name: "Simão", title: "Carpinteiro Naval de Caravelas", gender: "m", style: "sailor", prop: "hammer" },
+    { name: "Brisa", title: "Tecelã de Velas e Redes", gender: "f", style: "merchant", prop: "basket" },
+    { name: "Capitão Diogo", title: "Lobo do Mar das Ilhas Tropicais", gender: "m", style: "captain", prop: "spyglass" },
+    { name: "Helena", title: "Taverneira do Porto Dourado", gender: "f", style: "merchant", prop: "mug" },
+    { name: "Mateus", title: "Vigia do Farol Portuário", gender: "m", style: "sailor", prop: "lantern" },
+    { name: "Clara", title: "Pescadora da Enseada Azul", gender: "f", style: "fisherman", prop: "rod" },
+    { name: "Gael", title: "Marujo de Gávea", gender: "m", style: "sailor", prop: "rope" },
+    { name: "Aurora", title: "Comerciante de Especiarias", gender: "f", style: "merchant", prop: "basket" },
+  ];
+
+  const PORT_GREETINGS = [
+    "⚓ Bem-vindo à Cidade Portuária das Palmeiras! Nossos navios mudam de ancoragem a cada nova maré e seed do mundo.",
+    "⛵ As águas rasas da baía estão ótimas para navegar! Você pode subir pelos píeres e caminhar pelo convés das embarcações.",
+    "🌴 A brisa tropical enche nossas velas! Já visitou o Galeão Mercante atracado no píer principal?",
+    "🐟 Hoje a pesca nas águas azul-turquesa rendeu dourados e atuns! Os barcos pesqueiros acabaram de atracar.",
+    "🧭 Na Capitania do Porto guardamos cartas náuticas de todas as ilhas e recifes deste oceano.",
+    "🐚 As casas caiadas da praia protegem do calor tropical. Sinta-se em casa para descansar nas redes de algodão!",
+    "⚓ Ouvi dizer que o Baú do Capitão na proa dos navios guarda relíquias trazidas de além-mar!",
+  ];
+
+  const PORT_CHATTER = [
+    "⛵ Içar as velas na maré alta!",
+    "⚓ Amarrem bem os cabos no píer!",
+    "🐟 A rede veio cheia hoje!",
+    "🌴 Que brisa boa na Praia Tropical!",
+    "🧭 Vento sul favorável para as caravelas!",
+    "📦 Descarreguem os barris no calçadão!",
+  ];
+
+  const OUTFIT_COLORS = [
+    { shirt: "#f8fafc", vest: "#1e3a8a", pants: "#1e293b", hat: "#1e3a8a", trim: "#fbbf24" }, // Capitão Azul Marinho & Ouro
+    { shirt: "#e0f2fe", vest: "#0284c7", pants: "#334155", hat: "#f8fafc", trim: "#0284c7" }, // Marujo Celeste
+    { shirt: "#fef3c7", vest: "#b45309", pants: "#451a03", hat: "#d97706", trim: "#f59e0b" }, // Pescador Chapéu de Palha
+    { shirt: "#f8fafc", vest: "#991b1b", pants: "#1c1917", hat: "#7f1d1d", trim: "#facc15" }, // Corsário Carmesim
+    { shirt: "#ecfdf5", vest: "#047857", pants: "#1e293b", hat: "#065f46", trim: "#34d399" }, // Mercador Esmeralda
+  ];
+
+  const SKIN_TONES = [
+    "#f6cfb2",
+    "#e5af80",
+    "#d4976a",
+    "#ba7c4e",
+    "#9a5b2d",
+    "#78421b",
+  ];
+
+  function _initCitizens(tileSize) {
+    if (_citizensInitialized) return;
+    _citizensInitialized = true;
+    CITIZENS.length = 0;
+    const ts = tileSize || 36;
+
+    for (let i = 0; i < HOUSES.length; i++) {
+      const h = HOUSES[i];
+      const prof = PORT_PROFILES[i % PORT_PROFILES.length];
+      const id = i + 1;
+      const doorTx = h.cx;
+      const doorTy = h.cy + h.halfH;
+      const outsideTy = doorTy + 1.5;
+
+      const startOnPier = i < PIERS.length;
+      const pier = PIERS[i % PIERS.length];
+      const startX = startOnPier
+        ? (pier.cx + 0.5) * ts
+        : (doorTx + ((i % 3) - 1) * 1.2 + 0.5) * ts;
+      const startY = startOnPier
+        ? (pier.startY + 5 + (i * 3) % 8 + 0.5) * ts
+        : (outsideTy + 0.5) * ts;
+
+      const cit = {
+        id,
+        name: `${prof.name} (${prof.title})`,
+        shortName: prof.name,
+        title: prof.title,
+        gender: prof.gender,
+        style: prof.style,
+        propInHand: prof.prop,
+        houseId: h.id,
+        house: h,
+        skinColor: SKIN_TONES[(id * 3) % SKIN_TONES.length],
+        hairColor: ["#1c1917", "#451a03", "#78350f", "#92400e", "#cbd5e1"][id % 5],
+        outfit: OUTFIT_COLORS[id % OUTFIT_COLORS.length],
+        x: startX,
+        y: startY,
+        facing: "down",
+        isMoving: false,
+        walkPhase: id * 1.3,
+        speed: 0.9 + (id % 4) * 0.05,
+        doorTx,
+        doorTy,
+        hammockTx: h.cx - h.halfW + 1,
+        hammockTy: h.cy - h.halfH + 1,
+        hallTx: h.cx,
+        hallTy: h.cy + h.halfH - 0.8,
+        isInsideHouse: false,
+        state: "strolling",
+        stateTimer: 8 + (id % 10),
+        pauseTimer: 0,
+        chatCooldown: 4 + (id % 6),
+        chatText: "",
+        waypoints: [],
+      };
+
+      _assignPortStroll(cit, ts);
+      CITIZENS.push(cit);
+    }
+  }
+
+  function _assignPortStroll(cit, ts) {
+    const roll = Math.random();
+    let targetX, targetY;
+    if (roll < 0.4 && PIERS.length > 0) {
+      // Passeia até um dos píeres de madeira para observar os navios
+      const p = PIERS[Math.floor(Math.random() * PIERS.length)];
+      targetX = (p.cx + (Math.random() * 1.2 - 0.6) + 0.5) * ts;
+      targetY = (p.startY + 2 + Math.random() * (p.endY - p.startY - 3) + 0.5) * ts;
+    } else if (roll < 0.75) {
+      // Passeia pelo Calçadão Portuário da Praia Tropical
+      targetX = (CITY_CX + (Math.random() * 70 - 35) + 0.5) * ts;
+      targetY = (CITY_CY + (Math.random() * 4 - 1.5) + 0.5) * ts;
+    } else {
+      // Passeia pela Praça do Farol
+      targetX = (CITY_CX + (Math.random() * 12 - 6) + 0.5) * ts;
+      targetY = (CITY_CY - 8 + (Math.random() * 6 - 3) + 0.5) * ts;
+    }
+
+    cit.waypoints = [{ x: targetX, y: targetY }];
+    cit.isMoving = true;
+  }
+
+  function isDoorwayUsedByCitizen(tx, ty) {
+    const exp = _activeDoorwayTimers.get(`${tx},${ty}`);
+    return exp !== undefined && exp > 0;
+  }
+
+  function interactWithNearbyCitizen(playerX, playerY, isUnderground = false) {
+    if (isUnderground) return null;
+    let best = null;
+    let bestDist = 56;
+
+    for (let i = 0; i < CITIZENS.length; i++) {
+      const c = CITIZENS[i];
+      const d = Math.hypot(playerX - c.x, playerY - c.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = c;
+      }
+    }
+    if (!best) return null;
+
+    const dx = playerX - best.x;
+    const dy = playerY - best.y;
+    best.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
+    best.pauseTimer = 4.0;
+    best.isMoving = false;
+    const phrase = PORT_GREETINGS[Math.floor(Math.random() * PORT_GREETINGS.length)];
+    best.chatText = phrase.slice(0, 48) + "...";
+    best.state = "interacting";
+    best.stateTimer = 4.5;
+
+    return {
+      success: true,
+      citizen: best,
+      message: `💬 ${best.name}: "${phrase}"`,
+    };
+  }
+
+  function updateAndGetCitizenRenderItems(ctx, tileSize, player, timeOfDay, animTimer, viewLeft, viewRight, viewTop, viewBottom, isUnderground = false) {
+    if (isUnderground) return [];
+    const ts = tileSize || 36;
+    _initCitizens(ts);
+
+    if (player) {
+      const dist = Math.hypot(player.x - CITY_CX * ts, player.y - CITY_CY * ts);
+      if (dist > (CITY_RADIUS + 90) * ts) return [];
+    }
+
+    const dt = 0.016;
+    for (let i = 0; i < CITIZENS.length; i++) {
+      const c = CITIZENS[i];
+      if (c.chatCooldown > 0) c.chatCooldown = Math.max(0, c.chatCooldown - dt);
+
+      if (c.state === "interacting") {
+        c.isMoving = false;
+        c.stateTimer -= dt;
+        if (c.stateTimer <= 0) {
+          c.state = "strolling";
+          c.chatText = "";
+          _assignPortStroll(c, ts);
+        }
+        continue;
+      }
+
+      if (c.pauseTimer > 0) {
+        c.pauseTimer -= dt;
+        c.isMoving = false;
+        continue;
+      }
+
+      if (c.chatCooldown <= 0 && c.state === "strolling") {
+        for (let j = i + 1; j < CITIZENS.length; j++) {
+          const o = CITIZENS[j];
+          if (o.chatCooldown <= 0 && o.state === "strolling" && Math.hypot(c.x - o.x, c.y - o.y) < 42) {
+            c.state = "chatting";
+            o.state = "chatting";
+            c.stateTimer = 4.0;
+            o.stateTimer = 4.0;
+            c.chatCooldown = 16;
+            o.chatCooldown = 16;
+            c.facing = c.x < o.x ? "right" : "left";
+            o.facing = o.x < c.x ? "right" : "left";
+            c.chatText = PORT_CHATTER[Math.floor(Math.random() * PORT_CHATTER.length)];
+            break;
+          }
+        }
+      }
+
+      if (c.state === "chatting") {
+        c.isMoving = false;
+        c.stateTimer -= dt;
+        if (c.stateTimer <= 0) {
+          c.state = "strolling";
+          c.chatText = "";
+          _assignPortStroll(c, ts);
+        }
+        continue;
+      }
+
+      if (c.waypoints && c.waypoints.length > 0) {
+        const wp = c.waypoints[0];
+        const dx = wp.x - c.x;
+        const dy = wp.y - c.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist <= c.speed * 1.5) {
+          c.x = wp.x;
+          c.y = wp.y;
+          c.waypoints.shift();
+          if (c.waypoints.length === 0) {
+            c.isMoving = false;
+            c.pauseTimer = 2.0 + Math.random() * 3.0;
+          }
+        } else {
+          c.isMoving = true;
+          c.walkPhase += 0.16;
+          c.x += (dx / dist) * c.speed;
+          c.y += (dy / dist) * c.speed;
+          c.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
+        }
+      } else {
+        c.isMoving = false;
+        c.stateTimer -= dt;
+        if (c.stateTimer <= 0) {
+          _assignPortStroll(c, ts);
+          c.stateTimer = 10 + Math.random() * 14;
+        }
+      }
+    }
+
+    const items = [];
+    for (let i = 0; i < CITIZENS.length; i++) {
+      const c = CITIZENS[i];
+      if (c.x < viewLeft - 48 || c.x > viewRight + 48 || c.y < viewTop - 48 || c.y > viewBottom + 48) {
+        continue;
+      }
+      items.push({
+        y: c.y,
+        draw: () => _renderPortCitizen(ctx, c, animTimer, player),
+      });
+    }
+    return items;
+  }
+
+  function _renderPortCitizen(c, npc, animTimer, player) {
+    c.save();
+    c.translate(npc.x, npc.y);
+
+    const w = npc.facing || "down";
+    const isMoving = !!npc.isMoving;
+    const walkSin = isMoving ? Math.sin(npc.walkPhase) : 0;
+    const bob = isMoving ? Math.abs(walkSin) * 1.7 : Math.sin(animTimer * 2 + npc.id) * 0.35;
+    const pal = npc.outfit;
+
+    // Sombra
+    c.fillStyle = "rgba(15, 23, 42, 0.32)";
+    c.beginPath();
+    c.ellipse(0, 2.5, 7.5, 4.0, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // Pernas com movimento pendular
+    const legSwing = walkSin * 2.6;
+    c.fillStyle = pal.pants;
+    c.fillRect(-4.8, -3.5 - legSwing, 3.6, 5.5);
+    c.fillRect(1.2, -3.5 + legSwing, 3.6, 5.5);
+    c.fillStyle = "#451a03";
+    c.fillRect(-5.0, 1.5 - legSwing, 4.0, 2.6);
+    c.fillRect(1.0, 1.5 + legSwing, 4.0, 2.6);
+
+    // Tronco: Camisa listrada de marinheiro / Colete naval
+    c.fillStyle = pal.shirt;
+    c.fillRect(-6.2, -15.5 - bob, 12.4, 12.2);
+    // Listras horizontais azuis clássicas de marinheiro
+    c.fillStyle = "rgba(3, 105, 161, 0.35)";
+    for (let sy = -14; sy < -5; sy += 3) {
+      c.fillRect(-6.0, sy - bob, 12.0, 1.2);
+    }
+    // Colete / Casaca Naval
+    c.fillStyle = pal.vest;
+    c.fillRect(-6.4, -15.5 - bob, 3.6, 12.0);
+    c.fillRect(2.8, -15.5 - bob, 3.6, 12.0);
+    // Faixa / Cinto com fivela de latão
+    c.fillStyle = "#b45309";
+    c.fillRect(-6.5, -6.5 - bob, 13.0, 2.4);
+    c.fillStyle = "#facc15";
+    c.fillRect(-1.2, -6.5 - bob, 2.4, 2.4);
+
+    // Braços
+    const armSwing = walkSin * 1.4;
+    c.fillStyle = pal.vest;
+    c.fillRect(-8.4, -15.0 - bob + armSwing, 2.5, 6.5);
+    c.fillRect(5.9, -15.0 - bob - armSwing, 2.5, 6.5);
+    c.fillStyle = npc.skinColor;
+    c.fillRect(-8.2, -8.5 - bob + armSwing, 2.2, 2.2);
+    c.fillRect(6.0, -8.5 - bob - armSwing, 2.2, 2.2);
+
+    // Cabeça e Rosto
+    const headY = -22 - bob;
+    c.fillStyle = npc.skinColor;
+    c.fillRect(-2.0, headY + 3.2, 4.0, 3.0);
+    c.beginPath();
+    c.arc(0, headY, 6.0, 0, Math.PI * 2);
+    c.fill();
+
+    // Olhos e expressão (quando não de costas)
+    if (w !== "up") {
+      const ex = w === "left" ? -1.2 : w === "right" ? 1.2 : 0;
+      c.fillStyle = "#ffffff";
+      c.fillRect(-3.2 + ex, headY - 0.4, 2.0, 1.8);
+      c.fillRect(1.2 + ex, headY - 0.4, 2.0, 1.8);
+      c.fillStyle = "#0f172a";
+      c.fillRect(-2.5 + ex, headY, 1.1, 1.2);
+      c.fillRect(1.5 + ex, headY, 1.1, 1.2);
+      c.fillStyle = "#78350f";
+      c.fillRect(-1.0 + ex * 0.5, headY + 2.4, 2.0, 0.8);
+    }
+
+    // Chapéu Naval (Tricórnio de Capitão, Quepe de Marujo ou Chapéu de Palha Tropical)
+    if (npc.style === "captain") {
+      c.fillStyle = pal.hat;
+      c.beginPath();
+      c.moveTo(-7.5, headY - 2.2);
+      c.lineTo(0, headY - 7.5);
+      c.lineTo(7.5, headY - 2.2);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#facc15";
+      c.lineWidth = 1.2;
+      c.stroke();
+    } else if (npc.style === "fisherman") {
+      c.fillStyle = "#eab308";
+      c.beginPath();
+      c.ellipse(0, headY - 2.8, 7.8, 2.4, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#ca8a04";
+      c.beginPath();
+      c.arc(0, headY - 3.2, 4.8, Math.PI, 0);
+      c.fill();
+    } else {
+      // Bandana / Boina de Marinheiro
+      c.fillStyle = pal.hat;
+      c.beginPath();
+      c.arc(0, headY - 2.0, 6.2, Math.PI, 0);
+      c.fill();
+      c.fillStyle = pal.trim;
+      c.fillRect(-6.0, headY - 2.6, 12.0, 1.5);
+    }
+
+    // Balão de diálogo
+    if (npc.chatText && player && Math.hypot(player.x - npc.x, player.y - npc.y) < 240) {
+      c.font = "bold 7.2px sans-serif";
+      const tw = Math.min(200, Math.max(64, c.measureText(npc.chatText).width + 12));
+      const bx = -tw / 2;
+      const by = headY - 24;
+      c.fillStyle = "rgba(9, 9, 11, 0.92)";
+      c.strokeStyle = "#0ea5e9";
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.roundRect(bx, by, tw, 13, 4);
+      c.fill();
+      c.stroke();
+      c.fillStyle = "#f8fafc";
+      c.textAlign = "center";
+      c.fillText(npc.chatText, 0, by + 9.2);
+    }
+
+    c.restore();
+  }
+
+  const PortCity = {
+    centerX: CITY_CX,
+    centerY: CITY_CY,
+    radius: CITY_RADIUS,
+    biomeRadius: CITY_BIOME_RADIUS,
+    houses: HOUSES,
+    piers: PIERS,
+    boats: BOATS,
+    citizens: CITIZENS,
+    setSeed,
+    getShorelineY,
+    isCityBiomeArea,
+    getBiomeForTile,
+    isCityTerritory,
+    getHouseAt,
+    getActiveHouseForPlayer,
+    getPierAt,
+    getBoatAt,
+    isBoardwalkOrPlazaAt,
+    getCellAt,
+    isDoorwayUsedByCitizen,
+    interactWithNearbyCitizen,
+    updateAndGetCitizenRenderItems,
+  };
+
+  G.PortCity = PortCity;
+  window.PortCity = PortCity;
+})(window.Game);
