@@ -736,12 +736,12 @@ html, body {
     /* Dispositivos móveis em modo Paisagem (Telas com pouca altura vertical: < 560px) */
     @media (max-height: 560px) and (orientation: landscape) {
       .menu-title-container {
-        margin-top: 1rem !important;
-        transform: scale(0.85);
+        top: calc(0.75rem + var(--sat, 0px)) !important;
+        transform: translateX(-50%) scale(0.85) !important;
         transform-origin: top center;
       }
       .menu-btn-container {
-        margin-bottom: 0.75rem !important;
+        bottom: calc(2.25rem + var(--sab, 0px)) !important;
         gap: 0.5rem !important;
       }
       .menu-btn-container button {

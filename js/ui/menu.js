@@ -391,25 +391,28 @@ window.Game = window.Game || {};
 
     return h.jsxs("div", {
       className:
-        "relative w-full h-full overflow-hidden flex flex-col items-center justify-between p-4 sm:p-8 md:py-12 select-none",
+        "relative w-full h-full overflow-hidden flex flex-col items-center select-none",
       style: {
         width: "var(--vvw, 100%)",
         height: "var(--vvh, 100%)",
-        paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))",
       },
       children: [
         // Canvas de pintura de fundo viva (arte cinematográfica)
         h.jsx("canvas", {
           ref: canvasRef,
-          className: "absolute inset-0 w-full h-full pointer-events-none z-0",
+          className: "fixed inset-0 w-full h-full pointer-events-none z-0",
         }),
 
-        // TÍTULO DO JOGO (Responsivo e adaptável a telas verticais e horizontais)
+        // TÍTULO DO JOGO (Ancorado na parte superior visível)
         h.jsxs("div", {
-          className: "menu-title-container relative z-10 flex flex-col items-center text-center mt-2 sm:mt-6 md:mt-10 px-2",
+          className:
+            "menu-title-container fixed left-1/2 -translate-x-1/2 z-10 flex flex-col items-center text-center px-2 w-full",
+          style: {
+            top: "calc(1.75rem + env(safe-area-inset-top, 0px))",
+          },
           children: [
             h.jsxs("div", {
-              className: "flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2",
+              className: "flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2",
               children: [
                 h.jsx("span", {
                   className: "text-2xl sm:text-4xl drop-shadow-[0_0_12px_rgba(245,158,11,0.6)] animate-pulse",
@@ -436,12 +439,12 @@ window.Game = window.Game || {};
           ],
         }),
 
-        // CENTRO / INFERIOR: BOTÕES DE INICIALIZAÇÃO
+        // CENTRO / INFERIOR: BOTÕES DE INICIALIZAÇÃO (Ancorados com position: fixed bem acima da borda inferior visível)
         h.jsxs("div", {
           className:
-            "menu-btn-container relative z-10 flex flex-col items-center gap-2.5 sm:gap-3.5 mb-6 sm:mb-10 md:mb-14 w-full max-w-[320px] sm:max-w-sm px-2",
+            "menu-btn-container fixed left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2.5 sm:gap-3.5 w-full max-w-[320px] sm:max-w-sm px-3",
           style: {
-            marginBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
+            bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
           },
           children: [
             // Botão Principal: Start (Modo Comum - Imersivo)
@@ -449,7 +452,7 @@ window.Game = window.Game || {};
               type: "button",
               onClick: handleStartCommonMode,
               className:
-                "group relative w-full py-3.5 sm:py-4 px-4 sm:px-8 rounded-2xl font-black text-base sm:text-lg text-amber-200 bg-slate-950/80 hover:bg-slate-900 border-2 border-amber-500/80 hover:border-amber-400 shadow-[0_0_30px_rgba(217,119,6,0.35)] hover:shadow-[0_0_45px_rgba(245,158,11,0.65)] backdrop-blur-md transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-3 overflow-hidden",
+                "group relative w-full py-3 sm:py-4 px-4 sm:px-8 rounded-2xl font-black text-base sm:text-lg text-amber-200 bg-slate-950/85 hover:bg-slate-900 border-2 border-amber-500/80 hover:border-amber-400 shadow-[0_0_30px_rgba(217,119,6,0.35)] hover:shadow-[0_0_45px_rgba(245,158,11,0.65)] backdrop-blur-md transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-3 overflow-hidden",
               children: [
                 h.jsx("div", {
                   className:
@@ -473,7 +476,7 @@ window.Game = window.Game || {};
               type: "button",
               onClick: handleStartDevMode,
               className:
-                "group relative w-full py-2.5 sm:py-3 px-4 sm:px-6 rounded-2xl font-bold text-xs sm:text-sm text-amber-300/80 hover:text-amber-200 bg-slate-950/60 hover:bg-slate-900/80 border border-slate-700/80 hover:border-amber-500/60 shadow-md backdrop-blur-md transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-2.5 overflow-hidden",
+                "group relative w-full py-2.5 sm:py-3 px-4 sm:px-6 rounded-2xl font-bold text-xs sm:text-sm text-amber-300/80 hover:text-amber-200 bg-slate-950/75 hover:bg-slate-900/90 border border-slate-700/80 hover:border-amber-500/60 shadow-md backdrop-blur-md transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-2.5 overflow-hidden",
               children: [
                 h.jsx("span", {
                   className:
