@@ -8778,23 +8778,9 @@
     }
 
     if (role === "boat_deck" || role === "boat_center" || role === "boat_helm" || role === "boat_chest" || role === "boat_rail") {
-      // Convés de madeira naval calafetada da embarcação flutuando na água
-      g.fillStyle = role === "boat_rail" ? "#451a03" : (isAlt ? "#92400e" : "#854d0e");
-      g.fillRect(l, o, u + 0.8, u + 0.8);
-      g.strokeStyle = "rgba(41, 37, 36, 0.55)";
-      g.lineWidth = 1;
-      for (let px = 5; px < u; px += 6) {
-        g.beginPath();
-        g.moveTo(l + px, o);
-        g.lineTo(l + px, o + u);
-        g.stroke();
-      }
-      if (role === "boat_rail") {
-        // Amurada / Borda do casco naval com friso dourado
-        g.strokeStyle = "#b45309";
-        g.lineWidth = 2;
-        g.strokeRect(l + 1, o + 1, u - 2, u - 2);
-      }
+      // Sombra suave sob o tile do navio na água; todo o casco curvo e tábuas do convés são desenhados em drawPortCityBoatStructure!
+      g.fillStyle = "rgba(8, 25, 48, 0.22)";
+      g.fillRect(l + 2, o + 2, u - 4, u - 4);
       return;
     }
 
@@ -9132,28 +9118,62 @@
 
   function drawPortCityBoatHelm(ctx, tileSize) {
     ctx.save();
-    // Suporte e Roda de Timão de Comando Naval
+    // Pedestal de carvalho e Roda de Timão Naval com bússola dourada
+    ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(0, 2 * tileSize, 8 * tileSize, 4 * tileSize, 0, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.fillStyle = "#451a03";
-    ctx.fillRect(-3 * tileSize, -12 * tileSize, 6 * tileSize, 14 * tileSize);
+    ctx.fillRect(-3.2 * tileSize, -13 * tileSize, 6.4 * tileSize, 15 * tileSize);
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(-3.6 * tileSize, -14 * tileSize, 7.2 * tileSize, 2.2 * tileSize);
+
     ctx.strokeStyle = "#b45309";
     ctx.lineWidth = 2.2 * tileSize;
     ctx.beginPath();
-    ctx.arc(0, -12 * tileSize, 7.5 * tileSize, 0, Math.PI * 2);
+    ctx.arc(0, -11 * tileSize, 7.5 * tileSize, 0, Math.PI * 2);
     ctx.stroke();
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
       ctx.beginPath();
-      ctx.moveTo(0, -12 * tileSize);
-      ctx.lineTo(Math.cos(a) * 9.5 * tileSize, -12 * tileSize + Math.sin(a) * 9.5 * tileSize);
+      ctx.moveTo(0, -11 * tileSize);
+      ctx.lineTo(Math.cos(a) * 9.8 * tileSize, -11 * tileSize + Math.sin(a) * 9.8 * tileSize);
       ctx.stroke();
     }
     ctx.fillStyle = "#facc15";
     ctx.beginPath();
-    ctx.arc(0, -12 * tileSize, 2.2 * tileSize, 0, Math.PI * 2);
+    ctx.arc(0, -11 * tileSize, 2.4 * tileSize, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
-  // Renderiza o Casco 2.5D, Proa, Popa, Mastro, Cordame e Velas Enfunadas das Embarcações na Água!
+  // Traça o contorno hidrodinâmico de um casco de navio (proa pontiaguda em +L e popa arredondada em -L no eixo X local)
+  function _traceShipHullContour(ctx, L, B, scale = 1.0) {
+    const l = L * scale;
+    const b = B * scale;
+    const sternX = -l * 0.94;
+    const sternTransomY = b * 0.56;
+    const sternQuarterX = -l * 0.62;
+    const midSternX = -l * 0.18;
+    const shoulderX = l * 0.38;
+    const bowTipX = l * 1.04;
+
+    ctx.beginPath();
+    // Bico da proa (afilado)
+    ctx.moveTo(bowTipX, 0);
+    // Bochecha e costado de boreste (inferior/direito)
+    ctx.bezierCurveTo(l * 0.84, b * 0.54, shoulderX, b * 0.98, midSternX, b);
+    // Alheta até o painel de popa
+    ctx.bezierCurveTo(sternQuarterX, b * 0.96, sternX, b * 0.82, sternX, sternTransomY);
+    // Espelho de popa levemente arqueado
+    ctx.quadraticCurveTo(-l * 1.01, 0, sternX, -sternTransomY);
+    // Alheta e costado de bombordo (superior/esquerdo)
+    ctx.bezierCurveTo(sternX, -b * 0.82, sternQuarterX, -b * 0.96, midSternX, -b);
+    ctx.bezierCurveTo(shoulderX, -b * 0.98, l * 0.84, -b * 0.54, bowTipX, 0);
+    ctx.closePath();
+  }
+
+  // Renderiza o Casco Curvo 2.5D, Castelo de Popa, Castelo de Proa, Canhões, Escotilhas, Enxárcias e Velas Enfunadas!
   function drawPortCityBoatStructure(ctx, tileSize, boatSpec, animTimer = 0) {
     if (!boatSpec) return;
     ctx.save();
@@ -9161,129 +9181,504 @@
     const isHoriz = boatSpec.orientation === "horizontal";
     const isGalleon = boatSpec.boatType === "galleon";
     const isSchooner = boatSpec.boatType === "schooner";
-    const sway = Math.sin(animTimer * 2.2 + (boatSpec.id || 1) * 1.7) * 2.2 * tileSize;
-    const waveBob = Math.cos(animTimer * 2.6 + (boatSpec.id || 1)) * 1.5 * tileSize;
+    const boatId = boatSpec.id || 1;
+    const sway = Math.sin(animTimer * 2.1 + boatId * 1.7) * 2.4 * tileSize;
+    const waveBob = Math.cos(animTimer * 2.5 + boatId * 1.3) * 1.6 * tileSize;
     ctx.translate(0, waveBob);
 
-    const halfW = (boatSpec.halfW + 0.55) * 36 * tileSize;
-    const halfH = (boatSpec.halfH + 0.55) * 36 * tileSize;
+    // Semidimensões reais do navio: L = metade do comprimento (proa-popa), B = metade da boca (largura)
+    const L = ((isHoriz ? boatSpec.halfW : boatSpec.halfH) + 0.58) * 36 * tileSize;
+    const B = ((isHoriz ? boatSpec.halfH : boatSpec.halfW) + 0.52) * 36 * tileSize;
 
-    // 1. Marolas e espuma branca ao redor do casco da embarcação na água
-    const ripple = (Math.sin(animTimer * 3.2 + (boatSpec.id || 1)) + 1) * 0.5;
-    ctx.strokeStyle = `rgba(224, 242, 254, ${0.45 + ripple * 0.3})`;
-    ctx.lineWidth = 2.2 * tileSize;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, halfW + 8 * tileSize, halfH + 8 * tileSize, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    // Ângulo de direção da proa no mundo:
+    //  0 = Leste (+X), PI = Oeste (-X), PI/2 = Sul (+Y), -PI/2 = Norte (-Y)
+    let rotAngle = 0;
+    if (isHoriz) {
+      rotAngle = boatSpec.facingDir === "west" ? Math.PI : 0;
+    } else {
+      rotAngle = boatSpec.facingDir === "north" ? -Math.PI / 2 : Math.PI / 2;
+    }
 
-    // 2. Borda curva da Proa e Popa do Casco Naval
     const hullColors = [
-      { outer: "#451a03", trim: "#f59e0b" },
-      { outer: "#3b1d0a", trim: "#38bdf8" },
-      { outer: "#4c1d1d", trim: "#facc15" },
+      { hullDark: "#2d1204", hullMid: "#451a03", rail: "#5c2408", trim: "#f59e0b", deckA: "#9a5219", deckB: "#854210", cabin: "#5c2408" },
+      { hullDark: "#1f1209", hullMid: "#3b1d0a", rail: "#4a2511", trim: "#38bdf8", deckA: "#a16223", deckB: "#8c5119", cabin: "#43200d" },
+      { hullDark: "#311010", hullMid: "#4c1d1d", rail: "#691e1e", trim: "#facc15", deckA: "#924817", deckB: "#7c3a11", cabin: "#581818" },
     ];
     const hc = hullColors[(boatSpec.hullStyle || 0) % hullColors.length];
 
-    ctx.strokeStyle = hc.outer;
-    ctx.lineWidth = 4.5 * tileSize;
-    ctx.strokeRect(-halfW + 4 * tileSize, -halfH + 4 * tileSize, (halfW - 4 * tileSize) * 2, (halfH - 4 * tileSize) * 2);
-    ctx.strokeStyle = hc.trim;
-    ctx.lineWidth = 1.6 * tileSize;
-    ctx.strokeRect(-halfW + 6 * tileSize, -halfH + 6 * tileSize, (halfW - 6 * tileSize) * 2, (halfH - 6 * tileSize) * 2);
-
-    // Gurupés / Bico de Proa alongado do navio
-    ctx.strokeStyle = "#78350f";
-    ctx.lineWidth = 4 * tileSize;
-    ctx.beginPath();
-    if (isHoriz) {
-      const dir = boatSpec.facingDir === "west" ? -1 : 1;
-      ctx.moveTo(dir * (halfW - 6 * tileSize), 0);
-      ctx.lineTo(dir * (halfW + 26 * tileSize), -4 * tileSize);
-    } else {
-      ctx.moveTo(0, halfH - 6 * tileSize);
-      ctx.lineTo(0, halfH + 26 * tileSize);
-    }
-    ctx.stroke();
-
-    // 3. Mastro Principal de Madeira Maciça, Vergas e Velas Infladas ao Vento
     const sailPalettes = [
-      { main: "#fef3c7", stripe: "#dc2626" }, // Vela Real com listras escarlates
-      { main: "#f8fafc", stripe: "#0284c7" }, // Vela Alva com listras azul-oceano
-      { main: "#fef08a", stripe: "#d97706" }, // Vela Solar Dourada
-      { main: "#f1f5f9", stripe: "#15803d" }, // Vela Tropical Esmeralda
-      { main: "#ffedd5", stripe: "#7c2d12" }, // Vela Mercante Terracota
+      { main: "#fef3c7", shade: "#fde68a", stripe: "#dc2626", emblem: "#b91c1c" }, // Vela Real com listras escarlates
+      { main: "#f8fafc", shade: "#e2e8f0", stripe: "#0284c7", emblem: "#0369a1" }, // Vela Alva com listras azul-oceano
+      { main: "#fef9c3", shade: "#fef08a", stripe: "#d97706", emblem: "#b45309" }, // Vela Solar Dourada
+      { main: "#f1f5f9", shade: "#cbd5e1", stripe: "#15803d", emblem: "#166534" }, // Vela Tropical Esmeralda
+      { main: "#ffedd5", shade: "#fed7aa", stripe: "#9a3412", emblem: "#7c2d12" }, // Vela Mercante Terracota
     ];
     const sp = sailPalettes[(boatSpec.sailColorIdx || 0) % sailPalettes.length];
 
-    const mastPositions = isGalleon
-      ? (isHoriz ? [{ x: -52 * tileSize, y: 0, s: 0.85 }, { x: 8 * tileSize, y: 0, s: 1.15 }, { x: 64 * tileSize, y: 0, s: 0.9 }]
-                  : [{ x: 0, y: -52 * tileSize, s: 0.85 }, { x: 0, y: 8 * tileSize, s: 1.15 }, { x: 0, y: 64 * tileSize, s: 0.9 }])
-      : isSchooner
-        ? (isHoriz ? [{ x: -26 * tileSize, y: 0, s: 0.9 }, { x: 28 * tileSize, y: 0, s: 1.0 }]
-                    : [{ x: 0, y: -26 * tileSize, s: 0.9 }, { x: 0, y: 28 * tileSize, s: 1.0 }])
-        : [{ x: 0, y: 0, s: 0.82 }];
+    // =========================================================================
+    // PARTE 1: DESENHO DO CASCO HIDRODINÂMICO E CONVÉS (NO ESPAÇO ROTACIONADO DO NAVIO)
+    // =========================================================================
+    ctx.save();
+    ctx.rotate(rotAngle);
 
-    for (let m = 0; m < mastPositions.length; m++) {
-      const mp = mastPositions[m];
-      const ms = mp.s;
-      const mx = mp.x;
-      const my = mp.y;
-      const mastTopY = my - 56 * tileSize * ms;
+    // 1.1. Sombra profunda submersa e ondas de espuma branca ao redor da linha d'água curva
+    const ripple = (Math.sin(animTimer * 3.1 + boatId) + 1) * 0.5;
+    ctx.save();
+    ctx.translate(-2 * tileSize, 5 * tileSize);
+    _traceShipHullContour(ctx, L * 1.04, B * 1.08, 1.0);
+    ctx.fillStyle = "rgba(3, 15, 35, 0.48)";
+    ctx.fill();
+    ctx.restore();
 
-      // Sombra da vela no convés
-      ctx.fillStyle = "rgba(15, 23, 42, 0.24)";
+    _traceShipHullContour(ctx, L + 7 * tileSize, B + 6 * tileSize, 1.0);
+    ctx.strokeStyle = `rgba(224, 242, 254, ${0.42 + ripple * 0.28})`;
+    ctx.lineWidth = 2.4 * tileSize;
+    ctx.stroke();
+
+    // Bigode de espuma cortando a água no bico da proa
+    ctx.strokeStyle = `rgba(240, 249, 255, ${0.55 + ripple * 0.3})`;
+    ctx.lineWidth = 2 * tileSize;
+    ctx.beginPath();
+    ctx.moveTo(L * 1.08, 0);
+    ctx.quadraticCurveTo(L * 0.85, B * 0.72, L * 0.45, B * 1.18 + ripple * 4 * tileSize);
+    ctx.moveTo(L * 1.08, 0);
+    ctx.quadraticCurveTo(L * 0.85, -B * 0.72, L * 0.45, -B * 1.18 - ripple * 4 * tileSize);
+    ctx.stroke();
+
+    // 1.2. Costado externo de madeira naval calafetada (volume 2.5D da quilha até a amurada)
+    _traceShipHullContour(ctx, L, B, 1.0);
+    ctx.fillStyle = hc.hullDark;
+    ctx.fill();
+    ctx.lineWidth = 2.5 * tileSize;
+    ctx.strokeStyle = "#1c0a02";
+    ctx.stroke();
+
+    _traceShipHullContour(ctx, L, B, 0.95);
+    ctx.fillStyle = hc.hullMid;
+    ctx.fill();
+
+    // 1.3. Convés Principal recortado pelo contorno curvo do casco (tábuas longitudinais calafetadas)
+    ctx.save();
+    _traceShipHullContour(ctx, L, B, 0.86);
+    ctx.clip();
+
+    const deckGrad = ctx.createLinearGradient(-L, -B, L, B);
+    deckGrad.addColorStop(0, hc.deckB);
+    deckGrad.addColorStop(0.5, hc.deckA);
+    deckGrad.addColorStop(1, hc.deckB);
+    ctx.fillStyle = deckGrad;
+    ctx.fillRect(-L * 1.1, -B * 1.1, L * 2.2, B * 2.2);
+
+    // Linhas de calafetação das tábuas do convés (acompanhando o sentido proa-popa)
+    ctx.strokeStyle = "rgba(28, 16, 8, 0.48)";
+    ctx.lineWidth = 1.1 * tileSize;
+    const plankStep = 5.5 * tileSize;
+    for (let py = -B; py <= B; py += plankStep) {
       ctx.beginPath();
-      ctx.ellipse(mx + 6 * tileSize, my + 4 * tileSize, 26 * tileSize * ms, 12 * tileSize * ms, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Base do mastro no convés
-      ctx.fillStyle = "#451a03";
+      ctx.moveTo(-L, py);
+      ctx.lineTo(L, py);
+      ctx.stroke();
+    }
+    // Juntas transversais alternadas das tábuas
+    ctx.strokeStyle = "rgba(28, 16, 8, 0.32)";
+    for (let px = -L * 0.8; px <= L * 0.8; px += 22 * tileSize) {
       ctx.beginPath();
-      ctx.arc(mx, my, 5.5 * tileSize * ms, 0, Math.PI * 2);
+      ctx.moveTo(px, -B);
+      ctx.lineTo(px, B);
+      ctx.stroke();
+    }
+
+    // 1.4. Castelo de Popa Elevado (Tombadilho do Capitão na traseira -X) e Castelo de Proa (+X)
+    if (isGalleon || isSchooner) {
+      const poopEndX = isGalleon ? -L * 0.38 : -L * 0.46;
+      // Sombra do degrau do Castelo de Popa sobre o convés principal
+      ctx.fillStyle = "rgba(15, 23, 42, 0.38)";
+      ctx.fillRect(poopEndX, -B, 7 * tileSize, B * 2);
+
+      // Piso mais nobre do Castelo de Popa
+      ctx.fillStyle = hc.cabin;
+      ctx.fillRect(-L * 1.05, -B, L * 1.05 + poopEndX, B * 2);
+      ctx.strokeStyle = "rgba(250, 204, 21, 0.45)";
+      ctx.lineWidth = 1.2 * tileSize;
+      for (let py = -B; py <= B; py += plankStep) {
+        ctx.beginPath();
+        ctx.moveTo(-L, py);
+        ctx.lineTo(poopEndX, py);
+        ctx.stroke();
+      }
+
+      // Balaustrada ornamentada na frente do Castelo de Popa com escadas laterais
+      ctx.fillStyle = hc.hullDark;
+      ctx.fillRect(poopEndX - 2.5 * tileSize, -B, 4 * tileSize, B * 2);
+      ctx.fillStyle = hc.trim;
+      ctx.fillRect(poopEndX - 1.5 * tileSize, -B, 2 * tileSize, B * 2);
+
+      // Escadinhas de acesso ao tombadilho da popa
+      const stairW = 9 * tileSize;
+      const stairH = 10 * tileSize;
+      ctx.fillStyle = "#b45309";
+      ctx.fillRect(poopEndX - 2 * tileSize, -B * 0.55 - stairH / 2, stairW, stairH);
+      ctx.fillRect(poopEndX - 2 * tileSize, B * 0.55 - stairH / 2, stairW, stairH);
+
+      // Castelo de Proa elevado (+X)
+      const foreStartX = isGalleon ? L * 0.52 : L * 0.58;
+      ctx.fillStyle = "rgba(15, 23, 42, 0.32)";
+      ctx.fillRect(foreStartX - 5 * tileSize, -B, 5 * tileSize, B * 2);
+      ctx.fillStyle = hc.cabin;
+      ctx.fillRect(foreStartX, -B, L - foreStartX, B * 2);
+      ctx.fillStyle = hc.trim;
+      ctx.fillRect(foreStartX - 1.5 * tileSize, -B, 2.2 * tileSize, B * 2);
+    } else {
+      // Bancos transversais de madeira nos barcos pesqueiros / saveiros
+      ctx.fillStyle = hc.rail;
+      for (const bx of [-L * 0.48, 0, L * 0.42]) {
+        ctx.fillRect(bx - 3.5 * tileSize, -B * 0.85, 7 * tileSize, B * 1.7);
+        ctx.strokeStyle = "#1c0a02";
+        ctx.lineWidth = 1 * tileSize;
+        ctx.strokeRect(bx - 3.5 * tileSize, -B * 0.85, 7 * tileSize, B * 1.7);
+      }
+    }
+
+    // 1.5. Escotilha de Carga com Grelha de Carvalho no meio do convés
+    if (isGalleon || isSchooner) {
+      const hatchX = isGalleon ? -18 * tileSize : -4 * tileSize;
+      const hatchW = (isGalleon ? 26 : 18) * tileSize;
+      const hatchH = (isGalleon ? 24 : 16) * tileSize;
+      ctx.fillStyle = "#1e1b18";
+      ctx.fillRect(hatchX - hatchW / 2, -hatchH / 2, hatchW, hatchH);
+      ctx.strokeStyle = hc.hullDark;
+      ctx.lineWidth = 2.6 * tileSize;
+      ctx.strokeRect(hatchX - hatchW / 2, -hatchH / 2, hatchW, hatchH);
+      // Grelha xadrez de madeira da escotilha
+      ctx.strokeStyle = "#78350f";
+      ctx.lineWidth = 1.4 * tileSize;
+      for (let gx = -hatchW / 2 + 4 * tileSize; gx < hatchW / 2; gx += 4.5 * tileSize) {
+        ctx.beginPath();
+        ctx.moveTo(hatchX + gx, -hatchH / 2 + 2 * tileSize);
+        ctx.lineTo(hatchX + gx, hatchH / 2 - 2 * tileSize);
+        ctx.stroke();
+      }
+      for (let gy = -hatchH / 2 + 4 * tileSize; gy < hatchH / 2; gy += 4.5 * tileSize) {
+        ctx.beginPath();
+        ctx.moveTo(hatchX - hatchW / 2 + 2 * tileSize, gy);
+        ctx.lineTo(hatchX + hatchW / 2 - 2 * tileSize, gy);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = hc.trim;
+      ctx.lineWidth = 1.1 * tileSize;
+      ctx.strokeRect(hatchX - hatchW / 2 + 1.5 * tileSize, -hatchH / 2 + 1.5 * tileSize, hatchW - 3 * tileSize, hatchH - 3 * tileSize);
+    }
+
+    ctx.restore(); // Fim do clip do convés
+
+    // 1.6. Amurada Naval Curva (Parapeito de madeira nobre e friso metálico dourado/azul ao redor de todo o casco)
+    _traceShipHullContour(ctx, L, B, 0.90);
+    ctx.strokeStyle = hc.rail;
+    ctx.lineWidth = 5 * tileSize;
+    ctx.stroke();
+
+    _traceShipHullContour(ctx, L, B, 0.92);
+    ctx.strokeStyle = hc.trim;
+    ctx.lineWidth = 1.8 * tileSize;
+    ctx.stroke();
+
+    // 1.7. Canhões Navais nas Bordiadas (para Galeões e Escunas) ou Remos (para Barcos Pesqueiros)
+    if (isGalleon || isSchooner) {
+      const cannonXs = isGalleon
+        ? [-L * 0.24, -L * 0.04, L * 0.16, L * 0.36]
+        : [-L * 0.16, L * 0.16];
+      for (let c = 0; c < cannonXs.length; c++) {
+        const cx = cannonXs[c];
+        const ratioX = Math.abs(cx) / L;
+        const sideY = B * (0.91 - ratioX * ratioX * 0.18);
+        for (const side of [-1, 1]) {
+          // Carreta de madeira do canhão
+          ctx.fillStyle = "#78350f";
+          ctx.fillRect(cx - 4 * tileSize, side * (sideY - 7 * tileSize) - 3 * tileSize, 8 * tileSize, 6 * tileSize);
+          // Cano de ferro fundido apontando para fora da amurada
+          ctx.fillStyle = "#1e293b";
+          ctx.beginPath();
+          ctx.roundRect(
+            cx - 2.4 * tileSize,
+            side > 0 ? sideY - 6 * tileSize : -sideY - 5 * tileSize,
+            4.8 * tileSize,
+            11 * tileSize,
+            1.5 * tileSize
+          );
+          ctx.fill();
+          ctx.strokeStyle = "#475569";
+          ctx.lineWidth = 0.9 * tileSize;
+          ctx.stroke();
+        }
+      }
+    } else {
+      // Par de remos de madeira apoiados nas bordas do barco pesqueiro
+      ctx.strokeStyle = "#a16207";
+      ctx.lineWidth = 2.2 * tileSize;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(-4 * tileSize, side * B * 0.72);
+        ctx.lineTo(-14 * tileSize, side * (B + 14 * tileSize));
+        ctx.stroke();
+        ctx.fillStyle = "#ca8a04";
+        ctx.beginPath();
+        ctx.ellipse(-15 * tileSize, side * (B + 15 * tileSize), 4.5 * tileSize, 2.2 * tileSize, side * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 1.8. Galeria de Popa com Janelas Iluminadas e Lanterna Naval Real (na extremidade -X)
+    if (isGalleon || isSchooner) {
+      const sternX = -L * 0.95;
+      // Janelas de cristal dourado da cabine do capitão na popa
+      const winCount = isGalleon ? 3 : 2;
+      const winSpan = B * 0.36;
+      ctx.fillStyle = "#fef08a";
+      ctx.strokeStyle = hc.trim;
+      ctx.lineWidth = 1.4 * tileSize;
+      for (let w = 0; w < winCount; w++) {
+        const wy = (w - (winCount - 1) / 2) * winSpan;
+        ctx.beginPath();
+        ctx.arc(sternX + 2 * tileSize, wy, 3.2 * tileSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Grande Fanais / Lanterna de Popa em ouro e vidro âmbar
+      const lanternPulse = (Math.sin(animTimer * 5 + boatId) + 1) * 0.5;
+      ctx.fillStyle = `rgba(251, 191, 36, ${0.82 + lanternPulse * 0.18})`;
+      ctx.beginPath();
+      ctx.arc(sternX - 4 * tileSize, 0, 5.2 * tileSize, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = "#b45309";
+      ctx.lineWidth = 1.8 * tileSize;
+      ctx.stroke();
+    }
 
-      // Coluna do mastro subindo em 2.5D
-      ctx.fillStyle = "#78350f";
-      ctx.fillRect(mx - 2.8 * tileSize * ms, mastTopY, 5.6 * tileSize * ms, 56 * tileSize * ms);
+    // 1.9. Gurupés (Mastro de Proa Inclinado), Carranca Dourada e Cabos de Estai (na extremidade +X)
+    const bowTipX = L * 1.02;
+    const bowspritLen = (isGalleon ? 38 : isSchooner ? 28 : 16) * tileSize;
+    // Cabos de amarração do gurupés até a amurada de proa
+    ctx.strokeStyle = "rgba(214, 211, 209, 0.7)";
+    ctx.lineWidth = 1.1 * tileSize;
+    ctx.beginPath();
+    ctx.moveTo(bowTipX + bowspritLen * 0.85, 0);
+    ctx.lineTo(L * 0.72, B * 0.48);
+    ctx.moveTo(bowTipX + bowspritLen * 0.85, 0);
+    ctx.lineTo(L * 0.72, -B * 0.48);
+    ctx.stroke();
 
-      // Verga transversal e Vela Enfunada pelo vento marítimo
-      const sailW = 46 * tileSize * ms;
-      const sailH = 34 * tileSize * ms;
-      const sailTop = mastTopY + 8 * tileSize * ms;
-      const billow = 7 * tileSize * ms + sway * 0.35;
+    // Mastro do Gurupés projetando-se da proa afilada
+    ctx.strokeStyle = "#5c2408";
+    ctx.lineWidth = (isGalleon ? 4.8 : 3.6) * tileSize;
+    ctx.beginPath();
+    ctx.moveTo(L * 0.76, 0);
+    ctx.lineTo(bowTipX + bowspritLen, 0);
+    ctx.stroke();
+    // Ponteira e figura de proa (carranca dourada)
+    ctx.fillStyle = hc.trim;
+    ctx.beginPath();
+    ctx.arc(bowTipX + 2 * tileSize, 0, (isGalleon ? 4.2 : 3.0) * tileSize, 0, Math.PI * 2);
+    ctx.fill();
 
+    // Pequena vela cevadeira / bujarrona na proa para Galeões e Escunas
+    if (isGalleon || isSchooner) {
       ctx.fillStyle = sp.main;
       ctx.beginPath();
+      ctx.moveTo(bowTipX + bowspritLen * 0.92, 0);
+      ctx.quadraticCurveTo(bowTipX + bowspritLen * 0.45, B * 0.28 + sway * 0.2, L * 0.82, B * 0.12);
+      ctx.quadraticCurveTo(bowTipX + bowspritLen * 0.35, -B * 0.18, bowTipX + bowspritLen * 0.92, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#92400e";
+      ctx.lineWidth = 1 * tileSize;
+      ctx.stroke();
+    }
+
+    ctx.restore(); // Fim do espaço rotacionado do casco
+
+    // =========================================================================
+    // PARTE 2: MASTROS 2.5D, ENXÁRCIAS (ESCADAS DE CORDA), VERGAS E VELAS ENFUNADAS
+    // =========================================================================
+    const cosA = Math.cos(rotAngle);
+    const sinA = Math.sin(rotAngle);
+
+    // Posições dos mastros ao longo do eixo longitudinal do navio (de popa -L para proa +L)
+    const mastConfigs = isGalleon
+      ? [
+          { along: -L * 0.48, s: 0.86, name: "mizzen" }, // Mastro da Mezena (Popa)
+          { along: -L * 0.02, s: 1.18, name: "main" },   // Mastro Grande Central
+          { along: L * 0.44, s: 0.94, name: "fore" },    // Mastro do Traquete (Proa)
+        ]
+      : isSchooner
+        ? [
+            { along: -L * 0.30, s: 1.02, name: "main" },
+            { along: L * 0.30, s: 0.90, name: "fore" },
+          ]
+        : [{ along: L * 0.05, s: 0.84, name: "single" }];
+
+    // Ordena os mastros pelo Y de tela para que o mais ao sul sobreponha corretamente o mais ao norte em 2.5D
+    const sortedMasts = mastConfigs
+      .map((mc, idx) => ({
+        ...mc,
+        idx,
+        mx: mc.along * cosA,
+        my: mc.along * sinA,
+        portX: mc.along * cosA - (-B * 0.78) * sinA,
+        portY: mc.along * sinA + (-B * 0.78) * cosA,
+        starX: mc.along * cosA - (B * 0.78) * sinA,
+        starY: mc.along * sinA + (B * 0.78) * cosA,
+      }))
+      .sort((a, b) => a.my - b.my);
+
+    // Cabos de estai longitudinais ligando o topo dos mastros entre si e ao gurupés
+    if (sortedMasts.length > 1) {
+      ctx.strokeStyle = "rgba(231, 229, 228, 0.55)";
+      ctx.lineWidth = 1.1 * tileSize;
+      ctx.beginPath();
+      for (let i = 0; i < mastConfigs.length - 1; i++) {
+        const m1 = mastConfigs[i];
+        const m2 = mastConfigs[i + 1];
+        const x1 = m1.along * cosA;
+        const y1 = m1.along * sinA - 58 * tileSize * m1.s;
+        const x2 = m2.along * cosA;
+        const y2 = m2.along * sinA - 58 * tileSize * m2.s;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+      }
+      ctx.stroke();
+    }
+
+    for (let m = 0; m < sortedMasts.length; m++) {
+      const mp = sortedMasts[m];
+      const ms = mp.s;
+      const mx = mp.mx;
+      const my = mp.my;
+      const mastHeight = 62 * tileSize * ms;
+      const mastTopY = my - mastHeight;
+
+      // 2.1. Sombra projetada pelo velame sobre o convés
+      ctx.fillStyle = "rgba(15, 23, 42, 0.24)";
+      ctx.beginPath();
+      ctx.ellipse(mx + 6 * tileSize, my + 5 * tileSize, 26 * tileSize * ms, 13 * tileSize * ms, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2.2. Enxárcias (Escadas de corda laterais das bordas do casco até o cesto da gávea)
+      const topRigY = mastTopY + 14 * tileSize * ms;
+      ctx.strokeStyle = "rgba(120, 53, 15, 0.72)";
+      ctx.lineWidth = 1.1 * tileSize;
+      for (const sidePt of [
+        { x: mp.portX, y: mp.portY },
+        { x: mp.starX, y: mp.starY },
+      ]) {
+        ctx.beginPath();
+        ctx.moveTo(sidePt.x - 4 * tileSize, sidePt.y);
+        ctx.lineTo(mx, topRigY);
+        ctx.moveTo(sidePt.x + 4 * tileSize, sidePt.y);
+        ctx.lineTo(mx, topRigY);
+        ctx.stroke();
+      }
+
+      // 2.3. Base reforçada e Coluna do Mastro Real em 2.5D
+      ctx.fillStyle = "#2d1204";
+      ctx.beginPath();
+      ctx.arc(mx, my, 6.2 * tileSize * ms, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = hc.trim;
+      ctx.lineWidth = 1.3 * tileSize;
+      ctx.stroke();
+
+      ctx.fillStyle = "#5c2408";
+      ctx.fillRect(mx - 3 * tileSize * ms, mastTopY, 6 * tileSize * ms, mastHeight);
+      ctx.fillStyle = "#92400e";
+      ctx.fillRect(mx - 1.2 * tileSize * ms, mastTopY, 2.2 * tileSize * ms, mastHeight);
+
+      // Cesto da Gávea (Plataforma de vigia no alto do mastro principal)
+      if (isGalleon || (isSchooner && mp.name === "main")) {
+        ctx.fillStyle = "#451a03";
+        ctx.beginPath();
+        ctx.ellipse(mx, topRigY, 8.5 * tileSize * ms, 4.2 * tileSize * ms, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = hc.trim;
+        ctx.lineWidth = 1.2 * tileSize;
+        ctx.stroke();
+      }
+
+      // 2.4. Vela Principal e Vela de Gávea Superior (infladas com curvatura realista)
+      const sailW = 50 * tileSize * ms;
+      const sailH = 34 * tileSize * ms;
+      const sailTop = mastTopY + 13 * tileSize * ms;
+      const billow = 8.5 * tileSize * ms + sway * 0.4;
+
+      const sailGrad = ctx.createLinearGradient(mx - sailW / 2, sailTop, mx + sailW / 2, sailTop + sailH);
+      sailGrad.addColorStop(0, sp.main);
+      sailGrad.addColorStop(0.65, sp.main);
+      sailGrad.addColorStop(1, sp.shade);
+
+      ctx.fillStyle = sailGrad;
+      ctx.beginPath();
       ctx.moveTo(mx - sailW / 2, sailTop);
-      ctx.quadraticCurveTo(mx, sailTop - 4 * tileSize, mx + sailW / 2, sailTop);
-      ctx.quadraticCurveTo(mx + sailW / 2 + billow * 0.4, sailTop + sailH * 0.5, mx + sailW * 0.46, sailTop + sailH);
-      ctx.quadraticCurveTo(mx, sailTop + sailH + billow, mx - sailW * 0.46, sailTop + sailH);
+      ctx.quadraticCurveTo(mx, sailTop - 3.5 * tileSize, mx + sailW / 2, sailTop);
+      ctx.quadraticCurveTo(mx + sailW / 2 + billow * 0.45, sailTop + sailH * 0.5, mx + sailW * 0.45, sailTop + sailH);
+      ctx.quadraticCurveTo(mx, sailTop + sailH + billow, mx - sailW * 0.45, sailTop + sailH);
       ctx.quadraticCurveTo(mx - sailW / 2 - billow * 0.2, sailTop + sailH * 0.5, mx - sailW / 2, sailTop);
       ctx.closePath();
       ctx.fill();
 
-      // Listras verticais coloridas da vela
+      // Listras verticais heráldicas da vela acompanhando a curvatura
+      ctx.save();
+      ctx.clip();
       ctx.fillStyle = sp.stripe;
-      ctx.globalAlpha = 0.82;
-      ctx.fillRect(mx - sailW * 0.28, sailTop + 2 * tileSize, sailW * 0.14, sailH - 2 * tileSize);
-      ctx.fillRect(mx + sailW * 0.14, sailTop + 2 * tileSize, sailW * 0.14, sailH - 2 * tileSize);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(mx - sailW * 0.30, sailTop - 4 * tileSize, sailW * 0.13, sailH + 16 * tileSize);
+      ctx.fillRect(mx + sailW * 0.17, sailTop - 4 * tileSize, sailW * 0.13, sailH + 16 * tileSize);
 
-      ctx.strokeStyle = "#92400e";
-      ctx.lineWidth = 1.4 * tileSize;
+      // Emblema náutico / Rosa dos Ventos no centro da vela principal do Galeão
+      if (isGalleon && mp.name === "main") {
+        ctx.fillStyle = sp.emblem;
+        ctx.globalAlpha = 0.9;
+        const cx = mx + billow * 0.12;
+        const cy = sailTop + sailH * 0.52;
+        const r = 7.5 * tileSize * ms;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r);
+        ctx.lineTo(cx + r * 0.35, cy - r * 0.35);
+        ctx.lineTo(cx + r, cy);
+        ctx.lineTo(cx + r * 0.35, cy + r * 0.35);
+        ctx.lineTo(cx, cy + r);
+        ctx.lineTo(cx - r * 0.35, cy + r * 0.35);
+        ctx.lineTo(cx - r, cy);
+        ctx.lineTo(cx - r * 0.35, cy - r * 0.35);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Contorno de costura reforçada da vela
+      ctx.strokeStyle = "#78350f";
+      ctx.lineWidth = 1.5 * tileSize;
       ctx.stroke();
 
-      // Verga de madeira superior
-      ctx.fillStyle = "#451a03";
-      ctx.fillRect(mx - sailW * 0.54, sailTop - 2 * tileSize, sailW * 1.08, 3.5 * tileSize);
+      // Verga de madeira superior e inferior
+      ctx.fillStyle = "#3b1d0a";
+      ctx.fillRect(mx - sailW * 0.55, sailTop - 2.2 * tileSize, sailW * 1.1, 3.8 * tileSize);
+      ctx.fillStyle = hc.trim;
+      ctx.fillRect(mx - 4 * tileSize, sailTop - 2.4 * tileSize, 8 * tileSize, 4.2 * tileSize);
 
-      // Flâmula / Bandeira tremulando no topo do mastro
-      const flagWave = Math.sin(animTimer * 6 + m) * 3 * tileSize;
+      // Flâmula Real longa tremulando no topo do mastro
+      const flagWave1 = Math.sin(animTimer * 6.2 + mp.idx) * 3.5 * tileSize;
+      const flagWave2 = Math.cos(animTimer * 5.4 + mp.idx) * 4.5 * tileSize;
       ctx.fillStyle = sp.stripe;
       ctx.beginPath();
       ctx.moveTo(mx, mastTopY);
-      ctx.lineTo(mx + 16 * tileSize * ms, mastTopY + 3 * tileSize + flagWave);
-      ctx.lineTo(mx, mastTopY + 7 * tileSize * ms);
+      ctx.quadraticCurveTo(
+        mx + 11 * tileSize * ms,
+        mastTopY + 1 * tileSize + flagWave1,
+        mx + 22 * tileSize * ms,
+        mastTopY + 3.5 * tileSize + flagWave2
+      );
+      ctx.lineTo(mx + 18 * tileSize * ms, mastTopY + 6 * tileSize * ms + flagWave1);
+      ctx.lineTo(mx, mastTopY + 8 * tileSize * ms);
       ctx.closePath();
       ctx.fill();
     }

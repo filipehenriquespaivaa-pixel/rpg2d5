@@ -443,11 +443,43 @@ window.Game = window.Game || {};
     return null;
   }
 
-  // Encontra embarcação no tile
+  // Verifica se (tx, ty) pertence ao casco afilado/curvo da embarcação (sem cantos quadrados nas pontas!)
+  function isTileInBoatHull(b, tx, ty) {
+    const rx = tx - b.cx;
+    const ry = ty - b.cy;
+    const W = b.halfW;
+    const H = b.halfH;
+    if (Math.abs(rx) > W || Math.abs(ry) > H) return false;
+
+    const isHoriz = b.orientation === "horizontal";
+    const along = isHoriz ? rx : ry;
+    const across = Math.abs(isHoriz ? ry : rx);
+    const L = isHoriz ? W : H;
+    const B = isHoriz ? H : W;
+
+    const bowSign = isHoriz
+      ? (b.facingDir === "west" ? -1 : 1)
+      : (b.facingDir === "north" ? -1 : 1);
+    const distFromBow = (bowSign > 0) ? (L - along) : (along + L);
+    const distFromStern = (bowSign > 0) ? (along + L) : (L - along);
+
+    if (B >= 2) {
+      // Galeão / Nau (5 blocos de largura): proa pontiaguda e popa arredondada
+      if (distFromBow === 0 && across >= 1) return false;
+      if (distFromBow === 1 && across >= 2) return false;
+      if (distFromStern === 0 && across >= 2) return false;
+    } else if (B === 1) {
+      // Escuna / Saveiro (3 blocos de largura): bico de proa afilado
+      if (distFromBow === 0 && across >= 1) return false;
+    }
+    return true;
+  }
+
+  // Encontra embarcação no tile (respeitando o formato naval afilado do casco)
   function getBoatAt(tx, ty) {
     for (let i = 0; i < BOATS.length; i++) {
       const b = BOATS[i];
-      if (Math.abs(tx - b.cx) <= b.halfW && Math.abs(ty - b.cy) <= b.halfH) {
+      if (isTileInBoatHull(b, tx, ty)) {
         return b;
       }
     }
@@ -497,7 +529,7 @@ window.Game = window.Game || {};
         Math.abs(ty - boat.gangplankY) <= 1 &&
         ((boat.dockSide > 0 && rx === -W) || (boat.dockSide < 0 && rx === W));
 
-      // Centro do barco: Mastro Principal com Vela Latina / Redonda (desenha toda a estrutura 2.5D do navio!)
+      // Centro do barco: Mastro Principal, Casco Curvo 2.5D, Castelo de Popa, Proa e Velame
       if (rx === 0 && ry === 0) {
         return {
           isPortCity: true,
@@ -516,14 +548,18 @@ window.Game = window.Game || {};
             interactive: true,
             namePt: `${boat.name} (Mastro e Velame)`,
             descriptionPt:
-              "Embarcação marítima de madeira nobre calafetada com velas enfunadas pela brisa tropical. Pressione [F] para inspecionar o navio!",
+              "Embarcação marítima de casco curvo em madeira nobre calafetada, com castelo de popa, gurupés de proa e velas enfunadas pela brisa tropical. Pressione [F] para inspecionar o navio!",
           },
         };
       }
 
-      // Timão do Capitão / Leme na popa da embarcação
-      const helmRx = isHoriz ? -W + 1 : 0;
-      const helmRy = isHoriz ? 0 : -H + 1;
+      const bowSign = isHoriz
+        ? (boat.facingDir === "west" ? -1 : 1)
+        : (boat.facingDir === "north" ? -1 : 1);
+
+      // Timão do Capitão / Leme no tombadilho da popa da embarcação
+      const helmRx = isHoriz ? -bowSign * (W - 1) : 0;
+      const helmRy = isHoriz ? 0 : -bowSign * (H - 1);
       if (rx === helmRx && ry === helmRy) {
         return {
           isPortCity: true,
@@ -531,7 +567,7 @@ window.Game = window.Game || {};
           isPortPier: true,
           boatId: boat.id,
           role: "boat_helm",
-          roomName: `Convés de Comando (${boat.name})`,
+          roomName: `Tombadilho de Comando (${boat.name})`,
           isWall: false,
           isCollider: false,
           prop: {
@@ -541,14 +577,14 @@ window.Game = window.Game || {};
             interactive: true,
             namePt: `Timão de Comando (${boat.name})`,
             descriptionPt:
-              "Roda de leme em madeira de lei com bússola de latão para navegar pelos mares tropicais. Pressione [F] para examinar a rota!",
+              "Roda de leme em madeira de lei com bússola de latão no castelo de popa para navegar pelos mares tropicais. Pressione [F] para examinar a rota!",
           },
         };
       }
 
-      // Baú do Capitão / Carga Naval na proa/convés dos Galeões e Escunas
-      const chestRx = isHoriz ? W - 1 : 0;
-      const chestRy = isHoriz ? 0 : H - 1;
+      // Baú do Capitão / Carga Naval no castelo de proa dos Galeões e Escunas
+      const chestRx = isHoriz ? bowSign * (W - 1) : 0;
+      const chestRy = isHoriz ? 0 : bowSign * (H - 1);
       if (rx === chestRx && ry === chestRy) {
         const opened = !!intState.opened;
         return {
@@ -557,7 +593,7 @@ window.Game = window.Game || {};
           isPortPier: true,
           boatId: boat.id,
           role: "boat_chest",
-          roomName: `Proa de Carga (${boat.name})`,
+          roomName: `Castelo de Proa (${boat.name})`,
           isWall: false,
           isCollider: false,
           prop: {
@@ -576,8 +612,12 @@ window.Game = window.Game || {};
         };
       }
 
-      // Bordas laterais da embarcação (Amuradas / Parapeito naval — bloqueia queda na água exceto na prancha de embarque)
-      const isHullBorder = Math.abs(rx) === W || Math.abs(ry) === H;
+      // Verifica se o tile está na amurada externa do casco naval curvo
+      const isHullBorder =
+        !isTileInBoatHull(boat, tx - 1, ty) ||
+        !isTileInBoatHull(boat, tx + 1, ty) ||
+        !isTileInBoatHull(boat, tx, ty - 1) ||
+        !isTileInBoatHull(boat, tx, ty + 1);
       if (isHullBorder && !isGangplankEntry) {
         return {
           isPortCity: true,
@@ -587,7 +627,7 @@ window.Game = window.Game || {};
           role: "boat_rail",
           roomName: `Amurada de ${boat.name}`,
           isWall: false,
-          isCollider: boat.halfW >= 2, // Nos galeões largos a borda tem amurada física e o meio é livre para caminhar
+          isCollider: false,
           prop: null,
         };
       }
