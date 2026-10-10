@@ -800,20 +800,9 @@
           ctx.stroke();
         }
 
-        // Neblina úmida azulada que reduz a visibilidade
-        const fogGrad = ctx.createRadialGradient(
-          width / 2,
-          height / 2,
-          Math.min(width, height) * (isThunder ? 0.16 : 0.24),
-          width / 2,
-          height / 2,
-          Math.max(width, height) * (isThunder ? 0.62 : 0.72)
-        );
-        const edgeAlpha = (isThunder ? 0.48 : 0.30) * inten;
-        fogGrad.addColorStop(0, `rgba(15, 29, 52, ${(edgeAlpha * 0.22).toFixed(3)})`);
-        fogGrad.addColorStop(0.55, `rgba(15, 29, 52, ${(edgeAlpha * 0.62).toFixed(3)})`);
-        fogGrad.addColorStop(1, `rgba(10, 18, 36, ${edgeAlpha.toFixed(3)})`);
-        ctx.fillStyle = fogGrad;
+        // Neblina úmida azulada uniforme em toda a tela (sem clarear um círculo ao redor do player)
+        const fogAlpha = (isThunder ? 0.34 : 0.20) * inten;
+        ctx.fillStyle = `rgba(12, 24, 46, ${fogAlpha.toFixed(3)})`;
         ctx.fillRect(0, 0, width, height);
 
         // Clarão de relâmpago na tela inteira durante Tempestade com Raios
@@ -844,8 +833,8 @@
           this.drops.length = targetCount;
         }
 
-        // Camada de poeira ocre densa no ar
-        ctx.fillStyle = `rgba(180, 114, 42, ${(0.24 * inten).toFixed(3)})`;
+        // Camada de poeira ocre densa e uniforme no ar (sem halo claro ao redor do player)
+        ctx.fillStyle = `rgba(165, 102, 34, ${(0.36 * inten).toFixed(3)})`;
         ctx.fillRect(0, 0, width, height);
 
         // Ondas de vento arenoso varrendo a tela horizontalmente
@@ -887,23 +876,6 @@
             ctx.fill();
           }
         }
-
-        // Vinheta de baixa visibilidade da Tempestade de Areia (fecha o campo de visão periférico)
-        const minDim = Math.min(width, height);
-        const maxDim = Math.max(width, height);
-        const sandVig = ctx.createRadialGradient(
-          width / 2,
-          height / 2,
-          minDim * 0.14,
-          width / 2,
-          height / 2,
-          maxDim * 0.56
-        );
-        sandVig.addColorStop(0, "rgba(180, 114, 42, 0)");
-        sandVig.addColorStop(0.55, `rgba(161, 98, 32, ${(0.38 * inten).toFixed(3)})`);
-        sandVig.addColorStop(1, `rgba(120, 66, 18, ${(0.72 * inten).toFixed(3)})`);
-        ctx.fillStyle = sandVig;
-        ctx.fillRect(0, 0, width, height);
       }
 
       // =====================================================================
@@ -927,8 +899,8 @@
           this.drops.length = targetCount;
         }
 
-        // Véu glacial suave
-        ctx.fillStyle = `rgba(226, 240, 253, ${(0.14 * inten).toFixed(3)})`;
+        // Véu glacial uniforme em toda a tela (sem halo ao redor do player)
+        ctx.fillStyle = `rgba(214, 234, 250, ${(0.22 * inten).toFixed(3)})`;
         ctx.fillRect(0, 0, width, height);
 
         for (let i = 0; i < this.drops.length; i++) {
@@ -960,23 +932,6 @@
             ctx.stroke();
           }
         }
-
-        // Vinheta gélida de nevoeiro branco/azulado nas bordas da tela
-        const minDim = Math.min(width, height);
-        const maxDim = Math.max(width, height);
-        const snowVig = ctx.createRadialGradient(
-          width / 2,
-          height / 2,
-          minDim * 0.18,
-          width / 2,
-          height / 2,
-          maxDim * 0.62
-        );
-        snowVig.addColorStop(0, "rgba(224, 242, 254, 0)");
-        snowVig.addColorStop(0.6, `rgba(203, 228, 247, ${(0.26 * inten).toFixed(3)})`);
-        snowVig.addColorStop(1, `rgba(186, 218, 242, ${(0.54 * inten).toFixed(3)})`);
-        ctx.fillStyle = snowVig;
-        ctx.fillRect(0, 0, width, height);
       }
 
       ctx.restore();

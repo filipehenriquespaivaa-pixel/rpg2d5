@@ -4331,7 +4331,15 @@
             Ke = rr.current.timeOfDay ?? 0.5,
             De = Ks(Da.current),
             qe = Da.current,
+            isRainingSurface = !!(
+              !Q.isUnderground &&
+              typeof window !== "undefined" &&
+              window.weatherSystem &&
+              typeof window.weatherSystem.isWetWeather === "function" &&
+              window.weatherSystem.isWetWeather()
+            ),
             Ze = !!(
+              !isRainingSurface &&
               ((qe.mao_esquerda != null &&
                 ((qe.mao_esquerda.id && qe.mao_esquerda.id.includes("torch")) ||
                   (qe.mao_esquerda.name &&
@@ -4343,7 +4351,8 @@
               (rr.current ? rr.current.lanternActive : !0)
             ),
             sa = Q.isNearLitCampfire(he.x, he.y, 190);
-          ((he.hasTorch = Ze),
+          (isRainingSurface && rr.current && rr.current.lanternActive && ((rr.current.lanternActive = !1), z(!1)),
+            (he.hasTorch = Ze),
             (he.isNearCampfire = sa),
             (he.fireProtected = Ze || sa),
             he.fireProtected !== we.current &&

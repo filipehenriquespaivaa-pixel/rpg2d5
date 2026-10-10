@@ -2624,6 +2624,7 @@
         this._currentShirtColor = shirtColor;
         this._currentSkinColor = skinColor;
         this._isPlayerRunning = !!t.sprinting;
+        this._playerLanternLit = !!l;
         if (typeof window !== "undefined") window.__currentPlayerSkinColor = skinColor;
 
         const isRangedHandItem = (it) => {
@@ -4918,9 +4919,17 @@
         o.fillRect(-1.8, -6, 3.6, 1.5);
         o.fillStyle = "#1c1917";
         o.fillRect(-2.2, -13.5, 4.4, 3.5);
-        o.fillStyle = "#ea580c";
-        o.fillRect(-2, -14, 4, 1.5);
-        this.drawTorchFlame(0, -14);
+        const isWetSurface =
+          !this.engine.isUnderground &&
+          typeof window !== "undefined" &&
+          window.weatherSystem &&
+          typeof window.weatherSystem.isWetWeather === "function" &&
+          window.weatherSystem.isWetWeather();
+        if (this._playerLanternLit !== !1 && !isWetSurface) {
+          o.fillStyle = "#ea580c";
+          o.fillRect(-2, -14, 4, 1.5);
+          this.drawTorchFlame(0, -14);
+        }
         o.restore();
       }
       drawTorchFlame(t, l) {
@@ -5307,7 +5316,13 @@
           ((P.fillStyle = A),
             P.fillRect(0, 0, l, o),
             (P.globalCompositeOperation = "destination-out"));
-          const x = !!m.lanternActive,
+          const isWetWeatherOnSurface =
+              !this.engine.isUnderground &&
+              typeof window !== "undefined" &&
+              window.weatherSystem &&
+              typeof window.weatherSystem.isWetWeather === "function" &&
+              window.weatherSystem.isWetWeather(),
+            x = !!m.lanternActive && !isWetWeatherOnSurface,
             safeU = (typeof u === "number" && isFinite(u) && u > 0) ? u : 1,
             weatherVisMult =
               !this.engine.isUnderground &&
@@ -5318,21 +5333,19 @@
                 : 1.0,
             M = l / 2 + (t.x - f) * safeU,
             $ = o / 2 + (t.y - g) * safeU;
-          if ((x || weatherVisMult < 0.96) && isFinite(M) && isFinite($)) {
-            const baseSight = x
-              ? (this.engine.isUnderground ? 220 : 165 * (0.65 + 0.35 * weatherVisMult))
-              : (260 * weatherVisMult);
-            const K = x
-                ? Math.sin(this.animTimer * 7) * 4.5 +
-                  Math.cos(this.animTimer * 12) * 2.5
-                : 0,
+          if (x && isFinite(M) && isFinite($)) {
+            const baseSight = this.engine.isUnderground
+              ? 220
+              : 165 * (0.65 + 0.35 * weatherVisMult);
+            const K =
+                Math.sin(this.animTimer * 7) * 4.5 +
+                Math.cos(this.animTimer * 12) * 2.5,
               V = Math.max(40, baseSight * safeU + K),
               r0 = Math.max(1, Math.min(V * 0.5, 14 * safeU)),
               O = P.createRadialGradient(M, $, r0, M, $, V);
-            const centerClear = x ? 1.0 : Math.min(0.85, (1 - weatherVisMult) * 1.35);
-            (O.addColorStop(0, `rgba(0, 0, 0, ${centerClear.toFixed(3)})`),
-              O.addColorStop(0.45, `rgba(0, 0, 0, ${(centerClear * 0.92).toFixed(3)})`),
-              O.addColorStop(0.75, `rgba(0, 0, 0, ${(centerClear * 0.55).toFixed(3)})`),
+            (O.addColorStop(0, "rgba(0, 0, 0, 1.0)"),
+              O.addColorStop(0.45, "rgba(0, 0, 0, 0.92)"),
+              O.addColorStop(0.75, "rgba(0, 0, 0, 0.55)"),
               O.addColorStop(1, "rgba(0, 0, 0, 0)"),
               (P.fillStyle = O),
               P.beginPath(),
@@ -5416,27 +5429,6 @@
             !this.engine.isUnderground &&
               T &&
               ((y.fillStyle = T), y.fillRect(0, 0, l, o)));
-        }
-        const S = Math.max(l, o),
-          p = Math.min(l, o);
-        if (isFinite(l) && isFinite(o) && isFinite(S) && isFinite(p) && S > 0 && p > 0) {
-          if (!this._vigGrad || this._vigW !== l || this._vigH !== o) {
-            this._vigW = l;
-            this._vigH = o;
-            const j = y.createRadialGradient(
-              l / 2,
-              o / 2,
-              Math.max(1, p * 0.38),
-              l / 2,
-              o / 2,
-              Math.max(2, S * 0.72),
-            );
-            j.addColorStop(0, "rgba(0, 0, 0, 0)");
-            j.addColorStop(1, "rgba(5, 10, 20, 0.36)");
-            this._vigGrad = j;
-          }
-          y.fillStyle = this._vigGrad;
-          y.fillRect(0, 0, l, o);
         }
       }
     };
