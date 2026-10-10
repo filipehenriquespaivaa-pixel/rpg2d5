@@ -1721,6 +1721,48 @@
       }
       return this.getSurfaceTile(t, l);
     }
+    findTemperateForestSpawn() {
+      // Procura espiral a partir da origem por um ladrilho caminhável, plano e limpo em Floresta Temperada (BiomeId.FOREST)
+      for (let r = 0; r <= 40; r++) {
+        for (let dx = -r; dx <= r; dx++) {
+          for (let dy = -r; dy <= r; dy++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            const tile = this.getTile(dx, dy);
+            if (
+              tile &&
+              tile.biome &&
+              tile.biome.id === BiomeId.FOREST &&
+              !tile.biome.hasWater &&
+              tile.biome.passable !== false &&
+              tile.passable !== false
+            ) {
+              const hasObstacle = tile.prop && (
+                (typeof tile.prop.kind === "string" && (
+                  tile.prop.kind.startsWith("tree") ||
+                  tile.prop.kind === "rock" ||
+                  tile.prop.kind === "boulder" ||
+                  tile.prop.kind === "large_rock" ||
+                  tile.prop.kind === "cave_entrance" ||
+                  tile.prop.kind === "ore" ||
+                  tile.prop.kind === "cactus"
+                )) ||
+                tile.prop.passable === false
+              );
+              if (!hasObstacle) {
+                return {
+                  x: dx * this.tileSize + this.tileSize / 2,
+                  y: dy * this.tileSize + this.tileSize / 2,
+                  tx: dx,
+                  ty: dy,
+                  biome: tile.biome,
+                };
+              }
+            }
+          }
+        }
+      }
+      return { x: 0, y: 0, tx: 0, ty: 0, biome: (this.getTile(0, 0) && this.getTile(0, 0).biome) || BIOMES[BiomeId.FOREST] };
+    }
     _computeSurfaceBaseBiome(t, l) {
       // Escala continental ampliada (6x maior): garante que NENHUM bioma tenha menos de 2.000 blocos!
       const S_BIOME = 0.16;
@@ -1729,13 +1771,24 @@
         f = t + m,
         g = l + c,
         y = this.elevNoise.fbm2D(f * 0.000275 * S_BIOME, g * 0.000275 * S_BIOME, 2, 2, 0.4),
-        w = Math.hypot(t, l),
-        v = w < 144 ? (1 - w / 144) * 0.28 : 0;
-      let T = Math.max(0, Math.min(1, y + v)),
+        w = Math.hypot(t, l);
+
+      // Vale Inicial de Floresta Temperada em torno da origem (raio de ~80 blocos puros e transição até 170):
+      // Garante que qualquer seed inicie na Floresta Temperada verdejante, com solo plano e caminhável,
+      // sem cair em paredões rochosos ("montanhas de pedras") ou no deserto.
+      let spawnBlend = 0;
+      if (w <= 80) {
+        spawnBlend = 1;
+      } else if (w < 170) {
+        const tRatio = (w - 80) / (170 - 80);
+        spawnBlend = 0.5 * (1 + Math.cos(Math.PI * tRatio));
+      }
+
+      let T = Math.max(0, Math.min(1, y * (1 - spawnBlend) + 0.53 * spawnBlend)),
         S = !1,
         p = !1,
         j = !1;
-      if (y < 0.24) {
+      if (y < 0.24 && spawnBlend === 0) {
         const ue = this.islandNoise.fbm2D(
           t * 0.00055 * S_BIOME + 400,
           l * 0.00055 * S_BIOME + 400,
@@ -1758,37 +1811,37 @@
             ((p = !0), (N > 0.4 || (Ee > 0.58 && T > 0.55)) && (j = !0));
         }
       }
-      const P = this.tempNoise.fbm2D(f * 0.000225 * S_BIOME + 150, g * 0.000225 * S_BIOME + 150, 2, 2, 0.4),
+      const P = this.tempNoise.fbm2D(f * 0.000225 * S_BIOME + 150, g * 0.000225 * S_BIOME + 150, 2, 2, 0.4) * (1 - spawnBlend) + 0.38 * spawnBlend,
         A = this.moistNoise.fbm2D(
           f * 0.0003 * S_BIOME + 280,
           g * 0.0003 * S_BIOME + 280,
           2,
           2,
           0.4,
-        ),
+        ) * (1 - spawnBlend) + 0.45 * spawnBlend,
         x = this.featureNoise.fbm2D(
           t * 0.00075 * S_BIOME + 320,
           l * 0.00075 * S_BIOME + 320,
           2,
           2,
           0.5,
-        ),
+        ) * (1 - spawnBlend),
         M = this.featureNoise.fbm2D(
           t * 0.0007 * S_BIOME + 560,
           l * 0.0007 * S_BIOME + 560,
           2,
           2,
           0.5,
-        ),
+        ) * (1 - spawnBlend),
         $ = this.canyonNoise.fbm2D(
           t * 0.0007 * S_BIOME + 780,
           l * 0.0007 * S_BIOME + 780,
           2,
           2,
           0.5,
-        ),
+        ) * (1 - spawnBlend),
         z =
-          w < 96
+          w < 40
             ? 0
             : this.lakeNoise.fbm2D(
                 f * 0.00195 * S_BIOME + 920,
@@ -1796,7 +1849,7 @@
                 2,
                 2,
                 0.45,
-              );
+              ) * (1 - spawnBlend);
       if (typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l))) {
         return BIOMES.SNOW_PEAK;
       }
@@ -2530,13 +2583,24 @@
         f = t + m,
         g = l + c,
         y = this.elevNoise.fbm2D(f * 0.000275 * S_BIOME, g * 0.000275 * S_BIOME, 2, 2, 0.4),
-        w = Math.hypot(t, l),
-        v = w < 144 ? (1 - w / 144) * 0.28 : 0;
-      let T = Math.max(0, Math.min(1, y + v)),
+        w = Math.hypot(t, l);
+
+      // Vale Inicial de Floresta Temperada em torno da origem (raio de ~80 blocos puros e transição até 170):
+      // Garante que qualquer seed inicie na Floresta Temperada verdejante, com solo plano e caminhável,
+      // sem cair em paredões rochosos ("montanhas de pedras") ou no deserto.
+      let spawnBlend = 0;
+      if (w <= 80) {
+        spawnBlend = 1;
+      } else if (w < 170) {
+        const tRatio = (w - 80) / (170 - 80);
+        spawnBlend = 0.5 * (1 + Math.cos(Math.PI * tRatio));
+      }
+
+      let T = Math.max(0, Math.min(1, y * (1 - spawnBlend) + 0.53 * spawnBlend)),
         S = !1,
         p = !1,
         j = !1;
-      if (y < 0.24) {
+      if (y < 0.24 && spawnBlend === 0) {
         const ue = this.islandNoise.fbm2D(
           t * 0.00055 * S_BIOME + 400,
           l * 0.00055 * S_BIOME + 400,
@@ -2559,37 +2623,37 @@
             ((p = !0), (N > 0.4 || (Ee > 0.58 && T > 0.55)) && (j = !0));
         }
       }
-      const P = this.tempNoise.fbm2D(f * 0.000225 * S_BIOME + 150, g * 0.000225 * S_BIOME + 150, 2, 2, 0.4),
+      const P = this.tempNoise.fbm2D(f * 0.000225 * S_BIOME + 150, g * 0.000225 * S_BIOME + 150, 2, 2, 0.4) * (1 - spawnBlend) + 0.38 * spawnBlend,
         A = this.moistNoise.fbm2D(
           f * 0.0003 * S_BIOME + 280,
           g * 0.0003 * S_BIOME + 280,
           2,
           2,
           0.4,
-        ),
+        ) * (1 - spawnBlend) + 0.45 * spawnBlend,
         x = this.featureNoise.fbm2D(
           t * 0.00075 * S_BIOME + 320,
           l * 0.00075 * S_BIOME + 320,
           2,
           2,
           0.5,
-        ),
+        ) * (1 - spawnBlend),
         M = this.featureNoise.fbm2D(
           t * 0.0007 * S_BIOME + 560,
           l * 0.0007 * S_BIOME + 560,
           2,
           2,
           0.5,
-        ),
+        ) * (1 - spawnBlend),
         $ = this.canyonNoise.fbm2D(
           t * 0.0007 * S_BIOME + 780,
           l * 0.0007 * S_BIOME + 780,
           2,
           2,
           0.5,
-        ),
+        ) * (1 - spawnBlend),
         z =
-          w < 96
+          w < 40
             ? 0
             : this.lakeNoise.fbm2D(
                 f * 0.00195 * S_BIOME + 920,
@@ -2597,7 +2661,7 @@
                 2,
                 2,
                 0.45,
-              );
+              ) * (1 - spawnBlend);
       const isSnowCityArea = typeof window !== "undefined" && window.SnowPeakCity && (window.SnowPeakCity.isCityBiomeArea ? window.SnowPeakCity.isCityBiomeArea(t, l) : window.SnowPeakCity.isCityTerritory(t, l));
       const isDesertCityArea = typeof window !== "undefined" && window.DesertCity && (window.DesertCity.isCityBiomeArea ? window.DesertCity.isCityBiomeArea(t, l) : window.DesertCity.isCityTerritory(t, l));
       const isPortCityArea = typeof window !== "undefined" && window.PortCity && (window.PortCity.isCityBiomeArea ? window.PortCity.isCityBiomeArea(t, l) : window.PortCity.isCityTerritory(t, l));
@@ -5292,6 +5356,10 @@
       };
     }
     generateProp(t, l, o, u, m) {
+      // Clareira aberta no ponto de spawn inicial da Floresta Temperada (raio de 2.5 tiles livres)
+      if (!this.isUnderground && Math.hypot(t, l) < 2.5) {
+        return null;
+      }
       const c = `${t},${l}`,
         f = this.interactedProps.get(c);
       if (o.hasWater) {

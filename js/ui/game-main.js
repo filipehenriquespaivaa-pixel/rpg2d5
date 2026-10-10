@@ -18,32 +18,35 @@
       o = J.useRef(new World(initialSeed)),
       u = J.useRef(null),
       m = J.useRef(new AudioManager()),
-      c = J.useRef(new CreatureManager(o.current)),
-      f = J.useRef({
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-        direction: "down",
-        isMoving: !1,
-        walkCycle: 0,
-        speed: 3.4,
-        sprinting: !1,
-        stamina: 100,
-        hp: 100,
-        maxHp: 100,
-        isDead: !1,
-        deathTimer: 0,
-        invulnerableTimer: 0,
-        name: "Aventureiro",
-      }),
+      c = J.useRef(new CreatureManager(o.current));
+    const initialSpawn = (o.current && o.current.findTemperateForestSpawn)
+      ? o.current.findTemperateForestSpawn()
+      : { x: 0, y: 0, tx: 0, ty: 0, biome: BIOMES[BiomeId.FOREST] };
+    const f = J.useRef({
+      x: initialSpawn.x,
+      y: initialSpawn.y,
+      vx: 0,
+      vy: 0,
+      direction: "down",
+      isMoving: !1,
+      walkCycle: 0,
+      speed: 3.4,
+      sprinting: !1,
+      stamina: 100,
+      hp: 100,
+      maxHp: 100,
+      isDead: !1,
+      deathTimer: 0,
+      invulnerableTimer: 0,
+      name: "Aventureiro",
+    }),
       __autoCaveTimer = J.useRef(0),
       g = J.useRef({}),
       y = J.useRef({ up: !1, down: !1, left: !1, right: !1 }),
       [dodgeMode, setDodgeMode] = J.useState(!1),
       dodgeModeRef = J.useRef(!1),
-      [w, v] = J.useState(BIOMES[BiomeId.MEADOW]),
-      [T, S] = J.useState({ tx: 0, ty: 0 }),
+      [w, v] = J.useState(initialSpawn.biome || BIOMES[BiomeId.FOREST] || BIOMES[BiomeId.MEADOW]),
+      [T, S] = J.useState({ tx: initialSpawn.tx, ty: initialSpawn.ty }),
       [p, j] = J.useState(initialSeed),
       [P, A] = J.useState(0.5),
       timeOfDayRef = J.useRef(0.5),
@@ -1272,7 +1275,12 @@
         if (typeof window.setActiveSaveSlot === "function") {
           window.setActiveSaveSlot(activeSlotId);
         }
-        ve(`✨ Novo mundo gerado! Seed: #${initialSeed} (Slot ${activeSlotId})`);
+        const spawn = o.current && o.current.findTemperateForestSpawn ? o.current.findTemperateForestSpawn() : { x: 0, y: 0, tx: 0, ty: 0, biome: BIOMES[BiomeId.FOREST] };
+        f.current.x = spawn.x;
+        f.current.y = spawn.y;
+        S({ tx: spawn.tx, ty: spawn.ty });
+        v(spawn.biome);
+        ve(`✨ Bem-vindo à Floresta Temperada! Seed: #${initialSeed} (Slot ${activeSlotId})`);
         return;
       }
       const E = (typeof loadGameState === "function") ? loadGameState(activeSlotId) : null;
@@ -1337,8 +1345,11 @@
         if (D.isUnderground) {
           const q = D.exitCave();
           c.current.respawnPlayer(E, q.x, q.y);
-        } else c.current.respawnPlayer(E, 0, 0);
-        ve("✨ Você renasceu revigorado e protegido por um escudo celestial!");
+        } else {
+          const spawn = D.findTemperateForestSpawn ? D.findTemperateForestSpawn() : { x: 0, y: 0 };
+          c.current.respawnPlayer(E, spawn.x, spawn.y);
+        }
+        ve("✨ Você renasceu revigorado na Floresta Temperada!");
       }
       ((Oa.current = { x: 0, y: 0 }),
         Et(!1),
@@ -1369,10 +1380,13 @@
           clearGameState(),
           Ie(null),
           (ee.current = null),
-          j(E),
-          (f.current.x = 0),
-          (f.current.y = 0),
-          ve(`Novo mundo gerado! Seed: #${E} (Ponto de Salve reiniciado)`));
+          j(E));
+        const spawn = o.current && o.current.findTemperateForestSpawn ? o.current.findTemperateForestSpawn() : { x: 0, y: 0, tx: 0, ty: 0, biome: BIOMES[BiomeId.FOREST] };
+        (f.current.x = spawn.x),
+        (f.current.y = spawn.y),
+        S({ tx: spawn.tx, ty: spawn.ty }),
+        v(spawn.biome),
+        ve(`Novo mundo gerado! Seed: #${E} — Floresta Temperada`);
       }, [ve]),
       dt = J.useCallback(
         (E) => {

@@ -38,7 +38,7 @@ window.Game = window.Game || {};
   const CITY_CX = 520;
   const CITY_CY = 360;
   const CITY_RADIUS = 90;
-  const CITY_BIOME_RADIUS = 750;
+  const CITY_BIOME_RADIUS = 180;
 
   // =========================================================================
   // SISTEMA DE RUNAS ANCESTRAIS (REFERÊNCIA AO PERGAMINHO DE RUNAS)
