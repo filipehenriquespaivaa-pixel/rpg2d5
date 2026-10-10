@@ -16,11 +16,41 @@ function App() {
     }
   });
 
-  // Atualiza flags globais
+  // Atualiza flags globais e sincroniza exatamente com a área visível real (visualViewport / innerHeight)
   J.useEffect(() => {
     window.__inGame = inGame;
     window.__devMode = devMode;
   }, [inGame, devMode]);
+
+  J.useEffect(() => {
+    const syncVisibleViewport = () => {
+      const vv = window.visualViewport;
+      const w = vv ? vv.width : window.innerWidth;
+      const h = vv ? vv.height : window.innerHeight;
+      const offsetTop = vv ? vv.offsetTop : 0;
+      const rootEl = document.documentElement;
+      if (rootEl && w > 0 && h > 0) {
+        rootEl.style.setProperty("--vvw", `${Math.floor(w)}px`);
+        rootEl.style.setProperty("--vvh", `${Math.floor(h)}px`);
+        rootEl.style.setProperty("--vv-top", `${Math.floor(offsetTop)}px`);
+      }
+    };
+    syncVisibleViewport();
+    window.addEventListener("resize", syncVisibleViewport);
+    window.addEventListener("orientationchange", syncVisibleViewport);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncVisibleViewport);
+      window.visualViewport.addEventListener("scroll", syncVisibleViewport);
+    }
+    return () => {
+      window.removeEventListener("resize", syncVisibleViewport);
+      window.removeEventListener("orientationchange", syncVisibleViewport);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", syncVisibleViewport);
+        window.visualViewport.removeEventListener("scroll", syncVisibleViewport);
+      }
+    };
+  }, []);
 
   const handleStartGame = J.useCallback(() => {
     setInGame(true);
@@ -38,7 +68,7 @@ function App() {
 
   return h.jsx("main", {
     className:
-      "w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none text-slate-100 relative",
+      "w-full h-full overflow-hidden bg-slate-950 font-sans select-none text-slate-100 relative",
     children: inGame
       ? h.jsxs("div", {
           className: "relative w-full h-full",

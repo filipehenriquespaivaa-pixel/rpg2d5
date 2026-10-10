@@ -4111,16 +4111,19 @@
         let F,
           ie = 0;
         const ge = () => {
-          const Je = Math.min(window.devicePixelRatio || 1, 2),
-            he = window.innerWidth,
-            $e = window.innerHeight;
+          const vv = window.visualViewport,
+            Je = Math.min(window.devicePixelRatio || 1, 2),
+            he = Math.floor(vv ? vv.width : window.innerWidth),
+            $e = Math.floor(vv ? vv.height : window.innerHeight);
           ((E.width = Math.floor(he * Je)),
             (E.height = Math.floor($e * Je)),
             (E.style.width = `${he}px`),
             (E.style.height = `${$e}px`),
             D.setTransform(Je, 0, 0, Je, 0, 0));
         };
-        (window.addEventListener("resize", ge), ge());
+        (window.addEventListener("resize", ge),
+          window.visualViewport && window.visualViewport.addEventListener("resize", ge),
+          ge());
         let re = null;
         const me = {};
         let ce = -999999,
