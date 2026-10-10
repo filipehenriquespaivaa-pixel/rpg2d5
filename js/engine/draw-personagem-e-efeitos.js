@@ -560,6 +560,31 @@
         (e.fillStyle = c > 0.4 ? "#22c55e" : "#ef4444"),
         e.fillRect(-u / 2, -25 * o, u * c, m));
     }
+    if (t.weatherStateText && !t.attached && !t.isUnderground) {
+      e.save();
+      const labelY = (t.hp < t.maxHp ? -32 : -27) * o + Math.sin((t.animTimer || 0) * 4) * 1.2;
+      e.font = "bold 9px 'Segoe UI', sans-serif";
+      e.textAlign = "center";
+      e.textBaseline = "middle";
+      const metrics = e.measureText(t.weatherStateText);
+      const padX = 5;
+      const bw = metrics.width + padX * 2;
+      const bh = 13;
+      e.fillStyle = "rgba(15, 23, 42, 0.82)";
+      e.beginPath();
+      if (typeof e.roundRect === "function") {
+        e.roundRect(-bw / 2, labelY - bh / 2, bw, bh, 4);
+      } else {
+        e.rect(-bw / 2, labelY - bh / 2, bw, bh);
+      }
+      e.fill();
+      e.strokeStyle = t.weatherStateColor || "#38bdf8";
+      e.lineWidth = 0.9;
+      e.stroke();
+      e.fillStyle = t.weatherStateColor || "#e0f2fe";
+      e.fillText(t.weatherStateText, 0, labelY + 0.5);
+      e.restore();
+    }
     e.restore();
   }
   function jg(e, t, l, o) {

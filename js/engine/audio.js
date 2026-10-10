@@ -841,6 +841,47 @@
         this.ambientSource = null;
       }
     }
+    playThunderClap() {
+      if (!(!this.enabled || !this.ctx))
+        try {
+          const t = this.ctx,
+            l = t.currentTime;
+          // 1. Estrondo grave de trovão
+          const osc = t.createOscillator(),
+            gain = t.createGain();
+          ((osc.type = "sawtooth"),
+            osc.frequency.setValueAtTime(115, l),
+            osc.frequency.exponentialRampToValueAtTime(32, l + 0.85),
+            gain.gain.setValueAtTime(0.14, l),
+            gain.gain.exponentialRampToValueAtTime(0.001, l + 0.9),
+            osc.connect(gain),
+            gain.connect(t.destination),
+            osc.start(l),
+            osc.stop(l + 0.92));
+
+          // 2. Estalo elétrico de relâmpago + reverberação de trovão
+          const bufLen = Math.floor(t.sampleRate * 0.95),
+            buf = t.createBuffer(1, bufLen, t.sampleRate),
+            data = buf.getChannelData(0);
+          for (let i = 0; i < bufLen; i++) {
+            const env = Math.pow(1 - i / bufLen, 1.5);
+            data[i] = (Math.random() * 2 - 1) * env;
+          }
+          const noise = t.createBufferSource();
+          noise.buffer = buf;
+          const filter = t.createBiquadFilter();
+          ((filter.type = "lowpass"),
+            filter.frequency.setValueAtTime(680, l),
+            filter.frequency.exponentialRampToValueAtTime(120, l + 0.9));
+          const nGain = t.createGain();
+          (nGain.gain.setValueAtTime(0.18, l),
+            nGain.gain.exponentialRampToValueAtTime(0.001, l + 0.92),
+            noise.connect(filter),
+            filter.connect(nGain),
+            nGain.connect(t.destination),
+            noise.start(l));
+        } catch {}
+    }
   }
   const hi = new AudioManager();
   window.AudioManager = AudioManager;

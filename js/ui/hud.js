@@ -136,6 +136,14 @@
       [collidersActive, setCollidersActive] = J.useState(
         () => typeof window !== "undefined" && !!window.__showColliders,
       ),
+      [weatherUiState, setWeatherUiState] = J.useState(() => {
+        const ws = typeof window !== "undefined" ? window.weatherSystem : null;
+        return {
+          mode: ws ? ws.mode : "auto",
+          current: ws ? ws.currentWeather : "clear",
+          intensity: ws ? ws.intensity : 0,
+        };
+      }),
       isImmersive = !isDevMode || Ie,
       oa = !!(oe && oe.prop.lit !== !1),
       ga = !!(C && oe && C.tx === oe.tx && C.ty === oe.ty),
@@ -184,10 +192,47 @@
 
     J.useEffect(() => {
       window.__onCollidersChanged = (val) => setCollidersActive(val);
+      const weatherInterval = setInterval(() => {
+        const ws = typeof window !== "undefined" ? window.weatherSystem : null;
+        if (ws) {
+          setWeatherUiState((prev) =>
+            prev.mode === ws.mode &&
+            prev.current === ws.currentWeather &&
+            Math.abs(prev.intensity - ws.intensity) < 0.05
+              ? prev
+              : {
+                  mode: ws.mode,
+                  current: ws.currentWeather,
+                  intensity: ws.intensity,
+                },
+          );
+        }
+      }, 450);
       return () => {
+        clearInterval(weatherInterval);
         if (window.__onCollidersChanged) delete window.__onCollidersChanged;
       };
     }, []);
+    const activeWeatherInfo =
+      (typeof window !== "undefined" &&
+        window.WEATHER_INFO &&
+        window.WEATHER_INFO[weatherUiState.current]) || {
+        id: "clear",
+        namePt: "Céu Limpo",
+        icon: "☀️",
+        visibilityFactor: 1,
+        descriptionPt: "Visibilidade plena.",
+      };
+    const handleSelectWeather = (wKey) => {
+      const ws = typeof window !== "undefined" ? window.weatherSystem : null;
+      if (!ws) return;
+      ws.setManualWeather(wKey);
+      setWeatherUiState({
+        mode: ws.mode,
+        current: ws.currentWeather,
+        intensity: ws.intensity,
+      });
+    };
     const pebbleAimTouchStart = J.useRef(null);
     const pebbleAimStartTime = J.useRef(0);
     const pebbleAimHasDragged = J.useRef(!1);
@@ -555,6 +600,38 @@
                     title: "Teleportar direto para a Cidade dos Picos Gelados",
                     children: "❄️ Ir p/ Cidade Glacial",
                   }),
+                  h.jsxs("div", {
+                    className:
+                      "flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 border border-sky-500/50 text-[10px]",
+                    children: [
+                      h.jsx("span", {
+                        className: "text-sky-300 font-bold whitespace-nowrap",
+                        children: `${activeWeatherInfo.icon} Clima:`,
+                      }),
+                      h.jsxs("select", {
+                        id: "hud-top-dev-weather-select",
+                        value: weatherUiState.mode === "auto" ? "auto" : weatherUiState.current,
+                        onChange: (We) => {
+                          const val = We.target.value;
+                          if (We.target && typeof We.target.blur === "function") {
+                            We.target.blur();
+                          }
+                          handleSelectWeather(val);
+                        },
+                        className:
+                          "bg-slate-950 text-sky-200 font-bold rounded px-1.5 py-0.5 border border-sky-500/40 cursor-pointer focus:outline-none",
+                        title: "Alterar Clima no Canvas (Afeta visibilidade e comportamento das criaturas)",
+                        children: [
+                          h.jsx("option", { value: "auto", children: `🔄 Automático (${activeWeatherInfo.namePt})` }),
+                          h.jsx("option", { value: "clear", children: "☀️ Céu Limpo" }),
+                          h.jsx("option", { value: "rain", children: "🌧️ Chuva" }),
+                          h.jsx("option", { value: "thunderstorm", children: "⛈️ Tempestade com Raios" }),
+                          h.jsx("option", { value: "sandstorm", children: "🌪️ Tempestade de Areia" }),
+                          h.jsx("option", { value: "snow", children: "🌨️ Tempestade de Neve" }),
+                        ],
+                      }),
+                    ],
+                  }),
                   h.jsxs("button", {
                     id: "hud-dev-settings-sidebar-toggle-btn",
                     type: "button",
@@ -759,6 +836,35 @@
                       }),
                     ],
                   }),
+                  !(worldEngine && worldEngine.isUnderground) &&
+                    h.jsxs("div", {
+                      className:
+                        "flex items-center justify-between gap-1.5 bg-black/40 px-2 py-1 rounded border border-white/5 text-[10px]",
+                      title: activeWeatherInfo.descriptionPt,
+                      children: [
+                        h.jsxs("span", {
+                          className: "flex items-center gap-1 font-semibold text-sky-300 truncate",
+                          children: [
+                            h.jsx("span", { children: activeWeatherInfo.icon }),
+                            h.jsx("span", { className: "truncate", children: activeWeatherInfo.namePt }),
+                          ],
+                        }),
+                        h.jsxs("span", {
+                          className: "font-mono text-[9px] text-slate-400 shrink-0",
+                          children: [
+                            "Visib: ",
+                            Math.round(
+                              (typeof window !== "undefined" &&
+                              window.weatherSystem &&
+                              typeof window.weatherSystem.getEffectiveVisibilityMultiplier === "function"
+                                ? window.weatherSystem.getEffectiveVisibilityMultiplier(!1)
+                                : 1) * 100,
+                            ),
+                            "%",
+                          ],
+                        }),
+                      ],
+                    }),
                   h.jsxs("div", {
                     className:
                       "flex flex-col gap-1 bg-black/40 px-2 py-1.5 rounded border border-white/5",
@@ -2701,6 +2807,88 @@
                           }),
                         ],
                       }),
+                    ],
+                  }),
+                  h.jsxs("div", {
+                    className:
+                      "p-3 rounded-xl bg-slate-900/80 border border-sky-500/30 flex flex-col gap-2.5 shadow-sm",
+                    children: [
+                      h.jsxs("div", {
+                        className: "flex items-center justify-between",
+                        children: [
+                          h.jsxs("div", {
+                            className: "flex items-center gap-1.5",
+                            children: [
+                              h.jsx("span", {
+                                className: "text-sm",
+                                children: activeWeatherInfo.icon,
+                              }),
+                              h.jsx("span", {
+                                className: "font-bold text-slate-200",
+                                children: "Clima Dinâmico (Canvas)",
+                              }),
+                            ],
+                          }),
+                          h.jsxs("span", {
+                            className:
+                              "text-[10px] font-mono px-2 py-0.5 rounded bg-sky-950/80 border border-sky-500/40 text-sky-300 font-bold",
+                            children: [
+                              weatherUiState.mode === "auto" ? "Auto • " : "Fixo • ",
+                              activeWeatherInfo.namePt,
+                            ],
+                          }),
+                        ],
+                      }),
+                      h.jsx("p", {
+                        className: "text-[11px] text-slate-300 leading-relaxed",
+                        children: activeWeatherInfo.descriptionPt,
+                      }),
+                      h.jsxs("div", {
+                        className: "grid grid-cols-2 gap-1.5",
+                        children: [
+                          [
+                            { key: "auto", label: "🔄 Automático" },
+                            { key: "clear", label: "☀️ Céu Limpo" },
+                            { key: "rain", label: "🌧️ Chuva" },
+                            { key: "thunderstorm", label: "⛈️ Tempestade + Raios" },
+                            { key: "sandstorm", label: "🌪️ Temp. de Areia" },
+                            { key: "snow", label: "🌨️ Temp. de Neve" },
+                          ].map((opt) => {
+                            const isSelected =
+                              opt.key === "auto"
+                                ? weatherUiState.mode === "auto"
+                                : weatherUiState.mode === "manual" && weatherUiState.current === opt.key;
+                            return h.jsx(
+                              "button",
+                              {
+                                type: "button",
+                                onClick: () => handleSelectWeather(opt.key),
+                                className: `py-1.5 px-2 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center justify-center gap-1 border ${
+                                  isSelected
+                                    ? "bg-sky-600 text-white border-sky-300 shadow"
+                                    : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-white/10"
+                                }`,
+                                children: opt.label,
+                              },
+                              opt.key,
+                            );
+                          }),
+                        ],
+                      }),
+                      weatherUiState.current === "thunderstorm" &&
+                        h.jsx("button", {
+                          type: "button",
+                          onClick: () => {
+                            const ws = typeof window !== "undefined" ? window.weatherSystem : null;
+                            if (ws && worldEngine) {
+                              const pl = window.__gameEngine?.player || { x: t.tx * 32, y: t.ty * 32 };
+                              ws.triggerLightningStrike(pl, worldEngine, window.__gameEngine?.creatures);
+                            }
+                          },
+                          className:
+                            "w-full py-1.5 px-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] transition cursor-pointer shadow flex items-center justify-center gap-1",
+                          children: "⚡ Disparar Raio Agora!",
+                        }),
                     ],
                   }),
                   dungeonStairInfo &&

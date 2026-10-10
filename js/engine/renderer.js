@@ -465,6 +465,10 @@
           drawDesertCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
         }
         (u.combatManager && u.combatManager.renderEffects(c),
+          typeof window !== "undefined" &&
+            window.weatherSystem &&
+            typeof window.weatherSystem.renderWorldEffects === "function" &&
+            window.weatherSystem.renderWorldEffects(c, S, p, j, P),
           window.__showColliders &&
             this.renderColliderDebug(c, t, u.combatManager),
           this.renderCloudShadows(S, p, j, P, u.timeOfDay),
@@ -473,6 +477,18 @@
           c.restore(),
           this.renderSunRays(l, o, u.timeOfDay),
           this.renderLightingOverlay(t, l, o, g, u, K, y, w),
+          typeof window !== "undefined" &&
+            window.weatherSystem &&
+            typeof window.weatherSystem.renderScreenWeather === "function" &&
+            window.weatherSystem.renderScreenWeather(
+              c,
+              l,
+              o,
+              g,
+              y,
+              w,
+              !!this.engine.isUnderground,
+            ),
           c.restore());
       }
       renderColliderDebug(c, pl, cm) {
@@ -5072,12 +5088,23 @@
               (251 * wDawn + 225 * wDusk + 15 * wNight) / tAlpha,
             );
             const tg = Math.round(
-              (146 * wDawn + 29 * wDusk + 23 * wNight) / tAlpha,
+              (146 * wDawn + 29 * wDusk + 15 * wNight) / tAlpha,
             );
             const tb = Math.round(
               (60 * wDawn + 72 * wDusk + 42 * wNight) / tAlpha,
             );
             T = `rgba(${tr}, ${tg}, ${tb}, ${tAlpha.toFixed(4)})`;
+          }
+          // Clima adverso (Chuva, Tempestade com Raios, Tempestade de Areia, Neve) escurece o ambiente e reduz a visibilidade!
+          if (typeof window !== "undefined" && window.weatherSystem && window.weatherSystem.intensity > 0.02) {
+            const ws = window.weatherSystem;
+            const wInfo = ws.getWeatherInfo(ws.currentWeather);
+            const wDarkBoost = (wInfo.darknessBoost || 0) * ws.intensity;
+            v = Math.min(0.92, v + wDarkBoost * (1 - v * 0.55));
+            // Durante o clarão de um raio, ilumina subitamente o mundo
+            if (ws.flashAlpha > 0.05) {
+              v = Math.max(0.05, v * (1 - ws.flashAlpha * 0.85));
+            }
           }
         }
         if (v > 0.002) {
@@ -5101,19 +5128,30 @@
             (P.globalCompositeOperation = "destination-out"));
           const x = !!m.lanternActive,
             safeU = (typeof u === "number" && isFinite(u) && u > 0) ? u : 1,
+            weatherVisMult =
+              !this.engine.isUnderground &&
+              typeof window !== "undefined" &&
+              window.weatherSystem &&
+              typeof window.weatherSystem.getEffectiveVisibilityMultiplier === "function"
+                ? window.weatherSystem.getEffectiveVisibilityMultiplier(!1)
+                : 1.0,
             M = l / 2 + (t.x - f) * safeU,
             $ = o / 2 + (t.y - g) * safeU;
-          if (x && isFinite(M) && isFinite($)) {
-            const z = this.engine.isUnderground ? 220 : 165,
-              K =
-                Math.sin(this.animTimer * 7) * 4.5 +
-                Math.cos(this.animTimer * 12) * 2.5,
-              V = Math.max(40, z * safeU + K),
+          if ((x || weatherVisMult < 0.96) && isFinite(M) && isFinite($)) {
+            const baseSight = x
+              ? (this.engine.isUnderground ? 220 : 165 * (0.65 + 0.35 * weatherVisMult))
+              : (260 * weatherVisMult);
+            const K = x
+                ? Math.sin(this.animTimer * 7) * 4.5 +
+                  Math.cos(this.animTimer * 12) * 2.5
+                : 0,
+              V = Math.max(40, baseSight * safeU + K),
               r0 = Math.max(1, Math.min(V * 0.5, 14 * safeU)),
               O = P.createRadialGradient(M, $, r0, M, $, V);
-            (O.addColorStop(0, "rgba(0, 0, 0, 1.0)"),
-              O.addColorStop(0.45, "rgba(0, 0, 0, 0.92)"),
-              O.addColorStop(0.75, "rgba(0, 0, 0, 0.55)"),
+            const centerClear = x ? 1.0 : Math.min(0.85, (1 - weatherVisMult) * 1.35);
+            (O.addColorStop(0, `rgba(0, 0, 0, ${centerClear.toFixed(3)})`),
+              O.addColorStop(0.45, `rgba(0, 0, 0, ${(centerClear * 0.92).toFixed(3)})`),
+              O.addColorStop(0.75, `rgba(0, 0, 0, ${(centerClear * 0.55).toFixed(3)})`),
               O.addColorStop(1, "rgba(0, 0, 0, 0)"),
               (P.fillStyle = O),
               P.beginPath(),

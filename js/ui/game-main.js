@@ -4327,6 +4327,17 @@
                   va.prop.roastingFish !== Pa.prop.roastingFish) &&
                 ((Ue.current = Pa), xe(Pa))
               : va && ((Ue.current = null), xe(null)),
+            typeof window !== "undefined" &&
+              window.weatherSystem &&
+              typeof window.weatherSystem.update === "function" &&
+              (window.weatherSystem.setAudio(m.current),
+              window.weatherSystem.update(
+                Ye,
+                he,
+                Q,
+                c.current,
+                aa.biome.id,
+              )),
             c.current.update(
               Ye,
               he,

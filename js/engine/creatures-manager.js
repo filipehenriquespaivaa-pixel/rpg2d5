@@ -284,9 +284,16 @@
     updatePreyAI(t, l, o) {
       const ai = creatureBehavior(t.type).preyAI;
       t.alertEffectTimer && t.alertEffectTimer > 0 && (t.alertEffectTimer -= l);
-      const c = ai.alertRadius,
-        f = ai.wolfRadius,
-        g = ai.giveUpRadius,
+      const visMult =
+        !t.isUnderground &&
+        typeof window !== "undefined" &&
+        window.weatherSystem &&
+        typeof window.weatherSystem.getEffectiveVisibilityMultiplier === "function"
+          ? window.weatherSystem.getEffectiveVisibilityMultiplier(!1)
+          : 1.0;
+      const c = ai.alertRadius * visMult,
+        f = ai.wolfRadius * visMult,
+        g = ai.giveUpRadius * Math.max(0.65, visMult),
         y = Math.hypot(o.x - t.x, o.y - t.y),
         w = !o.isDead && y < c;
       let v = null,
@@ -1672,9 +1679,15 @@
           }
           const ne = this.isShallowWater(P, A),
             ke = this.isPositionInShade(p.x, p.y, m, p.isUnderground),
-            G = !p.isUnderground && !ne && !ke && f;
-          ((p.inWater = ne),
-            (p.inShadow = ke),
+            isRainingNow =
+              !p.isUnderground &&
+              typeof window !== "undefined" &&
+              window.weatherSystem &&
+              typeof window.weatherSystem.isWetWeather === "function" &&
+              window.weatherSystem.isWetWeather(),
+            G = !p.isUnderground && !ne && !ke && f && !isRainingNow;
+          ((p.inWater = ne || isRainingNow),
+            (p.inShadow = ke || isRainingNow),
             (p.inSun = G),
             ne &&
               Math.random() < t * 1.5 &&
@@ -1782,14 +1795,38 @@
           continue;
         }
         const z = this.getAnimalFireDeterrence(p, l),
+          weatherMod =
+            typeof window !== "undefined" &&
+            window.weatherSystem &&
+            typeof window.weatherSystem.getCreatureWeatherBehavior === "function"
+              ? window.weatherSystem.getCreatureWeatherBehavior(p, l, t, this)
+              : { visionMult: 1, speedMult: 1, forceRetreat: !1, seekShelter: !1 },
+          wSpeedMult = weatherMod.speedMult || 1,
+          wVisMult = weatherMod.visionMult || 1,
           K = gl(p.type) && !!(x && M < $),
           V = gl(p.type) && !!(l.hasTorch && j < 58 && !l.isDead),
           O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
           _ = K || V || O,
-          NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack);
+          NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack || weatherMod.forceRetreat);
         const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : p.type === "tardigrade" ? Math.max(28, Math.round(30 * (p.scale || 1) * 0.95)) : 26,
           chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 18 : 24) : p.type === "tardigrade" ? Math.max(20, Math.round(22 * (p.scale || 1) * 0.95)) : 22;
-        if (_) {
+        if (weatherMod.forceRetreat) {
+          // Criaturas de fogo (Dragão Ancião, Golem Magmático) recuando da chuva/neve ou criaturas assustadas por raios!
+          p.attackCooldown = Math.max(p.attackCooldown || 0, 1.5);
+          p.isLeaping && (p.isLeaping = !1);
+          const retreatAngle = this.pickFleeAngle(
+            p,
+            weatherMod.retreatFromX ?? l.x,
+            weatherMod.retreatFromY ?? l.y,
+            t,
+            p.speed * wSpeedMult,
+          );
+          p.targetAngle = retreatAngle;
+          const rSpd = p.speed * wSpeedMult;
+          p.vx = Math.cos(retreatAngle) * rSpd;
+          p.vy = Math.sin(retreatAngle) * rSpd;
+          p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+        } else if (_) {
           ((!p.fleeFireTimer || p.fleeFireTimer <= 0) &&
             (p.fleeFireTimer = 3.5),
             (p.giveUpPursuitTimer = 8),
@@ -1815,12 +1852,14 @@
           !isPreyType(p.type)
         )
           this.steerAnimalExploration(p, t, x, f, m);
-        else if (isPreyType(p.type))
+        else if (isPreyType(p.type)) {
           this.updatePreyAI(p, t, l);
-        else if (p.isGiantScorpion && !NC && !l.isDead && j < ((p.aggroTimer || 0) > 0 ? 580 : 320) && z.canAttack) {
+          p.vx *= wSpeedMult;
+          p.vy *= wSpeedMult;
+        } else if (p.isGiantScorpion && !NC && !l.isDead && j < ((p.aggroTimer || 0) > 0 ? 580 : 320 * wVisMult) && z.canAttack) {
           // Escorpião Gigante: persegue na velocidade do player correndo e ataca de forma independente com a garra mais próxima quando estiver no alcance!
           if (j > chaseStopDist) {
-            const chaseSpeed = p.speed;
+            const chaseSpeed = p.speed * wSpeedMult;
             const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
             ((p.vx = Math.cos(G) * chaseSpeed),
               (p.vy = Math.sin(G) * chaseSpeed),
@@ -1933,8 +1972,8 @@
               }
             }
           }
-        } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.type === "tardigrade" ? Math.round(220 * Math.max(1, (p.scale || 1) * 0.75)) : (p.isGiantScorpion ? 260 : 150)))) && j > chaseStopDist && z.canAttack) {
-          const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1);
+        } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.type === "tardigrade" ? Math.round(220 * Math.max(1, (p.scale || 1) * 0.75)) : (p.isGiantScorpion ? 260 : 150)) * wVisMult)) && j > chaseStopDist && z.canAttack) {
+          const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1) * wSpeedMult;
           const chaseSpeed = p.speed * de;
           const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
           ((p.vx = Math.cos(G) * chaseSpeed),
@@ -1957,10 +1996,10 @@
               this.monsterAttackPlayer(p, l, c)));
         else if (creatureBehavior(p.type).hunter && (!p.aggroTimer || p.aggroTimer <= 0) && !p.isQueen) {
           const hunterAI = creatureBehavior(p.type).hunter;
-          const G = this.getNearestPreyForWolf(p.x, p.y, hunterAI.huntRadius, p.isUnderground, p);
+          const G = this.getNearestPreyForWolf(p.x, p.y, hunterAI.huntRadius * wVisMult, p.isUnderground, p);
           if (G)
             if (Math.hypot(G.x - p.x, G.y - p.y) > (hunterAI.meleeRange + (p.scale || 1) * 6)) {
-              const le = p.speed * hunterAI.huntSpeedMult;
+              const le = p.speed * hunterAI.huntSpeedMult * wSpeedMult;
               const W = this.steerAroundObstacles(p, G.x, G.y, le, !1);
               ((p.vx = Math.cos(W) * le),
                 (p.vy = Math.sin(W) * le),
@@ -1983,10 +2022,10 @@
               Math.random() < hunterAI.idleChance
                 ? ((p.vx = 0), (p.vy = 0))
                 : ((p.targetAngle = Math.random() * Math.PI * 2),
-                  (p.vx = Math.cos(p.targetAngle) * (p.speed * hunterAI.wanderSpeedMult)),
-                  (p.vy = Math.sin(p.targetAngle) * (p.speed * hunterAI.wanderSpeedMult)),
+                  (p.vx = Math.cos(p.targetAngle) * (p.speed * hunterAI.wanderSpeedMult * wSpeedMult)),
+                  (p.vy = Math.sin(p.targetAngle) * (p.speed * hunterAI.wanderSpeedMult * wSpeedMult)),
                   (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing))));
-        } else if (p.type === "slime" && p.inSun)
+        } else if ((p.type === "slime" && p.inSun) || weatherMod.seekShelter)
           if (
             ((p.shelterCooldown = (p.shelterCooldown || 0) - t),
             p.shelterCooldown <= 0 &&
@@ -2002,13 +2041,13 @@
             if (
               Math.hypot(p.shelterTarget.x - p.x, p.shelterTarget.y - p.y) < 16
             )
-              ((p.shelterTarget = null), (p.shelterCooldown = 2));
+              ((p.shelterTarget = null), (p.shelterCooldown = 2), (p.vx = 0), (p.vy = 0));
             else {
               const de = Math.atan2(
                   p.shelterTarget.y - p.y,
                   p.shelterTarget.x - p.x,
                 ),
-                W = p.speed * 1.1;
+                W = p.speed * 1.1 * wSpeedMult;
               ((p.vx = Math.cos(de) * W),
                 (p.vy = Math.sin(de) * W),
                 (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
@@ -2017,8 +2056,8 @@
             p.wanderTimer <= 0 &&
               ((p.wanderTimer = 1 + Math.random() * 1.2),
               (p.targetAngle = Math.random() * Math.PI * 2),
-              (p.vx = Math.cos(p.targetAngle) * (p.speed * 0.85)),
-              (p.vy = Math.sin(p.targetAngle) * (p.speed * 0.85)),
+              (p.vx = Math.cos(p.targetAngle) * (p.speed * 0.85 * wSpeedMult)),
+              (p.vy = Math.sin(p.targetAngle) * (p.speed * 0.85 * wSpeedMult)),
               (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
         else if (p.type === "slime") {
           if (p.wanderTimer <= 0)
@@ -2028,7 +2067,7 @@
               ((p.vx = 0), (p.vy = 0));
             else {
               let G = Math.random() * Math.PI * 2;
-              const de = p.inWater ? p.speed * 0.75 : p.speed * 0.55,
+              const de = (p.inWater ? p.speed * 0.75 : p.speed * 0.55) * wSpeedMult,
                 W = p.x + Math.cos(G) * de * 24,
                 le = p.y + Math.sin(G) * de * 24,
                 te = Math.floor(W / this.engine.tileSize),
@@ -2050,8 +2089,8 @@
             Math.random() < 0.35
               ? ((p.vx = 0), (p.vy = 0))
               : ((p.targetAngle = Math.random() * Math.PI * 2),
-                (p.vx = Math.cos(p.targetAngle) * (p.speed * 0.55)),
-                (p.vy = Math.sin(p.targetAngle) * (p.speed * 0.55)),
+                (p.vx = Math.cos(p.targetAngle) * (p.speed * 0.55 * wSpeedMult)),
+                (p.vy = Math.sin(p.targetAngle) * (p.speed * 0.55 * wSpeedMult)),
                 (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing))));
         !_ &&
           gl(p.type) &&
