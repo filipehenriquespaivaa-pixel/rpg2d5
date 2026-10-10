@@ -2787,7 +2787,7 @@
         // Ela permanece como ramo durante o dia e abre visualmente somente à noite.
         this._syncBluePlantProp(t, l, se);
       }
-      const greekRuin = this._getGreekRuinCellAt(t, l);
+      const greekRuin = (K.id === BiomeId.MEADOW) ? this._getGreekRuinCellAt(t, l) : null;
       if (greekRuin) {
         se.isGreekRuin = !0;
         se.greekRuinRole = greekRuin.role;
@@ -5442,11 +5442,11 @@
               : "Pressione [F] ou Interagir para despertar a bênção mágica do santuário.",
         };
       // Fogueiras não aparecem mais naturalmente pelo mapa — são criadas exclusivamente pelo jogador via receita!
-      // Baús também não aparecem espalhados pelo mundo — surgem APENAS dentro dos salões das construções!
+      // Pilares em ruínas aparecem EXCLUSIVAMENTE nas Planícies (BiomeId.MEADOW)
       if (
         g > 0.0055 &&
         g < 0.0075 &&
-        (o.id === BiomeId.MEADOW || o.id === BiomeId.SNOW_PEAK || o.id === BiomeId.FOREST)
+        o.id === BiomeId.MEADOW
       )
         return {
           kind: "ruin_pillar",
