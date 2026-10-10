@@ -1912,6 +1912,7 @@ window.Game = window.Game || {};
             isMerged: true,
             mergedCount: 4,
             isPrisonDeepMine: true,
+            isExcavatorMine: true,
             offsetX: 0,
             offsetY: -4,
             scale: 1.95,

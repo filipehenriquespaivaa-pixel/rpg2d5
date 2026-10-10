@@ -175,7 +175,10 @@
                   intensity: 0.85,
                   isCampfire: !0,
                 });
-              else if (G.prop.kind === "cave_entrance")
+              else if (
+                G.prop.kind === "cave_entrance" &&
+                (G.prop.isPrisonDeepMine || G.prop.isExcavatorMine)
+              )
                 K.push({
                   x: ke * f + f / 2,
                   y: ne * f + f / 2,
@@ -183,7 +186,10 @@
                   color: "rgba(251, 191, 36, 0.85)",
                   intensity: 0.88,
                 });
-              else if (G.prop.kind === "cave_exit")
+              else if (
+                G.prop.kind === "cave_exit" &&
+                (G.prop.isPrisonDeepMine || G.prop.isExcavatorMine)
+              )
                 K.push({
                   x: ke * f + f / 2,
                   y: ne * f + f / 2,
@@ -2027,6 +2033,7 @@
                 m.savedCampfire.tx === u.tx &&
                 m.savedCampfire.ty === u.ty &&
                 !!m.savedCampfire.isUnderground === this.engine.isUnderground,
+              t._rainExtinguishTimer || 0
             ),
               t.lit !== !1 &&
                 m != null &&
@@ -2481,7 +2488,7 @@
             drawGreekCorridorTorch(c, f, !!t.lit, this.animTimer);
             break;
           case "cave_entrance":
-            bg(c, f, this.animTimer, u.biome, !!t.isMerged, t.mergedCount || 1, !!t.isStaircase, !!t.isBarracksStaircase);
+            bg(c, f, this.animTimer, u.biome, !!t.isMerged, t.mergedCount || 1, !!t.isStaircase, !!t.isBarracksStaircase, !!(t.isPrisonDeepMine || t.isExcavatorMine));
             break;
           case "large_rock":
             if (typeof drawLargeCaveRock === "function") {

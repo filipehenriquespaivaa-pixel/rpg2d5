@@ -391,7 +391,7 @@
       for (const [key, prop] of this.customPlacedProps.entries()) {
         if (!key.startsWith("surf_")) continue;
         if (!prop || (prop.kind !== "campfire" && prop.kind !== "clay_oven")) continue;
-        if (prop.lit === !1) continue;
+        if (!prop.lit) continue;
 
         const coords = key.replace("surf_", "").split(",");
         const tx = parseInt(coords[0], 10);
@@ -3783,6 +3783,7 @@
                 isMerged: !0,
                 mergedCount: 4,
                 isPrisonDeepMine: !0,
+                isExcavatorMine: !0,
                 surfaceBiome: BIOMES[BiomeId.SNOW_PEAK],
                 targetTx: bCell.targetTx,
                 targetTy: bCell.targetTy,

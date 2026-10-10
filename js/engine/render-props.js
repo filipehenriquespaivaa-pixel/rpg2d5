@@ -516,7 +516,7 @@
       e.ellipse(0, 0, 18 * t, 6 * t, 0, 0, Math.PI * 2),
       e.stroke());
   }
-  function hg(e, t, l, o = !0, u, isSaveFire = false) {
+  function hg(e, t, l, o = !0, u, isSaveFire = false, rainTimer = 0) {
     for (let w = 0; w < Math.PI * 2; w += Math.PI / 4) {
       const v = Math.cos(w) * 8.5 * t,
         T = Math.sin(w) * 4.5 * t;
@@ -662,6 +662,20 @@
         p = Math.max(0, 1 - v / 3);
       ((e.fillStyle = `rgba(254, 215, 170, ${p})`),
         e.fillRect(T, S, 1.4 * t, 1.4 * t));
+    }
+    if (!isSaveFire && rainTimer > 0) {
+      e.save();
+      for (let s = 0; s < 3; s++) {
+        const v = ((l * 2.2 + s * 1.2) % 2.4) / 2.4,
+          sx = Math.sin(l * 3 + s) * 3.5 * t,
+          sy = -6 * t - v * 13 * t,
+          alpha = Math.max(0, (1 - v) * 0.42);
+        e.fillStyle = `rgba(210, 220, 230, ${alpha})`;
+        e.beginPath();
+        e.arc(sx, sy, (2 + v * 3.2) * t, 0, Math.PI * 2);
+        e.fill();
+      }
+      e.restore();
     }
     // REMOVIDO a pedido do jogador: fumaca em circulos girando sobre a fogueira (arcos cinza orbitando).
     if (u && u.roasting) {
@@ -2343,7 +2357,7 @@
     }
   }
 
-  function bg(e, t, l, biome = null, isMerged = !1, mergedCount = 1, isStaircase = !1, isBarracksStaircase = !1) {
+  function bg(e, t, l, biome = null, isMerged = !1, mergedCount = 1, isStaircase = !1, isBarracksStaircase = !1, isPrisonDeepMine = !1) {
     if (isBarracksStaircase || (isStaircase && biome && (biome.id === "SNOW_PEAK" || biome.id === "SNOW_TAIGA" || biome.id === "GLACIER"))) {
       drawDungeonStaircase(e, t, !1, l);
       return;
@@ -2383,18 +2397,22 @@
       e.fillRect(-13 * archW * t, -16 * archH * t, 3.5 * t, (16 * archH + 2) * t),
       e.fillRect((13 * archW - 3.5) * t, -16 * archH * t, 3.5 * t, (16 * archH + 2) * t),
       (e.fillStyle = "#78350f"),
-      e.fillRect(-14 * archW * t, -18 * archH * t, 28 * archW * t, 4 * t),
-      (e.strokeStyle = "#0f172a"),
-      (e.lineWidth = 1.2 * t),
-      e.beginPath(),
-      e.moveTo(6 * archW * t, -14 * archH * t),
-      e.lineTo(6 * archW * t, -9 * archH * t),
-      e.stroke(),
-      (e.fillStyle = "#1e293b"),
-      e.fillRect((6 * archW - 2) * t, -9 * archH * t, 4 * t, 5.5 * t));
-    const u = Math.sin(l * 6) * 0.15;
-    e.fillStyle = `rgba(251, 191, 36, ${0.85 + u})`;
-    e.fillRect((6 * archW - 1.2) * t, (-9 * archH + 0.8) * t, 2.4 * t, 3.8 * t);
+      e.fillRect(-14 * archW * t, -18 * archH * t, 28 * archW * t, 4 * t));
+
+    // Apenas a Grande Mina dos Escavadores da Prisão possui lanterna acesa iluminando a entrada!
+    if (isPrisonDeepMine) {
+      e.strokeStyle = "#0f172a";
+      e.lineWidth = 1.2 * t;
+      e.beginPath();
+      e.moveTo(6 * archW * t, -14 * archH * t);
+      e.lineTo(6 * archW * t, -9 * archH * t);
+      e.stroke();
+      e.fillStyle = "#1e293b";
+      e.fillRect((6 * archW - 2) * t, -9 * archH * t, 4 * t, 5.5 * t);
+      const u = Math.sin(l * 6) * 0.15;
+      e.fillStyle = `rgba(251, 191, 36, ${0.85 + u})`;
+      e.fillRect((6 * archW - 1.2) * t, (-9 * archH + 0.8) * t, 2.4 * t, 3.8 * t);
+    }
 
     // Cobertura de musgo da cor da grama (ou areia/neve conforme o bioma)
     drawCaveBiomeOverlay(e, t, theme, isMerged);
