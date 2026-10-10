@@ -31,6 +31,12 @@ COMO EDITAR OU ADICIONAR UM MÓDULO:
    no index.html exatamente no ponto correto da ordem de dependência (antes de main.js).
 3. Sem dependências externas: Use apenas JavaScript puro sem import/export e persistência via localStorage com try/catch.
 
+SISTEMA DE SALVAMENTO EM 3 SLOTS E SEED ALEATÓRIA:
+- Start com Seed Aleatória: Todo novo jogo inicia com uma seed procedural aleatória única (nunca fixa).
+- Até 3 Slots de Salve: O menu principal exibe 3 slots de salvamento para gerenciar jornadas.
+- Continuar de Onde Parou: O jogador pode clicar em 'Continuar' em qualquer slot salvo para retomar o mundo, coordenadas exatas, itens, vida e progresso de onde parou.
+- Salvamento no Navegador: Salva via localStorage de forma persistente, tanto ao descansar em fogueiras [F], pelo botão de salvar no menu [⚙️], quanto ao retornar ao menu principal.
+
 CIDADE DOS PICOS GELADOS (VILA GLACIAL DAS ALTURAS):
 - Localizada no bioma de Picos Gelados (SNOW_PEAK / Picos Glaciais).
 - Pavimentação completa de Ruas e Praça Central em Paralelepípedos (cobblestone 3D com juntas e toques de neve).

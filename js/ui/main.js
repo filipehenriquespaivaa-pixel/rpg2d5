@@ -16,6 +16,12 @@ function App() {
     }
   });
 
+  const [gameOptions, setGameOptions] = J.useState(() => ({
+    slotId: typeof window.getActiveSaveSlot === "function" ? window.getActiveSaveSlot() : 1,
+    isNewGame: false,
+    randomSeed: null,
+  }));
+
   // Atualiza flags globais e sincroniza exatamente com a área visível real (visualViewport / innerHeight)
   J.useEffect(() => {
     window.__inGame = inGame;
@@ -54,7 +60,21 @@ function App() {
 
   const [normalSettingsOpen, setNormalSettingsOpen] = J.useState(false);
 
-  const handleStartGame = J.useCallback(() => {
+  const handleStartGame = J.useCallback((options) => {
+    const opts = options || {};
+    const slotId = opts.slotId || (typeof window.getActiveSaveSlot === "function" ? window.getActiveSaveSlot() : 1);
+    const isNew = opts.isNewGame !== undefined ? !!opts.isNewGame : false;
+    const seed = opts.randomSeed || (typeof window.generateRandomSeed === "function" ? window.generateRandomSeed() : (Math.floor(Math.random() * 900000) + 10000));
+
+    if (typeof window.setActiveSaveSlot === "function") {
+      window.setActiveSaveSlot(slotId);
+    }
+
+    setGameOptions({
+      slotId: slotId,
+      isNewGame: isNew,
+      randomSeed: seed,
+    });
     setNormalSettingsOpen(false);
     setInGame(true);
   }, []);
@@ -78,8 +98,12 @@ function App() {
           className: "relative w-full h-full",
           children: [
             h.jsx(GameMain, {
+              key: `game_${gameOptions.slotId}_${gameOptions.randomSeed || "load"}`,
               onReturnToMenu: handleReturnToMenu,
               devMode: devMode,
+              slotId: gameOptions.slotId,
+              isNewGame: gameOptions.isNewGame,
+              randomSeed: gameOptions.randomSeed,
             }),
             devMode
               ? h.jsxs("button", {

@@ -1,5 +1,5 @@
 /* js/ui/menu.js
- * Tela de Menu Principal e Painel Organizado do Modo Desenvolvedor.
+ * Tela de Menu Principal e Gerenciamento Limpo de Slots de Salve.
  * Carregado antes de js/ui/main.js.
  * Padrão global: window.Game.MenuScreen e window.MenuScreen.
  */
@@ -37,6 +37,23 @@ window.Game = window.Game || {};
     const onStartGame = props.onStartGame;
     const onToggleDevMode = props.onToggleDevMode;
     const canvasRef = J.useRef(null);
+
+    const [showSlotsModal, setShowSlotsModal] = J.useState(false);
+    const [saveSlots, setSaveSlots] = J.useState(() => {
+      return typeof window.getAllSaveSlots === "function" ? window.getAllSaveSlots() : [];
+    });
+
+    const refreshSlots = J.useCallback(() => {
+      if (typeof window.getAllSaveSlots === "function") {
+        setSaveSlots(window.getAllSaveSlots());
+      }
+    }, []);
+
+    J.useEffect(() => {
+      refreshSlots();
+    }, [refreshSlots]);
+
+    const hasAnySave = saveSlots.some((s) => !s.isEmpty);
 
     // Arte do menu desenhada em Canvas: Céu noturno, montanhas, floresta de pinheiros e fogueira viva
     J.useEffect(() => {
@@ -320,7 +337,7 @@ window.Game = window.Game || {};
           ctx.fill();
         }
 
-        // Vignette suave nas bordas para dar acabamento cinematográfico
+        // Vignette suave nas bordas
         const vignette = ctx.createRadialGradient(
           width / 2,
           height / 2,
@@ -350,8 +367,8 @@ window.Game = window.Game || {};
       };
     }, []);
 
-    // Ação do Botão Start (Modo Comum - Imersivo por natureza)
-    const handleStartCommonMode = () => {
+    // Ação do Botão Start Principal (SEMPRE SEED ALEATÓRIA)
+    const handleStartNewGame = () => {
       setStoredBool("rpg2d_dev_mode", false);
       try {
         localStorage.setItem("rpg2d_cycle_duration_sec", "1200");
@@ -369,12 +386,35 @@ window.Game = window.Game || {};
       if (typeof window.updateColliderBtnVisibility === "function") {
         window.updateColliderBtnVisibility();
       }
+
+      // Encontra primeiro slot livre ou usa o slot ativo
+      const slots = typeof window.getAllSaveSlots === "function" ? window.getAllSaveSlots() : [];
+      let targetSlot = 1;
+      for (let i = 0; i < slots.length; i++) {
+        if (slots[i].isEmpty) {
+          targetSlot = slots[i].slotId;
+          break;
+        }
+      }
+
+      const seed = typeof window.generateRandomSeed === "function"
+        ? window.generateRandomSeed()
+        : (Math.floor(Math.random() * 900000) + 10000);
+
+      if (typeof window.setActiveSaveSlot === "function") {
+        window.setActiveSaveSlot(targetSlot);
+      }
+
       if (typeof onStartGame === "function") {
-        onStartGame();
+        onStartGame({
+          slotId: targetSlot,
+          isNewGame: true,
+          randomSeed: seed,
+        });
       }
     };
 
-    // Ação do Botão Start (Modo Desenvolvedor)
+    // Ação do Botão Start (Modo Desenvolvedor - também seed aleatória)
     const handleStartDevMode = () => {
       setStoredBool("rpg2d_dev_mode", true);
       window.__devMode = true;
@@ -384,9 +424,57 @@ window.Game = window.Game || {};
       if (typeof window.updateColliderBtnVisibility === "function") {
         window.updateColliderBtnVisibility();
       }
+
+      const seed = typeof window.generateRandomSeed === "function"
+        ? window.generateRandomSeed()
+        : (Math.floor(Math.random() * 900000) + 10000);
+
       if (typeof onStartGame === "function") {
-        onStartGame();
+        onStartGame({
+          slotId: typeof window.getActiveSaveSlot === "function" ? window.getActiveSaveSlot() : 1,
+          isNewGame: true,
+          randomSeed: seed,
+        });
       }
+    };
+
+    // Ações de Carregamento de Salves (Continuar)
+    const handleLoadSlot = (slotId) => {
+      if (typeof window.setActiveSaveSlot === "function") {
+        window.setActiveSaveSlot(slotId);
+      }
+      setShowSlotsModal(false);
+      if (typeof onStartGame === "function") {
+        onStartGame({
+          slotId: slotId,
+          isNewGame: false,
+        });
+      }
+    };
+
+    const handleNewGameInSlot = (slotId) => {
+      const seed = typeof window.generateRandomSeed === "function"
+        ? window.generateRandomSeed()
+        : (Math.floor(Math.random() * 900000) + 10000);
+
+      if (typeof window.setActiveSaveSlot === "function") {
+        window.setActiveSaveSlot(slotId);
+      }
+      setShowSlotsModal(false);
+      if (typeof onStartGame === "function") {
+        onStartGame({
+          slotId: slotId,
+          isNewGame: true,
+          randomSeed: seed,
+        });
+      }
+    };
+
+    const handleDeleteSlot = (slotId) => {
+      if (typeof window.clearGameState === "function") {
+        window.clearGameState(slotId);
+      }
+      refreshSlots();
     };
 
     return h.jsxs("div", {
@@ -403,7 +491,7 @@ window.Game = window.Game || {};
           className: "fixed inset-0 w-full h-full pointer-events-none z-0",
         }),
 
-        // TÍTULO DO JOGO (Ancorado na parte superior visível)
+        // TÍTULO DO JOGO (Ancorado no topo)
         h.jsxs("div", {
           className:
             "menu-title-container fixed left-1/2 -translate-x-1/2 z-10 flex flex-col items-center text-center px-2 w-full",
@@ -439,15 +527,15 @@ window.Game = window.Game || {};
           ],
         }),
 
-        // CENTRO DA TELA VISÍVEL: BOTÕES DE INICIALIZAÇÃO
+        // CENTRO DA TELA VISÍVEL: BOTÕES ELEGANTES E LIMPOS
         h.jsxs("div", {
           className:
             "menu-btn-container fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-3 sm:gap-4 w-full max-w-[320px] sm:max-w-sm px-3",
           children: [
-            // Botão Principal: Start (Modo Comum - Imersivo)
+            // Botão Principal: Start (Sempre Seed Aleatória)
             h.jsxs("button", {
               type: "button",
-              onClick: handleStartCommonMode,
+              onClick: handleStartNewGame,
               className:
                 "group relative w-full py-3 sm:py-4 px-4 sm:px-8 rounded-2xl font-black text-base sm:text-lg text-amber-200 bg-slate-950/85 hover:bg-slate-900 border-2 border-amber-500/80 hover:border-amber-400 shadow-[0_0_30px_rgba(217,119,6,0.35)] hover:shadow-[0_0_45px_rgba(245,158,11,0.65)] backdrop-blur-md transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-3 overflow-hidden",
               children: [
@@ -463,10 +551,31 @@ window.Game = window.Game || {};
                 h.jsx("span", {
                   className:
                     "tracking-wide uppercase font-serif text-amber-100 group-hover:text-white drop-shadow-md text-sm sm:text-base",
-                  children: "Start (Modo Comum)",
+                  children: "Start (Novo Jogo)",
                 }),
               ],
             }),
+
+            // Botão Continuar: Aparece para permitir continuar um dos até 3 slots
+            hasAnySave &&
+              h.jsxs("button", {
+                type: "button",
+                onClick: () => setShowSlotsModal(true),
+                className:
+                  "group relative w-full py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-2xl font-black text-sm sm:text-base text-emerald-300 hover:text-emerald-100 bg-slate-950/80 hover:bg-slate-900/95 border-2 border-emerald-500/70 hover:border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.25)] hover:shadow-[0_0_35px_rgba(16,185,129,0.45)] backdrop-blur-md transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-2.5 overflow-hidden",
+                children: [
+                  h.jsx("span", {
+                    className:
+                      "text-lg sm:text-xl transition-transform duration-300 group-hover:scale-115",
+                    children: "💾",
+                  }),
+                  h.jsx("span", {
+                    className:
+                      "tracking-wide uppercase font-serif text-emerald-200 group-hover:text-white drop-shadow",
+                    children: "Continuar (Salves)",
+                  }),
+                ],
+              }),
 
             // Botão Secundário: Start (Modo Desenvolvedor)
             h.jsxs("button", {
@@ -489,6 +598,166 @@ window.Game = window.Game || {};
             }),
           ],
         }),
+
+        // MODAL LIMPO E ELEGANTE: 3 SLOTS DE SALVE (Abre apenas se o jogador clicar em Continuar)
+        showSlotsModal &&
+          h.jsx("div", {
+            className:
+              "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200",
+            children: h.jsxs("div", {
+              className:
+                "w-full max-w-md bg-slate-950/95 border border-amber-500/50 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-4 text-slate-100",
+              children: [
+                // Topo do Modal
+                h.jsxs("div", {
+                  className: "flex items-center justify-between pb-2 border-b border-white/10",
+                  children: [
+                    h.jsxs("div", {
+                      className: "flex items-center gap-2",
+                      children: [
+                        h.jsx("span", { className: "text-xl", children: "💾" }),
+                        h.jsxs("div", {
+                          children: [
+                            h.jsx("h3", {
+                              className: "text-sm font-bold uppercase tracking-wider text-amber-300 font-serif",
+                              children: "Escolher Salve para Continuar",
+                            }),
+                            h.jsx("p", {
+                              className: "text-[10px] text-slate-400",
+                              children: "Até 3 slots salvos no seu navegador",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    h.jsx("button", {
+                      type: "button",
+                      onClick: () => setShowSlotsModal(false),
+                      className:
+                        "text-slate-400 hover:text-white text-base px-2 py-1 rounded-lg hover:bg-white/10 cursor-pointer",
+                      title: "Fechar",
+                      children: "✖",
+                    }),
+                  ],
+                }),
+
+                // Lista compacta dos 3 Slots
+                h.jsx("div", {
+                  className: "flex flex-col gap-2.5",
+                  children: [1, 2, 3].map((slotNumber) => {
+                    const slot = saveSlots.find((s) => s.slotId === slotNumber) || {
+                      slotId: slotNumber,
+                      isEmpty: true,
+                    };
+
+                    if (slot.isEmpty) {
+                      return h.jsxs("div", {
+                        key: slotNumber,
+                        className:
+                          "flex items-center justify-between p-3 rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 text-slate-400 text-xs",
+                        children: [
+                          h.jsxs("div", {
+                            className: "flex items-center gap-2",
+                            children: [
+                              h.jsx("span", { className: "text-base text-slate-600", children: "📁" }),
+                              h.jsxs("div", {
+                                children: [
+                                  h.jsxs("span", {
+                                    className: "font-mono font-bold text-slate-400",
+                                    children: [`SLOT ${slotNumber} `],
+                                  }),
+                                  h.jsx("span", {
+                                    className: "text-[10px] text-slate-500",
+                                    children: "— Vazio",
+                                  }),
+                                ],
+                              }),
+                            ],
+                          }),
+                          h.jsxs("button", {
+                            type: "button",
+                            onClick: () => handleNewGameInSlot(slotNumber),
+                            className:
+                              "py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold transition cursor-pointer active:scale-95 flex items-center gap-1",
+                            children: [
+                              h.jsx("span", { children: "＋" }),
+                              h.jsx("span", { children: "Novo Jogo" }),
+                            ],
+                          }),
+                        ],
+                      });
+                    }
+
+                    return h.jsxs("div", {
+                      key: slotNumber,
+                      className:
+                        "flex items-center justify-between p-3 rounded-2xl border border-amber-500/40 bg-slate-900/90 text-xs shadow-md",
+                      children: [
+                        h.jsxs("div", {
+                          className: "flex flex-col gap-0.5 max-w-[200px] sm:max-w-xs",
+                          children: [
+                            h.jsxs("div", {
+                              className: "flex items-center gap-2",
+                              children: [
+                                h.jsxs("span", {
+                                  className: "font-mono font-black text-amber-300 text-xs",
+                                  children: [`SLOT ${slotNumber}`],
+                                }),
+                                h.jsxs("span", {
+                                  className: "font-mono text-[10px] text-slate-400",
+                                  children: [`#${slot.seed || "—"}`],
+                                }),
+                              ],
+                            }),
+                            h.jsxs("div", {
+                              className: "text-[10px] text-slate-400 truncate",
+                              children: [
+                                slot.formattedDate,
+                                " • ",
+                                slot.checkpointName || "Fogueira",
+                              ],
+                            }),
+                          ],
+                        }),
+                        h.jsxs("div", {
+                          className: "flex items-center gap-1.5",
+                          children: [
+                            h.jsxs("button", {
+                              type: "button",
+                              onClick: () => handleLoadSlot(slotNumber),
+                              className:
+                                "py-1.5 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow transition cursor-pointer active:scale-95 flex items-center gap-1",
+                              children: [
+                                h.jsx("span", { children: "▶" }),
+                                h.jsx("span", { children: "Continuar" }),
+                              ],
+                            }),
+                            h.jsx("button", {
+                              type: "button",
+                              onClick: () => handleDeleteSlot(slotNumber),
+                              title: "Apagar este salve",
+                              className:
+                                "p-1.5 rounded-xl bg-red-950/60 hover:bg-red-900/80 text-red-300 text-xs border border-red-800/40 transition cursor-pointer active:scale-95",
+                              children: "🗑️",
+                            }),
+                          ],
+                        }),
+                      ],
+                    });
+                  }),
+                }),
+
+                // Botão Voltar do modal
+                h.jsx("button", {
+                  type: "button",
+                  onClick: () => setShowSlotsModal(false),
+                  className:
+                    "w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700 transition cursor-pointer active:scale-95 text-center mt-1",
+                  children: "Voltar ao Menu",
+                }),
+              ],
+            }),
+          }),
       ],
     });
   }

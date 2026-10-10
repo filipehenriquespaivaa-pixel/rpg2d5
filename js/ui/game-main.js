@@ -6,10 +6,16 @@
 "use strict";
   const GameMain = (props) => {
     var ur, Vo, at, vi, wi, Ti, Co, Uo, Kp, Wp;
+    const initialSeed = (props && typeof props.randomSeed === "number")
+      ? props.randomSeed
+      : (typeof window.generateRandomSeed === "function" ? window.generateRandomSeed() : (Math.floor(Math.random() * 900000) + 10000));
+    const activeSlotId = (props && props.slotId)
+      ? props.slotId
+      : (typeof window.getActiveSaveSlot === "function" ? window.getActiveSaveSlot() : 1);
     const e = J.useRef(null),
       t = J.useRef(null),
       l = J.useRef(null),
-      o = J.useRef(new World(4289)),
+      o = J.useRef(new World(initialSeed)),
       u = J.useRef(null),
       m = J.useRef(new AudioManager()),
       c = J.useRef(new CreatureManager(o.current)),
@@ -38,7 +44,7 @@
       dodgeModeRef = J.useRef(!1),
       [w, v] = J.useState(BIOMES[BiomeId.MEADOW]),
       [T, S] = J.useState({ tx: 0, ty: 0 }),
-      [p, j] = J.useState(4289),
+      [p, j] = J.useState(initialSeed),
       [P, A] = J.useState(0.5),
       timeOfDayRef = J.useRef(0.5),
       nightCountRef = J.useRef(0),
@@ -1229,6 +1235,7 @@
           const ge = q.exportSaveData(),
             re = {
               version: 1,
+              slotId: activeSlotId,
               timestamp: Date.now(),
               checkpoint: ie,
               player: {
@@ -1248,19 +1255,27 @@
                 collectedGroundItems: ge.collectedGroundItems,
               },
             },
-            me = saveGameState(re);
+            me = saveGameState(re, activeSlotId);
           m.current.playShrineActivation();
           const ce = E * q.tileSize + q.tileSize / 2,
             Re = D * q.tileSize + q.tileSize / 2;
           return (
-            c.current.addDamageNumber(ce, Re - 30, "💾 JOGO SALVO!", "#38bdf8"),
+            c.current.addDamageNumber(ce, Re - 30, `💾 SALVO NO SLOT ${activeSlotId}!`, "#38bdf8"),
             me
           );
         },
-        [Ve, ct, P],
+        [Ve, ct, P, activeSlotId],
       );
+
     J.useEffect(() => {
-      const E = loadGameState();
+      if (props && props.isNewGame) {
+        if (typeof window.setActiveSaveSlot === "function") {
+          window.setActiveSaveSlot(activeSlotId);
+        }
+        ve(`✨ Novo mundo gerado! Seed: #${initialSeed} (Slot ${activeSlotId})`);
+        return;
+      }
+      const E = (typeof loadGameState === "function") ? loadGameState(activeSlotId) : null;
       if (E)
         try {
           (E.world &&
@@ -1296,11 +1311,11 @@
               (E.inventory.backpack && ra(E.inventory.backpack),
               E.inventory.equipment && Wa(E.inventory.equipment),
               typeof E.inventory.gold == "number" && _t(E.inventory.gold)),
-            ve("💾 Jogo restaurado do seu último Ponto de Salve na Fogueira!"));
+            ve(`💾 Jogo restaurado do Slot ${activeSlotId}!`));
         } catch (D) {
           console.warn("Erro ao carregar salve:", D);
         }
-    }, [ve]);
+    }, [ve, activeSlotId]);
     const Tl = J.useCallback(() => {
       const E = f.current,
         D = o.current,
