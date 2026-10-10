@@ -323,6 +323,20 @@
         stackCount: 1,
         value: 30,
       };
+    if (e === "wood_log" || e === "tronco")
+      return {
+        id: `drop_tronco_${l}`,
+        name: "Tronco de Madeira",
+        isEquippable: !1,
+        categoryType: "material",
+        rarity: "comum",
+        description:
+          "Tronco robusto e pesado de árvore abatida com machado. Excelente matéria-prima e lenha de longa duração.",
+        icon: "🪵",
+        color: "#92400e",
+        stackCount: 1,
+        value: 15,
+      };
     const o = [
       {
         id: `drop_sword_${l}`,
@@ -1226,6 +1240,19 @@
     },
 
     // --- RECURSOS, MINÉRIOS & MATERIAIS ---
+    {
+      id: "dev_tronco",
+      name: "Tronco de Madeira",
+      devCategory: "recursos",
+      categoryType: "material",
+      isEquippable: false,
+      rarity: "comum",
+      description: "Tronco robusto e pesado de árvore abatida com machado. Excelente matéria-prima e lenha de longa duração.",
+      icon: "🪵",
+      color: "#92400e",
+      value: 15,
+      stackCount: 10,
+    },
     {
       id: "dev_galho",
       name: "Galho de Madeira",

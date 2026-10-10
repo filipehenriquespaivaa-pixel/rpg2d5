@@ -4,6 +4,63 @@
  * Escopo global compartilhado entre os <script>: a ORDEM em index.html importa.
  */
 "use strict";
+  function drawTreeStump(e, t) {
+    e.fillStyle = "rgba(0, 0, 0, 0.28)";
+    e.beginPath();
+    e.ellipse(0, 3 * t, 7.5 * t, 3.8 * t, 0, 0, Math.PI * 2);
+    e.fill();
+
+    e.fillStyle = "#d4a373";
+    e.beginPath();
+    e.ellipse(-5 * t, 3 * t, 1.6 * t, 0.9 * t, 0.4, 0, Math.PI * 2);
+    e.ellipse(5 * t, 2.5 * t, 1.8 * t, 0.8 * t, -0.3, 0, Math.PI * 2);
+    e.ellipse(2 * t, 4 * t, 1.2 * t, 0.7 * t, 0.1, 0, Math.PI * 2);
+    e.fill();
+
+    e.fillStyle = "#3d2215";
+    e.beginPath();
+    e.moveTo(-5.5 * t, 4 * t);
+    e.quadraticCurveTo(-4.2 * t, 0, -3.8 * t, -4 * t);
+    e.lineTo(3.8 * t, -4 * t);
+    e.quadraticCurveTo(4.2 * t, 0, 5.5 * t, 4 * t);
+    e.closePath();
+    e.fill();
+
+    e.fillStyle = "#5c3826";
+    e.beginPath();
+    e.moveTo(-3.8 * t, 2 * t);
+    e.lineTo(-2.8 * t, -4 * t);
+    e.lineTo(2.8 * t, -4 * t);
+    e.lineTo(3.8 * t, 2 * t);
+    e.closePath();
+    e.fill();
+
+    e.strokeStyle = "#29140a";
+    e.lineWidth = 0.9 * t;
+    e.beginPath();
+    e.moveTo(-1.2 * t, 3 * t);
+    e.lineTo(-1.2 * t, -3 * t);
+    e.moveTo(1.2 * t, 3 * t);
+    e.lineTo(1.2 * t, -3 * t);
+    e.stroke();
+
+    e.fillStyle = "#d4a373";
+    e.strokeStyle = "#8b5e34";
+    e.lineWidth = 0.9 * t;
+    e.beginPath();
+    e.ellipse(0, -4 * t, 3.8 * t, 1.8 * t, 0, 0, Math.PI * 2);
+    e.fill();
+    e.stroke();
+
+    e.beginPath();
+    e.ellipse(0, -4 * t, 2 * t, 0.9 * t, 0, 0, Math.PI * 2);
+    e.stroke();
+
+    e.fillStyle = "#8b5e34";
+    e.beginPath();
+    e.arc(0, -4 * t, 0.6 * t, 0, Math.PI * 2);
+    e.fill();
+  }
   function rg(e, t, l) {
     ((e.fillStyle = "#3d2215"),
       e.beginPath(),

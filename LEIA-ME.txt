@@ -168,3 +168,19 @@ CONTROLES:
 - L: Ligar/Desligar Tocha
 - U: Coletar água na margem de lagos
 - P: Pesca com lança na margem da água
+
+SISTEMA DE CORTE DE ÁRVORES E TRONCOS DE MADEIRA:
+- Obtenção do Machado: Forjado na Mesa de Fusão [I] (combinando Pedra Lascada + Corda de Fibra Pequena + Galho de Madeira) ou disponível no painel de Armas do Modo Desenvolvedor.
+- Corte de Árvores:
+  * Equipe o Machado de Pedra na mão direita ou esquerda.
+  * Aproxime-se de qualquer árvore da superfície (Carvalhos, Pinheiros, Palmeiras, Salgueiros ou Árvores Carbonizadas).
+  * Golpeie com [Espaço] / Botão de Ataque ou pressione [F] / Interagir encostado no tronco.
+  * São necessários 3 golpes firmes de machado: soltam lascas e produzem som realista de corte em madeira.
+  * Ao cair, a árvore é derrubada, transformando-se em um toco (tree_stump) e concedendo:
+    - 2 a 3x Troncos de Madeira maciça (item_tronco)
+    - 1 a 2x Galhos de Madeira (item_galho)
+    - Chance de Resina de Pinheiro (ao abater pinheiros)
+    - +45 XP de exploração
+- Usos do Tronco de Madeira:
+  * Forjar fogueiras robustas de longa duração diretamente no solo do mapa.
+  * Desbastar troncos em galhos e tábuas usando pedras lascadas ou facas na mesa de fusão.

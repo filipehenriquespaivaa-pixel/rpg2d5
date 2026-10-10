@@ -882,6 +882,45 @@
             noise.start(l));
         } catch {}
     }
+    playWoodChop() {
+      if (!(!this.enabled || !this.ctx))
+        try {
+          const t = this.ctx,
+            l = t.currentTime,
+            osc = t.createOscillator(),
+            gain = t.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(180, l);
+          osc.frequency.exponentialRampToValueAtTime(55, l + 0.08);
+          gain.gain.setValueAtTime(0.2, l);
+          gain.gain.exponentialRampToValueAtTime(0.001, l + 0.09);
+          osc.connect(gain);
+          gain.connect(t.destination);
+          osc.start(l);
+          osc.stop(l + 0.09);
+        } catch {}
+    }
+    playTreeFall() {
+      if (!(!this.enabled || !this.ctx))
+        try {
+          const t = this.ctx,
+            l = t.currentTime;
+          [130, 95, 70, 45].forEach((freq, idx) => {
+            const t0 = l + idx * 0.07,
+              osc = t.createOscillator(),
+              gain = t.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq, t0);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.45, t0 + 0.22);
+            gain.gain.setValueAtTime(0.16, t0);
+            gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.25);
+            osc.connect(gain);
+            gain.connect(t.destination);
+            osc.start(t0);
+            osc.stop(t0 + 0.25);
+          });
+        } catch {}
+    }
   }
   const hi = new AudioManager();
   window.AudioManager = AudioManager;

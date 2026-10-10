@@ -1966,6 +1966,9 @@
           case "tree_burnt":
             sg(c, f, this.animTimer);
             break;
+          case "tree_stump":
+            drawTreeStump(c, f);
+            break;
           case "cactus":
             cg(c, f);
             break;

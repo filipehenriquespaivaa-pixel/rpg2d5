@@ -2172,6 +2172,81 @@
               : ie
                 ? m.current.playSwordSlash()
                 : m.current.playPunchWhoosh();
+        const hasAxeInHands = !!(
+          (Oe.mao_direita &&
+            ((Oe.mao_direita.id || "").toLowerCase().includes("machado") ||
+              (Oe.mao_direita.name || "").toLowerCase().includes("machado") ||
+              (Oe.mao_direita.id || "").toLowerCase().includes("axe"))) ||
+          (Oe.mao_esquerda &&
+            ((Oe.mao_esquerda.id || "").toLowerCase().includes("machado") ||
+              (Oe.mao_esquerda.name || "").toLowerCase().includes("machado") ||
+              (Oe.mao_esquerda.id || "").toLowerCase().includes("axe")))
+        );
+        if (hasAxeInHands && !Q.isUnderground) {
+          const chopReach = 28;
+          const hitX = E.x + Math.cos(Ce) * chopReach;
+          const hitY = E.y + Math.sin(Ce) * chopReach;
+          const hitTx = Math.floor(hitX / Q.tileSize);
+          const hitTy = Math.floor(hitY / Q.tileSize);
+          const chopRes = Q.chopTreeAt && Q.chopTreeAt(hitTx, hitTy, true);
+          if (chopRes) {
+            if (chopRes.action === "chop_tree_hit") {
+              m.current.playWoodChop && m.current.playWoodChop();
+              ve(chopRes.message);
+            } else if (chopRes.action === "chop_tree_fell") {
+              m.current.playWoodChop && m.current.playWoodChop();
+              m.current.playTreeFall && m.current.playTreeFall();
+              const woodLogsCount = chopRes.woodLogs || 2;
+              const sticksCount = chopRes.sticks || 1;
+              ra((prev) => {
+                const maxSlots = ot(Da.current.mochila);
+                const nextInv = [...prev];
+                for (let i = 0; i < woodLogsCount; i++) {
+                  if (nextInv.length < maxSlots) {
+                    nextInv.push(pi("wood_log"));
+                  }
+                }
+                for (let i = 0; i < sticksCount; i++) {
+                  if (nextInv.length < maxSlots) {
+                    nextInv.push({
+                      id: `item_galho_${Date.now()}_${i}`,
+                      name: "Galho de Madeira",
+                      difficulty: "facil",
+                      rarity: "comum",
+                      description: "Galho rígido de madeira colhido sob as copas das árvores.",
+                      categoryType: "equipment",
+                      slot: "mao_direita",
+                      isEquippable: true,
+                      stats: { attack: 5 },
+                      icon: "🪵",
+                      color: "#a16207",
+                      value: 2,
+                      stackCount: 1,
+                    });
+                  }
+                }
+                if (chopRes.resin && nextInv.length < maxSlots) {
+                  nextInv.push({
+                    id: `item_resina_${Date.now()}`,
+                    name: "Resina de Pinheiro",
+                    difficulty: "media",
+                    rarity: "incomum",
+                    description: "Resina pegajosa e combustível exsudada de pinheiros. Excelente para tochas.",
+                    categoryType: "material",
+                    isEquippable: false,
+                    icon: "💧",
+                    color: "#f59e0b",
+                    value: 12,
+                    stackCount: 1,
+                  });
+                }
+                return nextInv;
+              });
+              _t((xp) => xp + 45);
+              ve(chopRes.message);
+            }
+          }
+        }
       }, [vl]),
       handleToggleDodgeMode = J.useCallback(() => {
         const he = f.current;
@@ -2752,6 +2827,16 @@
             return;
           }
         }
+        const hasAxeInHands = !!(
+          (Oe.mao_direita &&
+            ((Oe.mao_direita.id || "").toLowerCase().includes("machado") ||
+              (Oe.mao_direita.name || "").toLowerCase().includes("machado") ||
+              (Oe.mao_direita.id || "").toLowerCase().includes("axe"))) ||
+          (Oe.mao_esquerda &&
+            ((Oe.mao_esquerda.id || "").toLowerCase().includes("machado") ||
+              (Oe.mao_esquerda.name || "").toLowerCase().includes("machado") ||
+              (Oe.mao_esquerda.id || "").toLowerCase().includes("axe")))
+        );
         const me = [
           { tx: q, ty: F },
           { tx: q + 1, ty: F },
@@ -2847,7 +2932,7 @@
               return;
             }
           }
-          const Ke = E.interactWithTile(Ye.tx, Ye.ty);
+          const Ke = E.interactWithTile(Ye.tx, Ye.ty, { hasAxe: hasAxeInHands });
           if (Ke) {
             if (Ke.action === "enter_cave") {
               __autoCaveTimer.current = 1.0;
@@ -3107,6 +3192,63 @@
                   : [...qe, De];
               }),
                 _t((qe) => qe + 5));
+            } else if (Ke.action === "need_axe") {
+              m.current.playPunchWhoosh && m.current.playPunchWhoosh();
+              ve(Ke.message);
+            } else if (Ke.action === "chop_tree_hit") {
+              m.current.playWoodChop && m.current.playWoodChop();
+              ve(Ke.message);
+            } else if (Ke.action === "chop_tree_fell") {
+              m.current.playWoodChop && m.current.playWoodChop();
+              m.current.playTreeFall && m.current.playTreeFall();
+              const woodLogsCount = Ke.woodLogs || 2;
+              const sticksCount = Ke.sticks || 1;
+              ra((prev) => {
+                const maxSlots = ot(Da.current.mochila);
+                const nextInv = [...prev];
+                for (let i = 0; i < woodLogsCount; i++) {
+                  if (nextInv.length < maxSlots) {
+                    nextInv.push(pi("wood_log"));
+                  }
+                }
+                for (let i = 0; i < sticksCount; i++) {
+                  if (nextInv.length < maxSlots) {
+                    nextInv.push({
+                      id: `item_galho_${Date.now()}_${i}`,
+                      name: "Galho de Madeira",
+                      difficulty: "facil",
+                      rarity: "comum",
+                      description: "Galho rígido de madeira colhido sob as copas das árvores.",
+                      categoryType: "equipment",
+                      slot: "mao_direita",
+                      isEquippable: true,
+                      stats: { attack: 5 },
+                      icon: "🪵",
+                      color: "#a16207",
+                      value: 2,
+                      stackCount: 1,
+                    });
+                  }
+                }
+                if (Ke.resin && nextInv.length < maxSlots) {
+                  nextInv.push({
+                    id: `item_resina_${Date.now()}`,
+                    name: "Resina de Pinheiro",
+                    difficulty: "media",
+                    rarity: "incomum",
+                    description: "Resina pegajosa e combustível exsudada de pinheiros. Excelente para tochas.",
+                    categoryType: "material",
+                    isEquippable: false,
+                    icon: "💧",
+                    color: "#f59e0b",
+                    value: 12,
+                    stackCount: 1,
+                  });
+                }
+                return nextInv;
+              });
+              _t((xp) => xp + 45);
+              ve(Ke.message);
             } else if (Ke.action === "collect_pebbles") {
               m.current.playRockBreak && m.current.playRockBreak();
               const De = pi("stone");

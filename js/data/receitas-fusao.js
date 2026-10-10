@@ -804,6 +804,106 @@
     ],
     Fb = [
       {
+        id: "fuse_tronco_lascar",
+        name: "Desbastar Tronco em Galhos",
+        category: "recurso",
+        categoryLabel: "Desbaste de Madeira",
+        ingredient1Name: "Tronco de Madeira",
+        ingredient2Name: "Pedra Lascada ou Seixo",
+        description:
+          "Use uma pedra cortante ou seixo afiado para fatiar o tronco de madeira maciça em 4 Galhos de Madeira manejáveis.",
+        match: (e, t) =>
+          (et(e, "tronco") && (i0(t) || Js(t) || et(t, "faca") || et(t, "machado"))) ||
+          (et(t, "tronco") && (i0(e) || Js(e) || et(e, "faca") || et(e, "machado"))),
+        results: [
+          {
+            id: "choice_tronco_desbastar",
+            name: "4 Galhos de Madeira",
+            categoryLabel: "Recurso (Consome 1 Tronco)",
+            description:
+              "Desbasta o tronco maciço em 4 galhos retos e pontiagudos de madeira para tochas, lanças e fogueiras.",
+            createResult: () => ({
+              id: `item_galho_${Date.now()}`,
+              name: "Galho de Madeira",
+              categoryType: "equipment",
+              slot: "mao_direita",
+              isEquippable: !0,
+              stats: { attack: 5 },
+              rarity: "comum",
+              description:
+                "Galho rígido de madeira obtido desbastando tronco de árvore (+5 Ataque).",
+              icon: "🪵",
+              color: "#a16207",
+              value: 2,
+              stackCount: 4,
+            }),
+          },
+        ],
+        createResult: () => ({
+          id: `item_galho_${Date.now()}`,
+          name: "Galho de Madeira",
+          categoryType: "equipment",
+          slot: "mao_direita",
+          isEquippable: !0,
+          stats: { attack: 5 },
+          rarity: "comum",
+          description:
+            "Galho rígido de madeira obtido desbastando tronco de árvore (+5 Ataque).",
+          icon: "🪵",
+          color: "#a16207",
+          value: 2,
+          stackCount: 4,
+        }),
+      },
+      {
+        id: "fuse_tronco_fogueira",
+        name: "Fogueira de Tronco Maciço (No Solo)",
+        category: "construcao",
+        categoryLabel: "Construção no Mapa",
+        ingredient1Name: "Tronco de Madeira",
+        ingredient2Name: "Galho de Madeira ou Tronco",
+        description:
+          "Monta diretamente no solo uma fogueira duradoura de lenha maciça! Muito mais resistente e de brasas fortes. Acenda com 2 Pederneiras.",
+        match: (e, t) =>
+          (et(e, "tronco") && (et(t, "galho") || et(t, "tronco"))) ||
+          (et(t, "tronco") && (et(e, "galho") || et(e, "tronco"))),
+        results: [
+          {
+            id: "choice_tronco_fogueira",
+            name: "Fogueira de Lenha Maciça (Apagada)",
+            categoryLabel: "Construção no Solo do Mapa",
+            description:
+              "Estrutura robusta de tronco e lenha montada diretamente no solo onde você está. Acenda com 2 Pederneiras.",
+            createResult: () => ({
+              id: `map_construction_campfire_${Date.now()}`,
+              name: "Fogueira de Acampamento (Apagada)",
+              categoryType: "material",
+              isEquippable: !1,
+              rarity: "incomum",
+              description:
+                "Estrutura de fogueira de tronco e lenha montada diretamente no solo. Acenda com 2 Pederneiras.",
+              icon: "Flame",
+              color: "#f59e0b",
+              value: 80,
+              isMapConstruction: !0,
+            }),
+          },
+        ],
+        createResult: () => ({
+          id: `map_construction_campfire_${Date.now()}`,
+          name: "Fogueira de Acampamento (Apagada)",
+          categoryType: "material",
+          isEquippable: !1,
+          rarity: "incomum",
+          description:
+            "Estrutura de fogueira de tronco e lenha montada diretamente no solo. Acenda com 2 Pederneiras.",
+          icon: "Flame",
+          color: "#f59e0b",
+          value: 80,
+          isMapConstruction: !0,
+        }),
+      },
+      {
         id: "fuse_wood_staff",
         name: "Bastão de Madeira ou Fogueira no Mapa",
         category: "arma",

@@ -5467,24 +5467,38 @@
         T = (this.hash2D(t, l, 67) - 0.5) * 12;
       if (y < o.treeDensity) {
         let S = "tree_oak";
-        return (
-          o.propType === "pine"
-            ? (S = "tree_pine")
-            : o.propType === "palm"
-              ? (S = "tree_palm")
-              : o.propType === "cactus"
-                ? (S = "cactus")
-                : o.propType === "willow"
-                  ? (S = "tree_willow")
-                  : o.propType === "burnt" && (S = "tree_burnt"),
-          {
-            kind: S,
+        o.propType === "pine"
+          ? (S = "tree_pine")
+          : o.propType === "palm"
+            ? (S = "tree_palm")
+            : o.propType === "cactus"
+              ? (S = "cactus")
+              : o.propType === "willow"
+                ? (S = "tree_willow")
+                : o.propType === "burnt" && (S = "tree_burnt");
+        if (f && f.chopped) {
+          return {
+            kind: "tree_stump",
             subType: Math.floor(w * 3),
             offsetX: v,
             offsetY: T - 8,
             scale: 0.9 + w * 0.3,
-          }
-        );
+            interactive: !0,
+            namePt: "Toco de Árvore",
+            descriptionPt: "Toco remanescente de uma árvore abatida com machado.",
+          };
+        }
+        const isCactus = S === "cactus";
+        return {
+          kind: S,
+          subType: Math.floor(w * 3),
+          offsetX: v,
+          offsetY: T - 8,
+          scale: 0.9 + w * 0.3,
+          interactive: !isCactus,
+          namePt: S === "tree_pine" ? "Pinheiro Silvestre" : S === "tree_palm" ? "Palmeira Tropical" : S === "tree_willow" ? "Salgueiro-Chorão" : S === "tree_burnt" ? "Árvore Carbonizada" : "Carvalho Ancestral",
+          descriptionPt: isCactus ? "Cacto espinhoso do deserto." : "Árvore de madeira densa. Pode ser cortada com um Machado equipado para obter troncos.",
+        };
       }
       return y < o.treeDensity + o.rockDensity
         ? {
@@ -5519,12 +5533,71 @@
                 }
           : null;
     }
-    interactWithTile(t, l) {
+    interactWithTile(t, l, context) {
       var c;
       const o = this.getTile(t, l);
       if (!o.prop || !o.prop.interactive) return null;
       const u = this.isUnderground ? `underground_${t},${l}` : `${t},${l}`,
         m = this.interactedProps.get(u) || {};
+      if (
+        o.prop.kind === "tree_oak" ||
+        o.prop.kind === "tree_pine" ||
+        o.prop.kind === "tree_palm" ||
+        o.prop.kind === "tree_willow" ||
+        o.prop.kind === "tree_burnt"
+      ) {
+        if (m.chopped) {
+          return {
+            success: !1,
+            message: "Este toco de árvore já foi completamente abatido.",
+          };
+        }
+        const hasAxe = !!(context && context.hasAxe);
+        if (!hasAxe) {
+          return {
+            success: !1,
+            action: "need_axe",
+            message: "🪓 Você precisa de um Machado equipado nas mãos para cortar árvores e conseguir troncos de madeira!",
+          };
+        }
+        const chops = (m.chops || 0) + 1;
+        if (chops < 3) {
+          this.interactedProps.set(u, { ...m, chops });
+          return {
+            success: !0,
+            action: "chop_tree_hit",
+            currentChops: chops,
+            maxChops: 3,
+            tx: t,
+            ty: l,
+            message: `🪓 Golpe de machado no tronco! (${chops}/3) Lascas de madeira voando!`,
+          };
+        }
+        this.interactedProps.set(u, { ...m, chopped: !0, chops: 3 });
+        this.invalidateTile(t, l);
+        const isPine = o.prop.kind === "tree_pine";
+        const woodLogs = 2 + Math.floor(this.hash2D(t, l, 81) * 2);
+        const sticks = 1 + Math.floor(this.hash2D(t, l, 83) * 2);
+        const resin = isPine && this.hash2D(t, l, 85) < 0.65;
+        return {
+          success: !0,
+          action: "chop_tree_fell",
+          tx: t,
+          ty: l,
+          woodLogs,
+          sticks,
+          resin,
+          treeName: o.prop.namePt || "Árvore",
+          message: `🌳 Você derrubou a árvore com seu machado! Obteve ${woodLogs} Troncos de Madeira e ${sticks} Galhos!`,
+          reward: `Troncos de Madeira (+45 XP)`,
+        };
+      }
+      if (o.prop.kind === "tree_stump") {
+        return {
+          success: !1,
+          message: "Toco de árvore cortada com machado. Toda a madeira útil já foi retirada.",
+        };
+      }
       if (o.prop.kind === "cave_entrance")
         return {
           success: !0,
@@ -6459,6 +6532,21 @@
             reward: "Sabedoria Ancestral (+50 XP)",
           }
         : null;
+    }
+    chopTreeAt(t, l, hasAxe = true) {
+      const tile = this.getTile(t, l);
+      if (!tile || !tile.prop) return null;
+      const k = tile.prop.kind;
+      if (
+        k === "tree_oak" ||
+        k === "tree_pine" ||
+        k === "tree_palm" ||
+        k === "tree_willow" ||
+        k === "tree_burnt"
+      ) {
+        return this.interactWithTile(t, l, { hasAxe });
+      }
+      return null;
     }
     isTileCreaturePassable(t, l) {
       const o = this.getTile(t, l);

@@ -4,6 +4,46 @@
  * Escopo global compartilhado entre os <script>: a ORDEM em index.html importa.
  */
 "use strict";
+  function drawWoodLogIcon(e, t, l, o, u) {
+    e.save();
+    e.translate(t, l);
+    e.fillStyle = "rgba(0, 0, 0, 0.35)";
+    e.beginPath();
+    e.ellipse(0, 4 * o, 9 * o, 3.5 * o, 0.15, 0, Math.PI * 2);
+    e.fill();
+
+    e.rotate(-0.22);
+    e.fillStyle = "#5c3826";
+    e.strokeStyle = "#3d2215";
+    e.lineWidth = 1.2 * o;
+    e.beginPath();
+    e.roundRect(-8 * o, -4.5 * o, 16 * o, 9 * o, [4 * o]);
+    e.fill();
+    e.stroke();
+
+    e.strokeStyle = "#3d2215";
+    e.lineWidth = 0.9 * o;
+    e.beginPath();
+    e.moveTo(-4 * o, -2 * o);
+    e.lineTo(4 * o, -2 * o);
+    e.moveTo(-2 * o, 1.5 * o);
+    e.lineTo(6 * o, 1.5 * o);
+    e.stroke();
+
+    e.fillStyle = "#d4a373";
+    e.strokeStyle = "#8b5e34";
+    e.lineWidth = 0.8 * o;
+    e.beginPath();
+    e.ellipse(-8 * o, 0, 2.8 * o, 4.5 * o, 0, 0, Math.PI * 2);
+    e.fill();
+    e.stroke();
+
+    e.beginPath();
+    e.ellipse(-8 * o, 0, 1.4 * o, 2.2 * o, 0, 0, Math.PI * 2);
+    e.stroke();
+
+    e.restore();
+  }
   function drawItemIcon(e, t, l, o, u = 0, m = !0) {
     (e.save(), m && e.clearRect(0, 0, l, o));
     const c = l / 2,
@@ -54,6 +94,10 @@
       v === "slingshot"
     ) {
       (drawSlingshotIcon(e, c, f, g, u, S), e.restore());
+      return;
+    }
+    if (y.includes("tronco") || w.includes("tronco")) {
+      (drawWoodLogIcon(e, c, f, g, u), e.restore());
       return;
     }
     if (w.includes("galho") || y.includes("galho") || v === "🪵") {
