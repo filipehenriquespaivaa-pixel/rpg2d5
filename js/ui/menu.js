@@ -439,13 +439,10 @@ window.Game = window.Game || {};
           ],
         }),
 
-        // CENTRO / INFERIOR: BOTÕES DE INICIALIZAÇÃO (Ancorados com position: fixed bem acima da borda inferior visível)
+        // CENTRO DA TELA VISÍVEL: BOTÕES DE INICIALIZAÇÃO
         h.jsxs("div", {
           className:
-            "menu-btn-container fixed left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2.5 sm:gap-3.5 w-full max-w-[320px] sm:max-w-sm px-3",
-          style: {
-            bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
-          },
+            "menu-btn-container fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-3 sm:gap-4 w-full max-w-[320px] sm:max-w-sm px-3",
           children: [
             // Botão Principal: Start (Modo Comum - Imersivo)
             h.jsxs("button", {
