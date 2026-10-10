@@ -2058,14 +2058,110 @@
                 ],
               }),
             h.jsxs("div", {
-              className: "flex items-center gap-2",
+              className: "flex items-end gap-2",
+              style: { display: "flex", alignItems: "flex-end", gap: "8px" },
               children: [
-                h.jsx("button", {
-                  id: "touch-torch-btn",
-                  onClick: K || (() => g(!f)),
-                  className: `flex items-center justify-center w-11 h-11 rounded-xl border text-sm font-bold shadow-lg transition-all backdrop-blur-sm active:scale-90 ${f ? "bg-amber-500/90 border-amber-300 text-slate-950 shadow-amber-500/40" : "bg-slate-800/80 border-white/20 text-amber-400"}`,
-                  title: f ? "Desequipar e Guardar Tocha no Inventário (L)" : "Equipar Tocha (L)",
-                  children: h.jsx(Lr, { className: "h-4 w-4" }),
+                h.jsxs("div", {
+                  className: "campfire-vertical-col flex flex-col items-center gap-2",
+                  style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" },
+                  children: [
+                    oe &&
+                      h.jsxs("div", {
+                        id: "touch-campfire-options-col",
+                        className: "campfire-vertical-col flex flex-col items-center gap-2",
+                        style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" },
+                        children: [
+                          oa &&
+                            (fa
+                              ? h.jsxs("button", {
+                                  id: "touch-roast-fish-btn",
+                                  onClick: Oe === 0 ? j : X,
+                                  className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Oe === 0 ? "bg-gradient-to-br from-emerald-600 to-emerald-700 border-emerald-300 text-white shadow-emerald-950/60 animate-bounce" : "bg-amber-950/90 border-amber-500/80 text-amber-200"}`,
+                                  title: Oe === 0 ? "Peixe assado e pronto! Toque para saborear" : `Assando na fogueira... Faltam ${Oe}s`,
+                                  children: [
+                                    h.jsx("span", {
+                                      className: "text-sm leading-none",
+                                      children: "🍢",
+                                    }),
+                                    h.jsx("span", {
+                                      className:
+                                        "text-[7.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                      children: Oe === 0 ? "COLETAR" : `${Oe}S`,
+                                    }),
+                                  ],
+                                })
+                              : h.jsxs("button", {
+                                  id: "touch-roast-fish-btn",
+                                  onClick: X,
+                                  disabled: Ae === 0 || Se < 1,
+                                  className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Ae > 0 && Se >= 1 ? "bg-gradient-to-br from-amber-600 to-amber-700 border-amber-300/90 text-white shadow-amber-950/60 animate-pulse" : "bg-slate-800/80 border-slate-700/60 text-slate-400 opacity-60"}`,
+                                  title: Ae > 0 && Se >= 1 ? "Assar Peixe no Espeto (1 minuto) - Tecla T" : "Requer 1 Peixe Cru e 1 Galho para assar",
+                                  children: [
+                                    h.jsx("span", {
+                                      className: "text-sm leading-none",
+                                      children: "🍢",
+                                    }),
+                                    h.jsx("span", {
+                                      className:
+                                        "text-[8px] font-black tracking-wider uppercase leading-none mt-0.5",
+                                      children: "ASSAR",
+                                    }),
+                                  ],
+                                })),
+                          h.jsxs("button", {
+                            id: "touch-feed-campfire-btn",
+                            onClick: () => (Ne == null ? void 0 : Ne(10)),
+                            disabled: Se < 10,
+                            className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Se >= 10 ? "bg-gradient-to-br from-emerald-600 to-emerald-700 active:from-emerald-700 border-emerald-400/90 text-white shadow-emerald-950/60 animate-pulse" : "bg-slate-800/80 border-slate-700/60 text-slate-400 opacity-60"}`,
+                            title: `Alimentar Fogueira (+10 Galhos) - Tecla G (Você tem: ${Se}/10)`,
+                            children: [
+                              h.jsx(Lr, { className: "h-4 w-4 text-emerald-100" }),
+                              h.jsx("span", {
+                                className:
+                                  "text-[8px] font-black tracking-wider text-emerald-100 uppercase leading-none mt-0.5",
+                                children: "+10 G",
+                              }),
+                            ],
+                          }),
+                          h.jsx("button", {
+                            id: "touch-interact-btn",
+                            onClick: j,
+                            className: `flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 text-white font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${oa ? "bg-gradient-to-br from-emerald-600 to-teal-700 border-emerald-400/90 shadow-emerald-950/70 animate-pulse" : "bg-gradient-to-br from-amber-600 to-amber-700 border-amber-400/80 shadow-amber-950/60"}`,
+                            title: oa
+                              ? (ga ? "Salvar Novamente (Tecla F)" : "Descansar & Salvar Jogo (Tecla F)")
+                              : "Acender Fogueira (Tecla F)",
+                            children: oa
+                              ? h.jsxs(h.Fragment, {
+                                  children: [
+                                    h.jsx(Bu, { className: "h-4 w-4 text-emerald-100" }),
+                                    h.jsx("span", {
+                                      className:
+                                        "text-[8px] font-black tracking-wider text-emerald-100 uppercase leading-none mt-0.5",
+                                      children: "SALVAR",
+                                    }),
+                                  ],
+                                })
+                              : h.jsxs(h.Fragment, {
+                                  children: [
+                                    h.jsx(Lr, { className: "h-4 w-4 text-amber-200" }),
+                                    h.jsx("span", {
+                                      className:
+                                        "text-[8px] font-black tracking-wider text-amber-100 uppercase leading-none mt-0.5",
+                                      children: "ACENDER",
+                                    }),
+                                  ],
+                                }),
+                          }),
+                        ],
+                      }),
+                    h.jsx("button", {
+                      id: "touch-torch-btn",
+                      onClick: K || (() => g(!f)),
+                      className: `flex items-center justify-center w-11 h-11 rounded-xl border text-sm font-bold shadow-lg transition-all backdrop-blur-sm active:scale-90 ${f ? "bg-amber-500/90 border-amber-300 text-slate-950 shadow-amber-500/40" : "bg-slate-800/80 border-white/20 text-amber-400"}`,
+                      title: f ? "Desequipar e Guardar Tocha no Inventário (L)" : "Equipar Tocha (L)",
+                      children: h.jsx(Lr, { className: "h-4 w-4" }),
+                    }),
+                  ],
                 }),
                 h.jsxs("button", {
                   id: "touch-inventory-btn",
@@ -2148,93 +2244,28 @@
                       }),
                   ],
                 }),
-                h.jsx("button", {
-                  id: "touch-interact-btn",
-                  onClick: j,
-                  className: `flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 text-white font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${oa ? "bg-gradient-to-br from-emerald-600 to-teal-700 border-emerald-400/90 shadow-emerald-950/70 animate-pulse" : "bg-gradient-to-br from-blue-600 to-blue-700 border-blue-400/80 shadow-blue-950/60"}`,
-                  title: oa
-                    ? "Descansar & Salvar Jogo"
-                    : "Interagir / Coletar Item / Minerador (Tecla F)",
-                  children: oa
-                    ? h.jsxs(h.Fragment, {
-                        children: [
-                          h.jsx(Bu, { className: "h-5 w-5 text-emerald-100" }),
-                          h.jsx("span", {
-                            className:
-                              "text-[9px] font-black tracking-wider text-emerald-100 uppercase mt-0.5",
-                            children: "SALVAR",
-                          }),
-                        ],
-                      })
-                    : h.jsxs(h.Fragment, {
-                        children: [
-                          h.jsx("span", {
-                            className:
-                              "text-base font-black leading-none text-white",
-                            children: "E",
-                          }),
-                          h.jsx("span", {
-                            className:
-                              "text-[9px] font-semibold tracking-wide text-blue-100 uppercase mt-0.5",
-                            children: "AÇÃO",
-                          }),
-                        ],
-                      }),
-                }),
-                oe &&
-                  h.jsxs("button", {
-                    id: "touch-feed-campfire-btn",
-                    onClick: () => (Ne == null ? void 0 : Ne(10)),
-                    disabled: Se < 10,
-                    className: `flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Se >= 10 ? "bg-gradient-to-br from-emerald-600 to-emerald-700 active:from-emerald-700 border-emerald-400/90 text-white shadow-emerald-950/60 animate-pulse" : "bg-slate-800/80 border-slate-700/60 text-slate-400 opacity-60"}`,
-                    title: "Alimentar Fogueira (+10 Galhos)",
-                    children: [
-                      h.jsx(Lr, { className: "h-5 w-5 text-emerald-100" }),
-                      h.jsx("span", {
-                        className:
-                          "text-[9px] font-black tracking-wider text-emerald-100 uppercase mt-0.5",
-                        children: "+10 G",
-                      }),
-                    ],
+                !oe &&
+                  h.jsx("button", {
+                    id: "touch-interact-btn",
+                    onClick: j,
+                    className:
+                      "flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 text-white font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-blue-600 to-blue-700 border-blue-400/80 shadow-blue-950/60",
+                    title: "Interagir / Coletar Item / Minerador (Tecla F)",
+                    children: h.jsxs(h.Fragment, {
+                      children: [
+                        h.jsx("span", {
+                          className:
+                            "text-base font-black leading-none text-white",
+                          children: "E",
+                        }),
+                        h.jsx("span", {
+                          className:
+                            "text-[9px] font-semibold tracking-wide text-blue-100 uppercase mt-0.5",
+                          children: "AÇÃO",
+                        }),
+                      ],
+                    }),
                   }),
-                oe &&
-                  oa &&
-                  (fa
-                    ? h.jsxs("button", {
-                        id: "touch-roast-fish-btn",
-                        onClick: Oe === 0 ? j : X,
-                        className: `flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Oe === 0 ? "bg-gradient-to-br from-emerald-600 to-emerald-700 border-emerald-300 text-white shadow-emerald-950/60 animate-bounce" : "bg-amber-950/90 border-amber-500/80 text-amber-200"}`,
-                        title: "Status do Peixe Assando",
-                        children: [
-                          h.jsx("span", {
-                            className: "text-sm",
-                            children: "🍢",
-                          }),
-                          h.jsx("span", {
-                            className:
-                              "text-[8px] font-black tracking-wider uppercase mt-0.5 font-mono",
-                            children: Oe === 0 ? "COLETAR" : `${Oe}S`,
-                          }),
-                        ],
-                      })
-                    : h.jsxs("button", {
-                        id: "touch-roast-fish-btn",
-                        onClick: X,
-                        disabled: Ae === 0 || Se < 1,
-                        className: `flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform ${Ae > 0 && Se >= 1 ? "bg-gradient-to-br from-amber-600 to-amber-700 border-amber-300/90 text-white shadow-amber-950/60 animate-pulse" : "bg-slate-800/80 border-slate-700/60 text-slate-400 opacity-60"}`,
-                        title: "Assar Peixe no Espeto (1 minuto)",
-                        children: [
-                          h.jsx("span", {
-                            className: "text-sm",
-                            children: "🍢",
-                          }),
-                          h.jsx("span", {
-                            className:
-                              "text-[8px] font-black tracking-wider uppercase mt-0.5",
-                            children: "ASSAR",
-                          }),
-                        ],
-                      })),
               ],
             }),
           ],

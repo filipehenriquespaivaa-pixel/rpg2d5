@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = (process.env.PORT && process.env.PORT !== '8080') ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 const MIME_TYPES = {
@@ -33,6 +33,9 @@ const MIME_TYPES = {
 
 const ASSET_EXTENSIONS = new Set(Object.keys(MIME_TYPES).filter((ext) => ext !== '.html'));
 
+let cachedBundleBuf = null;
+let cachedBundleTime = 0;
+
 function buildCombinedBundle(indexHtml) {
   const scriptRegex = /<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>\s*<\/script>/gi;
   const parts = ['"use strict";'];
@@ -46,6 +49,19 @@ function buildCombinedBundle(indexHtml) {
     }
   }
   return parts.join('\n;\n');
+}
+
+function getAppBundle() {
+  const indexPath = path.join(__dirname, 'index.html');
+  const stat = fs.statSync(indexPath);
+  if (cachedBundleBuf && stat.mtimeMs <= cachedBundleTime) {
+    return cachedBundleBuf;
+  }
+  const indexHtml = fs.readFileSync(indexPath, 'utf-8');
+  const bundle = buildCombinedBundle(indexHtml);
+  cachedBundleBuf = Buffer.from(bundle, 'utf-8');
+  cachedBundleTime = stat.mtimeMs;
+  return cachedBundleBuf;
 }
 
 function renderServerIndexHtml(indexHtml) {
@@ -86,10 +102,7 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/__app_bundle.js') {
     try {
-      const indexPath = path.join(__dirname, 'index.html');
-      const indexHtml = fs.readFileSync(indexPath, 'utf-8');
-      const bundle = buildCombinedBundle(indexHtml);
-      const buf = Buffer.from(bundle, 'utf-8');
+      const buf = getAppBundle();
       res.writeHead(200, {
         'Content-Type': 'application/javascript; charset=UTF-8',
         'Content-Length': buf.length,
