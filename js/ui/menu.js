@@ -46,18 +46,28 @@ window.Game = window.Game || {};
       if (!ctx) return;
 
       let animId;
-      let width = (canvas.width = window.innerWidth);
-      let height = (canvas.height = window.innerHeight);
+      const getViewportSize = () => {
+        const vv = window.visualViewport;
+        return {
+          w: Math.floor(vv ? vv.width : window.innerWidth),
+          h: Math.floor(vv ? vv.height : window.innerHeight),
+        };
+      };
+      const initialSize = getViewportSize();
+      let width = (canvas.width = initialSize.w);
+      let height = (canvas.height = initialSize.h);
 
       const handleResize = () => {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
+        const sz = getViewportSize();
+        width = canvas.width = sz.w;
+        height = canvas.height = sz.h;
         initStars();
       };
       window.addEventListener("resize", handleResize);
       window.addEventListener("orientationchange", handleResize);
       if (window.visualViewport) {
         window.visualViewport.addEventListener("resize", handleResize);
+        window.visualViewport.addEventListener("scroll", handleResize);
       }
 
       // Estrelas fixas no céu
@@ -334,6 +344,7 @@ window.Game = window.Game || {};
         window.removeEventListener("orientationchange", handleResize);
         if (window.visualViewport) {
           window.visualViewport.removeEventListener("resize", handleResize);
+          window.visualViewport.removeEventListener("scroll", handleResize);
         }
         if (animId) cancelAnimationFrame(animId);
       };
@@ -380,7 +391,12 @@ window.Game = window.Game || {};
 
     return h.jsxs("div", {
       className:
-        "relative w-screen h-screen h-[100dvh] overflow-hidden flex flex-col items-center justify-between p-4 sm:p-8 md:py-12 select-none",
+        "relative w-full h-full overflow-hidden flex flex-col items-center justify-between p-4 sm:p-8 md:py-12 select-none",
+      style: {
+        width: "var(--vvw, 100%)",
+        height: "var(--vvh, 100%)",
+        paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+      },
       children: [
         // Canvas de pintura de fundo viva (arte cinematográfica)
         h.jsx("canvas", {
@@ -423,7 +439,10 @@ window.Game = window.Game || {};
         // CENTRO / INFERIOR: BOTÕES DE INICIALIZAÇÃO
         h.jsxs("div", {
           className:
-            "menu-btn-container relative z-10 flex flex-col items-center gap-2.5 sm:gap-3.5 mb-4 sm:mb-10 md:mb-14 w-full max-w-[320px] sm:max-w-sm px-2",
+            "menu-btn-container relative z-10 flex flex-col items-center gap-2.5 sm:gap-3.5 mb-6 sm:mb-10 md:mb-14 w-full max-w-[320px] sm:max-w-sm px-2",
+          style: {
+            marginBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
+          },
           children: [
             // Botão Principal: Start (Modo Comum - Imersivo)
             h.jsxs("button", {
