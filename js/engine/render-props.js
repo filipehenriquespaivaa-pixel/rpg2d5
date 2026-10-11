@@ -9959,8 +9959,10 @@
     const s = ts / 36;
     const half = ts / 2;
 
-    // Piso de tábuas de madeira nos mais de 2/3 livres do bloco
-    drawCabinFloor(ctx, ts);
+    // Piso de tábuas de madeira (se não tiver sido desenhado na camada de chão)
+    if (!nb || !nb.skipFloor) {
+      drawCabinFloor(ctx, ts);
+    }
 
     ctx.save();
     ctx.translate(-half, -half);
@@ -10099,12 +10101,14 @@
     ctx.restore();
   }
 
-  function drawCabinDoor(ctx, sizeArg = 36, opened = false) {
+  function drawCabinDoor(ctx, sizeArg = 36, opened = false, skipFloor = false) {
     const ts = (typeof sizeArg === "number" && sizeArg > 2) ? sizeArg : 36 * (sizeArg || 1);
     const s = ts / 36;
 
-    // Piso interno de madeira sob o bloco da porta
-    drawCabinFloor(ctx, ts);
+    // Piso interno de madeira sob o bloco da porta (se não tiver sido desenhado na camada de chão)
+    if (!skipFloor) {
+      drawCabinFloor(ctx, ts);
+    }
 
     ctx.save();
 

@@ -364,12 +364,37 @@
                 // O interior maciço da rocha usa o topo pré-renderizado no chunk ou 1 único drawImage sem face frontal
               }
             }
-            // Desenha o paredão (cliff_wall) e a rampa (cliff_ramp) na camada de terreno/platô abaixo dos pés do personagem
-            // para que o jogador apareça caminhando em cima do paredão!
-            const sortY =
-              ke.kind === "cliff_wall" || ke.kind === "cliff_ramp"
-                ? de - f * 4.5
-                : de;
+            // Desenha o paredão (cliff_wall), a rampa (cliff_ramp) e o piso da cabana (cabin_floor) na camada de terreno
+            // abaixo dos pés do personagem para que o piso nunca fique na frente do jogador!
+            let sortY = de;
+            if (ke.kind === "cliff_wall" || ke.kind === "cliff_ramp" || ke.kind === "cabin_floor") {
+              sortY = de - f * 4.5;
+            } else if (ke.kind === "cabin_wall" || ke.kind === "cabin_door") {
+              // Desenha o piso de tábuas sob a parede/porta na camada do chão (sempre atrás dos pés do personagem)
+              if (typeof drawCabinFloor === "function") {
+                Ee.push({
+                  y: de - f * 4.5,
+                  draw: () => {
+                    c.save();
+                    c.translate(G, de);
+                    drawCabinFloor(c, f);
+                    c.restore();
+                  },
+                });
+              }
+              const wSide =
+                ke.kind === "cabin_door"
+                  ? "south"
+                  : ke.wallSide ||
+                    (this.engine && typeof this.engine.getCabinWallSide === "function"
+                      ? this.engine.getCabinWallSide(ne)
+                      : "north");
+              if (wSide === "south" || wSide === "sw" || wSide === "se") {
+                sortY = de + f * 0.36;
+              } else if (wSide === "north") {
+                sortY = de - f * 0.36;
+              }
+            }
             __skipWall || Ee.push({ y: sortY, draw: () => this.renderProp(ke, G, de, ne, u) });
           }
           if (
@@ -2226,13 +2251,13 @@
               const wallSide =
                 t.wallSide ||
                 (eng && typeof eng.getCabinWallSide === "function" ? eng.getCabinWallSide(u) : "north");
-              drawCabinWall(c, (eng && eng.tileSize) || 36, t.subType || 0, { wallSide });
+              drawCabinWall(c, (eng && eng.tileSize) || 36, t.subType || 0, { wallSide, skipFloor: true });
             }
             break;
           }
           case "cabin_door": {
             if (typeof drawCabinDoor === "function") {
-              drawCabinDoor(c, (this.engine && this.engine.tileSize) || 36, !!t.opened);
+              drawCabinDoor(c, (this.engine && this.engine.tileSize) || 36, !!t.opened, true);
             }
             break;
           }
