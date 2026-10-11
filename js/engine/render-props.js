@@ -9953,54 +9953,136 @@
     }
   }
 
-  // Cabana de Madeira Rústica construída pelo Jogador
+  // Cabana de Madeira Rústica construída pelo Jogador (Paredes finas ocupando menos de 1/3 de um bloco: 10px em 36px)
   function drawCabinWall(ctx, sizeArg = 36, subType = 0, nb = null) {
     const ts = (typeof sizeArg === "number" && sizeArg > 2) ? sizeArg : 36 * (sizeArg || 1);
     const s = ts / 36;
     const half = ts / 2;
+
+    // Piso de tábuas de madeira nos mais de 2/3 livres do bloco
+    drawCabinFloor(ctx, ts);
+
     ctx.save();
     ctx.translate(-half, -half);
 
-    // Fundo escuro de sombra entre as toras
-    ctx.fillStyle = "#271206";
-    ctx.fillRect(0, 0, ts, ts);
+    const thick = 10 * s; // Menos de 1/3 de um bloco (10px de 36px = ~27.7%)
+    const nL = !!(nb && nb.left);
+    const nR = !!(nb && nb.right);
+    const nT = !!(nb && nb.top);
+    const nB = !!(nb && nb.bottom);
 
-    // 3 toras horizontais grossas de carvalho/pinho empilhadas
-    const logH = ts / 3;
-    for (let i = 0; i < 3; i++) {
-      const ly = i * logH;
-      const grad = ctx.createLinearGradient(0, ly, 0, ly + logH);
-      grad.addColorStop(0, "#854d0e");
-      grad.addColorStop(0.3, "#a16207");
-      grad.addColorStop(0.7, "#78350f");
-      grad.addColorStop(1, "#451a03");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0.5, ly + 0.5, ts - 1, logH - 1);
+    const drawHorizSegment = (x, y, w, h) => {
+      // Sombra projetada suave no piso
+      ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+      ctx.fillRect(x, y + h, w, 2 * s);
 
-      ctx.strokeStyle = "rgba(35, 14, 3, 0.75)";
-      ctx.lineWidth = 1 * s;
-      ctx.beginPath();
-      ctx.moveTo(2 * s, ly + logH * 0.5);
-      ctx.lineTo((ts - 2) * s, ly + logH * 0.5);
-      ctx.stroke();
+      ctx.fillStyle = "#271206";
+      ctx.fillRect(x, y, w, h);
 
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.22)";
-      ctx.lineWidth = 0.8 * s;
-      ctx.beginPath();
-      ctx.moveTo(4 * s, ly + logH * 0.25);
-      ctx.lineTo((ts - 4) * s, ly + logH * 0.25);
-      ctx.stroke();
+      const logH = h / 2;
+      for (let i = 0; i < 2; i++) {
+        const ly = y + i * logH;
+        const grad = ctx.createLinearGradient(0, ly, 0, ly + logH);
+        grad.addColorStop(0, "#854d0e");
+        grad.addColorStop(0.35, "#a16207");
+        grad.addColorStop(0.75, "#78350f");
+        grad.addColorStop(1, "#451a03");
+        ctx.fillStyle = grad;
+        ctx.fillRect(x + 0.5, ly + 0.5, w - 1, logH - 1);
+
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.24)";
+        ctx.lineWidth = 0.7 * s;
+        ctx.beginPath();
+        ctx.moveTo(x + 2 * s, ly + logH * 0.35);
+        ctx.lineTo(x + w - 2 * s, ly + logH * 0.35);
+        ctx.stroke();
+      }
+
+      // Vedação central entre as toras
+      ctx.fillStyle = "#3f2d19";
+      ctx.fillRect(x, y + logH - 0.7 * s, w, 1.4 * s);
+
+      ctx.strokeStyle = "#271206";
+      ctx.lineWidth = 1.1 * s;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    };
+
+    const drawVertSegment = (x, y, w, h) => {
+      // Sombra lateral suave no piso
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+      ctx.fillRect(x + w, y, 2 * s, h);
+
+      ctx.fillStyle = "#271206";
+      ctx.fillRect(x, y, w, h);
+
+      const logW = w / 2;
+      for (let i = 0; i < 2; i++) {
+        const lx = x + i * logW;
+        const grad = ctx.createLinearGradient(lx, 0, lx + logW, 0);
+        grad.addColorStop(0, "#854d0e");
+        grad.addColorStop(0.35, "#a16207");
+        grad.addColorStop(0.75, "#78350f");
+        grad.addColorStop(1, "#451a03");
+        ctx.fillStyle = grad;
+        ctx.fillRect(lx + 0.5, y + 0.5, logW - 1, h - 1);
+
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.22)";
+        ctx.lineWidth = 0.7 * s;
+        ctx.beginPath();
+        ctx.moveTo(lx + logW * 0.35, y + 2 * s);
+        ctx.lineTo(lx + logW * 0.35, y + h - 2 * s);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#3f2d19";
+      ctx.fillRect(x + logW - 0.7 * s, y, 1.4 * s, h);
+
+      ctx.strokeStyle = "#271206";
+      ctx.lineWidth = 1.1 * s;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    };
+
+    let drewAny = false;
+    // Parede Norte (borda superior do tile)
+    if ((nL && nR && !nB) || ((nL || nR) && nB && !nT)) {
+      drawHorizSegment(0, 0, ts, thick);
+      drewAny = true;
+    }
+    // Parede Sul (borda inferior do tile)
+    if ((nL && nR && !nB && nT) || ((nL || nR) && nT && !nB)) {
+      drawHorizSegment(0, ts - thick, ts, thick);
+      drewAny = true;
+    }
+    // Parede horizontal reta sem norte nem sul (meio das paredes Norte/Sul)
+    if (nL && nR && !nT && !nB && !drewAny) {
+      drawHorizSegment(0, 0, ts, thick);
+      drewAny = true;
+    }
+    // Parede Oeste (borda esquerda do tile)
+    if ((nT && nB && !nL) || ((nT || nB) && nR && !nL)) {
+      drawVertSegment(0, 0, thick, ts);
+      drewAny = true;
+    }
+    // Parede Leste (borda direita do tile)
+    if ((nT && nB && !nR) || ((nT || nB) && nL && !nR)) {
+      drawVertSegment(ts - thick, 0, thick, ts);
+      drewAny = true;
     }
 
-    // Vedação de musgo entre as toras
-    ctx.fillStyle = "#3f2d19";
-    ctx.fillRect(0, logH - 1.2 * s, ts, 2.4 * s);
-    ctx.fillRect(0, logH * 2 - 1.2 * s, ts, 2.4 * s);
+    // Pilar de encaixe nas 4 quinas da cabana
+    if ((nR && nB && !nL && !nT) || (nL && nB && !nR && !nT) || (nR && nT && !nL && !nB) || (nL && nT && !nR && !nB)) {
+      const px = (!nL && nR) ? 0 : ts - thick;
+      const py = (!nT && nB) ? 0 : ts - thick;
+      ctx.fillStyle = "#5c2808";
+      ctx.fillRect(px + 1 * s, py + 1 * s, thick - 2 * s, thick - 2 * s);
+      ctx.strokeStyle = "#271206";
+      ctx.lineWidth = 1.1 * s;
+      ctx.strokeRect(px + 1 * s, py + 1 * s, thick - 2 * s, thick - 2 * s);
+    }
 
-    // Contorno rústico
-    ctx.strokeStyle = "#271206";
-    ctx.lineWidth = 1.2 * s;
-    ctx.strokeRect(0.5, 0.5, ts - 1, ts - 1);
+    if (!drewAny) {
+      drawHorizSegment(0, (ts - thick) / 2, ts, thick);
+    }
 
     ctx.restore();
   }
@@ -10037,18 +10119,34 @@
   function drawCabinDoor(ctx, sizeArg = 36, opened = false) {
     const ts = (typeof sizeArg === "number" && sizeArg > 2) ? sizeArg : 36 * (sizeArg || 1);
     const s = ts / 36;
+
+    // Piso interno de madeira sob o bloco da porta
+    drawCabinFloor(ctx, ts);
+
     ctx.save();
 
-    // Soleira de madeira maciça
-    ctx.fillStyle = "#271206";
-    ctx.fillRect(-15 * s, 14 * s, 30 * s, 4 * s);
-    ctx.fillStyle = "#451a03";
-    ctx.fillRect(-14 * s, 15 * s, 28 * s, 3 * s);
+    const half = ts / 2;
+    const thick = 10 * s; // Alinhado com a parede sul fina (< 1/3 do bloco)
 
-    // Batente externo de toras
-    const frameW = 28 * s;
-    const frameH = 34 * s;
-    const topY = -16 * s;
+    // Continuação da parede sul nas laterais da porta
+    ctx.fillStyle = "#5c2808";
+    ctx.fillRect(-half, half - thick, 5 * s, thick);
+    ctx.fillRect(half - 5 * s, half - thick, 5 * s, thick);
+    ctx.strokeStyle = "#271206";
+    ctx.lineWidth = 1 * s;
+    ctx.strokeRect(-half, half - thick, 5 * s, thick);
+    ctx.strokeRect(half - 5 * s, half - thick, 5 * s, thick);
+
+    // Soleira de madeira maciça na borda sul
+    ctx.fillStyle = "#271206";
+    ctx.fillRect(-14 * s, 14 * s, 28 * s, 4 * s);
+    ctx.fillStyle = "#451a03";
+    ctx.fillRect(-13 * s, 15 * s, 26 * s, 3 * s);
+
+    // Batente externo de toras alinhado com a parede fina
+    const frameW = 26 * s;
+    const frameH = 18 * s;
+    const topY = 0;
     const baseY = 18 * s;
 
     ctx.fillStyle = "#3d1904";
@@ -10059,8 +10157,8 @@
 
     // Vão interno da porta
     const innerW = 20 * s;
-    const innerH = 30 * s;
-    const innerTopY = topY + 3 * s;
+    const innerH = 15 * s;
+    const innerTopY = topY + 2 * s;
 
     if (opened) {
       // Vão aberto: luz âmbar e tábuas do interior visíveis
@@ -10073,18 +10171,14 @@
       ctx.fillStyle = "#78350f";
       ctx.beginPath();
       ctx.moveTo(innerW / 2 - 2 * s, innerTopY);
-      ctx.lineTo(innerW / 2 + 8 * s, innerTopY - 4 * s);
-      ctx.lineTo(innerW / 2 + 8 * s, baseY - 5 * s);
+      ctx.lineTo(innerW / 2 + 7 * s, innerTopY - 3 * s);
+      ctx.lineTo(innerW / 2 + 7 * s, baseY - 4 * s);
       ctx.lineTo(innerW / 2 - 2 * s, baseY - 1 * s);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = "#3d1904";
       ctx.lineWidth = 1 * s;
       ctx.stroke();
-
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(innerW / 2 - 3 * s, innerTopY + 5 * s, 3 * s, 3 * s);
-      ctx.fillRect(innerW / 2 - 3 * s, baseY - 9 * s, 3 * s, 3 * s);
     } else {
       // Porta fechada de carvalho maciço
       const doorGrad = ctx.createLinearGradient(-innerW / 2, 0, innerW / 2, 0);
@@ -10097,7 +10191,7 @@
 
       // Três tábuas verticais com ranhuras
       ctx.strokeStyle = "#451a03";
-      ctx.lineWidth = 1.2 * s;
+      ctx.lineWidth = 1.1 * s;
       const plankW = innerW / 3;
       ctx.beginPath();
       ctx.moveTo(-innerW / 2 + plankW, innerTopY);
@@ -10108,25 +10202,14 @@
 
       // Dobradiças pretas de ferro forjado
       ctx.fillStyle = "#0f172a";
-      ctx.fillRect(-innerW / 2 - 1 * s, innerTopY + 5 * s, innerW + 2 * s, 3.2 * s);
-      ctx.fillRect(-innerW / 2 - 1 * s, baseY - 9 * s, innerW + 2 * s, 3.2 * s);
+      ctx.fillRect(-innerW / 2 - 1 * s, innerTopY + 2.5 * s, innerW + 2 * s, 2.2 * s);
+      ctx.fillRect(-innerW / 2 - 1 * s, baseY - 5 * s, innerW + 2 * s, 2.2 * s);
 
-      // Rebites prateados nas dobradiças
-      ctx.fillStyle = "#94a3b8";
-      ctx.beginPath();
-      ctx.arc(-innerW / 2 + 3 * s, innerTopY + 6.6 * s, 1.1 * s, 0, Math.PI * 2);
-      ctx.arc(innerW / 2 - 3 * s, innerTopY + 6.6 * s, 1.1 * s, 0, Math.PI * 2);
-      ctx.arc(-innerW / 2 + 3 * s, baseY - 7.4 * s, 1.1 * s, 0, Math.PI * 2);
-      ctx.arc(innerW / 2 - 3 * s, baseY - 7.4 * s, 1.1 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Maçaneta e fechadura de latão polido
+      // Maçaneta de latão polido
       ctx.fillStyle = "#fbbf24";
       ctx.beginPath();
-      ctx.arc(innerW / 2 - 4 * s, innerTopY + innerH * 0.52, 2.2 * s, 0, Math.PI * 2);
+      ctx.arc(innerW / 2 - 3.5 * s, innerTopY + innerH * 0.5, 1.8 * s, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(innerW / 2 - 4.5 * s, innerTopY + innerH * 0.52 + 2.5 * s, 1.5 * s, 2.5 * s);
     }
 
     ctx.restore();
@@ -10145,8 +10228,8 @@
       const roofLeftPx = c.originTx * tileSize - overhang;
       const roofRightPx = (c.originTx + c.width) * tileSize + overhang;
       const roofTopPx = c.originTy * tileSize - 16;
-      // Termina a cobertura acima da parede sul para que a porta e parede frontal fiquem 100% visíveis!
-      const roofBottomPx = (c.originTy + c.height - 1) * tileSize + 4;
+      // Termina a cobertura logo acima da parede sul fina (10px) para que a porta e parede frontal fiquem 100% visíveis!
+      const roofBottomPx = (c.originTy + c.height) * tileSize - (tileSize * (10 / 36));
       const roofW = roofRightPx - roofLeftPx;
       const roofH = roofBottomPx - roofTopPx;
 
@@ -10245,52 +10328,50 @@
     const topPx = originTy * tileSize;
     const totalW = width * tileSize;
     const totalH = height * tileSize;
+    const wallThick = tileSize * (10 / 36); // Menos de 1/3 de um bloco
 
     ctx.save();
 
     // Fundo translúcido da área total da cabana
     ctx.fillStyle = isValid
-      ? `rgba(34, 197, 94, ${0.22 + pulse * 0.12})`
-      : `rgba(239, 68, 68, ${0.25 + pulse * 0.12})`;
+      ? `rgba(134, 239, 172, ${0.18 + pulse * 0.08})`
+      : `rgba(252, 165, 165, ${0.18 + pulse * 0.08})`;
     ctx.fillRect(leftPx, topPx, totalW, totalH);
 
-    // Grade tile a tile (diferenciando paredes externas, piso interno e porta)
+    // Grade tile a tile sutil
     for (let x = originTx; x < originTx + width; x++) {
       for (let y = originTy; y < originTy + height; y++) {
         const txPx = x * tileSize;
         const tyPx = y * tileSize;
-        const isDoor = x === doorTx && y === doorTy;
-        const isWall =
-          !isDoor &&
-          (x === originTx ||
-            x === originTx + width - 1 ||
-            y === originTy ||
-            y === originTy + height - 1);
-
-        if (isDoor) {
-          ctx.fillStyle = isValid
-            ? `rgba(74, 222, 128, ${0.48 + pulse * 0.18})`
-            : `rgba(248, 113, 113, ${0.48 + pulse * 0.18})`;
-          ctx.fillRect(txPx + 2, tyPx + 2, tileSize - 4, tileSize - 4);
-        } else if (isWall) {
-          ctx.fillStyle = isValid
-            ? `rgba(22, 163, 74, ${0.38 + pulse * 0.12})`
-            : `rgba(220, 38, 38, ${0.38 + pulse * 0.12})`;
-          ctx.fillRect(txPx + 1, tyPx + 1, tileSize - 2, tileSize - 2);
-        } else {
-          ctx.fillStyle = isValid
-            ? `rgba(134, 239, 172, ${0.18 + pulse * 0.08})`
-            : `rgba(252, 165, 165, ${0.18 + pulse * 0.08})`;
-          ctx.fillRect(txPx + 1, tyPx + 1, tileSize - 2, tileSize - 2);
-        }
-
         ctx.strokeStyle = isValid
-          ? "rgba(74, 222, 128, 0.55)"
-          : "rgba(248, 113, 113, 0.55)";
+          ? "rgba(74, 222, 128, 0.35)"
+          : "rgba(248, 113, 113, 0.35)";
         ctx.lineWidth = 1;
         ctx.strokeRect(txPx + 0.5, tyPx + 0.5, tileSize - 1, tileSize - 1);
       }
     }
+
+    // Paredes perimetrais finas (< 1/3 de um bloco) na pré-visualização
+    ctx.fillStyle = isValid
+      ? `rgba(22, 163, 74, ${0.52 + pulse * 0.15})`
+      : `rgba(220, 38, 38, ${0.52 + pulse * 0.15})`;
+    // Parede Norte
+    ctx.fillRect(leftPx, topPx, totalW, wallThick);
+    // Parede Oeste
+    ctx.fillRect(leftPx, topPx, wallThick, totalH);
+    // Parede Leste
+    ctx.fillRect(leftPx + totalW - wallThick, topPx, wallThick, totalH);
+    // Parede Sul (com abertura para a porta)
+    const doorLeftPx = doorTx * tileSize;
+    const doorRightPx = (doorTx + 1) * tileSize;
+    ctx.fillRect(leftPx, topPx + totalH - wallThick, doorLeftPx - leftPx, wallThick);
+    ctx.fillRect(doorRightPx, topPx + totalH - wallThick, (leftPx + totalW) - doorRightPx, wallThick);
+
+    // Destaque da Porta na parede sul
+    ctx.fillStyle = isValid
+      ? `rgba(74, 222, 128, ${0.6 + pulse * 0.2})`
+      : `rgba(248, 113, 113, ${0.6 + pulse * 0.2})`;
+    ctx.fillRect(doorLeftPx + 3, topPx + totalH - wallThick - 2, tileSize - 6, wallThick + 2);
 
     // Borda externa brilhante da área da cabana
     ctx.strokeStyle = isValid

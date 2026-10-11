@@ -320,10 +320,10 @@
       const ts = this.tileSize;
       for (let i = 0; i < this.playerCabins.length; i++) {
         const c = this.playerCabins[i];
-        const minX = (c.originTx + 0.6) * ts;
-        const maxX = (c.originTx + c.width - 0.6) * ts;
-        const minY = (c.originTy + 0.6) * ts;
-        const maxY = (c.originTy + c.height - 1.1) * ts;
+        const minX = (c.originTx + 0.25) * ts;
+        const maxX = (c.originTx + c.width - 0.25) * ts;
+        const minY = (c.originTy + 0.25) * ts;
+        const maxY = (c.originTy + c.height - 0.3) * ts;
         if (px >= minX && px <= maxX && py >= minY && py <= maxY) {
           return c;
         }
@@ -6933,7 +6933,6 @@
         if (!isDoorOpenByNpc) return !1;
       }
       if (o && o.prop) {
-        if (o.prop.kind === "cabin_wall") return !1;
         if (o.prop.kind === "cabin_door" && !o.prop.opened) return !1;
       }
       if (
@@ -6976,6 +6975,71 @@
       )
         return !1;
       return !0;
+    }
+    getCabinWallRects(t) {
+      if (!t || !t.prop || t.prop.kind !== "cabin_wall") return null;
+      const ts = this.tileSize;
+      const thick = ts * (10 / 36); // Menos de 1/3 de um bloco (10px em 36px)
+      const x0 = t.tx * ts;
+      const y0 = t.ty * ts;
+      const isCabinStruct = (tile) =>
+        !!(tile && tile.prop && (tile.prop.kind === "cabin_wall" || tile.prop.kind === "cabin_door"));
+      const nL = isCabinStruct(this.getTile(t.tx - 1, t.ty));
+      const nR = isCabinStruct(this.getTile(t.tx + 1, t.ty));
+      const nT = isCabinStruct(this.getTile(t.tx, t.ty - 1));
+      const nB = isCabinStruct(this.getTile(t.tx, t.ty + 1));
+
+      const rects = [];
+      // Parede Norte
+      if ((nL && nR && !nB) || ((nL || nR) && nB && !nT)) {
+        rects.push({ x0, y0, x1: x0 + ts, y1: y0 + thick });
+      }
+      // Parede Sul
+      if ((nL && nR && !nB && nT) || ((nL || nR) && nT && !nB)) {
+        rects.push({ x0, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts });
+      }
+      // Parede horizontal reta sem norte nem sul (meio da parede norte/sul)
+      if (nL && nR && !nT && !nB && rects.length === 0) {
+        rects.push({ x0, y0, x1: x0 + ts, y1: y0 + thick });
+      }
+      // Parede Oeste
+      if ((nT && nB && !nL) || ((nT || nB) && nR && !nL)) {
+        rects.push({ x0, y0, x1: x0 + thick, y1: y0 + ts });
+      }
+      // Parede Leste
+      if ((nT && nB && !nR) || ((nT || nB) && nL && !nR)) {
+        rects.push({ x0: x0 + ts - thick, y0, x1: x0 + ts, y1: y0 + ts });
+      }
+      if (rects.length === 0) {
+        rects.push({
+          x0: x0 + (ts - thick) / 2,
+          y0: y0 + (ts - thick) / 2,
+          x1: x0 + (ts + thick) / 2,
+          y1: y0 + (ts + thick) / 2,
+        });
+      }
+      return rects;
+    }
+    isCabinWallBlockedAt(x, y, hx = this.footHX, hy = this.footHY) {
+      if (this.isUnderground) return !1;
+      const ts = this.tileSize,
+        tx = Math.floor(x / ts),
+        ty = Math.floor(y / ts);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const t = this.getTile(tx + dx, ty + dy);
+          if (!t || !t.prop || t.prop.kind !== "cabin_wall") continue;
+          const rects = this.getCabinWallRects(t);
+          if (!rects) continue;
+          for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            if (x + hx > r.x0 && x - hx < r.x1 && y + hy > r.y0 && y - hy < r.y1) {
+              return !0;
+            }
+          }
+        }
+      }
+      return !1;
     }
     isCliffDarkWallAt(x, y, hx = this.footHX, hy = this.footHY) {
       if (this.isUnderground) return !1;
@@ -7189,6 +7253,7 @@
       const tx = Math.floor(x / this.tileSize),
         ty = Math.floor(y / this.tileSize);
       if (!this.isTilePassable(tx, ty)) return !1;
+      if (this.isCabinWallBlockedAt(x, y)) return !1;
       if (this.isCaveRockAt(x, y)) return !1;
       if (this.isCliffDarkWallAt(x, y)) return !1;
       return !0;
@@ -7278,6 +7343,7 @@
           return this.canPlayerMoveTo(px, py) && !this.isCliffFaceBlockedAt(x, y, px, py);
         }
         if (!this.isTileCreaturePassable(tx, ty)) return !1;
+        if (this.isCabinWallBlockedAt(px, py, hx, hy)) return !1;
         if (this.isCaveRockAt(px, py)) return !1;
         if (this.isCliffDarkWallAt(px, py)) return !1;
         return !0;

@@ -2207,7 +2207,18 @@
             break;
           case "cabin_wall": {
             if (typeof drawCabinWall === "function") {
-              drawCabinWall(c, (this.engine && this.engine.tileSize) || 36, t.subType || 0, null);
+              const eng = this.engine,
+                tx = u.tx,
+                ty = u.ty,
+                isCS = (tile) =>
+                  !!(tile && tile.prop && (tile.prop.kind === "cabin_wall" || tile.prop.kind === "cabin_door"));
+              const nb = {
+                left: eng ? isCS(eng.getTile(tx - 1, ty)) : false,
+                right: eng ? isCS(eng.getTile(tx + 1, ty)) : false,
+                top: eng ? isCS(eng.getTile(tx, ty - 1)) : false,
+                bottom: eng ? isCS(eng.getTile(tx, ty + 1)) : false,
+              };
+              drawCabinWall(c, (eng && eng.tileSize) || 36, t.subType || 0, nb);
             }
             break;
           }
