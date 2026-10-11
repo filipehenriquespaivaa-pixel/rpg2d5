@@ -186,17 +186,6 @@
                   color: "rgba(251, 191, 36, 0.85)",
                   intensity: 0.88,
                 });
-              else if (
-                G.prop.kind === "cave_exit" &&
-                (G.prop.isPrisonDeepMine || G.prop.isExcavatorMine)
-              )
-                K.push({
-                  x: ke * f + f / 2,
-                  y: ne * f + f / 2,
-                  radius: 100 + Math.cos(this.animTimer * 1.5) * 4,
-                  color: "rgba(254, 240, 138, 0.16)",
-                  intensity: 0.75,
-                });
               else if (G.prop.kind === "geode_fissure")
                 K.push({
                   x: ke * f + f / 2,
@@ -2000,6 +1989,9 @@
             break;
           case "tree_stump":
             drawTreeStump(c, f);
+            break;
+          case "wood_log":
+            drawPlacedWoodLog(c, f, t.count || 1);
             break;
           case "cactus":
             cg(c, f);

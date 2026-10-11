@@ -24,6 +24,7 @@
       onInvertBeltSlot: P,
       onCookingPot: Ga,
       onOpenCookingModal: Ra = null,
+      onPlaceWoodLog: onPlaceLog = null,
     }) => {
       var A;
       const isPebble = (item) => {
@@ -275,6 +276,40 @@
                           ],
                         });
                       })(),
+                    e.source === "backpack" &&
+                      (et(e.item, "wood_log", "tronco") ||
+                        (e.item.id || "").includes("tronco") ||
+                        (e.item.name || "").toLowerCase().includes("tronco")) &&
+                      h.jsxs("div", {
+                        className: "w-full flex flex-col gap-1.5 pt-1",
+                        children: [
+                          h.jsxs("button", {
+                            id: "btn-place-wood-log-ground",
+                            onClick: () => {
+                              const fn = onPlaceLog || (window.__placeWoodLog);
+                              fn && fn(e.item);
+                              t();
+                              g && g();
+                            },
+                            className:
+                              "w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-500 active:scale-98 text-amber-100 text-xs font-black tracking-wide shadow-lg shadow-amber-950/80 cursor-pointer border border-amber-400/50 transition-all",
+                            title:
+                              "Colocar este tronco cortado no chão do mundo para construção, lenha ou armazenamento",
+                            children: [
+                              h.jsx("span", { className: "text-base", children: "🪵" }),
+                              h.jsx("span", {
+                                children: "Colocar Tronco no Chão",
+                              }),
+                            ],
+                          }),
+                          h.jsx("div", {
+                            className:
+                              "w-full text-center text-[10px] text-amber-300/80 bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-500/20",
+                            children:
+                              "💡 Coloca o tronco no solo à sua frente. Pressione [F] para recolhê-lo.",
+                          }),
+                        ],
+                      }),
                     e.source === "backpack" &&
                       et(e.item, "galho") &&
                       h.jsxs("div", {
@@ -1905,6 +1940,7 @@
       onInvertBeltSlot: j,
       onCookingPot: Aa,
       onOpenCookingModal: Ra = null,
+      onPlaceWoodLog = null,
       currentBiome = null,
       onTeleportToBiome = null,
       devMode: devModeProp = false,
@@ -3727,6 +3763,7 @@
                         onInvertBeltSlot: j,
                         onCookingPot: Aa,
                         onOpenCookingModal: Ra,
+                        onPlaceWoodLog: onPlaceWoodLog,
                       }),
                     isDev &&
                       $ === "catalogo" &&

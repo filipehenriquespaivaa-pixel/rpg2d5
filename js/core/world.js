@@ -6147,6 +6147,27 @@
           reward: `${T} Seco e Coletado`,
         };
       }
+      if (o.prop.kind === "wood_log") {
+        const count = o.prop.count || 1;
+        if (count > 1) {
+          o.prop.count = count - 1;
+          o.prop.namePt = o.prop.count > 1 ? `Pilha de Troncos (${o.prop.count})` : "Tronco de Madeira";
+          o.prop.descriptionPt = o.prop.count > 1
+            ? `Pilha com ${o.prop.count} troncos de madeira robustos no chão. Pressione [F] para recolher.`
+            : "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.";
+          this.invalidateTile(t, l);
+        } else {
+          this.removeProp(t, l);
+        }
+        return {
+          success: !0,
+          action: "collect_wood_log",
+          message: count > 1
+            ? `🪵 Você recolheu 1 Tronco de Madeira da pilha! (Restam ${count - 1} no chão)`
+            : "🪵 Você recolheu o Tronco de Madeira do chão para seu inventário!",
+          reward: "Tronco Recolhido (+15 XP)",
+        };
+      }
       if (o.prop.kind === "miner_cart")
         return {
           success: !0,

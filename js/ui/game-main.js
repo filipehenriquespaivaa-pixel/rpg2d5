@@ -571,7 +571,91 @@
         },
         [Ve.length, ve],
       ),
-      bn = J.useCallback(
+      handlePlaceWoodLog = J.useCallback(
+        (E) => {
+          const player = f.current,
+            world = o.current;
+          if (!player || !world) return;
+          const tileSize = world.tileSize || 32;
+          let dirX = 0,
+            dirY = 0;
+          player.facing === "left"
+            ? (dirX = -1)
+            : player.facing === "right"
+              ? (dirX = 1)
+              : player.facing === "up"
+                ? (dirY = -1)
+                : (dirY = 1);
+          let targetTx = Math.floor(player.x / tileSize) + dirX,
+            targetTy = Math.floor(player.y / tileSize) + dirY;
+          const targetTile = world.getTile(targetTx, targetTy),
+            targetPlaced = world.getPlacedProp(targetTx, targetTy);
+          if (
+            (!targetTile ||
+              !targetTile.biome ||
+              !targetTile.biome.passable ||
+              (targetTile.prop &&
+                targetTile.prop.kind !== "wood_log" &&
+                !targetTile.prop.kind.startsWith("flower_") &&
+                targetTile.prop.kind !== "flower_patch")) &&
+            !(targetPlaced && targetPlaced.kind === "wood_log")
+          ) {
+            targetTx = Math.floor(player.x / tileSize);
+            targetTy = Math.floor(player.y / tileSize);
+          }
+          ra((Ce) => {
+            const ze = Ce.findIndex(
+              (ia) =>
+                ia.id === E.id ||
+                ((ia.id || "").includes("tronco") &&
+                  (ia.name || "").toLowerCase().includes("tronco")),
+            );
+            if (ze < 0) return Ce;
+            const la = Ce[ze],
+              na = la.stackCount || 1;
+            if (na > 1) {
+              const ia = [...Ce];
+              return ((ia[ze] = { ...la, stackCount: na - 1 }), ia);
+            } else return Ce.filter((ia, Je) => Je !== ze);
+          });
+          const existingProp =
+            world.getPlacedProp(targetTx, targetTy) ||
+            (world.getTile(targetTx, targetTy).prop &&
+            world.getTile(targetTx, targetTy).prop.kind === "wood_log"
+              ? world.getTile(targetTx, targetTy).prop
+              : null);
+          if (existingProp && existingProp.kind === "wood_log") {
+            const newCount = (existingProp.count || 1) + 1;
+            world.placeProp(targetTx, targetTy, {
+              ...existingProp,
+              count: newCount,
+              namePt: `Pilha de Troncos (${newCount})`,
+              descriptionPt: `Pilha com ${newCount} troncos de madeira robustos no chão. Pressione [F] para recolher à mochila.`,
+            });
+            ve(`🪵 Mais um tronco adicionado à pilha no chão! (${newCount} troncos empilhados)`);
+          } else {
+            world.placeProp(targetTx, targetTy, {
+              kind: "wood_log",
+              subType: 0,
+              count: 1,
+              offsetX: 0,
+              offsetY: 2,
+              scale: 1,
+              interactive: !0,
+              namePt: "Tronco de Madeira",
+              descriptionPt:
+                "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.",
+            });
+            ve(
+              "🪵 Tronco de madeira colocado no solo com sucesso! Pressione [F] quando quiser recolhê-lo.",
+            );
+          }
+          m.current && m.current.playWoodChop && m.current.playWoodChop();
+        },
+        [ve],
+      );
+      window.__placeWoodLog = handlePlaceWoodLog;
+      const bn = J.useCallback(
         (E) => {
           const D = ac(E);
           if (!D) {
@@ -3388,7 +3472,32 @@
               return;
             } else if (Ke.action === "clay_still_drying")
               (m.current.playPunchWhoosh(), ve(Ke.message));
-            else if (Ke.action === "collect_dried_clay") {
+            else if (Ke.action === "collect_wood_log") {
+              const qe = ot(Da.current.mochila);
+              if (Ve.length >= qe) {
+                const existing = E.getPlacedProp(Ye.tx, Ye.ty);
+                if (existing && existing.kind === "wood_log") {
+                  existing.count = (existing.count || 1) + 1;
+                  existing.namePt = existing.count > 1 ? `Pilha de Troncos (${existing.count})` : "Tronco de Madeira";
+                  existing.descriptionPt = `Pilha com ${existing.count} troncos de madeira robustos no chão. Pressione [F] para recolher.`;
+                  E.invalidateTile(Ye.tx, Ye.ty);
+                } else {
+                  E.placeProp(Ye.tx, Ye.ty, {
+                    kind: "wood_log",
+                    count: 1,
+                    interactive: true,
+                    namePt: "Tronco de Madeira",
+                    descriptionPt: "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.",
+                  });
+                }
+                ve(`⚠️ Inventário cheio (máximo ${qe} itens)! Libere espaço para recolher o tronco de madeira.`);
+                return;
+              }
+              ra((prev) => [...prev, pi("wood_log")]);
+              m.current && m.current.playItemPickup && m.current.playItemPickup();
+              ve(Ke.message);
+              return;
+            } else if (Ke.action === "collect_dried_clay") {
               const De = Ke.dryingItemType || "pote",
                 qe = ot(Da.current.mochila);
               if (Ve.length >= qe) {
@@ -5297,6 +5406,7 @@
             onCookingPot: zK,
             onOpenCookingModal: () => setCookingModalOpen(!0),
             onButcherCarcass: bn,
+            onPlaceWoodLog: handlePlaceWoodLog,
             onDropItem: rc,
             onMoveToBeltSlot: gn,
             onInvertBeltSlot: Ur,

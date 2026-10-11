@@ -61,6 +61,93 @@
     e.arc(0, -4 * t, 0.6 * t, 0, Math.PI * 2);
     e.fill();
   }
+  function drawPlacedWoodLog(e, t, count = 1) {
+    const s = t;
+    // Sombra suave no chão
+    e.fillStyle = "rgba(0, 0, 0, 0.35)";
+    e.beginPath();
+    e.ellipse(0, 4 * s, 11 * s, 4.2 * s, 0, 0, Math.PI * 2);
+    e.fill();
+
+    const renderSingleLog = (offsetX, offsetY, angle, scaleMult = 1) => {
+      e.save();
+      e.translate(offsetX * s, offsetY * s);
+      if (angle) e.rotate(angle);
+
+      const logW = 20 * scaleMult;
+      const logH = 6.2 * scaleMult;
+      const halfW = logW * 0.5;
+      const halfH = logH * 0.5;
+
+      // Casca externa marrom escura e volumosa
+      e.fillStyle = "#3d2215";
+      e.beginPath();
+      if (typeof e.roundRect === "function") {
+        e.roundRect((-halfW) * s, (-halfH) * s, logW * s, logH * s, 2 * s);
+      } else {
+        e.rect((-halfW) * s, (-halfH) * s, logW * s, logH * s);
+      }
+      e.fill();
+
+      // Textura e veios da casca
+      e.fillStyle = "#5c3826";
+      e.fillRect((-halfW + 3) * s, (-halfH + 1) * s, (logW - 6) * s, (halfH - 0.5) * s);
+      e.fillStyle = "#271206";
+      e.fillRect((-halfW + 2) * s, (halfH - 1.8) * s, (logW - 4) * s, 1.2 * s);
+
+      // Linhas da casca
+      e.strokeStyle = "#1c0d05";
+      e.lineWidth = 0.8 * s;
+      e.beginPath();
+      e.moveTo((-halfW + 5) * s, 0);
+      e.lineTo((-halfW + 11) * s, 0);
+      e.moveTo((-halfW + 13) * s, 1 * s);
+      e.lineTo((halfW - 3) * s, 1 * s);
+      e.stroke();
+
+      // Corte circular/elíptico da extremidade com anéis de crescimento
+      e.fillStyle = "#d4a373";
+      e.strokeStyle = "#8b5e34";
+      e.lineWidth = 0.9 * s;
+      e.beginPath();
+      e.ellipse((-halfW) * s, 0, 2.2 * s * scaleMult, halfH * s, 0, 0, Math.PI * 2);
+      e.fill();
+      e.stroke();
+
+      // Anel interno de crescimento
+      e.beginPath();
+      e.ellipse((-halfW) * s, 0, 1.1 * s * scaleMult, halfH * 0.55 * s, 0, 0, Math.PI * 2);
+      e.stroke();
+
+      // Miolo central
+      e.fillStyle = "#5c3826";
+      e.beginPath();
+      e.arc((-halfW) * s, 0, 0.55 * s * scaleMult, 0, Math.PI * 2);
+      e.fill();
+
+      // Extremidade direita chanfrada
+      e.fillStyle = "#2a150b";
+      e.beginPath();
+      e.ellipse((halfW) * s, 0, 1.4 * s * scaleMult, halfH * s, 0, 0, Math.PI * 2);
+      e.fill();
+
+      e.restore();
+    };
+
+    if (count <= 1) {
+      renderSingleLog(0, 1, 0.05, 1);
+    } else if (count === 2) {
+      renderSingleLog(-1, 3, 0.04, 1);
+      renderSingleLog(1, -1.8, -0.06, 0.96);
+    } else {
+      renderSingleLog(-2, 3.2, 0.05, 0.98);
+      renderSingleLog(4, 2.8, -0.04, 0.96);
+      renderSingleLog(0.5, -2.2, 0.02, 0.95);
+      if (count > 3) {
+        renderSingleLog(-0.5, -6.5, -0.05, 0.88);
+      }
+    }
+  }
   function rg(e, t, l) {
     ((e.fillStyle = "#3d2215"),
       e.beginPath(),
