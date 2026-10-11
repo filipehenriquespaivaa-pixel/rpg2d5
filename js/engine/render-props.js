@@ -9954,18 +9954,19 @@
   }
 
   // Cabana de Madeira Rústica construída pelo Jogador
-  function drawCabinWall(ctx, tileSize, subType = 0, nb = null) {
-    const s = tileSize / 36;
-    const half = tileSize / 2;
+  function drawCabinWall(ctx, sizeArg = 36, subType = 0, nb = null) {
+    const ts = (typeof sizeArg === "number" && sizeArg > 2) ? sizeArg : 36 * (sizeArg || 1);
+    const s = ts / 36;
+    const half = ts / 2;
     ctx.save();
     ctx.translate(-half, -half);
 
-    // Fundo de sombra entre as toras
+    // Fundo escuro de sombra entre as toras
     ctx.fillStyle = "#271206";
-    ctx.fillRect(0, 0, tileSize, tileSize);
+    ctx.fillRect(0, 0, ts, ts);
 
     // 3 toras horizontais grossas de carvalho/pinho empilhadas
-    const logH = tileSize / 3;
+    const logH = ts / 3;
     for (let i = 0; i < 3; i++) {
       const ly = i * logH;
       const grad = ctx.createLinearGradient(0, ly, 0, ly + logH);
@@ -9974,128 +9975,158 @@
       grad.addColorStop(0.7, "#78350f");
       grad.addColorStop(1, "#451a03");
       ctx.fillStyle = grad;
-      ctx.fillRect(0.5, ly + 0.5, tileSize - 1, logH - 1);
+      ctx.fillRect(0.5, ly + 0.5, ts - 1, logH - 1);
 
-      ctx.strokeStyle = "rgba(40, 18, 6, 0.65)";
+      ctx.strokeStyle = "rgba(35, 14, 3, 0.75)";
       ctx.lineWidth = 1 * s;
       ctx.beginPath();
-      ctx.moveTo(3 * s, ly + logH * 0.45);
-      ctx.lineTo((tileSize - 4) * s, ly + logH * 0.45);
+      ctx.moveTo(2 * s, ly + logH * 0.5);
+      ctx.lineTo((ts - 2) * s, ly + logH * 0.5);
       ctx.stroke();
 
-      ctx.strokeStyle = "rgba(245, 158, 11, 0.25)";
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.22)";
       ctx.lineWidth = 0.8 * s;
       ctx.beginPath();
-      ctx.moveTo(6 * s, ly + logH * 0.25);
-      ctx.lineTo((tileSize - 8) * s, ly + logH * 0.25);
+      ctx.moveTo(4 * s, ly + logH * 0.25);
+      ctx.lineTo((ts - 4) * s, ly + logH * 0.25);
       ctx.stroke();
     }
 
-    // Vedação de musgo/argila entre as toras
+    // Vedação de musgo entre as toras
     ctx.fillStyle = "#3f2d19";
-    ctx.fillRect(0, logH - 1.2 * s, tileSize, 2.4 * s);
-    ctx.fillRect(0, logH * 2 - 1.2 * s, tileSize, 2.4 * s);
+    ctx.fillRect(0, logH - 1.2 * s, ts, 2.4 * s);
+    ctx.fillRect(0, logH * 2 - 1.2 * s, ts, 2.4 * s);
 
     // Contorno rústico
     ctx.strokeStyle = "#271206";
     ctx.lineWidth = 1.2 * s;
-    ctx.strokeRect(0.5, 0.5, tileSize - 1, tileSize - 1);
+    ctx.strokeRect(0.5, 0.5, ts - 1, ts - 1);
 
     ctx.restore();
   }
 
-  function drawCabinFloor(ctx, tileSize) {
-    const s = tileSize / 36;
-    const half = tileSize / 2;
+  function drawCabinFloor(ctx, sizeArg = 36) {
+    const ts = (typeof sizeArg === "number" && sizeArg > 2) ? sizeArg : 36 * (sizeArg || 1);
+    const s = ts / 36;
+    const half = ts / 2;
     ctx.save();
     ctx.translate(-half, -half);
 
-    // Fundo escuro das frestas
     ctx.fillStyle = "#1e1006";
-    ctx.fillRect(0, 0, tileSize, tileSize);
+    ctx.fillRect(0, 0, ts, ts);
 
-    // 4 tábuas horizontais de madeira rústica
-    const plankH = tileSize / 4;
+    // 4 tábuas horizontais de madeira
+    const plankH = ts / 4;
     for (let i = 0; i < 4; i++) {
       const py = i * plankH;
       const col = (i % 2 === 0) ? "#9a5219" : "#854210";
       ctx.fillStyle = col;
-      ctx.fillRect(0.5, py + 0.5, tileSize - 1, plankH - 1);
+      ctx.fillRect(0.5, py + 0.5, ts - 1, plankH - 1);
 
-      ctx.fillStyle = "rgba(251, 191, 36, 0.12)";
-      ctx.fillRect(4 * s, py + 2 * s, (tileSize - 8) * s, 1.5 * s);
+      ctx.fillStyle = "rgba(251, 191, 36, 0.14)";
+      ctx.fillRect(3 * s, py + 2 * s, (ts - 6) * s, 1.5 * s);
 
       ctx.fillStyle = "#271206";
       ctx.fillRect(3 * s, py + plankH * 0.4, 1.6 * s, 1.6 * s);
-      ctx.fillRect((tileSize - 4.5) * s, py + plankH * 0.4, 1.6 * s, 1.6 * s);
+      ctx.fillRect((ts - 4.5) * s, py + plankH * 0.4, 1.6 * s, 1.6 * s);
     }
 
     ctx.restore();
   }
 
-  function drawCabinDoor(ctx, tileSize, opened = false) {
-    const s = tileSize / 36;
-    const half = tileSize / 2;
+  function drawCabinDoor(ctx, sizeArg = 36, opened = false) {
+    const ts = (typeof sizeArg === "number" && sizeArg > 2) ? sizeArg : 36 * (sizeArg || 1);
+    const s = ts / 36;
     ctx.save();
-    ctx.translate(-half, -half);
 
-    // Batente de madeira escura
-    ctx.fillStyle = "#3d1f0d";
-    ctx.fillRect(0, 0, tileSize, tileSize);
+    // Soleira de madeira maciça
+    ctx.fillStyle = "#271206";
+    ctx.fillRect(-15 * s, 14 * s, 30 * s, 4 * s);
+    ctx.fillStyle = "#451a03";
+    ctx.fillRect(-14 * s, 15 * s, 28 * s, 3 * s);
+
+    // Batente externo de toras
+    const frameW = 28 * s;
+    const frameH = 34 * s;
+    const topY = -16 * s;
+    const baseY = 18 * s;
+
+    ctx.fillStyle = "#3d1904";
+    ctx.fillRect(-frameW / 2, topY, frameW, frameH);
+    ctx.strokeStyle = "#1c0b02";
+    ctx.lineWidth = 1.2 * s;
+    ctx.strokeRect(-frameW / 2, topY, frameW, frameH);
+
+    // Vão interno da porta
+    const innerW = 20 * s;
+    const innerH = 30 * s;
+    const innerTopY = topY + 3 * s;
 
     if (opened) {
-      // Vão de passagem aberto (mostra interior com tábuas e luz)
-      ctx.fillStyle = "#9a5219";
-      ctx.fillRect(3 * s, 2 * s, (tileSize - 6) * s, (tileSize - 4) * s);
-      ctx.fillStyle = "rgba(245, 158, 11, 0.35)";
-      ctx.fillRect(3 * s, 2 * s, (tileSize - 6) * s, (tileSize - 4) * s);
+      // Vão aberto: luz âmbar e tábuas do interior visíveis
+      ctx.fillStyle = "#2a1508";
+      ctx.fillRect(-innerW / 2, innerTopY, innerW, innerH);
+      ctx.fillStyle = "rgba(245, 158, 11, 0.4)";
+      ctx.fillRect(-innerW / 2 + 1 * s, innerTopY + 1 * s, innerW - 2 * s, innerH - 2 * s);
 
-      // Folha da porta aberta em perspectiva lateral
-      ctx.fillStyle = "#6b320d";
+      // Folha da porta aberta em perspectiva lateral à direita
+      ctx.fillStyle = "#78350f";
       ctx.beginPath();
-      ctx.moveTo((tileSize - 5) * s, 2 * s);
-      ctx.lineTo((tileSize + 4) * s, -2 * s);
-      ctx.lineTo((tileSize + 4) * s, (tileSize - 4) * s);
-      ctx.lineTo((tileSize - 5) * s, (tileSize - 2) * s);
+      ctx.moveTo(innerW / 2 - 2 * s, innerTopY);
+      ctx.lineTo(innerW / 2 + 8 * s, innerTopY - 4 * s);
+      ctx.lineTo(innerW / 2 + 8 * s, baseY - 5 * s);
+      ctx.lineTo(innerW / 2 - 2 * s, baseY - 1 * s);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = "#271206";
+      ctx.strokeStyle = "#3d1904";
       ctx.lineWidth = 1 * s;
       ctx.stroke();
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(innerW / 2 - 3 * s, innerTopY + 5 * s, 3 * s, 3 * s);
+      ctx.fillRect(innerW / 2 - 3 * s, baseY - 9 * s, 3 * s, 3 * s);
     } else {
-      // Folha de porta fechada com tábuas verticais
-      const doorW = (tileSize - 6) * s;
-      const doorH = (tileSize - 4) * s;
-      const dx = 3 * s;
-      const dy = 2 * s;
+      // Porta fechada de carvalho maciço
+      const doorGrad = ctx.createLinearGradient(-innerW / 2, 0, innerW / 2, 0);
+      doorGrad.addColorStop(0, "#854d0e");
+      doorGrad.addColorStop(0.3, "#a16207");
+      doorGrad.addColorStop(0.7, "#92400e");
+      doorGrad.addColorStop(1, "#78350f");
+      ctx.fillStyle = doorGrad;
+      ctx.fillRect(-innerW / 2, innerTopY, innerW, innerH);
 
-      const grad = ctx.createLinearGradient(dx, dy, dx + doorW, dy);
-      grad.addColorStop(0, "#78350f");
-      grad.addColorStop(0.5, "#92400e");
-      grad.addColorStop(1, "#78350f");
-      ctx.fillStyle = grad;
-      ctx.fillRect(dx, dy, doorW, doorH);
-
+      // Três tábuas verticais com ranhuras
       ctx.strokeStyle = "#451a03";
-      ctx.lineWidth = 1 * s;
-      const plankW = doorW / 3;
+      ctx.lineWidth = 1.2 * s;
+      const plankW = innerW / 3;
       ctx.beginPath();
-      ctx.moveTo(dx + plankW, dy);
-      ctx.lineTo(dx + plankW, dy + doorH);
-      ctx.moveTo(dx + plankW * 2, dy);
-      ctx.lineTo(dx + plankW * 2, dy + doorH);
+      ctx.moveTo(-innerW / 2 + plankW, innerTopY);
+      ctx.lineTo(-innerW / 2 + plankW, innerTopY + innerH);
+      ctx.moveTo(-innerW / 2 + plankW * 2, innerTopY);
+      ctx.lineTo(-innerW / 2 + plankW * 2, innerTopY + innerH);
       ctx.stroke();
 
-      // Dobradiças de ferro forjado
-      ctx.fillStyle = "#1e293b";
-      ctx.fillRect(dx + 2 * s, dy + 5 * s, doorW - 4 * s, 2.5 * s);
-      ctx.fillRect(dx + 2 * s, dy + doorH - 7 * s, doorW - 4 * s, 2.5 * s);
+      // Dobradiças pretas de ferro forjado
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(-innerW / 2 - 1 * s, innerTopY + 5 * s, innerW + 2 * s, 3.2 * s);
+      ctx.fillRect(-innerW / 2 - 1 * s, baseY - 9 * s, innerW + 2 * s, 3.2 * s);
 
-      // Maçaneta rústica
+      // Rebites prateados nas dobradiças
+      ctx.fillStyle = "#94a3b8";
+      ctx.beginPath();
+      ctx.arc(-innerW / 2 + 3 * s, innerTopY + 6.6 * s, 1.1 * s, 0, Math.PI * 2);
+      ctx.arc(innerW / 2 - 3 * s, innerTopY + 6.6 * s, 1.1 * s, 0, Math.PI * 2);
+      ctx.arc(-innerW / 2 + 3 * s, baseY - 7.4 * s, 1.1 * s, 0, Math.PI * 2);
+      ctx.arc(innerW / 2 - 3 * s, baseY - 7.4 * s, 1.1 * s, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Maçaneta e fechadura de latão polido
       ctx.fillStyle = "#fbbf24";
       ctx.beginPath();
-      ctx.arc(dx + doorW - 5 * s, dy + doorH * 0.52, 2 * s, 0, Math.PI * 2);
+      ctx.arc(innerW / 2 - 4 * s, innerTopY + innerH * 0.52, 2.2 * s, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(innerW / 2 - 4.5 * s, innerTopY + innerH * 0.52 + 2.5 * s, 1.5 * s, 2.5 * s);
     }
 
     ctx.restore();
@@ -10114,7 +10145,8 @@
       const roofLeftPx = c.originTx * tileSize - overhang;
       const roofRightPx = (c.originTx + c.width) * tileSize + overhang;
       const roofTopPx = c.originTy * tileSize - 16;
-      const roofBottomPx = (c.originTy + c.height) * tileSize + 6;
+      // Termina a cobertura acima da parede sul para que a porta e parede frontal fiquem 100% visíveis!
+      const roofBottomPx = (c.originTy + c.height - 1) * tileSize + 4;
       const roofW = roofRightPx - roofLeftPx;
       const roofH = roofBottomPx - roofTopPx;
 
@@ -10157,7 +10189,7 @@
       ctx.fill();
 
       // Ripas e tábuas sobrepostas
-      const rows = 6;
+      const rows = 5;
       const rowH = roofH / rows;
       for (let r = 0; r < rows; r++) {
         const ry = roofTopPx + r * rowH;

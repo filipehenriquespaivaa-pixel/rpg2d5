@@ -2204,19 +2204,19 @@
             break;
           case "cabin_wall": {
             if (typeof drawCabinWall === "function") {
-              drawCabinWall(c, f, t.subType || 0, null);
+              drawCabinWall(c, (this.engine && this.engine.tileSize) || 36, t.subType || 0, null);
             }
             break;
           }
           case "cabin_door": {
             if (typeof drawCabinDoor === "function") {
-              drawCabinDoor(c, f, !!t.opened);
+              drawCabinDoor(c, (this.engine && this.engine.tileSize) || 36, !!t.opened);
             }
             break;
           }
           case "cabin_floor": {
             if (typeof drawCabinFloor === "function") {
-              drawCabinFloor(c, f);
+              drawCabinFloor(c, (this.engine && this.engine.tileSize) || 36);
             }
             break;
           }

@@ -320,10 +320,10 @@
       const ts = this.tileSize;
       for (let i = 0; i < this.playerCabins.length; i++) {
         const c = this.playerCabins[i];
-        const minX = (c.originTx + 0.2) * ts;
-        const maxX = (c.originTx + c.width - 0.2) * ts;
-        const minY = (c.originTy + 0.2) * ts;
-        const maxY = (c.originTy + c.height - 0.2) * ts;
+        const minX = (c.originTx + 0.6) * ts;
+        const maxX = (c.originTx + c.width - 0.6) * ts;
+        const minY = (c.originTy + 0.6) * ts;
+        const maxY = (c.originTy + c.height - 1.1) * ts;
         if (px >= minX && px <= maxX && py >= minY && py <= maxY) {
           return c;
         }
