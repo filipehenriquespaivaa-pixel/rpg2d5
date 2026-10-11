@@ -517,6 +517,9 @@
         if (!this.engine.isUnderground && typeof drawPortCityHouseRoofs === "function") {
           drawPortCityHouseRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer);
         }
+        if (!this.engine.isUnderground && typeof drawCabinRoofs === "function") {
+          drawCabinRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer, this.engine);
+        }
         (u.combatManager && u.combatManager.renderEffects(c),
           typeof window !== "undefined" &&
             window.weatherSystem &&
@@ -2199,6 +2202,24 @@
           case "pedregulhos":
             drawPedregulhos(c, f, t.subType || 0);
             break;
+          case "cabin_wall": {
+            if (typeof drawCabinWall === "function") {
+              drawCabinWall(c, f, t.subType || 0, null);
+            }
+            break;
+          }
+          case "cabin_door": {
+            if (typeof drawCabinDoor === "function") {
+              drawCabinDoor(c, f, !!t.opened);
+            }
+            break;
+          }
+          case "cabin_floor": {
+            if (typeof drawCabinFloor === "function") {
+              drawCabinFloor(c, f);
+            }
+            break;
+          }
           case "ruin_pillar":
             gg(c, f, t.subType);
             break;

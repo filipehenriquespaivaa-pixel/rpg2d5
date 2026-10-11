@@ -112,6 +112,7 @@
         (this.undergroundLevel = 0),
         (this.timeOfDay = 0.5),
         (this.nightCount = 0),
+        (this.playerCabins = []),
         (this._dungeonStairCache = new Map()));
     }
     setSeed(t) {
@@ -133,6 +134,7 @@
         this.interactedProps.clear(),
         this.collectedGroundItems.clear(),
         this.customPlacedProps.clear(),
+        (this.playerCabins = []),
         (this.timeOfDay = 0.5),
         (this.nightCount = 0),
         this._dungeonStairCache && this._dungeonStairCache.clear(),
@@ -185,6 +187,7 @@
         interactedProps: Array.from(this.interactedProps.entries()),
         customPlacedProps: Array.from(this.customPlacedProps.entries()),
         collectedGroundItems: Array.from(this.collectedGroundItems.values()),
+        playerCabins: this.playerCabins ? [...this.playerCabins] : [],
         timeOfDay: this.timeOfDay,
         nightCount: this.nightCount,
       };
@@ -195,6 +198,7 @@
           (this.customPlacedProps = new Map(t.customPlacedProps)),
         t.collectedGroundItems &&
           (this.collectedGroundItems = new Set(t.collectedGroundItems)),
+        t.playerCabins && (this.playerCabins = Array.isArray(t.playerCabins) ? [...t.playerCabins] : []),
         typeof t.timeOfDay === "number" && (this.timeOfDay = t.timeOfDay),
         Number.isFinite(t.nightCount) && (this.nightCount = Math.max(0, Math.floor(t.nightCount))),
         this.clearTileCache());
@@ -284,6 +288,148 @@
         };
       }
       return tile;
+    }
+    getNearbyWoodLogPile(px, py, maxDist = 90, minCount = 5) {
+      if (this.isUnderground) return null;
+      const maxDistSq = maxDist * maxDist;
+      const pTx = Math.floor(px / this.tileSize);
+      const pTy = Math.floor(py / this.tileSize);
+      const r = Math.ceil(maxDist / this.tileSize);
+      let best = null,
+        bestDist = Infinity;
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const tx = pTx + dx,
+            ty = pTy + dy;
+          const prop = this.getPlacedProp(tx, ty) || (this.getTile(tx, ty) && this.getTile(tx, ty).prop);
+          if (prop && prop.kind === "wood_log" && (prop.count || 1) >= minCount) {
+            const cx = (tx + 0.5) * this.tileSize;
+            const cy = (ty + 0.5) * this.tileSize;
+            const distSq = (cx - px) * (cx - px) + (cy - py) * (cy - py);
+            if (distSq <= maxDistSq && distSq < bestDist) {
+              bestDist = distSq;
+              best = { tx, ty, prop };
+            }
+          }
+        }
+      }
+      return best;
+    }
+    isPlayerInsideCabin(px, py) {
+      if (this.isUnderground || !this.playerCabins) return null;
+      const ts = this.tileSize;
+      for (let i = 0; i < this.playerCabins.length; i++) {
+        const c = this.playerCabins[i];
+        const minX = (c.originTx + 0.2) * ts;
+        const maxX = (c.originTx + c.width - 0.2) * ts;
+        const minY = (c.originTy + 0.2) * ts;
+        const maxY = (c.originTy + c.height - 0.2) * ts;
+        if (px >= minX && px <= maxX && py >= minY && py <= maxY) {
+          return c;
+        }
+      }
+      return null;
+    }
+    buildCabin(pileTx, pileTy) {
+      if (this.isUnderground) return { success: false, message: "Cabanas só podem ser construídas na superfície!" };
+      const prop = this.getPlacedProp(pileTx, pileTy) || (this.getTile(pileTx, pileTy) && this.getTile(pileTx, pileTy).prop);
+      if (!prop || prop.kind !== "wood_log" || (prop.count || 1) < 5) {
+        return { success: false, message: "Você precisa de pelo menos 5 troncos na pilha para construir a cabana!" };
+      }
+      const width = 4;
+      const height = 4;
+      const candidateOrigins = [
+        [pileTx - 1, pileTy - 2],
+        [pileTx - 2, pileTy - 2],
+        [pileTx - 1, pileTy - 1],
+        [pileTx - 2, pileTy - 1],
+        [pileTx, pileTy - 2],
+      ];
+      let originTx = pileTx - 1;
+      let originTy = pileTy - 2;
+      for (const [cx, cy] of candidateOrigins) {
+        let ok = true;
+        for (let x = cx; x < cx + width; x++) {
+          for (let y = cy; y < cy + height; y++) {
+            const tile = this.getTile(x, y);
+            if (!tile || !tile.biome || tile.biome.hasWater || tile.isCliffWall || (tile.prop && typeof tile.prop.kind === "string" && tile.prop.kind.includes("wall"))) {
+              ok = false;
+              break;
+            }
+          }
+          if (!ok) break;
+        }
+        if (ok) {
+          originTx = cx;
+          originTy = cy;
+          break;
+        }
+      }
+      const doorTx = originTx + 1;
+      const doorTy = originTy + 3;
+      const curCount = prop.count || 1;
+      if (curCount > 5) {
+        prop.count = curCount - 5;
+        prop.namePt = prop.count > 1 ? `Pilha de Troncos (${prop.count})` : "Tronco de Madeira";
+        prop.descriptionPt = `Pilha com ${prop.count} troncos de madeira no chão. Pressione [F] para recolher.`;
+        this.placeProp(pileTx, pileTy, { ...prop });
+      } else {
+        this.removeProp(pileTx, pileTy);
+      }
+      const cabin = {
+        id: "cabin_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        originTx,
+        originTy,
+        width,
+        height,
+        doorTx,
+        doorTy,
+        doorOpened: false,
+        createdAt: Date.now(),
+      };
+      if (!this.playerCabins) this.playerCabins = [];
+      this.playerCabins.push(cabin);
+      for (let x = originTx; x < originTx + width; x++) {
+        for (let y = originTy; y < originTy + height; y++) {
+          if (x === doorTx && y === doorTy) {
+            this.placeProp(x, y, {
+              kind: "cabin_door",
+              cabinId: cabin.id,
+              opened: false,
+              interactive: true,
+              namePt: "Porta da Cabana",
+              descriptionPt: "Porta simples de madeira rústica. Pressione [F] para abrir ou fechar.",
+            });
+          } else if (x === originTx || x === originTx + width - 1 || y === originTy || y === originTy + height - 1) {
+            this.placeProp(x, y, {
+              kind: "cabin_wall",
+              cabinId: cabin.id,
+              interactive: false,
+              namePt: "Parede de Toras",
+              descriptionPt: "Parede robusta feita com troncos de madeira sobrepostos.",
+            });
+          } else {
+            this.placeProp(x, y, {
+              kind: "cabin_floor",
+              cabinId: cabin.id,
+              interactive: false,
+              namePt: "Piso da Cabana",
+              descriptionPt: "Chão acolhedor de tábuas de madeira.",
+            });
+          }
+          this.invalidateTile(x, y);
+        }
+      }
+      for (let x = originTx - 1; x <= originTx + width; x++) {
+        for (let y = originTy - 1; y <= originTy + height; y++) {
+          this.invalidateTile(x, y);
+        }
+      }
+      return {
+        success: true,
+        cabin,
+        message: "🛖 Cabana rústica de 1 cômodo construída com sucesso! Pressione [F] na porta para entrar.",
+      };
     }
     placeProp(t, l, o) {
       const u = `${this.isUnderground ? "cave_" : "surf_"}${t},${l}`;
@@ -6152,9 +6298,11 @@
         if (count > 1) {
           o.prop.count = count - 1;
           o.prop.namePt = o.prop.count > 1 ? `Pilha de Troncos (${o.prop.count})` : "Tronco de Madeira";
-          o.prop.descriptionPt = o.prop.count > 1
-            ? `Pilha com ${o.prop.count} troncos de madeira robustos no chão. Pressione [F] para recolher.`
-            : "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.";
+          o.prop.descriptionPt = o.prop.count >= 5
+            ? `Pilha com ${o.prop.count} troncos no chão. Pressione [C] ou toque em CABANA para construir uma cabana, ou [F] para recolher.`
+            : o.prop.count > 1
+              ? `Pilha com ${o.prop.count} troncos de madeira robustos no chão. Pressione [F] para recolher.`
+              : "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.";
           this.invalidateTile(t, l);
         } else {
           this.removeProp(t, l);
@@ -6292,6 +6440,22 @@
           success: !0,
           action: "unlit_corridor_torch",
           message: "",
+        };
+      }
+      if (o.prop.kind === "cabin_door") {
+        const nextOpen = !o.prop.opened;
+        o.prop.opened = nextOpen;
+        this.placeProp(t, l, { ...o.prop, opened: nextOpen });
+        if (this.playerCabins) {
+          const cab = this.playerCabins.find((c) => c.id === o.prop.cabinId || (c.doorTx === t && c.doorTy === l));
+          if (cab) cab.doorOpened = nextOpen;
+        }
+        this.invalidateTile(t, l);
+        return {
+          success: !0,
+          action: "cabin_door",
+          message: nextOpen ? "🚪 Você abriu a porta de madeira da cabana." : "🚪 Você fechou a porta da cabana.",
+          reward: "",
         };
       }
       if (o.prop.kind === "greek_door") {
@@ -6743,6 +6907,10 @@
           window.PortCity.isDoorwayUsedByCitizen(t, l)
         );
         if (!isDoorOpenByNpc) return !1;
+      }
+      if (o && o.prop) {
+        if (o.prop.kind === "cabin_wall") return !1;
+        if (o.prop.kind === "cabin_door" && !o.prop.opened) return !1;
       }
       if (
         o &&

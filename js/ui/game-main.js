@@ -111,6 +111,8 @@
       [be, Me] = J.useState(!1),
       [Te, Fe] = J.useState(!1),
       [_e, xe] = J.useState(null),
+      [nearbyLogPile, setNearbyLogPile] = J.useState(null),
+      nearbyLogPileRef = J.useRef(null),
       // Modal de cozinha: [R] com panela no fogo abre selecao de itens (6 slots)
       [cookingModalOpen, setCookingModalOpen] = J.useState(!1),
       [readerItem, setReaderItem] = J.useState(null),
@@ -3548,6 +3550,10 @@
                 ve(Ke.message);
               }
               return;
+            } else if (Ke.action === "cabin_door") {
+              m.current && m.current.playWoodChop && m.current.playWoodChop();
+              ve(Ke.message);
+              return;
             } else if (Ke.action === "clay_still_drying")
               (m.current.playPunchWhoosh(), ve(Ke.message));
             else if (Ke.action === "collect_wood_log") {
@@ -4310,10 +4316,42 @@
           window.removeEventListener("rpg_knowledge_updated", onKnowledgeEvt);
         };
       }, [ve]),
+      handleBuildCabin = J.useCallback(() => {
+        const pile =
+          nearbyLogPileRef.current ||
+          (o.current && o.current.getNearbyWoodLogPile
+            ? o.current.getNearbyWoodLogPile(f.current.x, f.current.y, 90, 5)
+            : null);
+        if (!pile || !pile.prop || (pile.prop.count || 1) < 5) {
+          ve("⚠️ Você precisa de pelo menos 5 troncos na pilha no chão para construir a cabana!");
+          return false;
+        }
+        const result = o.current.buildCabin(pile.tx, pile.ty);
+        if (result && result.success) {
+          m.current && m.current.playWoodChop && m.current.playWoodChop();
+          m.current && m.current.playChestChime && m.current.playChestChime();
+          c.current &&
+            typeof c.current.addFloatingText === "function" &&
+            c.current.addFloatingText(
+              pile.tx * o.current.tileSize + 18,
+              pile.ty * o.current.tileSize,
+              "🛖 CABANA CONSTRUÍDA!",
+              "#fbbf24",
+            );
+          nearbyLogPileRef.current = null;
+          setNearbyLogPile(null);
+          ve(result.message);
+          return true;
+        } else {
+          ve(result ? result.message : "Não foi possível construir a cabana aqui.");
+          return false;
+        }
+      }, [ve]),
       Ga = J.useRef({
         handleAttack: Sl,
         handleThrowPebble: Rl,
         handleInteract: qo,
+        handleBuildCabin: handleBuildCabin,
         handleStartFishing: nr,
         handleStopFishing: $r,
         handleCollectWater: Ut,
@@ -4338,6 +4376,7 @@
         startPebbleAim: startPebbleAim,
         endPebbleAim: endPebbleAim,
         handleInteract: qo,
+        handleBuildCabin: handleBuildCabin,
         handleStartFishing: nr,
         handleStopFishing: $r,
         handleCollectWater: Ut,
@@ -4488,7 +4527,7 @@
                                   : q.code === "KeyC" ||
                                       q.key === "c" ||
                                       q.key === "C"
-                                    ? Ga.current.handleRecenterCamera()
+                                    ? (Ga.current.handleBuildCabin && Ga.current.handleBuildCabin() ? null : Ga.current.handleRecenterCamera())
                                     : (q.code === "KeyR" ||
                                         q.key === "r" ||
                                         q.key === "R") &&
@@ -4796,6 +4835,19 @@
                   va.prop.roastingFish !== Pa.prop.roastingFish) &&
                 ((Ue.current = Pa), xe(Pa))
               : va && ((Ue.current = null), xe(null)),
+            (() => {
+              const currentLogPile = Q.getNearbyWoodLogPile ? Q.getNearbyWoodLogPile(he.x, he.y, 90, 5) : null,
+                prevLogPile = nearbyLogPileRef.current;
+              if (
+                currentLogPile
+                  ? (!prevLogPile ||
+                      prevLogPile.tx !== currentLogPile.tx ||
+                      prevLogPile.ty !== currentLogPile.ty ||
+                      (prevLogPile.prop && prevLogPile.prop.count) !== (currentLogPile.prop && currentLogPile.prop.count)) &&
+                    ((nearbyLogPileRef.current = currentLogPile), setNearbyLogPile(currentLogPile))
+                  : prevLogPile && ((nearbyLogPileRef.current = null), setNearbyLogPile(null))
+              );
+            })(),
             typeof window !== "undefined" &&
               window.weatherSystem &&
               typeof window.weatherSystem.update === "function" &&
@@ -5458,6 +5510,8 @@
             isSprinting: be,
             isFireProtected: Te,
             nearbyCampfire: _e,
+            nearbyLogPile: nearbyLogPile,
+            onBuildCabin: handleBuildCabin,
             onFeedCampfire: Yr,
             onRoastFish: Mo,
             onCookingPot: kG,

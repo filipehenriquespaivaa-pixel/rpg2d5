@@ -54,6 +54,8 @@
     onFeedCampfire: Ne,
     onRoastFish: X,
     savedCampfire: C = null,
+    nearbyLogPile: nearbyLogPileProp = null,
+    onBuildCabin: onBuildCabinProp = null,
     onUseBeltSlot: I,
     onExtraAction: onExtraActionProp,
     dodgeMode: dodgeModeProp,
@@ -2065,6 +2067,34 @@
                   className: "campfire-vertical-col flex flex-col items-center gap-2",
                   style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" },
                   children: [
+                    nearbyLogPileProp &&
+                      nearbyLogPileProp.prop &&
+                      (nearbyLogPileProp.prop.count || 1) >= 5 &&
+                      h.jsxs("button", {
+                        id: "touch-build-cabin-btn",
+                        onClick: onBuildCabinProp,
+                        style: {
+                          width: "44px",
+                          height: "44px",
+                          minWidth: "44px",
+                          minHeight: "44px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        },
+                        className:
+                          "flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-amber-600 via-yellow-600 to-amber-700 border-amber-300 text-white shadow-amber-950/70 animate-bounce",
+                        title: "Construir Cabana Pequena (5 Troncos) - Tecla C",
+                        children: [
+                          h.jsx("span", { className: "text-sm leading-none", children: "🛖" }),
+                          h.jsx("span", {
+                            className:
+                              "text-[7.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                            children: "CABANA",
+                          }),
+                        ],
+                      }),
                     oe &&
                       h.jsxs("div", {
                         id: "touch-campfire-options-col",
