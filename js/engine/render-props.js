@@ -10224,6 +10224,151 @@
     }
   }
 
+  function drawCabinPlacementPreview(ctx, tileSize, animTimer = 0, engine = null) {
+    const preview = typeof window !== "undefined" ? window.__cabinPlacementPreview : null;
+    if (!preview || !preview.active) return;
+    if (engine && engine.isUnderground) return;
+
+    const originTx = preview.originTx;
+    const originTy = preview.originTy;
+    const width = preview.width || 4;
+    const height = preview.height || 4;
+    const doorTx = originTx + 1;
+    const doorTy = originTy + 3;
+
+    const isValid = engine && typeof engine.isCabinPlacementValid === "function"
+      ? engine.isCabinPlacementValid(originTx, originTy, width, height)
+      : true;
+
+    const pulse = (Math.sin(animTimer * 6) + 1) * 0.5;
+    const leftPx = originTx * tileSize;
+    const topPx = originTy * tileSize;
+    const totalW = width * tileSize;
+    const totalH = height * tileSize;
+
+    ctx.save();
+
+    // Fundo translúcido da área total da cabana
+    ctx.fillStyle = isValid
+      ? `rgba(34, 197, 94, ${0.22 + pulse * 0.12})`
+      : `rgba(239, 68, 68, ${0.25 + pulse * 0.12})`;
+    ctx.fillRect(leftPx, topPx, totalW, totalH);
+
+    // Grade tile a tile (diferenciando paredes externas, piso interno e porta)
+    for (let x = originTx; x < originTx + width; x++) {
+      for (let y = originTy; y < originTy + height; y++) {
+        const txPx = x * tileSize;
+        const tyPx = y * tileSize;
+        const isDoor = x === doorTx && y === doorTy;
+        const isWall =
+          !isDoor &&
+          (x === originTx ||
+            x === originTx + width - 1 ||
+            y === originTy ||
+            y === originTy + height - 1);
+
+        if (isDoor) {
+          ctx.fillStyle = isValid
+            ? `rgba(74, 222, 128, ${0.48 + pulse * 0.18})`
+            : `rgba(248, 113, 113, ${0.48 + pulse * 0.18})`;
+          ctx.fillRect(txPx + 2, tyPx + 2, tileSize - 4, tileSize - 4);
+        } else if (isWall) {
+          ctx.fillStyle = isValid
+            ? `rgba(22, 163, 74, ${0.38 + pulse * 0.12})`
+            : `rgba(220, 38, 38, ${0.38 + pulse * 0.12})`;
+          ctx.fillRect(txPx + 1, tyPx + 1, tileSize - 2, tileSize - 2);
+        } else {
+          ctx.fillStyle = isValid
+            ? `rgba(134, 239, 172, ${0.18 + pulse * 0.08})`
+            : `rgba(252, 165, 165, ${0.18 + pulse * 0.08})`;
+          ctx.fillRect(txPx + 1, tyPx + 1, tileSize - 2, tileSize - 2);
+        }
+
+        ctx.strokeStyle = isValid
+          ? "rgba(74, 222, 128, 0.55)"
+          : "rgba(248, 113, 113, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(txPx + 0.5, tyPx + 0.5, tileSize - 1, tileSize - 1);
+      }
+    }
+
+    // Borda externa brilhante da área da cabana
+    ctx.strokeStyle = isValid
+      ? `rgba(74, 222, 128, ${0.85 + pulse * 0.15})`
+      : `rgba(248, 113, 113, ${0.85 + pulse * 0.15})`;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(leftPx, topPx, totalW, totalH);
+
+    // Cantoneiras de marcação nos 4 cantos
+    const cornerLen = 10;
+    ctx.strokeStyle = isValid ? "#bbf7d0" : "#fecaca";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    // Canto superior esquerdo
+    ctx.moveTo(leftPx, topPx + cornerLen);
+    ctx.lineTo(leftPx, topPx);
+    ctx.lineTo(leftPx + cornerLen, topPx);
+    // Canto superior direito
+    ctx.moveTo(leftPx + totalW - cornerLen, topPx);
+    ctx.lineTo(leftPx + totalW, topPx);
+    ctx.lineTo(leftPx + totalW, topPx + cornerLen);
+    // Canto inferior esquerdo
+    ctx.moveTo(leftPx, topPx + totalH - cornerLen);
+    ctx.lineTo(leftPx, topPx + totalH);
+    ctx.lineTo(leftPx + cornerLen, topPx + totalH);
+    // Canto inferior direito
+    ctx.moveTo(leftPx + totalW - cornerLen, topPx + totalH);
+    ctx.lineTo(leftPx + totalW, topPx + totalH);
+    ctx.lineTo(leftPx + totalW, topPx + totalH - cornerLen);
+    ctx.stroke();
+
+    // Indicador da Porta
+    const doorCenterX = (doorTx + 0.5) * tileSize;
+    const doorCenterY = (doorTy + 0.5) * tileSize;
+    ctx.fillStyle = "rgba(6, 78, 59, 0.9)";
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(doorCenterX - 18, doorCenterY - 7, 36, 14, 4);
+    } else {
+      ctx.rect(doorCenterX - 18, doorCenterY - 7, 36, 14);
+    }
+    ctx.fill();
+    ctx.strokeStyle = isValid ? "#4ade80" : "#f87171";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 8px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🚪 PORTA", doorCenterX, doorCenterY);
+
+    // Rótulo superior de instrução
+    const labelCenterX = leftPx + totalW / 2;
+    const labelCenterY = topPx - 12;
+    const labelText = isValid
+      ? "🛖 MOVA (WASD/SETAS) • [C] OU BOTÃO P/ CONFIRMAR"
+      : "⚠️ LOCAL BLOQUEADO • MOVA PARA ÁREA LIVRE";
+    ctx.font = "bold 9px monospace";
+    const textW = Math.max(180, ctx.measureText(labelText).width + 16);
+    ctx.fillStyle = isValid ? "rgba(6, 78, 59, 0.92)" : "rgba(127, 29, 29, 0.92)";
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(labelCenterX - textW / 2, labelCenterY - 9, textW, 18, 5);
+    } else {
+      ctx.rect(labelCenterX - textW / 2, labelCenterY - 9, textW, 18);
+    }
+    ctx.fill();
+    ctx.strokeStyle = isValid ? "#4ade80" : "#f87171";
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+    ctx.fillStyle = isValid ? "#bbf7d0" : "#fecaca";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(labelText, labelCenterX, labelCenterY);
+
+    ctx.restore();
+  }
+
   // Torna as funções acessíveis globalmente
   window.drawDesertCityHouseRoofs = drawDesertCityHouseRoofs;
   window.drawDesertCityWall = drawDesertCityWall;
@@ -10248,5 +10393,6 @@
   window.drawCabinFloor = drawCabinFloor;
   window.drawCabinDoor = drawCabinDoor;
   window.drawCabinRoofs = drawCabinRoofs;
+  window.drawCabinPlacementPreview = drawCabinPlacementPreview;
 
 

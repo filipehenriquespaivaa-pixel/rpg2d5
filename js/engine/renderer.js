@@ -520,6 +520,9 @@
         if (!this.engine.isUnderground && typeof drawCabinRoofs === "function") {
           drawCabinRoofs(c, f, t.x, t.y, S, p, j, P, this.animTimer, this.engine);
         }
+        if (!this.engine.isUnderground && typeof drawCabinPlacementPreview === "function") {
+          drawCabinPlacementPreview(c, f, this.animTimer, this.engine);
+        }
         (u.combatManager && u.combatManager.renderEffects(c),
           typeof window !== "undefined" &&
             window.weatherSystem &&

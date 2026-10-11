@@ -113,6 +113,9 @@
       [_e, xe] = J.useState(null),
       [nearbyLogPile, setNearbyLogPile] = J.useState(null),
       nearbyLogPileRef = J.useRef(null),
+      [cabinPlacementPreview, setCabinPlacementPreview] = J.useState(null),
+      cabinPlacementPreviewRef = J.useRef(null),
+      cabinMoveRepeatTimerRef = J.useRef(0),
       // Modal de cozinha: [R] com panela no fogo abre selecao de itens (6 slots)
       [cookingModalOpen, setCookingModalOpen] = J.useState(!1),
       [readerItem, setReaderItem] = J.useState(null),
@@ -4302,7 +4305,50 @@
                   D === "D"
                 ? "right"
                 : null,
+      moveCabinPlacementPreview = J.useCallback((dir) => {
+        const cur = cabinPlacementPreviewRef.current;
+        if (!cur || !cur.active) return false;
+        let dx = 0,
+          dy = 0;
+        if (dir === "up") dy = -1;
+        else if (dir === "down") dy = 1;
+        else if (dir === "left") dx = -1;
+        else if (dir === "right") dx = 1;
+        if (dx === 0 && dy === 0) return false;
+        const maxRange = 14;
+        const nextOriginTx = Math.max(cur.pileTx - maxRange, Math.min(cur.pileTx + maxRange, cur.originTx + dx));
+        const nextOriginTy = Math.max(cur.pileTy - maxRange, Math.min(cur.pileTy + maxRange, cur.originTy + dy));
+        if (nextOriginTx === cur.originTx && nextOriginTy === cur.originTy) return true;
+        const nextPreview = {
+          ...cur,
+          originTx: nextOriginTx,
+          originTy: nextOriginTy,
+        };
+        cabinPlacementPreviewRef.current = nextPreview;
+        if (typeof window !== "undefined") window.__cabinPlacementPreview = nextPreview;
+        setCabinPlacementPreview(nextPreview);
+        if (m.current && typeof m.current.playFootstep === "function") {
+          m.current.playFootstep(false);
+        }
+        return true;
+      }, []),
+      cancelCabinPlacementPreview = J.useCallback(() => {
+        if (!cabinPlacementPreviewRef.current) return false;
+        cabinPlacementPreviewRef.current = null;
+        if (typeof window !== "undefined") window.__cabinPlacementPreview = null;
+        setCabinPlacementPreview(null);
+        ve("❌ Posicionamento da cabana cancelado.");
+        return true;
+      }, [ve]),
       Bo = J.useCallback((E, D) => {
+        if (cabinPlacementPreviewRef.current && cabinPlacementPreviewRef.current.active) {
+          y.current[E] = D;
+          if (D) {
+            moveCabinPlacementPreview(E);
+            cabinMoveRepeatTimerRef.current = performance.now() + 220;
+          }
+          return;
+        }
         if (dodgeModeRef.current) {
           if (D) {
             handleDodge(E);
@@ -4315,7 +4361,7 @@
             F = Q - q;
           (F > 40 && F < 360 && (Ae.current[E] = !0), (Se.current[E] = Q));
         } else Ae.current[E] = !1;
-      }, [handleDodge]),
+      }, [handleDodge, moveCabinPlacementPreview]),
       handleReadBook = J.useCallback(() => {
         if (readerOpen) {
           setReaderOpen(!1);
@@ -4371,41 +4417,106 @@
         };
       }, [ve]),
       handleBuildCabin = J.useCallback(() => {
+        const world = o.current;
+        if (!world) return false;
+
+        // 2º clique / confirmação: se já estiver no modo de posicionamento verde, confirma e cria a cabana!
+        const activePreview = cabinPlacementPreviewRef.current;
+        if (activePreview && activePreview.active) {
+          const result = world.buildCabin(
+            activePreview.pileTx,
+            activePreview.pileTy,
+            activePreview.originTx,
+            activePreview.originTy,
+          );
+          if (result && result.success) {
+            cabinPlacementPreviewRef.current = null;
+            if (typeof window !== "undefined") window.__cabinPlacementPreview = null;
+            setCabinPlacementPreview(null);
+            m.current && m.current.playWoodChop && m.current.playWoodChop();
+            m.current && m.current.playChestChime && m.current.playChestChime();
+            c.current &&
+              typeof c.current.addFloatingText === "function" &&
+              c.current.addFloatingText(
+                (activePreview.originTx + 2) * world.tileSize,
+                (activePreview.originTy + 1) * world.tileSize,
+                "🛖 CABANA CONSTRUÍDA!",
+                "#fbbf24",
+              );
+            const remainingPile = world.getNearbyWoodLogPile
+              ? world.getNearbyWoodLogPile(f.current.x, f.current.y, 90, 5)
+              : null;
+            nearbyLogPileRef.current = remainingPile;
+            setNearbyLogPile(remainingPile);
+            ve(result.message);
+            return true;
+          } else {
+            m.current && m.current.playFusionFail && m.current.playFusionFail();
+            ve(result ? result.message : "⚠️ Local bloqueado! Mova a área verde para um terreno livre.");
+            return true;
+          }
+        }
+
+        // 1º clique: abre o modo de posicionamento (área verde da cabana que se move com os botões de andar)
         const pile =
           nearbyLogPileRef.current ||
-          (o.current && o.current.getNearbyWoodLogPile
-            ? o.current.getNearbyWoodLogPile(f.current.x, f.current.y, 90, 5)
+          (world.getNearbyWoodLogPile
+            ? world.getNearbyWoodLogPile(f.current.x, f.current.y, 90, 5)
             : null);
         if (!pile || !pile.prop || (pile.prop.count || 1) < 5) {
           ve("⚠️ Você precisa de pelo menos 5 troncos na pilha no chão para construir a cabana!");
           return false;
         }
-        const result = o.current.buildCabin(pile.tx, pile.ty);
-        if (result && result.success) {
-          m.current && m.current.playWoodChop && m.current.playWoodChop();
-          m.current && m.current.playChestChime && m.current.playChestChime();
-          c.current &&
-            typeof c.current.addFloatingText === "function" &&
-            c.current.addFloatingText(
-              pile.tx * o.current.tileSize + 18,
-              pile.ty * o.current.tileSize,
-              "🛖 CABANA CONSTRUÍDA!",
-              "#fbbf24",
-            );
-          nearbyLogPileRef.current = null;
-          setNearbyLogPile(null);
-          ve(result.message);
-          return true;
-        } else {
-          ve(result ? result.message : "Não foi possível construir a cabana aqui.");
+        if (world.isUnderground) {
+          ve("⚠️ Cabanas só podem ser construídas na superfície!");
           return false;
         }
+
+        const width = 4;
+        const height = 4;
+        const candidateOrigins = [
+          [pile.tx - 1, pile.ty - 2],
+          [pile.tx - 2, pile.ty - 2],
+          [pile.tx - 1, pile.ty - 1],
+          [pile.tx - 2, pile.ty - 1],
+          [pile.tx, pile.ty - 2],
+          [pile.tx - 1, pile.ty - 4],
+          [pile.tx + 1, pile.ty - 2],
+          [pile.tx - 4, pile.ty - 2],
+        ];
+        let initialOriginTx = pile.tx - 1;
+        let initialOriginTy = pile.ty - 2;
+        for (const [cx, cy] of candidateOrigins) {
+          if (world.isCabinPlacementValid && world.isCabinPlacementValid(cx, cy, width, height)) {
+            initialOriginTx = cx;
+            initialOriginTy = cy;
+            break;
+          }
+        }
+
+        const previewObj = {
+          active: true,
+          pileTx: pile.tx,
+          pileTy: pile.ty,
+          originTx: initialOriginTx,
+          originTy: initialOriginTy,
+          width,
+          height,
+        };
+        cabinPlacementPreviewRef.current = previewObj;
+        if (typeof window !== "undefined") window.__cabinPlacementPreview = previewObj;
+        setCabinPlacementPreview(previewObj);
+        m.current && m.current.playEquipItem && m.current.playEquipItem();
+        ve("🟩 Escolha o local da Cabana usando os botões de andar (WASD / Setas) e pressione CRIAR CABANA [C] novamente para confirmar!");
+        return true;
       }, [ve]),
       Ga = J.useRef({
         handleAttack: Sl,
         handleThrowPebble: Rl,
         handleInteract: qo,
         handleBuildCabin: handleBuildCabin,
+        cancelCabinPlacementPreview: cancelCabinPlacementPreview,
+        moveCabinPlacementPreview: moveCabinPlacementPreview,
         handleStartFishing: nr,
         handleStopFishing: $r,
         handleCollectWater: Ut,
@@ -4431,6 +4542,8 @@
         endPebbleAim: endPebbleAim,
         handleInteract: qo,
         handleBuildCabin: handleBuildCabin,
+        cancelCabinPlacementPreview: cancelCabinPlacementPreview,
+        moveCabinPlacementPreview: moveCabinPlacementPreview,
         handleStartFishing: nr,
         handleStopFishing: $r,
         handleCollectWater: Ut,
@@ -4503,6 +4616,31 @@
             ) {
               q.code === "Escape" && Ga.current.handleStopFishing();
               return;
+            }
+            if (cabinPlacementPreviewRef.current && cabinPlacementPreviewRef.current.active) {
+              const moveDir = Gr(q.code, q.key);
+              if (moveDir) {
+                q.preventDefault();
+                if (!q.repeat && Ga.current.moveCabinPlacementPreview) {
+                  Ga.current.moveCabinPlacementPreview(moveDir);
+                  cabinMoveRepeatTimerRef.current = performance.now() + 220;
+                }
+                return;
+              }
+              if (q.code === "Escape") {
+                q.preventDefault();
+                if (Ga.current.cancelCabinPlacementPreview) {
+                  Ga.current.cancelCabinPlacementPreview();
+                }
+                return;
+              }
+              if (q.code === "Enter" || q.code === "KeyC" || q.key === "c" || q.key === "C") {
+                q.preventDefault();
+                if (!q.repeat && Ga.current.handleBuildCabin) {
+                  Ga.current.handleBuildCabin();
+                }
+                return;
+              }
             }
             if (q.code === "Escape" && props && typeof props.onReturnToMenu === "function") {
               props.onReturnToMenu();
@@ -4972,14 +5110,34 @@
                 m.current.playFootstep && m.current.playFootstep(landTile.biome.hasWater);
               }
             }
-            const allowArrowWalk = !dodgeModeRef.current;
+            const isPlacingCabin = !!(cabinPlacementPreviewRef.current && cabinPlacementPreviewRef.current.active);
+            if (isPlacingCabin) {
+              const nowMs = performance.now();
+              if (nowMs >= cabinMoveRepeatTimerRef.current) {
+                const holdDir =
+                  ($e.KeyW || $e.ArrowUp || $e.Up || da.up)
+                    ? "up"
+                    : ($e.KeyS || $e.ArrowDown || $e.Down || da.down)
+                      ? "down"
+                      : ($e.KeyA || $e.ArrowLeft || $e.Left || da.left)
+                        ? "left"
+                        : ($e.KeyD || $e.ArrowRight || $e.Right || da.right)
+                          ? "right"
+                          : null;
+                if (holdDir && Ga.current.moveCabinPlacementPreview) {
+                  Ga.current.moveCabinPlacementPreview(holdDir);
+                  cabinMoveRepeatTimerRef.current = nowMs + 135;
+                }
+              }
+            }
+            const allowArrowWalk = !dodgeModeRef.current && !isPlacingCabin;
             let qa = 0,
               Xa = 0;
             (($e.KeyW || (allowArrowWalk && ($e.ArrowUp || $e.Up || da.up))) && (Xa -= 1),
               ($e.KeyS || (allowArrowWalk && ($e.ArrowDown || $e.Down || da.down))) && (Xa += 1),
               ($e.KeyA || (allowArrowWalk && ($e.ArrowLeft || $e.Left || da.left))) && (qa -= 1),
               ($e.KeyD || (allowArrowWalk && ($e.ArrowRight || $e.Right || da.right))) && (qa += 1),
-              (he.isAiming || isCurrentlyDodging || he.capturedByScorpionId) && ((qa = 0), (Xa = 0)),
+              (isPlacingCabin || he.isAiming || isCurrentlyDodging || he.capturedByScorpionId) && ((qa = 0), (Xa = 0)),
               (he.isMoving = qa !== 0 || Xa !== 0));
             const za = 100 + (De.staminaBonus || 0);
             ((he.maxStamina = za), he.stamina === void 0 && (he.stamina = za));
@@ -5565,7 +5723,9 @@
             isFireProtected: Te,
             nearbyCampfire: _e,
             nearbyLogPile: nearbyLogPile,
+            cabinPlacementPreview: cabinPlacementPreview,
             onBuildCabin: handleBuildCabin,
+            onCancelCabinPlacement: cancelCabinPlacementPreview,
             onFeedCampfire: Yr,
             onRoastFish: Mo,
             onCookingPot: kG,

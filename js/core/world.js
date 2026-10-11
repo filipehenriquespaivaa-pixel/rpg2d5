@@ -330,7 +330,35 @@
       }
       return null;
     }
-    buildCabin(pileTx, pileTy) {
+    isCabinPlacementValid(originTx, originTy, width = 4, height = 4) {
+      if (this.isUnderground) return false;
+      for (let x = originTx; x < originTx + width; x++) {
+        for (let y = originTy; y < originTy + height; y++) {
+          const tile = this.getTile(x, y);
+          if (
+            !tile ||
+            !tile.biome ||
+            tile.biome.hasWater ||
+            tile.isCliffWall ||
+            tile.isGreekWall ||
+            tile.isSnowCityWall ||
+            tile.isDesertCityWall ||
+            tile.isPortCityWall ||
+            (tile.prop &&
+              typeof tile.prop.kind === "string" &&
+              (tile.prop.kind.includes("wall") ||
+                tile.prop.kind.includes("door") ||
+                tile.prop.kind === "cave_entrance" ||
+                tile.prop.kind === "large_rock" ||
+                tile.prop.kind === "shrine"))
+          ) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+    buildCabin(pileTx, pileTy, customOriginTx, customOriginTy) {
       if (this.isUnderground) return { success: false, message: "Cabanas só podem ser construídas na superfície!" };
       const prop = this.getPlacedProp(pileTx, pileTy) || (this.getTile(pileTx, pileTy) && this.getTile(pileTx, pileTy).prop);
       if (!prop || prop.kind !== "wood_log" || (prop.count || 1) < 5) {
@@ -338,32 +366,28 @@
       }
       const width = 4;
       const height = 4;
-      const candidateOrigins = [
-        [pileTx - 1, pileTy - 2],
-        [pileTx - 2, pileTy - 2],
-        [pileTx - 1, pileTy - 1],
-        [pileTx - 2, pileTy - 1],
-        [pileTx, pileTy - 2],
-      ];
-      let originTx = pileTx - 1;
-      let originTy = pileTy - 2;
-      for (const [cx, cy] of candidateOrigins) {
-        let ok = true;
-        for (let x = cx; x < cx + width; x++) {
-          for (let y = cy; y < cy + height; y++) {
-            const tile = this.getTile(x, y);
-            if (!tile || !tile.biome || tile.biome.hasWater || tile.isCliffWall || (tile.prop && typeof tile.prop.kind === "string" && tile.prop.kind.includes("wall"))) {
-              ok = false;
-              break;
-            }
+      let originTx = typeof customOriginTx === "number" ? customOriginTx : pileTx - 1;
+      let originTy = typeof customOriginTy === "number" ? customOriginTy : pileTy - 2;
+      if (typeof customOriginTx !== "number" || typeof customOriginTy !== "number") {
+        const candidateOrigins = [
+          [pileTx - 1, pileTy - 2],
+          [pileTx - 2, pileTy - 2],
+          [pileTx - 1, pileTy - 1],
+          [pileTx - 2, pileTy - 1],
+          [pileTx, pileTy - 2],
+        ];
+        for (const [cx, cy] of candidateOrigins) {
+          if (this.isCabinPlacementValid(cx, cy, width, height)) {
+            originTx = cx;
+            originTy = cy;
+            break;
           }
-          if (!ok) break;
         }
-        if (ok) {
-          originTx = cx;
-          originTy = cy;
-          break;
-        }
+      } else if (!this.isCabinPlacementValid(originTx, originTy, width, height)) {
+        return {
+          success: false,
+          message: "⚠️ Local inválido para construir! Escolha uma área plana sem água, paredões ou outras construções.",
+        };
       }
       const doorTx = originTx + 1;
       const doorTy = originTy + 3;

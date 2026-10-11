@@ -55,7 +55,9 @@
     onRoastFish: X,
     savedCampfire: C = null,
     nearbyLogPile: nearbyLogPileProp = null,
+    cabinPlacementPreview: cabinPlacementPreviewProp = null,
     onBuildCabin: onBuildCabinProp = null,
+    onCancelCabinPlacement: onCancelCabinPlacementProp = null,
     onUseBeltSlot: I,
     onExtraAction: onExtraActionProp,
     dodgeMode: dodgeModeProp,
@@ -2067,31 +2069,75 @@
                   className: "campfire-vertical-col flex flex-col items-center gap-2",
                   style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" },
                   children: [
-                    nearbyLogPileProp &&
+                    ((nearbyLogPileProp &&
                       nearbyLogPileProp.prop &&
-                      (nearbyLogPileProp.prop.count || 1) >= 5 &&
-                      h.jsxs("button", {
-                        id: "touch-build-cabin-btn",
-                        onClick: onBuildCabinProp,
-                        style: {
-                          width: "44px",
-                          height: "44px",
-                          minWidth: "44px",
-                          minHeight: "44px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        },
-                        className:
-                          "flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-amber-600 via-yellow-600 to-amber-700 border-amber-300 text-white shadow-amber-950/70 animate-bounce",
-                        title: "Construir Cabana Pequena (5 Troncos) - Tecla C",
+                      (nearbyLogPileProp.prop.count || 1) >= 5) ||
+                      (cabinPlacementPreviewProp && cabinPlacementPreviewProp.active)) &&
+                      h.jsxs("div", {
+                        className: "flex items-center gap-1.5",
                         children: [
-                          h.jsx("span", { className: "text-sm leading-none", children: "🛖" }),
-                          h.jsx("span", {
+                          cabinPlacementPreviewProp &&
+                            cabinPlacementPreviewProp.active &&
+                            onCancelCabinPlacementProp &&
+                            h.jsxs("button", {
+                              id: "touch-cancel-cabin-btn",
+                              onClick: onCancelCabinPlacementProp,
+                              style: {
+                                width: "38px",
+                                height: "44px",
+                                minWidth: "38px",
+                                minHeight: "44px",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              },
+                              className:
+                                "flex flex-col items-center justify-center rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-slate-900/90 border-rose-400/80 text-rose-200 hover:bg-rose-950/90",
+                              title: "Cancelar posicionamento da cabana (Esc)",
+                              children: [
+                                h.jsx("span", { className: "text-xs leading-none", children: "✖" }),
+                                h.jsx("span", {
+                                  className: "text-[6.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                  children: "SAIR",
+                                }),
+                              ],
+                            }),
+                          h.jsxs("button", {
+                            id: "touch-build-cabin-btn",
+                            onClick: onBuildCabinProp,
+                            style: {
+                              width: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "62px" : "44px",
+                              height: "44px",
+                              minWidth: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "62px" : "44px",
+                              minHeight: "44px",
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            },
                             className:
-                              "text-[7.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
-                            children: "CABANA",
+                              cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
+                                ? "flex flex-col items-center justify-center rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-emerald-500 via-green-600 to-emerald-700 border-emerald-200 text-white shadow-emerald-950/80 ring-2 ring-emerald-400/80 animate-pulse"
+                                : "flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-amber-600 via-yellow-600 to-amber-700 border-amber-300 text-white shadow-amber-950/70 animate-bounce",
+                            title:
+                              cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
+                                ? "Confirmar local e construir Cabana (Tecla C ou Enter)"
+                                : "Escolher local para construir Cabana (5 Troncos) - Tecla C",
+                            children: [
+                              h.jsx("span", {
+                                className: "text-sm leading-none",
+                                children: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "✅" : "🛖",
+                              }),
+                              h.jsx("span", {
+                                className:
+                                  "text-[7.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                children:
+                                  cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
+                                    ? "CONFIRMAR"
+                                    : "CABANA",
+                              }),
+                            ],
                           }),
                         ],
                       }),
