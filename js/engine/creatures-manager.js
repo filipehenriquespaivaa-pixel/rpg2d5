@@ -28,6 +28,21 @@
     setAudio(t) {
       this.audio = t;
     }
+    addDamageNumber(x, y, text, color = "#ef4444", isCrit = false, life = 1.0) {
+      if (!this.floatingTexts) this.floatingTexts = [];
+      this.floatingTexts.push({
+        id: `dmg_${this.nextId++}`,
+        x: x,
+        y: y,
+        text: String(text),
+        color: color || "#ef4444",
+        isCrit: !!isCrit,
+        life: typeof life === "number" ? life : 1.0,
+      });
+    }
+    addFloatingText(x, y, text, color = "#ffffff", isCrit = false, life = 1.0) {
+      this.addDamageNumber(x, y, text, color, isCrit, life);
+    }
     getMonsterFacing(t, l, o = "down") {
       const u = Math.abs(t),
         m = Math.abs(l);

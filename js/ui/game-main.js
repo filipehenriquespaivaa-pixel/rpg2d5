@@ -528,11 +528,12 @@
             ie = (D && E.stackCount) || 1;
           let ge = 0,
             re = 0;
-          q.facing === "left"
+          const qDir = q.direction || q.facing || "down";
+          qDir === "left"
             ? (ge = -20)
-            : q.facing === "right"
+            : qDir === "right"
               ? (ge = 20)
-              : q.facing === "up"
+              : qDir === "up"
                 ? (re = -20)
                 : (re = 20);
           const me = q.x + ge,
@@ -577,32 +578,87 @@
             world = o.current;
           if (!player || !world) return;
           const tileSize = world.tileSize || 32;
+          const pDir = player.direction || player.facing || "down";
           let dirX = 0,
             dirY = 0;
-          player.facing === "left"
-            ? (dirX = -1)
-            : player.facing === "right"
-              ? (dirX = 1)
-              : player.facing === "up"
-                ? (dirY = -1)
-                : (dirY = 1);
-          let targetTx = Math.floor(player.x / tileSize) + dirX,
-            targetTy = Math.floor(player.y / tileSize) + dirY;
-          const targetTile = world.getTile(targetTx, targetTy),
-            targetPlaced = world.getPlacedProp(targetTx, targetTy);
-          if (
-            (!targetTile ||
-              !targetTile.biome ||
-              !targetTile.biome.passable ||
-              (targetTile.prop &&
-                targetTile.prop.kind !== "wood_log" &&
-                !targetTile.prop.kind.startsWith("flower_") &&
-                targetTile.prop.kind !== "flower_patch")) &&
-            !(targetPlaced && targetPlaced.kind === "wood_log")
-          ) {
-            targetTx = Math.floor(player.x / tileSize);
-            targetTy = Math.floor(player.y / tileSize);
+          if (pDir === "left") dirX = -1;
+          else if (pDir === "right") dirX = 1;
+          else if (pDir === "up") dirY = -1;
+          else dirY = 1;
+
+          const pTx = Math.floor(player.x / tileSize),
+            pTy = Math.floor(player.y / tileSize);
+
+          const isTileValidForLog = (tx, ty) => {
+            const tile = world.getTile(tx, ty);
+            if (!tile || !tile.biome || !tile.biome.passable) return false;
+            const placed = world.getPlacedProp(tx, ty);
+            if (placed && placed.kind === "wood_log") return true;
+            if (placed && placed.kind !== "flower_patch") return false;
+            if (tile.prop) {
+              if (tile.prop.kind === "wood_log") return true;
+              if (tile.prop.kind.startsWith("flower_") || tile.prop.kind === "flower_patch") return true;
+              return false;
+            }
+            return true;
+          };
+
+          const frontTx = pTx + dirX,
+            frontTy = pTy + dirY;
+
+          // Candidatos de posicionamento sempre colados/próximos do player
+          const candidateOffsets = [
+            [dirX, dirY], // 1º: à frente do player no sentido em que olha
+            [0, 0],       // 2º: no próprio tile do player
+            dirX !== 0 ? [dirX, -1] : [-1, dirY],
+            dirX !== 0 ? [dirX, 1] : [1, dirY],
+            [0, -1],
+            [0, 1],
+            [-1, 0],
+            [1, 0],
+            [-1, -1],
+            [1, -1],
+            [-1, 1],
+            [1, 1],
+          ];
+
+          // Prioridade 1: se já existir pilha de troncos próxima, empilha diretamente nela
+          let targetTx = null,
+            targetTy = null;
+          for (const [ox, oy] of candidateOffsets) {
+            const cx = pTx + ox,
+              cy = pTy + oy;
+            const placed = world.getPlacedProp(cx, cy);
+            const tile = world.getTile(cx, cy);
+            if (
+              (placed && placed.kind === "wood_log") ||
+              (tile && tile.prop && tile.prop.kind === "wood_log")
+            ) {
+              targetTx = cx;
+              targetTy = cy;
+              break;
+            }
           }
+
+          // Prioridade 2: primeiro espaço livre transitável adjacente mais próximo do player
+          if (targetTx === null) {
+            for (const [ox, oy] of candidateOffsets) {
+              const cx = pTx + ox,
+                cy = pTy + oy;
+              if (isTileValidForLog(cx, cy)) {
+                targetTx = cx;
+                targetTy = cy;
+                break;
+              }
+            }
+          }
+
+          // Fallback de segurança
+          if (targetTx === null) {
+            targetTx = isTileValidForLog(frontTx, frontTy) ? frontTx : pTx;
+            targetTy = isTileValidForLog(frontTx, frontTy) ? frontTy : pTy;
+          }
+
           ra((Ce) => {
             const ze = Ce.findIndex(
               (ia) =>
@@ -618,12 +674,14 @@
               return ((ia[ze] = { ...la, stackCount: na - 1 }), ia);
             } else return Ce.filter((ia, Je) => Je !== ze);
           });
+
           const existingProp =
             world.getPlacedProp(targetTx, targetTy) ||
             (world.getTile(targetTx, targetTy).prop &&
             world.getTile(targetTx, targetTy).prop.kind === "wood_log"
               ? world.getTile(targetTx, targetTy).prop
               : null);
+
           if (existingProp && existingProp.kind === "wood_log") {
             const newCount = (existingProp.count || 1) + 1;
             world.placeProp(targetTx, targetTy, {
@@ -632,7 +690,7 @@
               namePt: `Pilha de Troncos (${newCount})`,
               descriptionPt: `Pilha com ${newCount} troncos de madeira robustos no chão. Pressione [F] para recolher à mochila.`,
             });
-            ve(`🪵 Mais um tronco adicionado à pilha no chão! (${newCount} troncos empilhados)`);
+            ve(`🪵 Mais um tronco adicionado à pilha no chão! (${newCount} troncos empilhados próximo a você)`);
           } else {
             world.placeProp(targetTx, targetTy, {
               kind: "wood_log",
@@ -647,9 +705,19 @@
                 "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.",
             });
             ve(
-              "🪵 Tronco de madeira colocado no solo com sucesso! Pressione [F] quando quiser recolhê-lo.",
+              "🪵 Tronco de madeira colocado no solo próximo a você! Pressione [F] quando quiser recolhê-lo.",
             );
           }
+          c.current &&
+            typeof c.current.addFloatingText === "function" &&
+            c.current.addFloatingText(
+              targetTx * tileSize + tileSize / 2,
+              targetTy * tileSize + tileSize / 2 - 10,
+              "🪵 Tronco no Chão",
+              "#d97706",
+              false,
+              0.9,
+            );
           m.current && m.current.playWoodChop && m.current.playWoodChop();
         },
         [ve],
@@ -1346,10 +1414,9 @@
           m.current.playShrineActivation();
           const ce = E * q.tileSize + q.tileSize / 2,
             Re = D * q.tileSize + q.tileSize / 2;
-          return (
-            c.current.addDamageNumber(ce, Re - 30, `💾 SALVO NO SLOT ${activeSlotId}!`, "#38bdf8"),
-            me
-          );
+          c.current && typeof c.current.addDamageNumber === "function" &&
+            c.current.addDamageNumber(ce, Re - 30, `💾 SALVO NO SLOT ${activeSlotId}!`, "#38bdf8");
+          return me;
         },
         [Ve, ct, P, activeSlotId],
       );
@@ -2940,12 +3007,23 @@
               (Oe.mao_esquerda.name || "").toLowerCase().includes("machado") ||
               (Oe.mao_esquerda.id || "").toLowerCase().includes("axe")))
         );
+        const pDir = D.direction || D.facing || "down";
+        let fdx = 0, fdy = 0;
+        if (pDir === "left") fdx = -1;
+        else if (pDir === "right") fdx = 1;
+        else if (pDir === "up") fdy = -1;
+        else fdy = 1;
         const me = [
+          { tx: q + fdx, ty: F + fdy },
           { tx: q, ty: F },
           { tx: q + 1, ty: F },
           { tx: q - 1, ty: F },
           { tx: q, ty: F + 1 },
           { tx: q, ty: F - 1 },
+          { tx: q + 1, ty: F + 1 },
+          { tx: q - 1, ty: F + 1 },
+          { tx: q + 1, ty: F - 1 },
+          { tx: q - 1, ty: F - 1 },
         ];
         for (const Ye of me) {
           const Ge = E.getTile(Ye.tx, Ye.ty),
@@ -3817,12 +3895,13 @@
             m.current.playCampfireFeed();
             const ge = q.tx * D.tileSize + D.tileSize / 2,
               re = q.ty * D.tileSize + D.tileSize / 2;
-            c.current.addDamageNumber(
-              ge,
-              re - 24,
-              `${ie.scale.toFixed(1)}x TAMANHO 🔥`,
-              "#f97316",
-            );
+            c.current && typeof c.current.addDamageNumber === "function" &&
+              c.current.addDamageNumber(
+                ge,
+                re - 24,
+                `${ie.scale.toFixed(1)}x TAMANHO 🔥`,
+                "#f97316",
+              );
             const me = D.getNearbyCampfire(Q.x, Q.y, 95);
             if (((Ue.current = me), xe(me), q.prop.lit !== !1)) {
               const Re = (D.isUnderground ? 225 : 190) + (ie.scale - 1) * 85;
