@@ -6953,9 +6953,6 @@
         );
         if (!isDoorOpenByNpc) return !1;
       }
-      if (o && o.prop) {
-        if (o.prop.kind === "cabin_door" && !o.prop.opened) return !1;
-      }
       if (
         o &&
         o.prop &&
@@ -7043,13 +7040,27 @@
       return "north";
     }
     getCabinWallRects(t) {
-      if (!t || !t.prop || t.prop.kind !== "cabin_wall") return null;
+      if (!t || !t.prop) return null;
+      const k = t.prop.kind;
+      if (k !== "cabin_wall" && k !== "cabin_door") return null;
       const ts = this.tileSize;
       const thick = ts * (10 / 36); // Menos de 1/3 de um bloco (10px em 36px)
       const x0 = t.tx * ts;
       const y0 = t.ty * ts;
-      const side = this.getCabinWallSide(t);
 
+      if (k === "cabin_door") {
+        // Porta fechada tem colisor fino na borda sul (mesma espessura da parede sul); aberta permite passagem no meio
+        if (t.prop.opened) {
+          const postW = ts * (5 / 36);
+          return [
+            { x0, y0: y0 + ts - thick, x1: x0 + postW, y1: y0 + ts },
+            { x0: x0 + ts - postW, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts },
+          ];
+        }
+        return [{ x0, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts }];
+      }
+
+      const side = this.getCabinWallSide(t);
       const rects = [];
       if (side === "north" || side === "nw" || side === "ne") {
         rects.push({ x0, y0, x1: x0 + ts, y1: y0 + thick });
@@ -7073,7 +7084,7 @@
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           const t = this.getTile(tx + dx, ty + dy);
-          if (!t || !t.prop || t.prop.kind !== "cabin_wall") continue;
+          if (!t || !t.prop || (t.prop.kind !== "cabin_wall" && t.prop.kind !== "cabin_door")) continue;
           const rects = this.getCabinWallRects(t);
           if (!rects) continue;
           for (let i = 0; i < rects.length; i++) {
@@ -7083,6 +7094,30 @@
             }
           }
         }
+      }
+      return !1;
+    }
+    isCabinWallBetween(x0, y0, x1, y1) {
+      if (this.isUnderground || !this.playerCabins || this.playerCabins.length === 0) return !1;
+      const dist = Math.hypot(x1 - x0, y1 - y0);
+      if (dist < 1) return !1;
+      const steps = Math.max(4, Math.ceil(dist / 6));
+      for (let s = 1; s < steps; s++) {
+        const f = s / steps;
+        const qx = x0 + (x1 - x0) * f;
+        const qy = y0 + (y1 - y0) * f;
+        if (this.isCabinWallBlockedAt(qx, qy, 2, 2)) {
+          return !0;
+        }
+      }
+      // Se um está dentro da cabana e o outro está fora, com a porta fechada, nunca pode detectar nem acertar!
+      const c0 = this.isPlayerInsideCabin(x0, y0);
+      const c1 = this.isPlayerInsideCabin(x1, y1);
+      if ((c0 && !c1) || (!c0 && c1)) {
+        const cab = c0 || c1;
+        const doorTile = this.getTile(cab.doorTx, cab.doorTy);
+        const doorOpen = !!(doorTile && doorTile.prop && doorTile.prop.kind === "cabin_door" && doorTile.prop.opened);
+        if (!doorOpen) return !0;
       }
       return !1;
     }

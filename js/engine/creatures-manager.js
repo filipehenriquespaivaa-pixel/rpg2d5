@@ -90,6 +90,19 @@
       }
     }
     getAnimalFireDeterrence(t, l) {
+      if (
+        this.engine &&
+        typeof this.engine.isCabinWallBetween === "function" &&
+        this.engine.isCabinWallBetween(t.x, t.y, l.x, l.y)
+      ) {
+        return {
+          isDeterred: !1,
+          canAttack: !1,
+          blockedByCabin: !0,
+          fireSourceX: l.x,
+          fireSourceY: l.y,
+        };
+      }
       if (!gl(t.type))
         return {
           isDeterred: !1,
@@ -143,6 +156,7 @@
         const ty = Math.floor(qy / e.tileSize);
         if (
           !e.isTileCreaturePassable(tx, ty) ||
+          (e.isCabinWallBlockedAt && e.isCabinWallBlockedAt(qx, qy)) ||
           e.isCaveRockAt(qx, qy) ||
           e.isCliffDarkWallAt(qx, qy) ||
           e.isTrunkAt(qx, qy)
@@ -197,6 +211,7 @@
             Math.floor(qx / e.tileSize),
             Math.floor(qy / e.tileSize),
           ) ||
+          (e.isCabinWallBlockedAt && e.isCabinWallBlockedAt(qx, qy)) ||
           e.isCaveRockAt(qx, qy) ||
           e.isCliffDarkWallAt(qx, qy) ||
           e.isTrunkAt(qx, qy)
@@ -310,7 +325,12 @@
         f = ai.wolfRadius * visMult,
         g = ai.giveUpRadius * Math.max(0.65, visMult),
         y = Math.hypot(o.x - t.x, o.y - t.y),
-        w = !o.isDead && y < c;
+        cabinWallBlocksPlayer = !!(
+          this.engine &&
+          typeof this.engine.isCabinWallBetween === "function" &&
+          this.engine.isCabinWallBetween(t.x, t.y, o.x, o.y)
+        ),
+        w = !o.isDead && y < c && !cabinWallBlocksPlayer;
       let v = null,
         T = f;
       for (const p of this.monsters) {
@@ -1623,13 +1643,24 @@
             }
             p.leapProgress = (p.leapProgress || 0) + t / 0.35;
             const le = Math.min(1, p.leapProgress);
+            const nextLeapX =
+              (p.leapStartX ?? p.x) +
+              ((p.leapTargetX ?? l.x) - (p.leapStartX ?? p.x)) * le;
+            const nextLeapY =
+              (p.leapStartY ?? p.y) +
+              ((p.leapTargetY ?? l.y) - (p.leapStartY ?? p.y)) * le;
             if (
-              ((p.x =
-                (p.leapStartX ?? p.x) +
-                ((p.leapTargetX ?? l.x) - (p.leapStartX ?? p.x)) * le),
-              (p.y =
-                (p.leapStartY ?? p.y) +
-                ((p.leapTargetY ?? l.y) - (p.leapStartY ?? p.y)) * le),
+              this.engine &&
+              typeof this.engine.isCabinWallBlockedAt === "function" &&
+              this.engine.isCabinWallBlockedAt(nextLeapX, nextLeapY)
+            ) {
+              p.isLeaping = !1;
+              p.attackCooldown = 1.2;
+              continue;
+            }
+            if (
+              ((p.x = nextLeapX),
+              (p.y = nextLeapY),
               le >= 1 || j <= 16)
             ) {
               p.isLeaping = !1;

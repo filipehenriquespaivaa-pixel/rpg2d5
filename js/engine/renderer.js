@@ -615,6 +615,21 @@
           }
           if (
             t.prop &&
+            (t.prop.kind === "cabin_wall" || t.prop.kind === "cabin_door") &&
+            typeof e.getCabinWallRects === "function"
+          ) {
+            const cwRects = e.getCabinWallRects(t);
+            if (cwRects && cwRects.length > 0) {
+              c.fillStyle = t.prop.kind === "cabin_door" ? "rgba(249,115,22,0.38)" : "rgba(239,68,68,0.38)";
+              c.strokeStyle = t.prop.kind === "cabin_door" ? "#f97316" : "#ef4444";
+              for (const cr of cwRects) {
+                c.fillRect(cr.x0, cr.y0, cr.x1 - cr.x0, cr.y1 - cr.y0);
+                c.strokeRect(cr.x0 + 0.5, cr.y0 + 0.5, cr.x1 - cr.x0 - 1, cr.y1 - cr.y0 - 1);
+              }
+            }
+          }
+          if (
+            t.prop &&
             (t.prop.kind === "cave_entrance" || t.prop.kind === "cave_exit")
           ) {
             const cx = t.tx * ts + ts / 2,
