@@ -575,10 +575,32 @@
         [Ve.length, ve],
       ),
       handlePlaceWoodLog = J.useCallback(
-        (E) => {
+        (E, requestedQty = 1) => {
           const player = f.current,
             world = o.current;
           if (!player || !world) return;
+          const isWoodLogItem = (ia) =>
+            !!ia &&
+            (ia.id === E?.id ||
+              et(ia, "wood_log", "tronco") ||
+              (ia.id || "").toLowerCase().includes("wood_log") ||
+              (ia.id || "").toLowerCase().includes("tronco") ||
+              (ia.name || "").toLowerCase().includes("tronco"));
+
+          const currentPack = Zt.current || Ve || [];
+          const totalAvailable = currentPack.reduce(
+            (sum, ia) => (isWoodLogItem(ia) ? sum + (ia.stackCount || 1) : sum),
+            0,
+          );
+          if (totalAvailable <= 0) {
+            ve("⚠️ Você não possui troncos de madeira no inventário!");
+            return;
+          }
+          const qtyToPlace = Math.max(
+            1,
+            Math.min(Math.floor(Number(requestedQty) || 1), totalAvailable),
+          );
+
           const tileSize = world.tileSize || 32;
           const pDir = player.direction || player.facing || "down";
           let dirX = 0,
@@ -662,19 +684,38 @@
           }
 
           ra((Ce) => {
-            const ze = Ce.findIndex(
-              (ia) =>
-                ia.id === E.id ||
-                ((ia.id || "").includes("tronco") &&
-                  (ia.name || "").toLowerCase().includes("tronco")),
-            );
-            if (ze < 0) return Ce;
-            const la = Ce[ze],
-              na = la.stackCount || 1;
-            if (na > 1) {
-              const ia = [...Ce];
-              return ((ia[ze] = { ...la, stackCount: na - 1 }), ia);
-            } else return Ce.filter((ia, Je) => Je !== ze);
+            let remaining = qtyToPlace;
+            const next = [...Ce];
+            // Consome primeiro do próprio item selecionado (E.id), se presente
+            if (E && E.id) {
+              const selectedIdx = next.findIndex((ia) => ia && ia.id === E.id);
+              if (selectedIdx >= 0 && remaining > 0) {
+                const item = next[selectedIdx];
+                const st = item.stackCount || 1;
+                if (st > remaining) {
+                  next[selectedIdx] = { ...item, stackCount: st - remaining };
+                  remaining = 0;
+                } else {
+                  remaining -= st;
+                  next.splice(selectedIdx, 1);
+                }
+              }
+            }
+            // Consome o restante de outros slots de tronco na mochila
+            for (let i = next.length - 1; i >= 0 && remaining > 0; i--) {
+              const item = next[i];
+              if (isWoodLogItem(item)) {
+                const st = item.stackCount || 1;
+                if (st > remaining) {
+                  next[i] = { ...item, stackCount: st - remaining };
+                  remaining = 0;
+                } else {
+                  remaining -= st;
+                  next.splice(i, 1);
+                }
+              }
+            }
+            return next;
           });
 
           const existingProp =
@@ -684,30 +725,43 @@
               ? world.getTile(targetTx, targetTy).prop
               : null);
 
+          const buildLogDescription = (cnt) =>
+            cnt >= 5
+              ? `Pilha com ${cnt} troncos no chão. Pressione [C] ou toque em CABANA para construir uma cabana, ou [F] para recolher.`
+              : cnt > 1
+                ? `Pilha com ${cnt} troncos de madeira robustos no chão. Pressione [F] para recolher à mochila.`
+                : "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.";
+
           if (existingProp && existingProp.kind === "wood_log") {
-            const newCount = (existingProp.count || 1) + 1;
+            const newCount = (existingProp.count || 1) + qtyToPlace;
             world.placeProp(targetTx, targetTy, {
               ...existingProp,
               count: newCount,
-              namePt: `Pilha de Troncos (${newCount})`,
-              descriptionPt: `Pilha com ${newCount} troncos de madeira robustos no chão. Pressione [F] para recolher à mochila.`,
+              namePt: newCount > 1 ? `Pilha de Troncos (${newCount})` : "Tronco de Madeira",
+              descriptionPt: buildLogDescription(newCount),
             });
-            ve(`🪵 Mais um tronco adicionado à pilha no chão! (${newCount} troncos empilhados próximo a você)`);
+            ve(
+              qtyToPlace > 1
+                ? `🪵 +${qtyToPlace} troncos adicionados à pilha no chão! (${newCount} troncos empilhados próximo a você)`
+                : `🪵 Mais um tronco adicionado à pilha no chão! (${newCount} troncos empilhados próximo a você)`,
+            );
           } else {
+            const newCount = qtyToPlace;
             world.placeProp(targetTx, targetTy, {
               kind: "wood_log",
               subType: 0,
-              count: 1,
+              count: newCount,
               offsetX: 0,
               offsetY: 2,
               scale: 1,
               interactive: !0,
-              namePt: "Tronco de Madeira",
-              descriptionPt:
-                "Tronco robusto de árvore cortada colocado no chão. Pressione [F] para recolher à mochila.",
+              namePt: newCount > 1 ? `Pilha de Troncos (${newCount})` : "Tronco de Madeira",
+              descriptionPt: buildLogDescription(newCount),
             });
             ve(
-              "🪵 Tronco de madeira colocado no solo próximo a você! Pressione [F] quando quiser recolhê-lo.",
+              newCount > 1
+                ? `🪵 Pilha com ${newCount} troncos colocada no solo próximo a você! ${newCount >= 5 ? "Pressione [C] para construir uma cabana ou [F] para recolher." : "Pressione [F] quando quiser recolher."}`
+                : "🪵 Tronco de madeira colocado no solo próximo a você! Pressione [F] quando quiser recolhê-lo.",
             );
           }
           c.current &&
@@ -715,7 +769,7 @@
             c.current.addFloatingText(
               targetTx * tileSize + tileSize / 2,
               targetTy * tileSize + tileSize / 2 - 10,
-              "🪵 Tronco no Chão",
+              qtyToPlace > 1 ? `🪵 ${qtyToPlace}x Troncos no Chão` : "🪵 Tronco no Chão",
               "#d97706",
               false,
               0.9,

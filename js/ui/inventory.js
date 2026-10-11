@@ -32,6 +32,32 @@
         const id = (item?.id || "").toLowerCase();
         return name.includes("seixo") || id.includes("seixo") || id.includes("pebble");
       };
+      const isWoodLog = (item) =>
+        !!item &&
+        (et(item, "wood_log", "tronco") ||
+          (item.id || "").toLowerCase().includes("wood_log") ||
+          (item.id || "").toLowerCase().includes("tronco") ||
+          (item.name || "").toLowerCase().includes("tronco"));
+      const totalWoodLogsInBackpack = J.useMemo(
+        () =>
+          Array.isArray(o)
+            ? o.reduce(
+                (acc, it) => (isWoodLog(it) ? acc + (it.stackCount || 1) : acc),
+                0,
+              )
+            : 0,
+        [o],
+      );
+      const [logQty, setLogQty] = J.useState(1);
+      J.useEffect(() => {
+        if (totalWoodLogsInBackpack > 0) {
+          setLogQty((prev) =>
+            Math.max(1, Math.min(prev, totalWoodLogsInBackpack)),
+          );
+        } else {
+          setLogQty(1);
+        }
+      }, [e && e.item && e.item.id, totalWoodLogsInBackpack]);
       return h.jsx("div", {
         className:
           "rounded-2xl border border-amber-500/20 bg-slate-950/85 p-3.5 flex flex-col justify-between min-h-[140px] shadow-lg",
@@ -277,39 +303,206 @@
                         });
                       })(),
                     e.source === "backpack" &&
-                      (et(e.item, "wood_log", "tronco") ||
-                        (e.item.id || "").includes("tronco") ||
-                        (e.item.name || "").toLowerCase().includes("tronco")) &&
-                      h.jsxs("div", {
-                        className: "w-full flex flex-col gap-1.5 pt-1",
-                        children: [
-                          h.jsxs("button", {
-                            id: "btn-place-wood-log-ground",
-                            onClick: () => {
-                              const fn = onPlaceLog || (window.__placeWoodLog);
-                              fn && fn(e.item);
-                              t();
-                              g && g();
-                            },
-                            className:
-                              "w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-500 active:scale-98 text-amber-100 text-xs font-black tracking-wide shadow-lg shadow-amber-950/80 cursor-pointer border border-amber-400/50 transition-all",
-                            title:
-                              "Colocar este tronco cortado no chão do mundo para construção, lenha ou armazenamento",
-                            children: [
-                              h.jsx("span", { className: "text-base", children: "🪵" }),
-                              h.jsx("span", {
-                                children: "Colocar Tronco no Chão",
+                      isWoodLog(e.item) &&
+                      (() => {
+                        const maxLogs = Math.max(1, totalWoodLogsInBackpack);
+                        const selectedQty = Math.max(1, Math.min(logQty, maxLogs));
+                        const triggerPlaceLogs = (qty) => {
+                          const fn = onPlaceLog || window.__placeWoodLog;
+                          fn && fn(e.item, qty);
+                          t();
+                          g && g();
+                        };
+                        return h.jsxs("div", {
+                          className:
+                            "w-full flex flex-col gap-2 pt-1.5 p-2.5 rounded-xl bg-amber-950/35 border border-amber-500/30",
+                          children: [
+                            h.jsxs("div", {
+                              className:
+                                "flex items-center justify-between text-[11px] text-amber-200 font-semibold",
+                              children: [
+                                h.jsxs("span", {
+                                  className: "flex items-center gap-1.5",
+                                  children: [
+                                    h.jsx("span", { children: "🪵" }),
+                                    h.jsx("span", {
+                                      children: "Quantidade para colocar no chão:",
+                                    }),
+                                  ],
+                                }),
+                                h.jsxs("span", {
+                                  className:
+                                    "font-mono text-xs font-bold text-amber-300 bg-black/50 px-2 py-0.5 rounded-lg border border-amber-500/40",
+                                  children: [
+                                    selectedQty,
+                                    " / ",
+                                    maxLogs,
+                                    maxLogs === 1 ? " tora" : " toras",
+                                  ],
+                                }),
+                              ],
+                            }),
+                            maxLogs > 1 &&
+                              h.jsxs("div", {
+                                className: "flex flex-col gap-1.5",
+                                children: [
+                                  h.jsxs("div", {
+                                    className: "flex items-center gap-2",
+                                    children: [
+                                      h.jsx("button", {
+                                        type: "button",
+                                        id: "btn-log-qty-minus",
+                                        disabled: selectedQty <= 1,
+                                        onClick: () =>
+                                          setLogQty(Math.max(1, selectedQty - 1)),
+                                        className:
+                                          "w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-amber-500/40 text-amber-200 font-bold text-sm flex items-center justify-center cursor-pointer active:scale-95 transition",
+                                        title: "Diminuir quantidade (-1)",
+                                        children: "−",
+                                      }),
+                                      h.jsx("input", {
+                                        id: "slider-log-qty",
+                                        type: "range",
+                                        min: 1,
+                                        max: maxLogs,
+                                        value: selectedQty,
+                                        onChange: (ev) =>
+                                          setLogQty(
+                                            Math.max(
+                                              1,
+                                              Math.min(
+                                                maxLogs,
+                                                parseInt(ev.target.value, 10) || 1,
+                                              ),
+                                            ),
+                                          ),
+                                        className:
+                                          "flex-1 accent-amber-500 h-2 bg-slate-900 rounded-lg cursor-pointer",
+                                      }),
+                                      h.jsx("button", {
+                                        type: "button",
+                                        id: "btn-log-qty-plus",
+                                        disabled: selectedQty >= maxLogs,
+                                        onClick: () =>
+                                          setLogQty(
+                                            Math.min(maxLogs, selectedQty + 1),
+                                          ),
+                                        className:
+                                          "w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-amber-500/40 text-amber-200 font-bold text-sm flex items-center justify-center cursor-pointer active:scale-95 transition",
+                                        title: "Aumentar quantidade (+1)",
+                                        children: "+",
+                                      }),
+                                    ],
+                                  }),
+                                  h.jsxs("div", {
+                                    className: "flex flex-wrap items-center gap-1.5",
+                                    children: [
+                                      h.jsx("button", {
+                                        type: "button",
+                                        onClick: () => setLogQty(1),
+                                        className: `px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition cursor-pointer ${
+                                          selectedQty === 1
+                                            ? "bg-amber-600 text-white border-amber-300 shadow"
+                                            : "bg-slate-900/90 text-amber-200/90 border-amber-500/30 hover:bg-slate-800"
+                                        }`,
+                                        children: "1x",
+                                      }),
+                                      maxLogs >= 3 &&
+                                        maxLogs !== 3 &&
+                                        h.jsx("button", {
+                                          type: "button",
+                                          onClick: () => setLogQty(3),
+                                          className: `px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition cursor-pointer ${
+                                            selectedQty === 3
+                                              ? "bg-amber-600 text-white border-amber-300 shadow"
+                                              : "bg-slate-900/90 text-amber-200/90 border-amber-500/30 hover:bg-slate-800"
+                                          }`,
+                                          children: "3x",
+                                        }),
+                                      maxLogs >= 5 &&
+                                        h.jsx("button", {
+                                          type: "button",
+                                          onClick: () => setLogQty(5),
+                                          className: `px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition cursor-pointer ${
+                                            selectedQty === 5
+                                              ? "bg-amber-600 text-white border-amber-300 shadow"
+                                              : "bg-slate-900/90 text-amber-200/90 border-amber-500/30 hover:bg-slate-800"
+                                          }`,
+                                          title: "5 toras permitem construir uma Cabana [C]",
+                                          children: "5x (Cabana)",
+                                        }),
+                                      maxLogs >= 10 &&
+                                        maxLogs !== 10 &&
+                                        h.jsx("button", {
+                                          type: "button",
+                                          onClick: () => setLogQty(10),
+                                          className: `px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition cursor-pointer ${
+                                            selectedQty === 10
+                                              ? "bg-amber-600 text-white border-amber-300 shadow"
+                                              : "bg-slate-900/90 text-amber-200/90 border-amber-500/30 hover:bg-slate-800"
+                                          }`,
+                                          children: "10x",
+                                        }),
+                                      h.jsxs("button", {
+                                        type: "button",
+                                        onClick: () => setLogQty(maxLogs),
+                                        className: `ml-auto px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition cursor-pointer ${
+                                          selectedQty === maxLogs
+                                            ? "bg-amber-600 text-white border-amber-300 shadow"
+                                            : "bg-slate-900/90 text-amber-200/90 border-amber-500/30 hover:bg-slate-800"
+                                        }`,
+                                        children: ["Todas (", maxLogs, ")"],
+                                      }),
+                                    ],
+                                  }),
+                                ],
                               }),
-                            ],
-                          }),
-                          h.jsx("div", {
-                            className:
-                              "w-full text-center text-[10px] text-amber-300/80 bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-500/20",
-                            children:
-                              "💡 Coloca o tronco no solo à sua frente. Pressione [F] para recolhê-lo.",
-                          }),
-                        ],
-                      }),
+                            h.jsxs("div", {
+                              className: "flex items-center gap-2",
+                              children: [
+                                h.jsxs("button", {
+                                  id: "btn-place-wood-log-ground",
+                                  onClick: () => triggerPlaceLogs(selectedQty),
+                                  className:
+                                    "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-500 active:scale-98 text-amber-100 text-xs font-black tracking-wide shadow-lg shadow-amber-950/80 cursor-pointer border border-amber-400/50 transition-all",
+                                  title:
+                                    "Colocar a quantidade escolhida de toras/troncos no chão do mundo",
+                                  children: [
+                                    h.jsx("span", {
+                                      className: "text-base",
+                                      children: "🪵",
+                                    }),
+                                    h.jsxs("span", {
+                                      children: [
+                                        selectedQty > 1
+                                          ? `Colocar ${selectedQty} Troncos no Chão`
+                                          : "Colocar 1 Tronco no Chão",
+                                      ],
+                                    }),
+                                  ],
+                                }),
+                                maxLogs > 1 &&
+                                  selectedQty !== maxLogs &&
+                                  h.jsxs("button", {
+                                    id: "btn-place-all-wood-logs-ground",
+                                    type: "button",
+                                    onClick: () => triggerPlaceLogs(maxLogs),
+                                    className:
+                                      "py-2.5 px-3 rounded-xl bg-amber-900/80 hover:bg-amber-800 active:scale-98 text-amber-100 text-xs font-bold border border-amber-400/40 cursor-pointer transition shadow",
+                                    title: `Colocar todas as ${maxLogs} toras do inventário de uma só vez`,
+                                    children: ["Tudo (", maxLogs, ")"],
+                                  }),
+                              ],
+                            }),
+                            h.jsx("div", {
+                              className:
+                                "w-full text-center text-[10px] text-amber-300/80 bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-500/20",
+                              children:
+                                "💡 Empilha as toras no solo à sua frente de uma só vez (5+ toras permitem erguer uma Cabana com [C]). Pressione [F] para recolher.",
+                            }),
+                          ],
+                        });
+                      })(),
                     e.source === "backpack" &&
                       et(e.item, "galho") &&
                       h.jsxs("div", {
