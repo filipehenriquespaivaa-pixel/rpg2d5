@@ -425,9 +425,30 @@
               descriptionPt: "Porta simples de madeira rústica. Pressione [F] para abrir ou fechar.",
             });
           } else if (x === originTx || x === originTx + width - 1 || y === originTy || y === originTy + height - 1) {
+            const isLeft = x === originTx;
+            const isRight = x === originTx + width - 1;
+            const isTop = y === originTy;
+            const isBottom = y === originTy + height - 1;
+            const wallSide =
+              isTop && isLeft
+                ? "nw"
+                : isTop && isRight
+                  ? "ne"
+                  : isBottom && isLeft
+                    ? "sw"
+                    : isBottom && isRight
+                      ? "se"
+                      : isTop
+                        ? "north"
+                        : isBottom
+                          ? "south"
+                          : isLeft
+                            ? "west"
+                            : "east";
             this.placeProp(x, y, {
               kind: "cabin_wall",
               cabinId: cabin.id,
+              wallSide,
               interactive: false,
               namePt: "Parede de Toras",
               descriptionPt: "Parede robusta feita com troncos de madeira sobrepostos.",
@@ -6976,47 +6997,71 @@
         return !1;
       return !0;
     }
+    getCabinWallSide(t) {
+      if (!t || !t.prop || t.prop.kind !== "cabin_wall") return null;
+      if (t.prop.wallSide) return t.prop.wallSide;
+      if (this.playerCabins && t.prop.cabinId) {
+        const c = this.playerCabins.find((cb) => cb.id === t.prop.cabinId);
+        if (c) {
+          const isLeft = t.tx === c.originTx;
+          const isRight = t.tx === c.originTx + c.width - 1;
+          const isTop = t.ty === c.originTy;
+          const isBottom = t.ty === c.originTy + c.height - 1;
+          return isTop && isLeft
+            ? "nw"
+            : isTop && isRight
+              ? "ne"
+              : isBottom && isLeft
+                ? "sw"
+                : isBottom && isRight
+                  ? "se"
+                  : isTop
+                    ? "north"
+                    : isBottom
+                      ? "south"
+                      : isLeft
+                        ? "west"
+                        : "east";
+        }
+      }
+      const isCS = (tile) =>
+        !!(tile && tile.prop && (tile.prop.kind === "cabin_wall" || tile.prop.kind === "cabin_door"));
+      const isFloor = (tile) => !!(tile && tile.prop && tile.prop.kind === "cabin_floor");
+      const tL = this.getTile(t.tx - 1, t.ty);
+      const tR = this.getTile(t.tx + 1, t.ty);
+      const tT = this.getTile(t.tx, t.ty - 1);
+      const tB = this.getTile(t.tx, t.ty + 1);
+      const nL = isCS(tL), nR = isCS(tR), nT = isCS(tT), nB = isCS(tB);
+      if (nR && nB && !nL && !nT) return "nw";
+      if (nL && nB && !nR && !nT) return "ne";
+      if (nR && nT && !nL && !nB) return "sw";
+      if (nL && nT && !nR && !nB) return "se";
+      if (isFloor(tB)) return "north";
+      if (isFloor(tT)) return "south";
+      if (isFloor(tR)) return "west";
+      if (isFloor(tL)) return "east";
+      return "north";
+    }
     getCabinWallRects(t) {
       if (!t || !t.prop || t.prop.kind !== "cabin_wall") return null;
       const ts = this.tileSize;
       const thick = ts * (10 / 36); // Menos de 1/3 de um bloco (10px em 36px)
       const x0 = t.tx * ts;
       const y0 = t.ty * ts;
-      const isCabinStruct = (tile) =>
-        !!(tile && tile.prop && (tile.prop.kind === "cabin_wall" || tile.prop.kind === "cabin_door"));
-      const nL = isCabinStruct(this.getTile(t.tx - 1, t.ty));
-      const nR = isCabinStruct(this.getTile(t.tx + 1, t.ty));
-      const nT = isCabinStruct(this.getTile(t.tx, t.ty - 1));
-      const nB = isCabinStruct(this.getTile(t.tx, t.ty + 1));
+      const side = this.getCabinWallSide(t);
 
       const rects = [];
-      // Parede Norte
-      if ((nL && nR && !nB) || ((nL || nR) && nB && !nT)) {
+      if (side === "north" || side === "nw" || side === "ne") {
         rects.push({ x0, y0, x1: x0 + ts, y1: y0 + thick });
       }
-      // Parede Sul
-      if ((nL && nR && !nB && nT) || ((nL || nR) && nT && !nB)) {
+      if (side === "south" || side === "sw" || side === "se") {
         rects.push({ x0, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts });
       }
-      // Parede horizontal reta sem norte nem sul (meio da parede norte/sul)
-      if (nL && nR && !nT && !nB && rects.length === 0) {
-        rects.push({ x0, y0, x1: x0 + ts, y1: y0 + thick });
-      }
-      // Parede Oeste
-      if ((nT && nB && !nL) || ((nT || nB) && nR && !nL)) {
+      if (side === "west" || side === "nw" || side === "sw") {
         rects.push({ x0, y0, x1: x0 + thick, y1: y0 + ts });
       }
-      // Parede Leste
-      if ((nT && nB && !nR) || ((nT || nB) && nL && !nR)) {
+      if (side === "east" || side === "ne" || side === "se") {
         rects.push({ x0: x0 + ts - thick, y0, x1: x0 + ts, y1: y0 + ts });
-      }
-      if (rects.length === 0) {
-        rects.push({
-          x0: x0 + (ts - thick) / 2,
-          y0: y0 + (ts - thick) / 2,
-          x1: x0 + (ts + thick) / 2,
-          y1: y0 + (ts + thick) / 2,
-        });
       }
       return rects;
     }

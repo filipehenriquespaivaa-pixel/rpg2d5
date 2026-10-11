@@ -9966,10 +9966,7 @@
     ctx.translate(-half, -half);
 
     const thick = 10 * s; // Menos de 1/3 de um bloco (10px de 36px = ~27.7%)
-    const nL = !!(nb && nb.left);
-    const nR = !!(nb && nb.right);
-    const nT = !!(nb && nb.top);
-    const nB = !!(nb && nb.bottom);
+    const side = (nb && nb.wallSide) || "north";
 
     const drawHorizSegment = (x, y, w, h) => {
       // Sombra projetada suave no piso
@@ -10042,46 +10039,32 @@
       ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     };
 
-    let drewAny = false;
-    // Parede Norte (borda superior do tile)
-    if ((nL && nR && !nB) || ((nL || nR) && nB && !nT)) {
+    // Parede Norte (borda superior externa)
+    if (side === "north" || side === "nw" || side === "ne") {
       drawHorizSegment(0, 0, ts, thick);
-      drewAny = true;
     }
-    // Parede Sul (borda inferior do tile)
-    if ((nL && nR && !nB && nT) || ((nL || nR) && nT && !nB)) {
+    // Parede Sul (borda inferior externa — incluindo a parede ao lado da porta!)
+    if (side === "south" || side === "sw" || side === "se") {
       drawHorizSegment(0, ts - thick, ts, thick);
-      drewAny = true;
     }
-    // Parede horizontal reta sem norte nem sul (meio das paredes Norte/Sul)
-    if (nL && nR && !nT && !nB && !drewAny) {
-      drawHorizSegment(0, 0, ts, thick);
-      drewAny = true;
-    }
-    // Parede Oeste (borda esquerda do tile)
-    if ((nT && nB && !nL) || ((nT || nB) && nR && !nL)) {
+    // Parede Oeste (borda esquerda externa)
+    if (side === "west" || side === "nw" || side === "sw") {
       drawVertSegment(0, 0, thick, ts);
-      drewAny = true;
     }
-    // Parede Leste (borda direita do tile)
-    if ((nT && nB && !nR) || ((nT || nB) && nL && !nR)) {
+    // Parede Leste (borda direita externa)
+    if (side === "east" || side === "ne" || side === "se") {
       drawVertSegment(ts - thick, 0, thick, ts);
-      drewAny = true;
     }
 
-    // Pilar de encaixe nas 4 quinas da cabana
-    if ((nR && nB && !nL && !nT) || (nL && nB && !nR && !nT) || (nR && nT && !nL && !nB) || (nL && nT && !nR && !nB)) {
-      const px = (!nL && nR) ? 0 : ts - thick;
-      const py = (!nT && nB) ? 0 : ts - thick;
+    // Pilar de encaixe apenas nas 4 quinas externas da cabana
+    if (side === "nw" || side === "ne" || side === "sw" || side === "se") {
+      const px = (side === "nw" || side === "sw") ? 0 : ts - thick;
+      const py = (side === "nw" || side === "ne") ? 0 : ts - thick;
       ctx.fillStyle = "#5c2808";
       ctx.fillRect(px + 1 * s, py + 1 * s, thick - 2 * s, thick - 2 * s);
       ctx.strokeStyle = "#271206";
       ctx.lineWidth = 1.1 * s;
       ctx.strokeRect(px + 1 * s, py + 1 * s, thick - 2 * s, thick - 2 * s);
-    }
-
-    if (!drewAny) {
-      drawHorizSegment(0, (ts - thick) / 2, ts, thick);
     }
 
     ctx.restore();
