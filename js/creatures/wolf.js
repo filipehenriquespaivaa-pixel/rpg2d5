@@ -1204,11 +1204,27 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
   const det = manager.getAnimalFireDeterrence(wolf, player);
   if (!det.canAttack) return;
 
-  // Hierarquia de predadores: se houver criatura mais forte atacando o jogador (ex: Dragão), o lobo não entra na luta
+  if (wolf.leavingCombatTimer && wolf.leavingCombatTimer > 0) return;
+  // Hierarquia de predadores: se houver criatura mais forte atacando o jogador (ex: Dragão), o lobo não entra na luta e vai embora
   if (manager && typeof manager.getSuperiorPlayerAttacker === "function") {
     const superior = manager.getSuperiorPlayerAttacker(wolf, player);
     if (superior) {
-      wolf.attackCooldown = 2.0;
+      wolf.attackCooldown = 4.0;
+      wolf.aggroTimer = 0;
+      wolf.giveUpPursuitTimer = 14.0;
+      wolf.leavingCombatTimer = 10.0;
+      wolf.fleeFromCombatX = player.x;
+      wolf.fleeFromCombatY = player.y;
+      const fleeAng = (manager.pickFleeAngle ? manager.pickFleeAngle(wolf, player.x, player.y, 0.016, wolf.speed * 1.45) : Math.atan2(wolf.y - player.y, wolf.x - player.x)) || Math.random() * Math.PI * 2;
+      wolf.vx = Math.cos(fleeAng) * (wolf.speed * 1.45);
+      wolf.vy = Math.sin(fleeAng) * (wolf.speed * 1.45);
+      wolf.facing = manager.getMonsterFacing(wolf.vx, wolf.vy, wolf.facing);
+      if (manager.engine && typeof manager.engine.moveWithSlide === "function") {
+        const _m = manager.engine.moveWithSlide(wolf.x, wolf.y, wolf.vx * 0.016 * 60, wolf.vy * 0.016 * 60, false);
+        wolf.x = _m.x;
+        wolf.y = _m.y;
+        wolf.isMoving = true;
+      }
       return;
     }
   }
@@ -1217,6 +1233,7 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
   // 1 = arm_hold (morde braço e abraça o player)
   // 2 = leg_pull (morde perna e puxa para trás)
   // 3 = quick_bite_retreat (morde, solta e afasta para avançar novamente)
+  wolf.inCombatTimer = 4.0;
   wolf.wolfAttackCombo = ((wolf.wolfAttackCombo || 0) % 3) + 1;
   const attackChoice = wolf.wolfAttackCombo;
 
@@ -1271,6 +1288,7 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
 
 CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
   if (!wolf.wolfAttackState) return false;
+  wolf.inCombatTimer = 4.0;
 
   // Se o lobo ou player estiverem mortos, encerra o ataque
   if (wolf.hp <= 0 || player.isDead) {
@@ -1278,16 +1296,27 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
     return false;
   }
 
-  // Hierarquia de predadores: se um predador mais forte (ex: Dragão) chegar atacando o player, o lobo desiste do ataque e recua!
+  // Hierarquia de predadores: se um predador mais forte (ex: Dragão) chegar atacando o player, o lobo desiste do ataque e vai embora!
   if (manager && typeof manager.getSuperiorPlayerAttacker === "function") {
     const superior = manager.getSuperiorPlayerAttacker(wolf, player);
     if (superior) {
       wolf.wolfAttackState = null;
-      wolf.attackCooldown = 2.5;
-      const fleeAng = Math.atan2(wolf.y - player.y, wolf.x - player.x) || Math.random() * Math.PI * 2;
-      wolf.vx = Math.cos(fleeAng) * (wolf.speed * 1.35);
-      wolf.vy = Math.sin(fleeAng) * (wolf.speed * 1.35);
+      wolf.attackCooldown = 4.0;
+      wolf.aggroTimer = 0;
+      wolf.giveUpPursuitTimer = 14.0;
+      wolf.leavingCombatTimer = 10.0;
+      wolf.fleeFromCombatX = player.x;
+      wolf.fleeFromCombatY = player.y;
+      const fleeAng = (manager.pickFleeAngle ? manager.pickFleeAngle(wolf, player.x, player.y, dt, wolf.speed * 1.45) : Math.atan2(wolf.y - player.y, wolf.x - player.x)) || Math.random() * Math.PI * 2;
+      wolf.vx = Math.cos(fleeAng) * (wolf.speed * 1.45);
+      wolf.vy = Math.sin(fleeAng) * (wolf.speed * 1.45);
       wolf.facing = manager.getMonsterFacing(wolf.vx, wolf.vy, wolf.facing);
+      if (manager.engine && typeof manager.engine.moveWithSlide === "function") {
+        const _m = manager.engine.moveWithSlide(wolf.x, wolf.y, wolf.vx * dt * 60, wolf.vy * dt * 60, false);
+        wolf.x = _m.x;
+        wolf.y = _m.y;
+        wolf.isMoving = true;
+      }
       return false;
     }
   }
