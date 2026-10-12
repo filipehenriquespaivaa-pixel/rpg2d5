@@ -3014,8 +3014,46 @@
         if (D.isDead) return;
         const Q = E.tileSize,
           q = Math.floor(D.x / Q),
-          F = Math.floor(D.y / Q),
-          ie = c.current.getNearestDroppedItem(D.x, D.y, 50, E.isUnderground);
+          F = Math.floor(D.y / Q);
+        const pDir = D.direction || D.facing || "down";
+        let fdx = 0, fdy = 0;
+        if (pDir === "left") fdx = -1;
+        else if (pDir === "right") fdx = 1;
+        else if (pDir === "up") fdy = -1;
+        else fdy = 1;
+
+        // Função para testar se um alvo (em coordenadas do mundo x,y) está na frente do jogador ou dentro de uma tolerância imediata
+        // Retorna: -1 se estiver atrás (ignorar), ou score positivo (quanto mais alinhado à frente e mais próximo, maior prioridade)
+        const getDirectionalScore = (targetX, targetY) => {
+          const dx = targetX - D.x;
+          const dy = targetY - D.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 10) return 1000 - dist; // Praticamente em cima do jogador
+          // Produto escalar com vetor de direção
+          const dot = dx * fdx + dy * fdy;
+          // Se o produto escalar for negativo além de tolerância estrita (ex: -12px), está atrás
+          if (dot < -12) return -1;
+          // Score de prioridade: peso para estar na frente + proximidade
+          const alignment = dot / (dist || 1); // 1 = perfeitamente na frente, 0 = 90 graus lado
+          return (alignment * 200) + (100 - dist);
+        };
+
+        // 1. Verificar se há itens caídos na frente do jogador (ignora os que estão atrás)
+        const droppedCandidate = (() => {
+          let best = null, bestScore = -1;
+          for (const it of c.current.droppedItems) {
+            if (it.isUnderground !== !!E.isUnderground) continue;
+            const dist = Math.hypot(it.x - D.x, it.y - D.y);
+            if (dist > 52) continue;
+            const score = getDirectionalScore(it.x, it.y);
+            if (score > 0 && score > bestScore) {
+              bestScore = score;
+              best = it;
+            }
+          }
+          return best;
+        })();
+        const ie = droppedCandidate;
         if (ie) {
           const Ye = ot(Da.current.mochila),
             Ge = Zt.current.findIndex((Ke) => Ke.name === ie.item.name),
@@ -3046,7 +3084,23 @@
             return;
           }
         }
-        const ge = c.current.getNearestCarcass(D.x, D.y, 56, E.isUnderground);
+
+        // 2. Verificar carcaças na frente do jogador (ignora as que estão atrás)
+        const carcassCandidate = (() => {
+          let best = null, bestScore = -1;
+          for (const carc of c.current.carcasses) {
+            if (carc.collected || carc.isUnderground !== !!E.isUnderground) continue;
+            const dist = Math.hypot(carc.x - D.x, carc.y - D.y);
+            if (dist > 56) continue;
+            const score = getDirectionalScore(carc.x, carc.y);
+            if (score > 0 && score > bestScore) {
+              bestScore = score;
+              best = carc;
+            }
+          }
+          return best;
+        })();
+        const ge = carcassCandidate;
         if (ge) {
           const Ye = c.current.collectCarcass(ge.id);
           if (Ye) {
@@ -3084,7 +3138,10 @@
             return;
           }
         }
+
+        // 3. Verificar itens naturais do chão (seixos, cogumelos, flores, gravetos) na frente do jogador
         let re = null;
+        let reBestScore = -1;
         for (let Ye = -1; Ye <= 1; Ye++)
           for (let Ge = -1; Ge <= 1; Ge++) {
             const Pe = q + Ye,
@@ -3096,9 +3153,13 @@
                 sa = Pe * Q + Q / 2 + qe,
                 Pa = aa * Q + Q / 2 + Ze,
                 va = Math.hypot(D.x - sa, D.y - Pa);
-              va < 48 &&
-                (!re || va < re.dist) &&
-                (re = { tx: Pe, ty: aa, dist: va });
+              if (va < 50) {
+                const score = getDirectionalScore(sa, Pa);
+                if (score > 0 && score > reBestScore) {
+                  reBestScore = score;
+                  re = { tx: Pe, ty: aa, dist: va };
+                }
+              }
             }
           }
         if (re) {
@@ -3163,23 +3224,58 @@
               (Oe.mao_esquerda.name || "").toLowerCase().includes("machado") ||
               (Oe.mao_esquerda.id || "").toLowerCase().includes("axe")))
         );
-        const pDir = D.direction || D.facing || "down";
-        let fdx = 0, fdy = 0;
-        if (pDir === "left") fdx = -1;
-        else if (pDir === "right") fdx = 1;
-        else if (pDir === "up") fdy = -1;
-        else fdy = 1;
+
+        // Grid 3x3 de tiles adjacentes com filtro de direção rigoroso:
+        // Apenas tiles à frente do jogador ou no mesmo tile; tiles que estão nas costas (dot < -0.3) são descartados!
+        const allAdjacentTiles = [
+          { tx: q + fdx, ty: F + fdy, isFacingFront: true }, // Tile exatamente à frente
+          { tx: q, ty: F, isFacingFront: false },            // Tile sob os pés
+          { tx: q + 1, ty: F, isFacingFront: false },
+          { tx: q - 1, ty: F, isFacingFront: false },
+          { tx: q, ty: F + 1, isFacingFront: false },
+          { tx: q, ty: F - 1, isFacingFront: false },
+          { tx: q + 1, ty: F + 1, isFacingFront: false },
+          { tx: q - 1, ty: F + 1, isFacingFront: false },
+          { tx: q + 1, ty: F - 1, isFacingFront: false },
+          { tx: q - 1, ty: F - 1, isFacingFront: false },
+        ];
+
+        // Filtra tiles descartando os que estão claramente nas costas
+        const validTilesFacing = allAdjacentTiles.filter((c) => {
+          if (c.tx === q && c.ty === F) return true; // Mesmo tile
+          const dtx = c.tx - q;
+          const dty = c.ty - F;
+          const dot = dtx * fdx + dty * fdy;
+          // Se dot < 0, está nas costas! Ignorar!
+          return dot >= 0;
+        });
+
+        const isPriorityDoorOrChest = (coord) => {
+          const tile = E.getTile(coord.tx, coord.ty);
+          const kind = tile && tile.prop ? tile.prop.kind : "";
+          return (
+            kind === "cabin_door" ||
+            kind === "wooden_chest" ||
+            kind === "greek_door" ||
+            kind === "snow_city_door" ||
+            kind === "desert_city_door" ||
+            kind === "port_city_door" ||
+            kind === "dungeon_door" ||
+            kind === "iron_bars_gate"
+          );
+        };
+
+        // Ordenação por prioridade:
+        // 1. Portas / baús exatamente à frente
+        // 2. Portas / baús adjacentes na visão frontal/lateral
+        // 3. Tile exatamente à frente (fdx, fdy)
+        // 4. Outros objetos na frente/lados
+        // 5. O que estiver nas costas foi excluído pelo filtro acima!
         const me = [
-          { tx: q + fdx, ty: F + fdy },
-          { tx: q, ty: F },
-          { tx: q + 1, ty: F },
-          { tx: q - 1, ty: F },
-          { tx: q, ty: F + 1 },
-          { tx: q, ty: F - 1 },
-          { tx: q + 1, ty: F + 1 },
-          { tx: q - 1, ty: F + 1 },
-          { tx: q + 1, ty: F - 1 },
-          { tx: q - 1, ty: F - 1 },
+          ...validTilesFacing.filter((c) => c.isFacingFront && isPriorityDoorOrChest(c)),
+          ...validTilesFacing.filter((c) => !c.isFacingFront && isPriorityDoorOrChest(c)),
+          ...validTilesFacing.filter((c) => c.isFacingFront && !isPriorityDoorOrChest(c)),
+          ...validTilesFacing.filter((c) => !c.isFacingFront && !isPriorityDoorOrChest(c)),
         ];
         for (const Ye of me) {
           const Ge = E.getTile(Ye.tx, Ye.ty),
@@ -5164,8 +5260,23 @@
             (he.fireProtected = Ze || sa),
             he.fireProtected !== we.current &&
               ((we.current = !!he.fireProtected), Fe(!!he.fireProtected)));
-          const Pa = Q.getNearbyCampfire(he.x, he.y, 90),
-            va = Ue.current;
+          const rawCampfire = Q.getNearbyCampfire(he.x, he.y, 90);
+          let Pa = rawCampfire;
+          if (rawCampfire) {
+            const cpX = rawCampfire.tx * Q.tileSize + Q.tileSize / 2 + (rawCampfire.prop.offsetX || 0);
+            const cpY = rawCampfire.ty * Q.tileSize + Q.tileSize / 2 + (rawCampfire.prop.offsetY || 0);
+            const cdx = cpX - he.x;
+            const cdy = cpY - he.y;
+            const pFDir = he.direction || he.facing || "down";
+            const cfDx = pFDir === "left" ? -1 : pFDir === "right" ? 1 : 0;
+            const cfDy = pFDir === "up" ? -1 : pFDir === "down" ? 1 : 0;
+            const cDot = cdx * cfDx + cdy * cfDy;
+            // Se a fogueira estiver claramente nas costas do personagem (cDot < -16), não foca nela
+            if (cDot < -16) {
+              Pa = null;
+            }
+          }
+          const va = Ue.current;
           if (
             (Pa
               ? (!va ||

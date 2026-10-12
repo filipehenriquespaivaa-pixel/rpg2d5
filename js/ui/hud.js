@@ -2343,28 +2343,27 @@
                       }),
                   ],
                 }),
-                !oe &&
-                  h.jsx("button", {
-                    id: "touch-interact-btn",
-                    onClick: j,
-                    className:
-                      "flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 text-white font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-blue-600 to-blue-700 border-blue-400/80 shadow-blue-950/60",
-                    title: "Interagir / Coletar Item / Minerador (Tecla F)",
-                    children: h.jsxs(h.Fragment, {
-                      children: [
-                        h.jsx("span", {
-                          className:
-                            "text-base font-black leading-none text-white",
-                          children: "E",
-                        }),
-                        h.jsx("span", {
-                          className:
-                            "text-[9px] font-semibold tracking-wide text-blue-100 uppercase mt-0.5",
-                          children: "AÇÃO",
-                        }),
-                      ],
-                    }),
+                h.jsx("button", {
+                  id: "touch-interact-btn",
+                  onClick: j,
+                  className:
+                    "flex flex-col items-center justify-center w-14 h-14 rounded-2xl border-2 text-white font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-blue-600 to-blue-700 border-blue-400/80 shadow-blue-950/60",
+                  title: "Interagir / Abrir Porta / Coletar Item (Tecla E)",
+                  children: h.jsxs(h.Fragment, {
+                    children: [
+                      h.jsx("span", {
+                        className:
+                          "text-base font-black leading-none text-white",
+                        children: "E",
+                      }),
+                      h.jsx("span", {
+                        className:
+                          "text-[9px] font-semibold tracking-wide text-blue-100 uppercase mt-0.5",
+                        children: "AÇÃO",
+                      }),
+                    ],
                   }),
+                }),
               ],
             }),
           ],
