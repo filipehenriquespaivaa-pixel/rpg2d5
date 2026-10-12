@@ -4596,20 +4596,11 @@
             setCabinPlacementPreview(null);
             m.current && m.current.playWoodChop && m.current.playWoodChop();
             m.current && m.current.playChestChime && m.current.playChestChime();
-            c.current &&
-              typeof c.current.addFloatingText === "function" &&
-              c.current.addFloatingText(
-                (activePreview.originTx + 2) * world.tileSize,
-                (activePreview.originTy + 1) * world.tileSize,
-                "🛖 CABANA CONSTRUÍDA!",
-                "#fbbf24",
-              );
             const remainingPile = world.getNearbyWoodLogPile
               ? world.getNearbyWoodLogPile(f.current.x, f.current.y, 90, 5)
               : null;
             nearbyLogPileRef.current = remainingPile;
             setNearbyLogPile(remainingPile);
-            ve(result.message);
             return true;
           } else {
             m.current && m.current.playFusionFail && m.current.playFusionFail();
@@ -4668,7 +4659,6 @@
         if (typeof window !== "undefined") window.__cabinPlacementPreview = previewObj;
         setCabinPlacementPreview(previewObj);
         m.current && m.current.playEquipItem && m.current.playEquipItem();
-        ve("🟩 Escolha o local da Cabana usando os botões de andar (WASD / Setas) e pressione CRIAR CABANA [C] novamente para confirmar!");
         return true;
       }, [ve]),
       Ga = J.useRef({

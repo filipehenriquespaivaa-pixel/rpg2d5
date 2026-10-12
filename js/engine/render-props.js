@@ -10473,30 +10473,6 @@
     ctx.textBaseline = "middle";
     ctx.fillText("🚪 PORTA", doorCenterX, doorCenterY);
 
-    // Rótulo superior de instrução
-    const labelCenterX = leftPx + totalW / 2;
-    const labelCenterY = topPx - 12;
-    const labelText = isValid
-      ? "🛖 MOVA (WASD/SETAS) • [C] OU BOTÃO P/ CONFIRMAR"
-      : "⚠️ LOCAL BLOQUEADO • MOVA PARA ÁREA LIVRE";
-    ctx.font = "bold 9px monospace";
-    const textW = Math.max(180, ctx.measureText(labelText).width + 16);
-    ctx.fillStyle = isValid ? "rgba(6, 78, 59, 0.92)" : "rgba(127, 29, 29, 0.92)";
-    ctx.beginPath();
-    if (typeof ctx.roundRect === "function") {
-      ctx.roundRect(labelCenterX - textW / 2, labelCenterY - 9, textW, 18, 5);
-    } else {
-      ctx.rect(labelCenterX - textW / 2, labelCenterY - 9, textW, 18);
-    }
-    ctx.fill();
-    ctx.strokeStyle = isValid ? "#4ade80" : "#f87171";
-    ctx.lineWidth = 1.3;
-    ctx.stroke();
-    ctx.fillStyle = isValid ? "#bbf7d0" : "#fecaca";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(labelText, labelCenterX, labelCenterY);
-
     ctx.restore();
   }
 
