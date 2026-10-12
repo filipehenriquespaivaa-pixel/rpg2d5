@@ -1183,6 +1183,22 @@ CREATURES.wolf = {
 // ==========================================
 // LÓGICA DE COMBATE DINÂMICO DO LOBO (3 ATAQUES)
 // ==========================================
+// Partícula de poeira sutil (redução de 95% na quantidade e tamanho de poeira do lobo)
+function spawnSubtleWolfDust(manager, x, y) {
+  if (!manager || !manager.slimeParticles) return;
+  manager.slimeParticles.push({
+    x: x + (Math.random() - 0.5) * 4,
+    y: y,
+    vx: (Math.random() - 0.5) * 0.9,
+    vy: -0.3 - Math.random() * 0.5,
+    life: 0.25,
+    maxLife: 0.25,
+    type: "dust",
+    color: "rgba(148, 163, 184, 0.28)",
+    size: 1.0,
+  });
+}
+
 CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
   if (player.isDead || (player.invulnerableTimer && player.invulnerableTimer > 0)) return;
   const det = manager.getAnimalFireDeterrence(wolf, player);
@@ -1227,7 +1243,7 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
     wolf.vy = 0;
 
     manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, wolf.x, wolf.y);
-    manager.spawnGroundDust(wolf.x, wolf.y + 4, 0.65);
+    spawnSubtleWolfDust(manager, wolf.x, wolf.y + 4);
   } else {
     // 3. Morde e solta e afasta para avançar novamente
     wolf.wolfAttackState = "quick_bite";
@@ -1312,10 +1328,9 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
     wolf.y = player.y + ndy * 16 * (wolf.scale || 1);
     wolf.facing = ndx < 0 ? "right" : "left";
 
-    // Poeira das patas cravadas no chão
-    if (Math.random() < dt * 8) {
-      manager.spawnGroundDust(wolf.x, wolf.y + 4, 0.45);
-      manager.spawnGroundDust(player.x, player.y + 6, 0.35);
+    // Poeira reduzida em 95%: apenas 1 partícula sutil ocasionalmente
+    if (Math.random() < dt * 0.35) {
+      spawnSubtleWolfDust(manager, wolf.x, wolf.y + 4);
     }
 
     // Mordida secundária durante o puxão
@@ -1356,8 +1371,9 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
     // Mantém o olhar fixo no jogador enquanto recua
     wolf.facing = manager.getMonsterFacingToTarget(wolf.x, wolf.y, player.x, player.y, wolf.facing);
 
-    if (Math.random() < dt * 6) {
-      manager.spawnGroundDust(wolf.x, wolf.y + 3, 0.3);
+    // Poeira de derrapagem reduzida em 95%
+    if (Math.random() < dt * 0.3) {
+      spawnSubtleWolfDust(manager, wolf.x, wolf.y + 3);
     }
 
     if (wolf.wolfAttackTimer <= 0) {
