@@ -10339,9 +10339,9 @@
       const cx = leftPx + tileSize / 2;
       const cy = topPx + tileSize / 2;
       ctx.save();
-      ctx.translate(cx, cy);
+      ctx.translate(cx, cy + 4);
       ctx.globalAlpha = 0.85;
-      pg(ctx, tileSize, false, animTimer || 0);
+      pg(ctx, 1, false, animTimer || 0);
       ctx.restore();
 
       const badgeW = 186;

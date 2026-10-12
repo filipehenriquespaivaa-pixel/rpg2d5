@@ -44,6 +44,87 @@
 
     e.restore();
   }
+  function drawWoodenChestIcon(e, t, l, o) {
+    e.save();
+    e.translate(t, l + 2 * o);
+
+    // Sombra da base
+    e.fillStyle = "rgba(0, 0, 0, 0.35)";
+    e.beginPath();
+    e.ellipse(0, 4.5 * o, 9.5 * o, 3.2 * o, 0, 0, Math.PI * 2);
+    e.fill();
+
+    // Corpo inferior do baú (madeira escura de contorno + tábuas de carvalho)
+    e.fillStyle = "#451a03";
+    e.beginPath();
+    e.roundRect(-8.5 * o, -4.5 * o, 17 * o, 9.5 * o, 1.8 * o);
+    e.fill();
+
+    e.fillStyle = "#78350f";
+    e.fillRect(-7.8 * o, -4 * o, 15.6 * o, 8.2 * o);
+
+    // Divisórias horizontais das tábuas
+    e.strokeStyle = "#2e1205";
+    e.lineWidth = 0.85 * o;
+    e.beginPath();
+    e.moveTo(-7.8 * o, -1.2 * o);
+    e.lineTo(7.8 * o, -1.2 * o);
+    e.moveTo(-7.8 * o, 1.6 * o);
+    e.lineTo(7.8 * o, 1.6 * o);
+    e.stroke();
+
+    // Tampa abaulada superior do baú
+    e.fillStyle = "#451a03";
+    e.beginPath();
+    e.roundRect(-9 * o, -9.5 * o, 18 * o, 5.8 * o, [3.2 * o, 3.2 * o, 0.5 * o, 0.5 * o]);
+    e.fill();
+
+    e.fillStyle = "#92400e";
+    e.beginPath();
+    e.roundRect(-8.2 * o, -8.8 * o, 16.4 * o, 4.6 * o, [2.6 * o, 2.6 * o, 0, 0]);
+    e.fill();
+
+    // Brilho superior na madeira da tampa
+    e.fillStyle = "rgba(251, 191, 36, 0.18)";
+    e.fillRect(-7.2 * o, -8.2 * o, 14.4 * o, 1.4 * o);
+
+    // Tiras de ferro laterais (corpo + tampa)
+    e.fillStyle = "#334155";
+    e.fillRect(-6.4 * o, -8.8 * o, 2.3 * o, 13 * o);
+    e.fillRect(4.1 * o, -8.8 * o, 2.3 * o, 13 * o);
+
+    // Rebites prateados nas ferragens
+    e.fillStyle = "#cbd5e1";
+    e.fillRect(-5.7 * o, -7.6 * o, 0.9 * o, 0.9 * o);
+    e.fillRect(-5.7 * o, 1.8 * o, 0.9 * o, 0.9 * o);
+    e.fillRect(4.8 * o, -7.6 * o, 0.9 * o, 0.9 * o);
+    e.fillRect(4.8 * o, 1.8 * o, 0.9 * o, 0.9 * o);
+
+    // Linha de encaixe entre tampa e base
+    e.strokeStyle = "#1c0a00";
+    e.lineWidth = 1.1 * o;
+    e.beginPath();
+    e.moveTo(-8.8 * o, -4 * o);
+    e.lineTo(8.8 * o, -4 * o);
+    e.stroke();
+
+    // Fecho central dourado com fechadura
+    e.fillStyle = "#f59e0b";
+    e.strokeStyle = "#78350f";
+    e.lineWidth = 0.7 * o;
+    e.beginPath();
+    e.roundRect(-2.1 * o, -5.8 * o, 4.2 * o, 4.4 * o, 1 * o);
+    e.fill();
+    e.stroke();
+
+    e.fillStyle = "#1e293b";
+    e.beginPath();
+    e.arc(0, -3.9 * o, 0.75 * o, 0, Math.PI * 2);
+    e.fill();
+    e.fillRect(-0.4 * o, -3.9 * o, 0.8 * o, 1.4 * o);
+
+    e.restore();
+  }
   function drawItemIcon(e, t, l, o, u = 0, m = !0) {
     (e.save(), m && e.clearRect(0, 0, l, o));
     const c = l / 2,
@@ -94,6 +175,17 @@
       v === "slingshot"
     ) {
       (drawSlingshotIcon(e, c, f, g, u, S), e.restore());
+      return;
+    }
+    if (
+      t.isPlaceableChest ||
+      y.includes("baú") ||
+      y.includes("bau") ||
+      w.includes("bau_madeira") ||
+      v === "📦"
+    ) {
+      drawWoodenChestIcon(e, c, f, g, u);
+      e.restore();
       return;
     }
     if (y.includes("tronco") || w.includes("tronco")) {
