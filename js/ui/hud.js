@@ -2093,8 +2093,8 @@
                                 justifyContent: "center",
                               },
                               className:
-                                "flex flex-col items-center justify-center rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-slate-900/90 border-rose-400/80 text-rose-200 hover:bg-rose-950/90",
-                              title: "Cancelar posicionamento da cabana (Esc)",
+                                "flex flex-col items-center justify-center rounded-xl border font-bold shadow-lg backdrop-blur-sm active:scale-90 transition-all bg-slate-800/80 border-white/20 text-rose-300",
+                              title: "Cancelar posicionamento (Esc)",
                               children: [
                                 h.jsx("span", { className: "text-xs leading-none", children: "✖" }),
                                 h.jsx("span", {
@@ -2118,8 +2118,8 @@
                             },
                             className:
                               cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
-                                ? "flex flex-col items-center justify-center rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-emerald-500 via-green-600 to-emerald-700 border-emerald-200 text-white shadow-emerald-950/80 ring-2 ring-emerald-400/80 animate-pulse"
-                                : "flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-amber-600 via-yellow-600 to-amber-700 border-amber-300 text-white shadow-amber-950/70 animate-bounce",
+                                ? "flex flex-col items-center justify-center rounded-xl border border-amber-400/50 bg-amber-600/85 text-white font-bold shadow-lg active:scale-90 transition-all backdrop-blur-sm"
+                                : "flex flex-col items-center justify-center w-11 h-11 rounded-xl border border-white/20 bg-slate-800/80 text-amber-400 font-bold shadow-lg active:scale-90 transition-all backdrop-blur-sm",
                             title:
                               cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
                                 ? cabinPlacementPreviewProp.mode === "chest"
