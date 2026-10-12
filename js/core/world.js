@@ -7160,9 +7160,10 @@
       }
 
       const side = this.getCabinWallSide(t);
+      const northThick = thick * 2; // Parede do fundo (norte) com o dobro da altura (20px em 36px)
       const rects = [];
       if (side === "north" || side === "nw" || side === "ne") {
-        rects.push({ x0, y0, x1: x0 + ts, y1: y0 + thick });
+        rects.push({ x0, y0, x1: x0 + ts, y1: y0 + northThick });
       }
       if (side === "south" || side === "sw" || side === "se") {
         rects.push({ x0, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts });

@@ -9967,10 +9967,11 @@
     ctx.save();
     ctx.translate(-half, -half);
 
-    const thick = 10 * s; // Menos de 1/3 de um bloco (10px de 36px = ~27.7%)
+    const thick = 10 * s; // Menos de 1/3 de um bloco nas paredes laterais/frontal (10px de 36px)
+    const northThick = thick * 2; // Parede do fundo (norte) com o dobro da altura (20px de 36px)
     const side = (nb && nb.wallSide) || "north";
 
-    const drawHorizSegment = (x, y, w, h) => {
+    const drawHorizSegment = (x, y, w, h, numLogs = 2) => {
       // Sombra projetada suave no piso
       ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
       ctx.fillRect(x, y + h, w, 2 * s);
@@ -9978,8 +9979,8 @@
       ctx.fillStyle = "#271206";
       ctx.fillRect(x, y, w, h);
 
-      const logH = h / 2;
-      for (let i = 0; i < 2; i++) {
+      const logH = h / numLogs;
+      for (let i = 0; i < numLogs; i++) {
         const ly = y + i * logH;
         const grad = ctx.createLinearGradient(0, ly, 0, ly + logH);
         grad.addColorStop(0, "#854d0e");
@@ -9995,11 +9996,13 @@
         ctx.moveTo(x + 2 * s, ly + logH * 0.35);
         ctx.lineTo(x + w - 2 * s, ly + logH * 0.35);
         ctx.stroke();
-      }
 
-      // Vedação central entre as toras
-      ctx.fillStyle = "#3f2d19";
-      ctx.fillRect(x, y + logH - 0.7 * s, w, 1.4 * s);
+        if (i > 0) {
+          // Vedação entre as toras
+          ctx.fillStyle = "#3f2d19";
+          ctx.fillRect(x, ly - 0.7 * s, w, 1.4 * s);
+        }
+      }
 
       ctx.strokeStyle = "#271206";
       ctx.lineWidth = 1.1 * s;
@@ -10041,14 +10044,6 @@
       ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     };
 
-    // Parede Norte (borda superior externa)
-    if (side === "north" || side === "nw" || side === "ne") {
-      drawHorizSegment(0, 0, ts, thick);
-    }
-    // Parede Sul (borda inferior externa — incluindo a parede ao lado da porta!)
-    if (side === "south" || side === "sw" || side === "se") {
-      drawHorizSegment(0, ts - thick, ts, thick);
-    }
     // Parede Oeste (borda esquerda externa)
     if (side === "west" || side === "nw" || side === "sw") {
       drawVertSegment(0, 0, thick, ts);
@@ -10057,16 +10052,25 @@
     if (side === "east" || side === "ne" || side === "se") {
       drawVertSegment(ts - thick, 0, thick, ts);
     }
+    // Parede Norte / Fundo (borda superior externa — dobro da altura: 20px)
+    if (side === "north" || side === "nw" || side === "ne") {
+      drawHorizSegment(0, 0, ts, northThick, 4);
+    }
+    // Parede Sul (borda inferior externa — incluindo a parede ao lado da porta!)
+    if (side === "south" || side === "sw" || side === "se") {
+      drawHorizSegment(0, ts - thick, ts, thick, 2);
+    }
 
     // Pilar de encaixe apenas nas 4 quinas externas da cabana
     if (side === "nw" || side === "ne" || side === "sw" || side === "se") {
       const px = (side === "nw" || side === "sw") ? 0 : ts - thick;
       const py = (side === "nw" || side === "ne") ? 0 : ts - thick;
+      const ph = (side === "nw" || side === "ne") ? northThick : thick;
       ctx.fillStyle = "#5c2808";
-      ctx.fillRect(px + 1 * s, py + 1 * s, thick - 2 * s, thick - 2 * s);
+      ctx.fillRect(px + 1 * s, py + 1 * s, thick - 2 * s, ph - 2 * s);
       ctx.strokeStyle = "#271206";
       ctx.lineWidth = 1.1 * s;
-      ctx.strokeRect(px + 1 * s, py + 1 * s, thick - 2 * s, thick - 2 * s);
+      ctx.strokeRect(px + 1 * s, py + 1 * s, thick - 2 * s, ph - 2 * s);
     }
 
     ctx.restore();
