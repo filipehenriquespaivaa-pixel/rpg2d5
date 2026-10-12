@@ -2096,9 +2096,14 @@
                                 "flex flex-col items-center justify-center rounded-xl border font-bold shadow-lg backdrop-blur-sm active:scale-90 transition-all bg-slate-800/80 border-white/20 text-rose-300",
                               title: "Cancelar posicionamento (Esc)",
                               children: [
-                                h.jsx("span", { className: "text-xs leading-none", children: "✖" }),
                                 h.jsx("span", {
-                                  className: "text-[6.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                  className: "text-xs leading-none",
+                                  style: { fontSize: "12px", lineHeight: 1 },
+                                  children: "✖",
+                                }),
+                                h.jsx("span", {
+                                  className: "text-[8px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                  style: { fontSize: "6.5px", lineHeight: 1, letterSpacing: "0.02em", marginTop: "2px", whiteSpace: "nowrap" },
                                   children: "SAIR",
                                 }),
                               ],
@@ -2107,14 +2112,15 @@
                             id: "touch-build-cabin-btn",
                             onClick: onBuildCabinProp,
                             style: {
-                              width: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "62px" : "44px",
+                              width: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "58px" : "44px",
                               height: "44px",
-                              minWidth: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "62px" : "44px",
+                              minWidth: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "58px" : "44px",
                               minHeight: "44px",
                               display: "flex",
                               flexDirection: "column",
                               alignItems: "center",
                               justifyContent: "center",
+                              padding: "2px",
                             },
                             className:
                               cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
@@ -2129,6 +2135,7 @@
                             children: [
                               h.jsx("span", {
                                 className: "text-sm leading-none",
+                                style: { fontSize: "14px", lineHeight: 1 },
                                 children:
                                   cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
                                     ? cabinPlacementPreviewProp.mode === "chest"
@@ -2138,13 +2145,14 @@
                               }),
                               h.jsx("span", {
                                 className:
-                                  "text-[7.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                  "text-[8px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                style: { fontSize: "7px", lineHeight: 1, letterSpacing: "0.02em", marginTop: "2px", whiteSpace: "nowrap" },
                                 children:
                                   cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
                                     ? cabinPlacementPreviewProp.mode === "chest"
-                                      ? "CRIAR BAÚ"
-                                      : "CONFIRMAR"
-                                    : "CABANA",
+                                      ? "BAÚ"
+                                      : "OK"
+                                    : "CASA",
                               }),
                             ],
                           }),
@@ -2171,7 +2179,8 @@
                                     }),
                                     h.jsx("span", {
                                       className:
-                                        "text-[7.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                        "text-[8px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
+                                      style: { fontSize: "7px", lineHeight: 1, marginTop: "2px", whiteSpace: "nowrap" },
                                       children: Oe === 0 ? "COLETAR" : `${Oe}S`,
                                     }),
                                   ],
