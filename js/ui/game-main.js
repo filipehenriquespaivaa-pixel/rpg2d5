@@ -6283,41 +6283,103 @@
                 m.current && m.current.playItemPickup && m.current.playItemPickup();
               };
 
+              const slotBoxStyle = (hasItem, isChestSlot) => ({
+                width: "54px",
+                height: "54px",
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "6px",
+                backgroundColor: hasItem ? "#3b3228" : "#26201a",
+                borderTop: "2px solid #14100c",
+                borderLeft: "2px solid #14100c",
+                borderRight: "2px solid #574a3b",
+                borderBottom: "2px solid #574a3b",
+                boxShadow: hasItem
+                  ? "inset 0 0 8px rgba(245, 158, 11, 0.22)"
+                  : "inset 1px 1px 4px rgba(0, 0, 0, 0.65)",
+                cursor: hasItem ? "pointer" : "default",
+                padding: "2px",
+                userSelect: "none",
+              });
+
+              const beltSlots = [
+                { key: "cinto_slot1", label: "Cinto 1", item: Oe.cinto_slot1 },
+                { key: "cinto_slot2", label: "Cinto 2", item: Oe.cinto_slot2 },
+                { key: "mao_direita", label: "Mão Dir.", item: Oe.mao_direita },
+                { key: "mao_esquerda", label: "Mão Esq.", item: Oe.mao_esquerda },
+              ];
+
               return h.jsx("div", {
-                className:
-                  "fixed inset-0 z-[75] flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4",
+                style: {
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 120,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(2, 6, 23, 0.78)",
+                  backdropFilter: "blur(4px)",
+                  padding: "12px",
+                },
                 onClick: closeChestModal,
                 children: h.jsxs("div", {
-                  className:
-                    "w-full max-w-3xl rounded-2xl border border-amber-500/40 bg-slate-950/95 p-4 shadow-2xl flex flex-col gap-4",
+                  style: {
+                    width: "100%",
+                    maxWidth: "430px",
+                    backgroundColor: "#2d241c",
+                    borderTop: "3px solid #6b5744",
+                    borderLeft: "3px solid #6b5744",
+                    borderRight: "3px solid #17120e",
+                    borderBottom: "3px solid #17120e",
+                    borderRadius: "12px",
+                    padding: "14px",
+                    boxShadow: "0 20px 45px rgba(0, 0, 0, 0.85)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                    color: "#f5f5f4",
+                  },
                   onClick: (ev) => ev.stopPropagation(),
                   children: [
+                    // CABEÇALHO ESTILO CONTAINER MINECRAFT
                     h.jsxs("div", {
-                      className:
-                        "flex items-center justify-between border-b border-amber-500/20 pb-3",
+                      style: {
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: "2px solid #1c1611",
+                        paddingBottom: "8px",
+                      },
                       children: [
                         h.jsxs("div", {
-                          className: "flex items-center gap-2.5",
+                          style: { display: "flex", alignItems: "center", gap: "8px" },
                           children: [
-                            h.jsx("span", {
-                              className: "text-2xl",
-                              children: "📦",
+                            h.jsx(ItemIcon, {
+                              item: { id: "bau_madeira", name: "Baú de Madeira", isPlaceableChest: true },
+                              size: 28,
                             }),
                             h.jsxs("div", {
                               children: [
-                                h.jsx("h3", {
-                                  className:
-                                    "text-sm sm:text-base font-extrabold text-amber-200 tracking-wide",
+                                h.jsx("div", {
+                                  style: {
+                                    fontSize: "14px",
+                                    fontWeight: 800,
+                                    color: "#fde68a",
+                                    letterSpacing: "0.03em",
+                                    lineHeight: 1.1,
+                                  },
                                   children: "Baú de Madeira",
                                 }),
-                                h.jsxs("p", {
-                                  className: "text-[11px] text-slate-400",
+                                h.jsxs("div", {
+                                  style: {
+                                    fontSize: "10px",
+                                    color: "#a8a29e",
+                                    marginTop: "2px",
+                                  },
                                   children: [
-                                    "Armazenamento seguro • ",
-                                    chestItems.length,
-                                    "/",
-                                    maxChestSlots,
-                                    " slots ocupados",
+                                    "Clique p/ mover Tudo • Botão direito (ou +1) move 1 un.",
                                   ],
                                 }),
                               ],
@@ -6327,183 +6389,335 @@
                         h.jsx("button", {
                           type: "button",
                           onClick: closeChestModal,
-                          className:
-                            "px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition cursor-pointer",
-                          children: "✖ Fechar [Esc]",
+                          style: {
+                            backgroundColor: "#44372b",
+                            borderTop: "2px solid #6b5744",
+                            borderLeft: "2px solid #6b5744",
+                            borderRight: "2px solid #1c1611",
+                            borderBottom: "2px solid #1c1611",
+                            borderRadius: "6px",
+                            color: "#fca5a5",
+                            fontSize: "11px",
+                            fontWeight: 800,
+                            padding: "4px 9px",
+                            cursor: "pointer",
+                          },
+                          children: "✕",
                         }),
                       ],
                     }),
+
+                    // SEÇÃO SUPERIOR: BAÚ (12 SLOTS EM GRADE 6x2 ESTILO MINECRAFT)
                     h.jsxs("div", {
-                      className: "grid grid-cols-1 md:grid-cols-2 gap-4",
+                      style: {
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                        backgroundColor: "#211a14",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #3f3328",
+                      },
                       children: [
-                        // LADO ESQUERDO: 12 SLOTS DO BAÚ
                         h.jsxs("div", {
-                          className:
-                            "flex flex-col gap-2 rounded-xl border border-amber-700/40 bg-amber-950/20 p-3",
+                          style: {
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            color: "#fcd34d",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                          },
                           children: [
-                            h.jsxs("div", {
-                              className:
-                                "flex items-center justify-between text-xs font-bold text-amber-300 uppercase tracking-wider",
-                              children: [
-                                h.jsx("span", { children: "📦 Interior do Baú (12 Slots)" }),
-                                h.jsxs("span", {
-                                  className: "text-[11px] font-mono text-amber-400",
-                                  children: [chestItems.length, "/", maxChestSlots],
-                                }),
-                              ],
-                            }),
-                            h.jsx("div", {
-                              className: "grid grid-cols-4 gap-2",
-                              children: Array.from({ length: maxChestSlots }).map((_, idx) => {
-                                const it = chestItems[idx];
-                                return it
-                                  ? h.jsxs(
-                                      "div",
-                                      {
-                                        className:
-                                          "relative group h-20 rounded-xl border border-amber-500/50 bg-slate-900/90 hover:border-amber-400 p-1.5 flex flex-col items-center justify-between text-center transition",
-                                        children: [
-                                          h.jsx(ItemIcon, { item: it, size: 28 }),
-                                          h.jsx("span", {
-                                            className:
-                                              "text-[10px] font-semibold text-amber-100 truncate w-full leading-tight",
-                                            title: it.name,
-                                            children: it.name,
-                                          }),
-                                          (it.stackCount || 1) > 1 &&
-                                            h.jsxs("span", {
-                                              className:
-                                                "absolute top-1 right-1 px-1.5 py-0.2 rounded-full bg-amber-600/90 text-[9px] font-bold text-white",
-                                              children: ["x", it.stackCount],
-                                            }),
-                                          h.jsxs("div", {
-                                            className: "flex items-center gap-1 w-full mt-0.5",
-                                            children: [
-                                              h.jsx("button", {
-                                                type: "button",
-                                                onClick: () => handleTakeFromChest(it, idx, false),
-                                                className:
-                                                  "flex-1 py-0.5 rounded bg-emerald-700/90 hover:bg-emerald-600 text-[9px] font-bold text-white cursor-pointer",
-                                                title: "Retirar 1 unidade para a mochila",
-                                                children: "Pegar 1",
-                                              }),
-                                              (it.stackCount || 1) > 1 &&
-                                                h.jsx("button", {
-                                                  type: "button",
-                                                  onClick: () => handleTakeFromChest(it, idx, true),
-                                                  className:
-                                                    "flex-1 py-0.5 rounded bg-amber-700/90 hover:bg-amber-600 text-[9px] font-bold text-white cursor-pointer",
-                                                  title: "Retirar tudo para a mochila",
-                                                  children: "Tudo",
-                                                }),
-                                            ],
-                                          }),
-                                        ],
-                                      },
-                                      it.id || `chest_slot_${idx}`,
-                                    )
-                                  : h.jsxs(
-                                      "div",
-                                      {
-                                        className:
-                                          "h-20 rounded-xl border border-dashed border-slate-700/60 bg-slate-900/40 flex flex-col items-center justify-center text-slate-600",
-                                        children: [
-                                          h.jsx("span", {
-                                            className: "text-sm leading-none",
-                                            children: "📦",
-                                          }),
-                                          h.jsxs("span", {
-                                            className: "text-[9px] mt-1",
-                                            children: ["Slot ", idx + 1],
-                                          }),
-                                        ],
-                                      },
-                                      `empty_chest_${idx}`,
-                                    );
-                              }),
+                            h.jsx("span", { children: "Baú (Armazenamento)" }),
+                            h.jsxs("span", {
+                              style: { fontFamily: "monospace", color: "#d6d3d1" },
+                              children: [chestItems.length, "/", maxChestSlots],
                             }),
                           ],
                         }),
-                        // LADO DIREITO: MOCHILA DO JOGADOR
+                        h.jsx("div", {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "repeat(6, 54px)",
+                            gap: "6px",
+                            justifyContent: "center",
+                          },
+                          children: Array.from({ length: maxChestSlots }).map((_, idx) => {
+                            const it = chestItems[idx];
+                            return h.jsxs(
+                              "div",
+                              {
+                                style: slotBoxStyle(!!it, true),
+                                title: it
+                                  ? `${it.name} (x${it.stackCount || 1})\nClique: Retirar Tudo para a Mochila\nBotão Direito: Retirar 1`
+                                  : `Slot do Baú #${idx + 1} (Vazio)`,
+                                onClick: () => {
+                                  if (it) handleTakeFromChest(it, idx, true);
+                                },
+                                onContextMenu: (ev) => {
+                                  ev.preventDefault();
+                                  if (it) handleTakeFromChest(it, idx, false);
+                                },
+                                children: [
+                                  it &&
+                                    h.jsx(ItemIcon, {
+                                      item: it,
+                                      size: 40,
+                                    }),
+                                  it &&
+                                    (it.stackCount || 1) > 1 &&
+                                    h.jsx("span", {
+                                      style: {
+                                        position: "absolute",
+                                        bottom: "1px",
+                                        right: "3px",
+                                        fontSize: "11px",
+                                        fontWeight: 900,
+                                        fontFamily: "monospace",
+                                        color: "#ffffff",
+                                        textShadow: "1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000",
+                                        lineHeight: 1,
+                                        pointerEvents: "none",
+                                      },
+                                      children: it.stackCount,
+                                    }),
+                                  it &&
+                                    (it.stackCount || 1) > 1 &&
+                                    h.jsx("button", {
+                                      type: "button",
+                                      onClick: (ev) => {
+                                        ev.stopPropagation();
+                                        handleTakeFromChest(it, idx, false);
+                                      },
+                                      style: {
+                                        position: "absolute",
+                                        top: "1px",
+                                        left: "1px",
+                                        fontSize: "8px",
+                                        fontWeight: 800,
+                                        backgroundColor: "rgba(15, 23, 42, 0.85)",
+                                        color: "#6ee7b7",
+                                        border: "1px solid rgba(52, 211, 153, 0.5)",
+                                        borderRadius: "3px",
+                                        padding: "0px 3px",
+                                        lineHeight: 1.2,
+                                        cursor: "pointer",
+                                      },
+                                      title: "Retirar apenas 1 unidade",
+                                      children: "-1",
+                                    }),
+                                ],
+                              },
+                              it ? it.id || `chest_slot_${idx}` : `empty_chest_${idx}`,
+                            );
+                          }),
+                        }),
+                      ],
+                    }),
+
+                    // SEÇÃO INFERIOR: INVENTÁRIO PESSOAL DO JOGADOR (MOCHILA + HOTBAR/CINTO)
+                    h.jsxs("div", {
+                      style: {
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                        backgroundColor: "#211a14",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #3f3328",
+                      },
+                      children: [
                         h.jsxs("div", {
-                          className:
-                            "flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3",
+                          style: {
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            color: "#93c5fd",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                          },
                           children: [
-                            h.jsxs("div", {
-                              className:
-                                "flex items-center justify-between text-xs font-bold text-slate-200 uppercase tracking-wider",
-                              children: [
-                                h.jsx("span", { children: "🎒 Sua Mochila — Clique para guardar" }),
-                                h.jsxs("span", {
-                                  className: "text-[11px] font-mono text-slate-400",
-                                  children: [Ve.length, "/", maxBackpackSlots],
-                                }),
-                              ],
+                            h.jsx("span", { children: "Inventário Pessoal (Mochila)" }),
+                            h.jsxs("span", {
+                              style: { fontFamily: "monospace", color: "#d6d3d1" },
+                              children: [Ve.length, "/", maxBackpackSlots, " slots"],
+                            }),
+                          ],
+                        }),
+                        h.jsx("div", {
+                          style: {
+                            display: "grid",
+                            gridTemplateColumns: "repeat(6, 54px)",
+                            gap: "6px",
+                            justifyContent: "center",
+                            maxHeight: "238px",
+                            overflowY: "auto",
+                            padding: "2px",
+                          },
+                          children: Array.from({ length: Math.max(6, maxBackpackSlots) }).map((_, idx) => {
+                            const it = Ve[idx];
+                            return h.jsxs(
+                              "div",
+                              {
+                                style: slotBoxStyle(!!it, false),
+                                title: it
+                                  ? `${it.name} (x${it.stackCount || 1})\nClique: Guardar Tudo no Baú\nBotão Direito: Guardar 1`
+                                  : `Slot da Mochila #${idx + 1} (Vazio)`,
+                                onClick: () => {
+                                  if (it) handleStoreInChest(it, true);
+                                },
+                                onContextMenu: (ev) => {
+                                  ev.preventDefault();
+                                  if (it) handleStoreInChest(it, false);
+                                },
+                                children: [
+                                  it &&
+                                    h.jsx(ItemIcon, {
+                                      item: it,
+                                      size: 40,
+                                    }),
+                                  it &&
+                                    (it.stackCount || 1) > 1 &&
+                                    h.jsx("span", {
+                                      style: {
+                                        position: "absolute",
+                                        bottom: "1px",
+                                        right: "3px",
+                                        fontSize: "11px",
+                                        fontWeight: 900,
+                                        fontFamily: "monospace",
+                                        color: "#ffffff",
+                                        textShadow: "1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000",
+                                        lineHeight: 1,
+                                        pointerEvents: "none",
+                                      },
+                                      children: it.stackCount,
+                                    }),
+                                  it &&
+                                    (it.stackCount || 1) > 1 &&
+                                    h.jsx("button", {
+                                      type: "button",
+                                      onClick: (ev) => {
+                                        ev.stopPropagation();
+                                        handleStoreInChest(it, false);
+                                      },
+                                      style: {
+                                        position: "absolute",
+                                        top: "1px",
+                                        left: "1px",
+                                        fontSize: "8px",
+                                        fontWeight: 800,
+                                        backgroundColor: "rgba(15, 23, 42, 0.85)",
+                                        color: "#fcd34d",
+                                        border: "1px solid rgba(251, 191, 36, 0.5)",
+                                        borderRadius: "3px",
+                                        padding: "0px 3px",
+                                        lineHeight: 1.2,
+                                        cursor: "pointer",
+                                      },
+                                      title: "Guardar apenas 1 unidade",
+                                      children: "+1",
+                                    }),
+                                ],
+                              },
+                              it ? it.id || `bp_chest_slot_${idx}` : `empty_bp_chest_${idx}`,
+                            );
+                          }),
+                        }),
+
+                        // BARRA RÁPIDA (CINTO & MÃOS EQUIPADAS) ESTILO HOTBAR DO MINECRAFT
+                        h.jsxs("div", {
+                          style: {
+                            marginTop: "6px",
+                            paddingTop: "8px",
+                            borderTop: "1px dashed #44372b",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "6px",
+                          },
+                          children: [
+                            h.jsx("span", {
+                              style: {
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                color: "#a8a29e",
+                                textTransform: "uppercase",
+                              },
+                              children: "Equips / Cinto:",
                             }),
                             h.jsx("div", {
-                              className:
-                                "max-h-64 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 pr-1",
-                              children:
-                                Ve.length === 0
-                                  ? h.jsx("div", {
-                                      className:
-                                        "col-span-2 text-slate-500 text-xs py-8 text-center",
-                                      children: "Sua mochila está vazia.",
-                                    })
-                                  : Ve.map((it) =>
-                                      h.jsxs(
-                                        "div",
-                                        {
-                                          className:
-                                            "flex items-center justify-between gap-2 rounded-xl border border-slate-700/70 bg-slate-900/90 hover:border-amber-500/50 p-2 transition",
-                                          children: [
-                                            h.jsxs("div", {
-                                              className: "flex items-center gap-2 min-w-0",
-                                              children: [
-                                                h.jsx(ItemIcon, { item: it, size: 28 }),
-                                                h.jsxs("div", {
-                                                  className: "min-w-0",
-                                                  children: [
-                                                    h.jsx("div", {
-                                                      className:
-                                                        "text-[11px] font-bold text-slate-100 truncate",
-                                                      children: it.name,
-                                                    }),
-                                                    h.jsxs("div", {
-                                                      className: "text-[9px] text-slate-400",
-                                                      children: ["Qtd: x", it.stackCount || 1],
-                                                    }),
-                                                  ],
-                                                }),
-                                              ],
-                                            }),
-                                            h.jsxs("div", {
-                                              className: "flex items-center gap-1 shrink-0",
-                                              children: [
-                                                h.jsx("button", {
-                                                  type: "button",
-                                                  onClick: () => handleStoreInChest(it, false),
-                                                  className:
-                                                    "px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-[10px] font-bold text-slate-950 cursor-pointer",
-                                                  title: "Guardar 1 unidade no baú",
-                                                  children: "+1",
-                                                }),
-                                                (it.stackCount || 1) > 1 &&
-                                                  h.jsx("button", {
-                                                    type: "button",
-                                                    onClick: () => handleStoreInChest(it, true),
-                                                    className:
-                                                      "px-2 py-1 rounded-lg bg-amber-700 hover:bg-amber-600 text-[10px] font-bold text-white cursor-pointer",
-                                                    title: "Guardar toda a pilha no baú",
-                                                    children: "Tudo",
-                                                  }),
-                                              ],
-                                            }),
-                                          ],
-                                        },
-                                        it.id || it.name,
-                                      ),
-                                    ),
+                              style: {
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              },
+                              children: beltSlots.map((bs) => {
+                                const eqItem = bs.item;
+                                return h.jsxs(
+                                  "div",
+                                  {
+                                    style: {
+                                      ...slotBoxStyle(!!eqItem, false),
+                                      width: "48px",
+                                      height: "48px",
+                                    },
+                                    title: eqItem
+                                      ? `${bs.label}: ${eqItem.name} (Clique para guardar no Baú)`
+                                      : `${bs.label} (Vazio)`,
+                                    onClick: () => {
+                                      if (!eqItem) return;
+                                      if (chestItems.length >= maxChestSlots) {
+                                        m.current && m.current.playFusionFail && m.current.playFusionFail();
+                                        ve(`⚠️ O Baú de Madeira está cheio (${maxChestSlots}/${maxChestSlots} slots)!`);
+                                        return;
+                                      }
+                                      const nextChestItems = [
+                                        ...chestItems,
+                                        { ...eqItem, stackCount: eqItem.stackCount || 1 },
+                                      ];
+                                      Wa((prevEq) => ({ ...prevEq, [bs.key]: null }));
+                                      if (o.current && o.current.updateWoodenChestStorage) {
+                                        o.current.updateWoodenChestStorage(chestTx, chestTy, nextChestItems, !0);
+                                      }
+                                      setActiveWoodenChest({
+                                        ...activeWoodenChest,
+                                        items: nextChestItems,
+                                      });
+                                      m.current && m.current.playItemPickup && m.current.playItemPickup();
+                                    },
+                                    children: [
+                                      eqItem
+                                        ? h.jsx(ItemIcon, { item: eqItem, size: 34 })
+                                        : h.jsx("span", {
+                                            style: { fontSize: "8px", color: "#78716c", textAlign: "center" },
+                                            children: bs.label,
+                                          }),
+                                      eqItem &&
+                                        (eqItem.stackCount || 1) > 1 &&
+                                        h.jsx("span", {
+                                          style: {
+                                            position: "absolute",
+                                            bottom: "1px",
+                                            right: "2px",
+                                            fontSize: "10px",
+                                            fontWeight: 900,
+                                            fontFamily: "monospace",
+                                            color: "#ffffff",
+                                            textShadow: "1px 1px 0 #000",
+                                          },
+                                          children: eqItem.stackCount,
+                                        }),
+                                    ],
+                                  },
+                                  bs.key,
+                                );
+                              }),
                             }),
                           ],
                         }),
