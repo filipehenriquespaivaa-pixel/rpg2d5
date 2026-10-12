@@ -179,6 +179,12 @@
 
     chooseAutomaticWeatherForBiome(biomeId) {
       const r = Math.random();
+      // Céu Limpo é garantido em 60% de chance em todos os biomas
+      if (r < 0.60) {
+        return WEATHER_TYPES.CLEAR;
+      }
+
+      // Os 40% restantes (r >= 0.60) são distribuídos entre os fenômenos de cada bioma:
       if (
         biomeId === BiomeId.SNOW_TAIGA ||
         biomeId === BiomeId.SNOW_PEAK ||
@@ -186,7 +192,7 @@
         biomeId === BiomeId.TAIGA_LAKE ||
         biomeId === BiomeId.GLACIER_LAKE
       ) {
-        return r < 0.68 ? WEATHER_TYPES.SNOW : WEATHER_TYPES.CLEAR;
+        return WEATHER_TYPES.SNOW; // 40% Neve/Nevasca
       }
       if (
         biomeId === BiomeId.DESERT ||
@@ -194,24 +200,20 @@
         biomeId === BiomeId.OASIS ||
         biomeId === BiomeId.OASIS_LAKE
       ) {
-        if (r < 0.58) return WEATHER_TYPES.SANDSTORM;
-        if (r < 0.72) return WEATHER_TYPES.THUNDERSTORM;
-        return WEATHER_TYPES.CLEAR;
+        // Dos 40%: 28% Tempestade de Areia, 12% Tempestade Seca com Raios
+        return r < 0.88 ? WEATHER_TYPES.SANDSTORM : WEATHER_TYPES.THUNDERSTORM;
       }
       if (biomeId === BiomeId.VOLCANIC) {
-        if (r < 0.42) return WEATHER_TYPES.RAIN;
-        if (r < 0.68) return WEATHER_TYPES.THUNDERSTORM;
-        return WEATHER_TYPES.CLEAR;
+        // Dos 40%: 22% Chuva com fuligem, 18% Tempestade de Raios
+        return r < 0.82 ? WEATHER_TYPES.RAIN : WEATHER_TYPES.THUNDERSTORM;
       }
       if (biomeId === BiomeId.SWAMP || biomeId === BiomeId.SWAMP_LAKE || biomeId === BiomeId.DEEP_FOREST) {
-        if (r < 0.44) return WEATHER_TYPES.RAIN;
-        if (r < 0.76) return WEATHER_TYPES.THUNDERSTORM;
-        return WEATHER_TYPES.CLEAR;
+        // Dos 40%: 25% Chuva, 15% Tempestade com Raios
+        return r < 0.85 ? WEATHER_TYPES.RAIN : WEATHER_TYPES.THUNDERSTORM;
       }
-      // Biomas temperados (Prado, Floresta, Montanha 2.5D, Savana, Praia)
-      if (r < 0.35) return WEATHER_TYPES.RAIN;
-      if (r < 0.58) return WEATHER_TYPES.THUNDERSTORM;
-      return WEATHER_TYPES.CLEAR;
+      // Biomas temperados (Prado, Floresta, Montanha, Savana, Praia)
+      // Dos 40%: 25% Chuva, 15% Tempestade com Raios
+      return r < 0.85 ? WEATHER_TYPES.RAIN : WEATHER_TYPES.THUNDERSTORM;
     }
 
     getEffectiveVisibilityMultiplier(isUnderground = false) {
