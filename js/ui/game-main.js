@@ -307,12 +307,7 @@
               return re;
             }),
               m.current.playEquipItem());
-            const F =
-              (ie = E.stats) != null && ie.attack
-                ? ` (+${E.stats.attack} ATK)`
-                : "";
             return (
-              ve(`Equipou ${E.name}!${F}`),
               (E.id.includes("torch") ||
                 E.name.toLowerCase().includes("tocha")) &&
                 z(!0),
@@ -320,7 +315,7 @@
             );
           });
         },
-        [ve],
+        [],
       ),
       Vr = J.useCallback(
         (E) => {
@@ -373,9 +368,6 @@
                   return ce;
                 }),
                 m.current.playUnequipItem(),
-                ve(
-                  `Desequipou Cinto${F || ie ? " e recolheu os itens dos bolsos para a mochila" : ""}.`,
-                ),
                 { ...D, cinto: null, cinto_slot1: null, cinto_slot2: null }
               );
             } else if (E === "cinto_slot1" || E === "cinto_slot2") {
@@ -407,7 +399,6 @@
                   return [...ge, Q];
                 }),
                 m.current.playUnequipItem(),
-                ve(`Retirou ${Q.name} do cinto.`),
                 { ...D, [E]: null }
               );
             } else {
@@ -471,12 +462,11 @@
                 return [...q, Q];
               }),
               m.current.playUnequipItem(),
-              ve(`Desequipou ${Q.name}.`),
               { ...D, [E]: null }
             );
           });
         },
-        [Ve, ve],
+        [Ve],
       ),
       gn = J.useCallback(
         (E, D) => {
@@ -1129,9 +1119,6 @@
               (oa.current = !1),
               oe(f.current.stamina),
               I(!1),
-              ve(
-                `💧 Bebeu água fresca de ${E.name}! Recuperou +${ie} de Stamina. O recipiente voltou a ficar vazio.`,
-              ),
               ra((Re) => {
                 const Ce = Re.findIndex((na) => na.id === E.id);
                 if (Ce === -1) return Re;
@@ -1192,15 +1179,9 @@
               (oa.current = !1),
               Ee(f.current.hp),
               oe(f.current.stamina),
-              I(!1),
-              ve(
-                `🍢 Saboreou ${E.name}! Dourado, crocante e defumado no espeto da fogueira (+70 Vida, +90 Stamina)!`,
-              ));
+              I(!1));
           } else if (D.includes("tijolo"))
-            (m.current.playMiningStrike(),
-              ve(
-                `🧱 Usou ${E.name}! Bloco cerâmico firme para alvenaria e reforço.`,
-              ));
+            m.current.playMiningStrike();
           else if (D.includes("lambari")) {
             m.current.playShrineActivation();
             const F = f.current.maxHp ?? 100,
@@ -1213,10 +1194,7 @@
               (oa.current = !1),
               Ee(f.current.hp),
               oe(f.current.stamina),
-              I(!1),
-              ve(
-                `🐟 Saboreou ${E.name}! Peixe leve e fresco (+15 Vida, +25 Stamina).`,
-              ));
+              I(!1));
           } else if (D.includes("tilápia") || D.includes("tilapia")) {
             m.current.playShrineActivation();
             const F = f.current.maxHp ?? 100,
@@ -1229,10 +1207,7 @@
               (oa.current = !1),
               Ee(f.current.hp),
               oe(f.current.stamina),
-              I(!1),
-              ve(
-                `🐟 Saboreou ${E.name}! Carne rica em nutrientes (+35 Vida, +45 Stamina).`,
-              ));
+              I(!1));
           } else if (D.includes("truta")) {
             m.current.playShrineActivation();
             const F = f.current.maxHp ?? 100,
@@ -1245,10 +1220,7 @@
               (oa.current = !1),
               Ee(f.current.hp),
               oe(f.current.stamina),
-              I(!1),
-              ve(
-                `🌟 Saboreou ${E.name}! Peixe dourado saboroso e revigorante (+50 Vida, +70 Stamina).`,
-              ));
+              I(!1));
           } else if (D.includes("cascudo") || D.includes("peixe")) {
             m.current.playShrineActivation();
             const F = f.current.maxHp ?? 100,
@@ -1261,13 +1233,9 @@
               (oa.current = !1),
               Ee(f.current.hp),
               oe(f.current.stamina),
-              I(!1),
-              ve(
-                `🐟 Saboreou ${E.name}! Nutritivo e revigorante (+25 Vida, +35 Stamina).`,
-              ));
+              I(!1));
           } else
             (m.current.playShrineActivation(),
-              ve(`Usou ${E.name}! Vigor e ânimo totalmente restaurados.`),
               (f.current.stamina = f.current.maxStamina ?? 100),
               (f.current.isExhausted = !1),
               (He.current = f.current.stamina),
@@ -1389,38 +1357,10 @@
               }
             }
           }
-          if (
-            (Wa((Re) => ({ ...Re, [q]: ge, [E]: me })),
-            m.current.playEquipItem(),
-            ge && !ce && F)
-          ) {
-            const Re =
-                ge.stackCount && ge.stackCount > 1 ? `${ge.stackCount}x ` : "",
-              Ce = F.stackCount && F.stackCount > 1 ? `${F.stackCount}x ` : "";
-            ve(
-              `🔄 Troca Rápida: ${Re}${ge.name} (${Q ? "Mão Dir" : "Mão Esq"}) ⇄ ${Ce}${F.name} (Cinto)!`,
-            );
-          } else if (ge)
-            if (re !== null)
-              ve(
-                `🧪 Retirou 1x ${ge.name} para a ${Q ? "mão direita" : "mão esquerda"} (restam ${re.stackCount}x no cinto)!`,
-              );
-            else {
-              const Re =
-                ge.stackCount && ge.stackCount > 1 ? `${ge.stackCount}x ` : "";
-              ve(
-                `🖐️ Empunhou ${Re}${ge.name} na ${Q ? "mão direita" : "mão esquerda"}!`,
-              );
-            }
-          else if (me && !ce) {
-            const Re =
-              me.stackCount && me.stackCount > 1 ? `${me.stackCount}x ` : "";
-            ve(
-              `🎒 Guardou ${Re}${me.name} no ${Q ? "bolso direito" : "bolso esquerdo"} do cinto!`,
-            );
-          }
+          Wa((Re) => ({ ...Re, [q]: ge, [E]: me }));
+          m.current.playEquipItem();
         },
-        [$, ve],
+        [$],
       ),
       Oo = J.useCallback(() => {
         ((Oa.current = { x: 0, y: 0 }),
@@ -3423,7 +3363,6 @@
               D.direction = "down";
               v(E.getTile(Ye.tx, Ye.ty + 1).biome);
               S({ tx: Ye.tx, ty: Ye.ty + 1 });
-              ve("Descendo a escadaria úmida para as masmorras e calabouços sombrios...");
             } else if (Ke.action === "exit_dungeon") {
               __autoCaveTimer.current = 1.0;
               m.current.playCaveExit();
@@ -3443,7 +3382,6 @@
                 Ze = Math.floor(D.y / Q);
               v(E.getTile(qe, Ze).biome);
               S({ tx: qe, ty: Ze });
-              ve("Subindo os degraus de pedra de volta aos salões do subsolo!");
             } else if (Ke.action === "enter_geode") {
               __autoCaveTimer.current = 1.0;
               const oldX = D.x,
@@ -3463,7 +3401,6 @@
                 Ze = Math.floor(D.y / Q);
               v(E.getTile(qe, Ze).biome);
               S({ tx: qe, ty: Ze });
-              ve("💎 Atravessando a fenda no paredão terroso... Você entrou no Geodo de Cristais!");
             } else if (Ke.action === "exit_geode") {
               __autoCaveTimer.current = 1.0;
               m.current.playCaveExit();
@@ -3481,7 +3418,6 @@
                 Ze = Math.floor(D.y / Q);
               v(E.getTile(qe, Ze).biome);
               S({ tx: qe, ty: Ze });
-              ve("Saindo pela fenda do Geodo de volta para a Caverna de Arenito!");
             } else if (Ke.action === "mine_crystal") {
               m.current.playMineCrystal();
               const De = pi("crystal", aa);
@@ -5553,7 +5489,6 @@
                     Ze_t = Math.floor(he.y / Q.tileSize);
                   v(Q.getTile(qe_t, Ze_t).biome);
                   S({ tx: qe_t, ty: Ze_t });
-                  ve("Descendo a escadaria para as masmorras e calabouços sombrios...");
                 } else if (autoC.action === "exit_dungeon") {
                   m.current.playCaveExit();
                   const targetTx =
@@ -5572,7 +5507,6 @@
                     Ze_t = Math.floor(he.y / Q.tileSize);
                   v(Q.getTile(qe_t, Ze_t).biome);
                   S({ tx: qe_t, ty: Ze_t });
-                  ve("Subindo os degraus de volta aos salões do subsolo!");
                 } else if (autoC.action === "enter_geode") {
                   m.current.playCaveEnter();
                   Q.enterGeode(autoC.tx, autoC.ty, oldX, oldY);
@@ -5587,7 +5521,6 @@
                     Ze_t = Math.floor(he.y / Q.tileSize);
                   v(Q.getTile(qe_t, Ze_t).biome);
                   S({ tx: qe_t, ty: Ze_t });
-                  ve("💎 Atravessando a fenda no paredão de arenito... Você entrou no Geodo de Cristais!");
                 } else if (autoC.action === "exit_geode") {
                   m.current.playCaveExit();
                   const targetTx =
@@ -5606,7 +5539,6 @@
                     Ze_t = Math.floor(he.y / Q.tileSize);
                   v(Q.getTile(qe_t, Ze_t).biome);
                   S({ tx: qe_t, ty: Ze_t });
-                  ve("Saindo pela fenda do Geodo de volta para a Caverna de Arenito!");
                 }
               }
             }
