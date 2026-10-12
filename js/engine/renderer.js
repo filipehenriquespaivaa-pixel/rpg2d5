@@ -4127,7 +4127,9 @@
             p &&
             (p.name.toLowerCase().includes("escudo") || p.id.includes("shield"))
           );
-        if (passPhase === "back" && (t === "left" || t === "right")) return; if (m && !c) {
+        if (m) {
+          if (passPhase === "back") return;
+          if (!c) {
           const z = y,
             K = f * 4.5,
             V = z ? 3.5 + o : -3.5 + o,
@@ -4188,8 +4190,7 @@
               M.stroke());
           }
           return;
-        }
-        if (m && c) {
+        } else {
           const z =
             j ||
             (p &&
@@ -4427,6 +4428,7 @@
           }
           return;
         }
+      }
 
         // BRAÇOS E MÃOS ANATÔMICAS COM PIVÔ FIXO NOS OMBROS (balanço pendular real + impulso no salto de esquiva)
         // Os ombros são pontos de ancoragem fixos no topo do tórax.
