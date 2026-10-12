@@ -2178,19 +2178,202 @@
     }
   }
 
+  function getSurfaceExitWeatherColors(surfaceBiome = null) {
+    let timeOfDay = 0.5;
+    try {
+      if (typeof window !== "undefined" && window.Game && window.Game.engine && typeof window.Game.engine.timeOfDay === "number") {
+        timeOfDay = window.Game.engine.timeOfDay;
+      } else if (typeof window !== "undefined" && window.weatherSystem && typeof window.weatherSystem.lastTimeOfDay === "number") {
+        timeOfDay = window.weatherSystem.lastTimeOfDay;
+      }
+    } catch (_) {}
+
+    const isNight = timeOfDay < 0.22 || timeOfDay > 0.78;
+    const isDawn = timeOfDay >= 0.22 && timeOfDay < 0.32;
+    const isDusk = timeOfDay > 0.68 && timeOfDay <= 0.78;
+
+    let ws = null;
+    try {
+      if (typeof window !== "undefined" && window.weatherSystem) {
+        ws = window.weatherSystem;
+      }
+    } catch (_) {}
+
+    const currentWeather = ws ? ws.currentWeather : "clear";
+    const intensity = (ws && typeof ws.intensity === "number") ? ws.intensity : 0;
+    const isThunder = currentWeather === "thunderstorm" && intensity > 0.05;
+    const isRain = (currentWeather === "rain" || currentWeather === "heavy_rain") && intensity > 0.05;
+    const isSnow = (currentWeather === "snow" || currentWeather === "blizzard") && intensity > 0.05;
+    const isSand = (currentWeather === "sandstorm" || currentWeather === "sand") && intensity > 0.05;
+
+    // Relâmpago ativo no momento
+    const flashAlpha = (ws && typeof ws.flashAlpha === "number") ? ws.flashAlpha : 0;
+
+    if (flashAlpha > 0.15) {
+      return {
+        skyTop: "#e0f2fe",
+        skyMid: "#bae6fd",
+        skyBottom: "#ffffff",
+        rayColor: `rgba(224, 242, 254, ${Math.min(0.75, 0.35 + flashAlpha * 0.5)})`,
+        floorColor: `rgba(224, 242, 254, ${Math.min(0.65, 0.25 + flashAlpha * 0.4)})`,
+        weatherType: "flash",
+        isAdverse: true
+      };
+    }
+
+    if (isThunder) {
+      if (isNight) {
+        return {
+          skyTop: "#020617",
+          skyMid: "#0f172a",
+          skyBottom: "#1e293b",
+          rayColor: "rgba(56, 189, 248, 0.04)",
+          floorColor: "rgba(30, 41, 59, 0.08)",
+          weatherType: "thunderstorm",
+          isAdverse: true
+        };
+      }
+      return {
+        skyTop: "#0f172a",
+        skyMid: "#1e293b",
+        skyBottom: "#334155",
+        rayColor: "rgba(56, 189, 248, 0.09)",
+        floorColor: "rgba(51, 65, 85, 0.14)",
+        weatherType: "thunderstorm",
+        isAdverse: true
+      };
+    }
+
+    if (isRain) {
+      if (isNight) {
+        return {
+          skyTop: "#020617",
+          skyMid: "#0b1528",
+          skyBottom: "#172554",
+          rayColor: "rgba(56, 189, 248, 0.05)",
+          floorColor: "rgba(30, 58, 138, 0.10)",
+          weatherType: "rain",
+          isAdverse: true
+        };
+      }
+      return {
+        skyTop: "#334155",
+        skyMid: "#475569",
+        skyBottom: "#64748b",
+        rayColor: "rgba(148, 163, 184, 0.12)",
+        floorColor: "rgba(100, 116, 139, 0.18)",
+        weatherType: "rain",
+        isAdverse: true
+      };
+    }
+
+    if (isSnow) {
+      if (isNight) {
+        return {
+          skyTop: "#090d16",
+          skyMid: "#1e293b",
+          skyBottom: "#334155",
+          rayColor: "rgba(226, 232, 240, 0.08)",
+          floorColor: "rgba(203, 213, 225, 0.14)",
+          weatherType: "snow",
+          isAdverse: true
+        };
+      }
+      return {
+        skyTop: "#94a3b8",
+        skyMid: "#cbd5e1",
+        skyBottom: "#e2e8f0",
+        rayColor: "rgba(241, 245, 249, 0.22)",
+        floorColor: "rgba(226, 232, 240, 0.26)",
+        weatherType: "snow",
+        isAdverse: true
+      };
+    }
+
+    if (isSand) {
+      if (isNight) {
+        return {
+          skyTop: "#1c1106",
+          skyMid: "#291809",
+          skyBottom: "#451a03",
+          rayColor: "rgba(217, 119, 6, 0.06)",
+          floorColor: "rgba(180, 83, 9, 0.10)",
+          weatherType: "sandstorm",
+          isAdverse: true
+        };
+      }
+      return {
+        skyTop: "#78350f",
+        skyMid: "#b45309",
+        skyBottom: "#d97706",
+        rayColor: "rgba(245, 158, 11, 0.18)",
+        floorColor: "rgba(217, 119, 6, 0.24)",
+        weatherType: "sandstorm",
+        isAdverse: true
+      };
+    }
+
+    // Céu Aberto / Céu Limpo (considerando ciclo dia/noite)
+    if (isNight) {
+      return {
+        skyTop: "#020617",
+        skyMid: "#090d16",
+        skyBottom: "#0f172a",
+        rayColor: "rgba(56, 189, 248, 0.08)",
+        floorColor: "rgba(56, 189, 248, 0.10)",
+        weatherType: "night",
+        isAdverse: false
+      };
+    }
+    if (isDawn) {
+      return {
+        skyTop: "#4338ca",
+        skyMid: "#c026d3",
+        skyBottom: "#fb923c",
+        rayColor: "rgba(251, 146, 60, 0.26)",
+        floorColor: "rgba(251, 146, 60, 0.28)",
+        weatherType: "dawn",
+        isAdverse: false
+      };
+    }
+    if (isDusk) {
+      return {
+        skyTop: "#1e1b4b",
+        skyMid: "#9333ea",
+        skyBottom: "#ea580c",
+        rayColor: "rgba(249, 115, 22, 0.24)",
+        floorColor: "rgba(234, 88, 12, 0.26)",
+        weatherType: "dusk",
+        isAdverse: false
+      };
+    }
+
+    // Dia pleno ensolarado
+    return {
+      skyTop: "#0284c7",
+      skyMid: "#38bdf8",
+      skyBottom: "#fde047",
+      rayColor: "rgba(254, 240, 138, 0.38)",
+      floorColor: "rgba(254, 240, 138, 0.35)",
+      weatherType: "clear",
+      isAdverse: false
+    };
+  }
+
   function drawRuinsSubterraneanStaircase(e, t, l, isExit = !1, isMerged = !1) {
     const wMul = isMerged ? 1.28 : 1,
       hMul = isMerged ? 1.22 : 1;
 
     if (isExit) {
+      const exitColors = getSurfaceExitWeatherColors();
       // =========================================================================
       // SAÍDA DA ESCADARIA NO SUBSOLO (Escadaria de Mármore que SOBE do chão da
       // caverna em direção à abertura iluminada da superfície no teto!)
       // =========================================================================
-      // 1. Tapete de luz solar projetado no chão da caverna ao pé da escadaria
+      // 1. Tapete de luz projetado no chão da caverna ao pé da escadaria (corresponde ao clima real!)
       const floorBeam = e.createRadialGradient(0, 6 * t, 2 * t, 0, 8 * t, 26 * wMul * t);
-      floorBeam.addColorStop(0, "rgba(254, 240, 138, 0.38)");
-      floorBeam.addColorStop(0.55, "rgba(56, 189, 248, 0.16)");
+      floorBeam.addColorStop(0, exitColors.floorColor);
+      floorBeam.addColorStop(0.55, exitColors.rayColor);
       floorBeam.addColorStop(1, "rgba(15, 23, 42, 0)");
       e.fillStyle = floorBeam;
       e.beginPath();
@@ -2257,7 +2440,7 @@
         e.fillStyle = `rgb(${riserLum}, ${riserLum + 4}, ${riserLum + 12})`;
         e.fillRect(-halfW0, yBottom - stepH * 0.55, halfW0 * 2, stepH * 0.55);
 
-        // Pisada superior do degrau banhada pela luz do dia que vem de cima
+        // Pisada superior do degrau banhada pela luz que vem de cima
         const treadLum = Math.round(165 + r1 * 88);
         e.fillStyle = `rgb(${treadLum}, ${treadLum}, ${Math.min(255, treadLum + 8)})`;
         e.fillRect(-halfW1, yTop, halfW1 * 2, stepH * 0.48);
@@ -2269,19 +2452,44 @@
         }
       }
 
-      // 5. Portal / Claraboia de Saída no Topo da Escadaria (Céu aberto e luz do dia lá em cima!)
+      // 5. Portal / Claraboia de Saída no Topo da Escadaria (Céu aberto e clima dinâmico da superfície lá em cima!)
       const skyGrad = e.createLinearGradient(0, -38 * hMul * t, 0, -22 * hMul * t);
-      skyGrad.addColorStop(0, "#38bdf8");
-      skyGrad.addColorStop(0.55, "#bae6fd");
-      skyGrad.addColorStop(1, "#fef08a");
+      skyGrad.addColorStop(0, exitColors.skyTop);
+      skyGrad.addColorStop(0.55, exitColors.skyMid);
+      skyGrad.addColorStop(1, exitColors.skyBottom);
       e.fillStyle = skyGrad;
       e.fillRect(-12 * wMul * t, -37 * hMul * t, 24 * wMul * t, 11 * hMul * t);
 
-      // Feixe de luz solar descendo da abertura sobre os degraus
+      // Gotas de chuva ou flocos caindo pelo vão da escadaria se o clima exterior for chuva ou neve
+      if (exitColors.weatherType === "rain" || exitColors.weatherType === "thunderstorm") {
+        e.strokeStyle = "rgba(186, 230, 253, 0.65)";
+        e.lineWidth = 1 * t;
+        const timeOff = (l || 0) * 20;
+        for (let ri = -9; ri <= 9; ri += 3.5) {
+          const rx = ri * wMul * t;
+          const ry = -36 * hMul * t + (((ri * 7 + timeOff) % 11) * hMul * t);
+          e.beginPath();
+          e.moveTo(rx, ry);
+          e.lineTo(rx - 1.5 * t, ry + 4 * t);
+          e.stroke();
+        }
+      } else if (exitColors.weatherType === "snow") {
+        e.fillStyle = "rgba(255, 255, 255, 0.85)";
+        const timeOff = (l || 0) * 8;
+        for (let si = -9; si <= 9; si += 4) {
+          const sx = si * wMul * t + Math.sin((l || 0) * 3 + si) * 2 * t;
+          const sy = -36 * hMul * t + (((si * 5 + timeOff) % 11) * hMul * t);
+          e.beginPath();
+          e.arc(sx, sy, 1.2 * t, 0, Math.PI * 2);
+          e.fill();
+        }
+      }
+
+      // Feixe de luz descendo da abertura sobre os degraus
       const rayGrad = e.createLinearGradient(0, -36 * hMul * t, 0, 8 * t);
-      rayGrad.addColorStop(0, "rgba(254, 240, 138, 0.42)");
-      rayGrad.addColorStop(0.5, "rgba(254, 240, 138, 0.16)");
-      rayGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+      rayGrad.addColorStop(0, exitColors.rayColor);
+      rayGrad.addColorStop(0.55, exitColors.rayColor.replace(/[\d\.]+\)$/, "0.1)"));
+      rayGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
       e.fillStyle = rayGrad;
       e.beginPath();
       e.moveTo(-12 * wMul * t, -36 * hMul * t);
@@ -2519,61 +2727,138 @@
     const archW = isMerged ? 1.25 : 1,
       archH = isMerged ? 1.32 : 1;
 
-    // Luz do dia saindo pelo arco rochoso irregular da saída da caverna
+    const exitColors = getSurfaceExitWeatherColors(biome);
+
+    // Luz da saída saindo pelo arco rochoso irregular (reflete o clima real da superfície!)
     const o = e.createLinearGradient(0, -20 * archH * t, 0, 4 * t);
-    (o.addColorStop(0, "#0284c7"),
-      o.addColorStop(0.35, "#38bdf8"),
-      o.addColorStop(0.7, "#7dd3fc"),
-      o.addColorStop(1, "#fde047"),
-      (e.fillStyle = o),
-      e.beginPath(),
-      e.moveTo(-14 * archW * t, 4 * t),
-      e.lineTo(-14 * archW * t, -8 * archH * t),
-      e.lineTo(-10 * archW * t, -17 * archH * t),
-      e.lineTo(-3 * archW * t, -20 * archH * t),
-      e.lineTo(4 * archW * t, -20 * archH * t),
-      e.lineTo(10 * archW * t, -16 * archH * t),
-      e.lineTo(14 * archW * t, -8 * archH * t),
-      e.lineTo(14 * archW * t, 4 * t),
-      e.closePath(),
-      e.fill());
+    o.addColorStop(0, exitColors.skyTop);
+    o.addColorStop(0.35, exitColors.skyMid);
+    o.addColorStop(1, exitColors.skyBottom);
+    e.fillStyle = o;
+    e.beginPath();
+    e.moveTo(-14 * archW * t, 4 * t);
+    e.lineTo(-14 * archW * t, -8 * archH * t);
+    e.lineTo(-10 * archW * t, -17 * archH * t);
+    e.lineTo(-3 * archW * t, -20 * archH * t);
+    e.lineTo(4 * archW * t, -20 * archH * t);
+    e.lineTo(10 * archW * t, -16 * archH * t);
+    e.lineTo(14 * archW * t, -8 * archH * t);
+    e.lineTo(14 * archW * t, 4 * t);
+    e.closePath();
+    e.fill();
+
+    // Gotas de chuva, flocos de neve ou partículas de areia visíveis na boca da caverna
+    if (exitColors.weatherType === "rain" || exitColors.weatherType === "thunderstorm") {
+      e.save();
+      e.beginPath();
+      e.moveTo(-14 * archW * t, 4 * t);
+      e.lineTo(-14 * archW * t, -8 * archH * t);
+      e.lineTo(-10 * archW * t, -17 * archH * t);
+      e.lineTo(-3 * archW * t, -20 * archH * t);
+      e.lineTo(4 * archW * t, -20 * archH * t);
+      e.lineTo(10 * archW * t, -16 * archH * t);
+      e.lineTo(14 * archW * t, -8 * archH * t);
+      e.lineTo(14 * archW * t, 4 * t);
+      e.closePath();
+      e.clip();
+
+      e.strokeStyle = "rgba(186, 230, 253, 0.7)";
+      e.lineWidth = 1 * t;
+      const timeOff = (l || 0) * 22;
+      for (let ri = -12; ri <= 12; ri += 3.2) {
+        const rx = ri * archW * t;
+        const ry = -19 * archH * t + (((ri * 7 + timeOff) % 22) * archH * t);
+        e.beginPath();
+        e.moveTo(rx, ry);
+        e.lineTo(rx - 1.8 * t, ry + 4.5 * t);
+        e.stroke();
+      }
+      e.restore();
+    } else if (exitColors.weatherType === "snow") {
+      e.save();
+      e.beginPath();
+      e.moveTo(-14 * archW * t, 4 * t);
+      e.lineTo(-14 * archW * t, -8 * archH * t);
+      e.lineTo(-10 * archW * t, -17 * archH * t);
+      e.lineTo(-3 * archW * t, -20 * archH * t);
+      e.lineTo(4 * archW * t, -20 * archH * t);
+      e.lineTo(10 * archW * t, -16 * archH * t);
+      e.lineTo(14 * archW * t, -8 * archH * t);
+      e.lineTo(14 * archW * t, 4 * t);
+      e.closePath();
+      e.clip();
+
+      e.fillStyle = "rgba(255, 255, 255, 0.9)";
+      const timeOff = (l || 0) * 9;
+      for (let si = -11; si <= 11; si += 3.8) {
+        const sx = si * archW * t + Math.sin((l || 0) * 3 + si) * 2 * t;
+        const sy = -19 * archH * t + (((si * 5 + timeOff) % 22) * archH * t);
+        e.beginPath();
+        e.arc(sx, sy, 1.2 * t, 0, Math.PI * 2);
+        e.fill();
+      }
+      e.restore();
+    } else if (exitColors.weatherType === "sandstorm") {
+      e.save();
+      e.beginPath();
+      e.moveTo(-14 * archW * t, 4 * t);
+      e.lineTo(-14 * archW * t, -8 * archH * t);
+      e.lineTo(-10 * archW * t, -17 * archH * t);
+      e.lineTo(-3 * archW * t, -20 * archH * t);
+      e.lineTo(4 * archW * t, -20 * archH * t);
+      e.lineTo(10 * archW * t, -16 * archH * t);
+      e.lineTo(14 * archW * t, -8 * archH * t);
+      e.lineTo(14 * archW * t, 4 * t);
+      e.closePath();
+      e.clip();
+
+      e.fillStyle = "rgba(245, 158, 11, 0.35)";
+      const timeOff = (l || 0) * 25;
+      for (let si = -12; si <= 12; si += 4) {
+        const sx = si * archW * t + ((timeOff % 10) * t);
+        const sy = -18 * archH * t + (((si * 7) % 20) * archH * t);
+        e.fillRect(sx, sy, 2.5 * t, 1 * t);
+      }
+      e.restore();
+    }
+
+    // Feixe e cone de claridade projetado no chão da caverna
     const r = e.createLinearGradient(0, -2 * t, 0, 16 * t);
-    (r.addColorStop(0, "rgba(254, 240, 138, 0.18)"),
-      r.addColorStop(0.5, "rgba(254, 240, 138, 0.06)"),
-      r.addColorStop(1, "rgba(254, 240, 138, 0)"),
-      (e.fillStyle = r),
-      e.beginPath(),
-      e.moveTo(-11 * archW * t, -2 * t),
-      e.lineTo(11 * archW * t, -2 * t),
-      e.lineTo(20 * archW * t, 14 * t),
-      e.lineTo(-20 * archW * t, 14 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = "#334155"),
-      e.fillRect(-10 * archW * t, 0 * t, 20 * archW * t, 2.5 * t),
-      (e.fillStyle = "#1e293b"),
-      e.fillRect(-8 * archW * t, 2.5 * t, 16 * archW * t, 2.5 * t),
-      (e.fillStyle = "#451a03"),
-      e.fillRect(-13 * archW * t, -16 * archH * t, 3.5 * t, (16 * archH + 2) * t),
-      e.fillRect((13 * archW - 3.5) * t, -16 * archH * t, 3.5 * t, (16 * archH + 2) * t),
-      (e.fillStyle = "#78350f"),
-      e.fillRect(-14 * archW * t, -18 * archH * t, 28 * archW * t, 4 * t),
-      (e.fillStyle = "#451a03"),
-      e.fillRect(-10 * t, (-23 * archH) * t, 20 * t, 5 * t),
-      (e.fillStyle = "#92400e"),
-      e.fillRect(-9 * t, (-23 * archH + 1) * t, 18 * t, 4 * t),
-      (e.fillStyle = "#fef08a"),
-      (e.font = `bold ${Math.round(3.5 * t)}px sans-serif`),
-      (e.textAlign = "center"),
-      e.fillText("▲ SAÍDA", 0, (-23 * archH + 4) * t),
-      (e.strokeStyle = "#0f172a"),
-      (e.lineWidth = 1.2 * t),
-      e.beginPath(),
-      e.moveTo(6 * archW * t, -14 * archH * t),
-      e.lineTo(6 * archW * t, -9 * archH * t),
-      e.stroke(),
-      (e.fillStyle = "#1e293b"),
-      e.fillRect((6 * archW - 2) * t, -9 * archH * t, 4 * t, 5.5 * t));
+    r.addColorStop(0, exitColors.floorColor);
+    r.addColorStop(0.5, exitColors.floorColor.replace(/[\d\.]+\)$/, "0.06)"));
+    r.addColorStop(1, "rgba(0, 0, 0, 0)");
+    e.fillStyle = r;
+    e.beginPath();
+    e.moveTo(-11 * archW * t, -2 * t);
+    e.lineTo(11 * archW * t, -2 * t);
+    e.lineTo(20 * archW * t, 14 * t);
+    e.lineTo(-20 * archW * t, 14 * t);
+    e.closePath();
+    e.fillStyle = "#334155";
+    e.fillRect(-10 * archW * t, 0 * t, 20 * archW * t, 2.5 * t);
+    e.fillStyle = "#1e293b";
+    e.fillRect(-8 * archW * t, 2.5 * t, 16 * archW * t, 2.5 * t);
+    e.fillStyle = "#451a03";
+    e.fillRect(-13 * archW * t, -16 * archH * t, 3.5 * t, (16 * archH + 2) * t);
+    e.fillRect((13 * archW - 3.5) * t, -16 * archH * t, 3.5 * t, (16 * archH + 2) * t);
+    e.fillStyle = "#78350f";
+    e.fillRect(-14 * archW * t, -18 * archH * t, 28 * archW * t, 4 * t);
+    e.fillStyle = "#451a03";
+    e.fillRect(-10 * t, (-23 * archH) * t, 20 * t, 5 * t);
+    e.fillStyle = "#92400e";
+    e.fillRect(-9 * t, (-23 * archH + 1) * t, 18 * t, 4 * t);
+    e.fillStyle = "#fef08a";
+    e.font = `bold ${Math.round(3.5 * t)}px sans-serif`;
+    e.textAlign = "center";
+    e.fillText("▲ SAÍDA", 0, (-23 * archH + 4) * t);
+    e.strokeStyle = "#0f172a";
+    e.lineWidth = 1.2 * t;
+    e.beginPath();
+    e.moveTo(6 * archW * t, -14 * archH * t);
+    e.lineTo(6 * archW * t, -9 * archH * t);
+    e.stroke();
+    e.fillStyle = "#1e293b";
+    e.fillRect((6 * archW - 2) * t, -9 * archH * t, 4 * t, 5.5 * t);
     const u = Math.sin((l || 0) * 6) * 0.15;
     e.fillStyle = `rgba(251, 191, 36, ${0.85 + u})`;
     e.fillRect((6 * archW - 1.2) * t, (-9 * archH + 0.8) * t, 2.4 * t, 3.8 * t);
