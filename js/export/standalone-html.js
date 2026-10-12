@@ -2978,7 +2978,7 @@
           if (backItemIsRight && hasRightWeapon) {
             ctx.save();
             ctx.translate(isLeft ? 1.2 : -1.2, 7.0);
-            ctx.rotate(isLeft ? 0.30 : -0.30);
+            ctx.rotate(isLeft ? -0.30 : 0.30);
             drawHeldWeaponItem();
             ctx.restore();
           } else if (!backItemIsRight) {
@@ -3370,6 +3370,31 @@
             ctx.beginPath();
             ctx.moveTo(0, -21); ctx.lineTo(-4, -18); ctx.lineTo(-2, -14.5); ctx.lineTo(0, -14.5);
             ctx.closePath(); ctx.fill();
+          } else if (wName.includes('cajado') || wName.includes('bastão') || wName.includes('bastao')) {
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(-1.5, -18, 3, 22);
+            ctx.fillStyle = '#a16207';
+            ctx.fillRect(-0.7, -17, 1.4, 20);
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(0, -20.5, 3.8, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (wName.includes('machado')) {
+            ctx.fillStyle = '#5c3a21';
+            ctx.fillRect(-1.5, -15, 3, 18);
+            ctx.fillStyle = '#64748b';
+            ctx.beginPath();
+            ctx.moveTo(1, -14);
+            ctx.lineTo(-7, -17);
+            ctx.quadraticCurveTo(-9, -11, -7, -6);
+            ctx.lineTo(1, -9);
+            ctx.closePath();
+            ctx.fill();
+          } else if (wName.includes('martelo') || wName.includes('hammer')) {
+            ctx.fillStyle = '#5c3a21';
+            ctx.fillRect(-1.5, -15, 3, 18);
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(-6.5, -18, 13, 6);
           } else if (wName.includes('lança') || wName.includes('lanca') || wName.includes('spear')) {
             // Primitive Spear (Lança Primitiva)
             ctx.fillStyle = '#78350f';

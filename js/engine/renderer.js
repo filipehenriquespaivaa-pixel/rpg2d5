@@ -4276,7 +4276,7 @@
                 M.moveTo(3, -20),
                 M.lineTo(3, -32),
                 M.stroke()),
-              this.drawWeaponItem(z),
+              this.drawWeaponItem(z, t, "right"),
               M.restore(),
               !S && !$)
             ) {
@@ -4314,7 +4314,7 @@
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
-              this.drawWeaponItem(z),
+              this.drawWeaponItem(z, t, "right"),
               M.restore());
           } else if (t === "right") {
             const V = 4 + o,
@@ -4343,7 +4343,7 @@
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
-              this.drawWeaponItem(z),
+              this.drawWeaponItem(z, t, "right"),
               M.restore());
           } else if (t === "left") {
             const V = -4 + o,
@@ -4373,7 +4373,7 @@
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
-              this.drawWeaponItem(z),
+              this.drawWeaponItem(z, t, "right"),
               M.restore());
           } else {
             const V = -4 + o,
@@ -4402,7 +4402,7 @@
               M.beginPath(),
               M.arc(0, 0, 2.8, 0, Math.PI * 2),
               M.fill(),
-              this.drawWeaponItem(z),
+              this.drawWeaponItem(z, t, "right"),
               M.restore());
           }
           if (S) this.drawHeldTorch(t, l);
@@ -4416,7 +4416,7 @@
             M.beginPath();
             M.arc(0, 0, 2.5, 0, Math.PI * 2);
             M.fill();
-            this.drawWeaponItem(p);
+            this.drawWeaponItem(p, t, "left");
             M.restore();
           } else {
             const V = (t === "left" ? 4 : t === "right" ? -4 : (t === "up" ? 6 : -6)) + o,
@@ -4461,7 +4461,7 @@
               (j.id || "").toLowerCase().includes("shield"))
           );
 
-        const renderEquippedHandItem = (item, isTorchItem, isShieldItem, facingDir, handRot, mirrorX) => {
+        const renderEquippedHandItem = (item, isTorchItem, isShieldItem, facingDir, handRot, mirrorX, handSide = "right") => {
           if (!item && !isTorchItem) return;
           M.save();
           if (mirrorX) M.scale(-1, 1);
@@ -4471,7 +4471,7 @@
           } else if (isShieldItem) {
             this.drawHeldShield(facingDir, 0, 0, item, 0, 0, 0);
           } else {
-            this.drawWeaponItem(item);
+            this.drawWeaponItem(item, facingDir, handSide);
           }
           M.restore();
         };
@@ -4563,9 +4563,9 @@
             M.save();
             M.translate(0, armLenL + 1.3);
             const leftItemRot =
-              (isLeftTorch || $ ? 0 : (isUp ? 0.24 : -0.24)) +
+              (isUp ? 0.24 : -0.24) +
               (isDodgingArm ? ((isUp ? -1 : 1) * 0.42 * dSin + 0.22 * dWave + dDX * 0.25 * dSin) : (isUp ? 1 : -1) * -swingL * 0.08);
-            renderEquippedHandItem(p, isLeftTorch, $, t, leftItemRot, false);
+            renderEquippedHandItem(p, isLeftTorch, $, t, leftItemRot, false, "left");
             M.restore();
           }
           M.restore();
@@ -4586,10 +4586,10 @@
             M.save();
             M.translate(0, armLenR + 1.3);
             const rightItemRot =
-              (isRightTorch || isRightShield ? 0 : (isUp ? -0.24 : 0.28)) +
+              (isUp ? -0.24 : 0.28) +
               (isUp ? -1 : 1) * swingR * 0.08 +
               (isDodgingArm ? ((isUp ? 1 : -1) * -0.45 * dSin - 0.25 * dWave + dDX * 0.32 * dSin) : 0);
-            renderEquippedHandItem(j, isRightTorch, isRightShield, t, rightItemRot, false);
+            renderEquippedHandItem(j, isRightTorch, isRightShield, t, rightItemRot, false, "right");
             M.restore();
           }
           M.restore();
@@ -4680,14 +4680,15 @@
               if (backItem || backIsTorch) {
                 M.save();
                 M.translate(isLeft ? -1.2 : 1.2, 7.0);
-                const backBaseRot = backIsTorch || backIsShield ? 0 : (isLeft ? -0.30 : 0.30);
+                const backBaseRot = isLeft ? -0.32 : 0.32;
                 renderEquippedHandItem(
                   backItem,
                   backIsTorch,
                   backIsShield,
                   t,
                   backBaseRot + backItemExtraRot,
-                  false
+                  false,
+                  isLeft ? "right" : "left"
                 );
                 M.restore();
               }
@@ -4710,14 +4711,15 @@
             if (frontItem || frontIsTorch) {
               M.save();
               M.translate(isLeft ? -1.5 : 1.5, 7.4);
-              const frontBaseRot = frontIsTorch || frontIsShield ? 0 : (isLeft ? -0.35 : 0.35);
+              const frontBaseRot = isLeft ? -0.35 : 0.35;
               renderEquippedHandItem(
                 frontItem,
                 frontIsTorch,
                 frontIsShield,
                 t,
                 frontBaseRot + frontItemExtraRot,
-                false
+                false,
+                isLeft ? "left" : "right"
               );
               M.restore();
             }
@@ -4725,18 +4727,29 @@
           }
         }
       }
-      drawWeaponItem(t) {
+      drawWeaponItem(t, facingDir = "down", handSide = "right") {
         const l = this.ctx,
           o = ((t == null ? void 0 : t.name) || "").toLowerCase(),
           u = ((t == null ? void 0 : t.id) || "").toLowerCase();
-        if (isWhipItemX(t)) drawWhipHeldX(l, t, this.animTimer);
-        else if (
+
+        let forwardSign = 1;
+        if (facingDir === "left") forwardSign = -1;
+        else if (facingDir === "right") forwardSign = 1;
+        else if (facingDir === "down") forwardSign = (handSide === "left" ? -1 : 1);
+        else if (facingDir === "up") forwardSign = (handSide === "left" ? 1 : -1);
+
+        if (isWhipItemX(t)) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          drawWhipHeldX(l, t, this.animTimer);
+          l.restore();
+        } else if (
           o.includes("estilingue") ||
           u.includes("estilingue") ||
           u.includes("slingshot")
         ) {
-          // Forquilha de madeira em Y na mão do personagem + elástico verde e bolsa de couro
           l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
           l.lineCap = "round";
           l.lineJoin = "round";
           l.strokeStyle = "#451a03";
@@ -4761,7 +4774,6 @@
           l.lineTo(4.2, -12.5);
           l.stroke();
 
-          // Tiras elásticas verdes e bolsa de couro
           l.strokeStyle = "#84cc16";
           l.lineWidth = 1.4;
           l.beginPath();
@@ -4774,156 +4786,210 @@
           l.ellipse(0, -9.8, 2.2, 1.3, 0, 0, Math.PI * 2);
           l.fill();
           l.restore();
-        }
-        else if (o.includes("galho"))
-          ((l.fillStyle = "#5c3a21"),
-            l.fillRect(-1.5, -16, 3, 19),
-            (l.fillStyle = "#854d0e"),
-            l.fillRect(-0.8, -15, 1.6, 17),
-            (l.strokeStyle = "#713f12"),
-            (l.lineWidth = 1.8),
-            l.beginPath(),
-            l.moveTo(1, -9),
-            l.lineTo(4.5, -13),
-            l.stroke(),
-            (l.fillStyle = "#65a30d"),
-            l.beginPath(),
-            l.ellipse(4.5, -13.5, 1.8, 1.2, 0.4, 0, Math.PI * 2),
-            l.fill(),
-            l.beginPath(),
-            l.ellipse(0, -17, 1.5, 2.2, 0, 0, Math.PI * 2),
-            l.fill());
-        else if (o.includes("maça") || o.includes("maca") || o.includes("mace"))
-          ((l.fillStyle = "#5c3a21"),
-            l.fillRect(-1.5, -15, 3, 18),
-            (l.fillStyle = "#854d0e"),
-            l.fillRect(-0.8, -14, 1.6, 16),
-            (l.fillStyle = "#b45309"),
-            l.fillRect(-1.8, -4, 3.6, 5),
-            (l.strokeStyle = "#fef3c7"),
-            (l.lineWidth = 0.8),
-            l.beginPath(),
-            l.moveTo(-1.8, -3),
-            l.lineTo(1.8, -2),
-            l.moveTo(-1.8, -1),
-            l.lineTo(1.8, 0),
-            l.stroke(),
-            (l.fillStyle = "#475569"),
-            l.beginPath(),
-            l.arc(0, 3, 2, 0, Math.PI * 2),
-            l.fill(),
-            (l.fillStyle = "#a16207"),
-            l.fillRect(-2.2, -12.5, 4.4, 2.5),
-            (l.fillStyle = "#64748b"),
-            l.beginPath(),
-            l.moveTo(-4, -18),
-            l.lineTo(0, -21),
-            l.lineTo(4, -18),
-            l.lineTo(5.5, -14.5),
-            l.lineTo(4, -11),
-            l.lineTo(-4, -11),
-            l.lineTo(-5.5, -14.5),
-            l.closePath(),
-            l.fill(),
-            (l.fillStyle = "#94a3b8"),
-            l.beginPath(),
-            l.moveTo(0, -21),
-            l.lineTo(-4, -18),
-            l.lineTo(-2, -14.5),
-            l.lineTo(0, -14.5),
-            l.closePath(),
-            l.fill(),
-            (l.fillStyle = "#334155"),
-            l.beginPath(),
-            l.moveTo(4, -18),
-            l.lineTo(5.5, -14.5),
-            l.lineTo(4, -11),
-            l.lineTo(0, -14.5),
-            l.closePath(),
-            l.fill(),
-            (l.fillStyle = "#cbd5e1"),
-            l.beginPath(),
-            l.arc(-4.5, -14.5, 1.2, 0, Math.PI * 2),
-            l.arc(4.5, -14.5, 1.2, 0, Math.PI * 2),
-            l.arc(0, -19.5, 1.2, 0, Math.PI * 2),
-            l.fill());
-        else if (o.includes("martelo") || o.includes("hammer"))
-          ((l.fillStyle = "#5c3a21"),
-            l.fillRect(-1.5, -15, 3, 18),
-            (l.fillStyle = "#854d0e"),
-            l.fillRect(-0.8, -14, 1.6, 16),
-            (l.fillStyle = "#b45309"),
-            l.fillRect(-1.8, -3, 3.6, 4),
-            (l.fillStyle = "#a16207"),
-            l.fillRect(-2.2, -12, 4.4, 2.5),
-            (l.fillStyle = "#475569"),
-            l.fillRect(-6.5, -18, 13, 6),
-            (l.fillStyle = "#94a3b8"),
-            l.fillRect(-6.5, -18, 13, 2),
-            (l.fillStyle = "#cbd5e1"),
-            l.fillRect(-6.5, -18, 2, 6));
-        else if (
+        } else if (o.includes("galho")) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#5c3a21";
+          l.fillRect(-1.5, -16, 3, 19);
+          l.fillStyle = "#854d0e";
+          l.fillRect(-0.8, -15, 1.6, 17);
+          l.strokeStyle = "#713f12";
+          l.lineWidth = 1.8;
+          l.beginPath();
+          l.moveTo(1, -9);
+          l.lineTo(4.5, -13);
+          l.stroke();
+          l.fillStyle = "#65a30d";
+          l.beginPath();
+          l.ellipse(4.5, -13.5, 1.8, 1.2, 0.4, 0, Math.PI * 2);
+          l.fill();
+          l.beginPath();
+          l.ellipse(0, -17, 1.5, 2.2, 0, 0, Math.PI * 2);
+          l.fill();
+          l.restore();
+        } else if (o.includes("maça") || o.includes("maca") || o.includes("mace")) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#5c3a21";
+          l.fillRect(-1.5, -15, 3, 18);
+          l.fillStyle = "#854d0e";
+          l.fillRect(-0.8, -14, 1.6, 16);
+          l.fillStyle = "#b45309";
+          l.fillRect(-1.8, -4, 3.6, 5);
+          l.strokeStyle = "#fef3c7";
+          l.lineWidth = 0.8;
+          l.beginPath();
+          l.moveTo(-1.8, -3);
+          l.lineTo(1.8, -2);
+          l.moveTo(-1.8, -1);
+          l.lineTo(1.8, 0);
+          l.stroke();
+          l.fillStyle = "#475569";
+          l.beginPath();
+          l.arc(0, 3, 2, 0, Math.PI * 2);
+          l.fill();
+          l.fillStyle = "#a16207";
+          l.fillRect(-2.2, -12.5, 4.4, 2.5);
+          l.fillStyle = "#64748b";
+          l.beginPath();
+          l.moveTo(-4, -18);
+          l.lineTo(0, -21);
+          l.lineTo(4, -18);
+          l.lineTo(5.5, -14.5);
+          l.lineTo(4, -11);
+          l.lineTo(-4, -11);
+          l.lineTo(-5.5, -14.5);
+          l.closePath();
+          l.fill();
+          l.fillStyle = "#94a3b8";
+          l.beginPath();
+          l.moveTo(0, -21);
+          l.lineTo(-4, -18);
+          l.lineTo(-2, -14.5);
+          l.lineTo(0, -14.5);
+          l.closePath();
+          l.fill();
+          l.fillStyle = "#334155";
+          l.beginPath();
+          l.moveTo(4, -18);
+          l.lineTo(5.5, -14.5);
+          l.lineTo(4, -11);
+          l.lineTo(0, -14.5);
+          l.closePath();
+          l.fill();
+          l.fillStyle = "#cbd5e1";
+          l.beginPath();
+          l.arc(-4.5, -14.5, 1.2, 0, Math.PI * 2);
+          l.arc(4.5, -14.5, 1.2, 0, Math.PI * 2);
+          l.arc(0, -19.5, 1.2, 0, Math.PI * 2);
+          l.fill();
+          l.restore();
+        } else if (o.includes("martelo") || o.includes("hammer")) {
+          l.save();
+          if (forwardSign === 1) l.scale(-1, 1);
+          l.fillStyle = "#5c3a21";
+          l.fillRect(-1.5, -15, 3, 18);
+          l.fillStyle = "#854d0e";
+          l.fillRect(-0.8, -14, 1.6, 16);
+          l.fillStyle = "#b45309";
+          l.fillRect(-1.8, -3, 3.6, 4);
+          l.fillStyle = "#a16207";
+          l.fillRect(-2.2, -12, 4.4, 2.5);
+          l.fillStyle = "#475569";
+          l.fillRect(-6.5, -18, 13, 6);
+          l.fillStyle = "#94a3b8";
+          l.fillRect(-6.5, -18, 13, 2);
+          l.fillStyle = "#cbd5e1";
+          l.fillRect(-6.5, -18, 2, 6);
+          l.restore();
+        } else if (
           o.includes("lança") ||
           o.includes("lanca") ||
           o.includes("spear")
-        )
-          ((l.fillStyle = "#78350f"),
-            l.fillRect(-1.2, -20, 2.4, 23),
-            (l.fillStyle = "#a16207"),
-            l.fillRect(-0.6, -19, 1.2, 21),
-            (l.fillStyle = "#b45309"),
-            l.fillRect(-1.5, -4, 3, 4),
-            (l.fillStyle = "#a16207"),
-            l.fillRect(-1.8, -21, 3.6, 2),
-            (l.fillStyle = "#64748b"),
-            l.beginPath(),
-            l.moveTo(0, -28),
-            l.lineTo(3, -21),
-            l.lineTo(-3, -21),
-            l.closePath(),
-            l.fill(),
-            (l.fillStyle = "#94a3b8"),
-            l.beginPath(),
-            l.moveTo(0, -28),
-            l.lineTo(-3, -21),
-            l.lineTo(0, -21),
-            l.closePath(),
-            l.fill());
-        else if (
+        ) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#78350f";
+          l.fillRect(-1.2, -20, 2.4, 23);
+          l.fillStyle = "#a16207";
+          l.fillRect(-0.6, -19, 1.2, 21);
+          l.fillStyle = "#b45309";
+          l.fillRect(-1.5, -4, 3, 4);
+          l.fillStyle = "#a16207";
+          l.fillRect(-1.8, -21, 3.6, 2);
+          l.fillStyle = "#64748b";
+          l.beginPath();
+          l.moveTo(0, -28);
+          l.lineTo(3, -21);
+          l.lineTo(-3, -21);
+          l.closePath();
+          l.fill();
+          l.fillStyle = "#94a3b8";
+          l.beginPath();
+          l.moveTo(0, -28);
+          l.lineTo(-3, -21);
+          l.lineTo(0, -21);
+          l.closePath();
+          l.fill();
+          l.restore();
+        } else if (
           o.includes("cajado") ||
           o.includes("bastão") ||
           o.includes("bastao")
-        )
-          ((l.fillStyle = "#78350f"),
-            l.fillRect(-1.5, -18, 3, 22),
-            (l.fillStyle = "#38bdf8"),
-            l.beginPath(),
-            l.arc(0, -20, 3.5, 0, Math.PI * 2),
-            l.fill());
-        else if (o.includes("machado"))
-          ((l.fillStyle = "#5c3a21"),
-            l.fillRect(-1.5, -15, 3, 18),
-            (l.fillStyle = "#a16207"),
-            l.fillRect(-2, -12, 4, 2.5),
-            (l.fillStyle = "#64748b"),
-            l.beginPath(),
-            l.moveTo(1, -14),
-            l.lineTo(-7, -17),
-            l.quadraticCurveTo(-9, -11, -7, -6),
-            l.lineTo(1, -9),
-            l.closePath(),
-            l.fill(),
-            (l.fillStyle = "#cbd5e1"),
-            l.beginPath(),
-            l.moveTo(-5, -16),
-            l.quadraticCurveTo(-9, -11, -5, -7),
-            l.lineTo(-7, -6),
-            l.quadraticCurveTo(-9, -11, -7, -17),
-            l.closePath(),
-            l.fill());
-        else if (o.includes("seixo") || u.includes("seixo") || u.includes("pebble"))
-          Hu.render(l, 0, -7, 0.7, this.animTimer)
-        else if (
+        ) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#78350f";
+          l.fillRect(-1.5, -18, 3, 22);
+          l.fillStyle = "#a16207";
+          l.fillRect(-0.7, -17, 1.4, 20);
+          l.fillStyle = "#b45309";
+          l.fillRect(-1.8, -3, 3.6, 5);
+          l.fillStyle = "#d97706";
+          l.fillRect(-2.2, -19, 4.4, 1.8);
+          l.fillStyle = "#38bdf8";
+          l.beginPath();
+          l.arc(0, -20.5, 3.8, 0, Math.PI * 2);
+          l.fill();
+          l.fillStyle = "#e0f2fe";
+          l.beginPath();
+          l.arc(-1, -21.5, 1.3, 0, Math.PI * 2);
+          l.fill();
+          l.restore();
+        } else if (o.includes("machado")) {
+          l.save();
+          if (forwardSign === 1) l.scale(-1, 1);
+          l.fillStyle = "#5c3a21";
+          l.fillRect(-1.5, -15, 3, 18);
+          l.fillStyle = "#a16207";
+          l.fillRect(-2, -12, 4, 2.5);
+          l.fillStyle = "#64748b";
+          l.beginPath();
+          l.moveTo(1, -14);
+          l.lineTo(-7, -17);
+          l.quadraticCurveTo(-9, -11, -7, -6);
+          l.lineTo(1, -9);
+          l.closePath();
+          l.fill();
+          l.fillStyle = "#cbd5e1";
+          l.beginPath();
+          l.moveTo(-5, -16);
+          l.quadraticCurveTo(-9, -11, -5, -7);
+          l.lineTo(-7, -6);
+          l.quadraticCurveTo(-9, -11, -7, -17);
+          l.closePath();
+          l.fill();
+          l.restore();
+        } else if (
+          o.includes("adaga") ||
+          u.includes("adaga") ||
+          u.includes("dagger") ||
+          o.includes("faca") ||
+          u.includes("faca") ||
+          u.includes("knife")
+        ) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#78350f";
+          l.fillRect(-1, 0, 2, 3);
+          l.fillStyle = "#fbbf24";
+          l.beginPath();
+          l.arc(0, 3.2, 1.2, 0, Math.PI * 2);
+          l.fill();
+          l.fillStyle = "#eab308";
+          l.fillRect(-2.5, -1.5, 5, 1.5);
+          l.fillStyle = "#cbd5e1";
+          l.fillRect(-1.2, -10, 2.4, 8.5);
+          l.beginPath();
+          l.moveTo(-1.2, -10);
+          l.lineTo(0, -12.5);
+          l.lineTo(1.2, -10);
+          l.closePath();
+          l.fill();
+          l.restore();
+        } else if (o.includes("seixo") || u.includes("seixo") || u.includes("pebble")) {
+          Hu.render(l, 0, -7, 0.7, this.animTimer);
+        } else if (
           o.includes("frasco") ||
           u.includes("frasco") ||
           o.includes("poção") ||
@@ -4937,45 +5003,63 @@
               : o.includes("vida")
                 ? "#ef4444"
                 : "#ea580c";
-          ((l.fillStyle = "#d97706"),
-            l.fillRect(-1, -7, 2, 2),
-            (l.fillStyle = m),
-            l.beginPath(),
-            l.arc(0, -3, 3, 0, Math.PI * 2),
-            l.fill());
-        } else
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#d97706";
+          l.fillRect(-1, -7, 2, 2);
+          l.fillStyle = m;
+          l.beginPath();
+          l.arc(0, -3, 3, 0, Math.PI * 2);
+          l.fill();
+          l.restore();
+        } else if (
           o.includes("aranha") ||
           o.includes("escorpião") ||
           o.includes("escorpiao")
-            ? ((l.fillStyle = "#292524"),
-              l.fillRect(-3, -7, 6, 6),
-              (l.strokeStyle = "#ca8a04"),
-              l.strokeRect(-3, -7, 6, 6))
-            : o.includes("gosma") || u.includes("slime")
-              ? ((l.fillStyle = "rgba(34, 197, 94, 0.9)"),
-                l.beginPath(),
-                l.arc(0, -4, 3.5, 0, Math.PI * 2),
-                l.fill())
-              : o.includes("coelho") || u.includes("rabbit")
-                ? ((l.fillStyle = "#f5f5f4"),
-                  l.beginPath(),
-                  l.ellipse(0, -4, 3, 4, 0, 0, Math.PI * 2),
-                  l.fill(),
-                  (l.fillStyle = "#f472b6"),
-                  l.fillRect(-1.5, -9, 1, 3),
-                  l.fillRect(0.5, -9, 1, 3))
-                : ((l.fillStyle = "#f59e0b"),
-                  l.fillRect(-4, -3, 8, 2),
-                  (l.fillStyle = "#cbd5e1"),
-                  l.fillRect(-1.5, -16, 3, 13),
-                  l.beginPath(),
-                  l.moveTo(-1.5, -16),
-                  l.lineTo(0, -19),
-                  l.lineTo(1.5, -16),
-                  l.closePath(),
-                  l.fill(),
-                  (l.fillStyle = "#f59e0b"),
-                  l.fillRect(-1, 2, 2, 2));
+        ) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#292524";
+          l.fillRect(-3, -7, 6, 6);
+          l.strokeStyle = "#ca8a04";
+          l.strokeRect(-3, -7, 6, 6);
+          l.restore();
+        } else if (o.includes("gosma") || u.includes("slime")) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "rgba(34, 197, 94, 0.9)";
+          l.beginPath();
+          l.arc(0, -4, 3.5, 0, Math.PI * 2);
+          l.fill();
+          l.restore();
+        } else if (o.includes("coelho") || u.includes("rabbit")) {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#f5f5f4";
+          l.beginPath();
+          l.ellipse(0, -4, 3, 4, 0, 0, Math.PI * 2);
+          l.fill();
+          l.fillStyle = "#f472b6";
+          l.fillRect(-1.5, -9, 1, 3);
+          l.fillRect(0.5, -9, 1, 3);
+          l.restore();
+        } else {
+          l.save();
+          if (forwardSign === -1) l.scale(-1, 1);
+          l.fillStyle = "#f59e0b";
+          l.fillRect(-4, -3, 8, 2);
+          l.fillStyle = "#cbd5e1";
+          l.fillRect(-1.5, -16, 3, 13);
+          l.beginPath();
+          l.moveTo(-1.5, -16);
+          l.lineTo(0, -19);
+          l.lineTo(1.5, -16);
+          l.closePath();
+          l.fill();
+          l.fillStyle = "#f59e0b";
+          l.fillRect(-1, 2, 2, 2);
+          l.restore();
+        }
       }
       drawHeldShield(t, l, o, u, swingOffset = 0, overrideX, overrideY) {
         const m = this.ctx,
@@ -5013,7 +5097,7 @@
           skin = this._currentSkinColor || "#e6b89c";
         let u = overrideX !== undefined ? overrideX : -8.6,
           m = overrideY !== undefined ? overrideY : (-7.2 - l + swingOffset),
-          c = -0.2;
+          c = overrideX !== undefined ? 0 : -0.2;
         if (overrideX === undefined) {
           if (t === "left") {
             u = -6.5;
@@ -5022,7 +5106,7 @@
           } else if (t === "right") {
             u = -4.5;
             m = -7.2 - l + swingOffset;
-            c = -0.15;
+            c = 0.32;
           } else if (t === "up") {
             u = 8.6;
             m = -10.5 - l + swingOffset;
@@ -5035,7 +5119,7 @@
         }
         o.save();
         o.translate(u, m);
-        o.rotate(c);
+        if (c !== 0) o.rotate(c);
         o.fillStyle = skin;
         o.beginPath();
         o.arc(0, 0, 2.2, 0, Math.PI * 2);
