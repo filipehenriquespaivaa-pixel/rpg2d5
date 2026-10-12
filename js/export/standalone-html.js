@@ -2947,6 +2947,67 @@
       const collarColor = isIron ? '#334155' : (isLeather ? '#582f0e' : (isArcane ? '#581c87' : '#1e40af'));
       const darkHemColor = isIron ? '#475569' : (isLeather ? '#713f12' : (isArcane ? '#581c87' : '#1e3a8a'));
 
+
+      // Desenha o braço de trás (mais escuro) ATRÁS DO DORSO quando em vista lateral
+      if ((dir === "left" || dir === "right") && !isAttacking) {
+        const isLeft = dir === "left";
+        const backShoulderX = (isLeft ? 1.8 : -2.0) + leanX;
+        const shoulderPivotY = -14.2 - walkBob + leanY;
+        const baseWalkAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45);
+        const backArmAngle = -baseWalkAngle * 0.85;
+        const hasLeftTorch = Boolean(lanternActive || (equipment.mao_esquerda && (equipment.mao_esquerda.name || "").toLowerCase().includes("tocha")));
+        const hasLeftShield = Boolean(equipment.mao_esquerda && (equipment.mao_esquerda.name || "").toLowerCase().includes("escudo"));
+        const hasRightWeapon = Boolean(equipment.mao_direita);
+        const backItemIsRight = isLeft;
+        const backHasContent = (backItemIsRight && hasRightWeapon) || (!backItemIsRight && (hasLeftTorch || hasLeftShield)) || Math.abs(walkNorm) > 0.15;
+        if (backHasContent) {
+          ctx.save();
+          ctx.translate(backShoulderX, shoulderPivotY);
+          ctx.rotate(backArmAngle);
+          ctx.fillStyle = shirtColor;
+          ctx.fillRect(-1.2, 0, 2.4, 5.8);
+          ctx.fillStyle = "rgba(0, 0, 0, 0.28)"; // Tom mais escuro representando o braço de trás
+          ctx.fillRect(-1.2, 0, 2.4, 5.8);
+          const backBracer = backItemIsRight ? equipment.bracelete_direito : equipment.bracelete_esquerdo;
+          ctx.fillStyle = backBracer ? (backBracer.color || "#d97706") : "rgba(15, 23, 42, 0.35)";
+          ctx.fillRect(-1.2, 4.4, 2.4, 1.5);
+          ctx.fillStyle = playerSkin;
+          ctx.fillRect(-1.1, 5.9, 2.2, 2.2);
+          ctx.fillStyle = "rgba(0, 0, 0, 0.25)"; // Tom mais escuro na mão de trás
+          ctx.fillRect(-1.1, 5.9, 2.2, 2.2);
+          if (backItemIsRight && hasRightWeapon) {
+            ctx.save();
+            ctx.translate(isLeft ? 1.2 : -1.2, 7.0);
+            ctx.rotate(isLeft ? 0.30 : -0.30);
+            drawHeldWeaponItem();
+            ctx.restore();
+          } else if (!backItemIsRight) {
+            if (hasLeftTorch) {
+              ctx.save();
+              ctx.translate(isLeft ? 1.2 : -1.2, 7.0);
+              ctx.fillStyle = "#78350f";
+              ctx.fillRect(-1.5, -12, 3, 16);
+              ctx.fillStyle = "#ea580c";
+              ctx.beginPath();
+              ctx.arc(0, -14 + Math.sin(animTimer * 12), 3.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            } else if (hasLeftShield) {
+              ctx.save();
+              ctx.translate(isLeft ? 1.2 : -1.2, 7.0);
+              ctx.fillStyle = "#78350f";
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 5, 8, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = "#cbd5e1";
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+          ctx.restore();
+        }
+      }
       if (dir === 'down') {
         // VISTA FRONTAL
         ctx.fillStyle = shirtColor;
@@ -3594,44 +3655,69 @@
             ctx.restore();
           }
         } else {
-          // VISTA LATERAL EM PERFIL: Pêndulo com pivô fixo no ombro
+          // VISTA LATERAL EM PERFIL: Regra anatômica e de perspectiva
+          // - Se olhando para a DIREITA: braço DIREITO à vista (acima do corpo), braço ESQUERDO atrás (no fundo).
+          // - Se olhando para a ESQUERDA: braço ESQUERDO à vista (acima do corpo), braço DIREITO atrás (no fundo).
+          // Os equipamentos acompanham estritamente a mão que os segura (mão direita -> arma; mão esquerda -> tocha/escudo).
           const isLeft = dir === 'left';
-          const shoulderPivotX = (isLeft ? -1.0 : 0.8) + leanX;
+          const frontShoulderX = (isLeft ? -1.0 : 0.8) + leanX;
+          const backShoulderX = (isLeft ? 1.8 : -2.0) + leanX;
           const shoulderPivotY = -14.2 - walkBob + leanY;
-          const armAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45);
+          const baseWalkAngle = (isLeft ? 1 : -1) * walkNorm * (isRun ? 0.60 : 0.45);
+          const frontArmAngle = baseWalkAngle;
+          const backArmAngle = -baseWalkAngle * 0.85;
 
+          const hasLeftTorch = Boolean(lanternActive || (equipment.mao_esquerda && (equipment.mao_esquerda.name || '').toLowerCase().includes('tocha')));
+          const hasLeftShield = Boolean(equipment.mao_esquerda && (equipment.mao_esquerda.name || '').toLowerCase().includes('escudo'));
+          const hasRightWeapon = Boolean(equipment.mao_direita);
+
+          const frontItemIsRight = !isLeft;
+          const backItemIsRight = isLeft;
+
+          // 2. Braço da Frente (à vista, em primeiro plano: direito se olhando para a direita, esquerdo se olhando para a esquerda)
           ctx.save();
-          ctx.translate(shoulderPivotX, shoulderPivotY);
-          ctx.rotate(armAngle);
+          ctx.translate(frontShoulderX, shoulderPivotY);
+          ctx.rotate(frontArmAngle);
           ctx.fillStyle = shirtColor;
           ctx.fillRect(-1.3, 0, 2.6, 6.2);
-          const brColor = (isLeft ? equipment.bracelete_esquerdo : equipment.bracelete_direito) ? ((isLeft ? equipment.bracelete_esquerdo : equipment.bracelete_direito).color || '#d97706') : 'rgba(15, 23, 42, 0.25)';
-          ctx.fillStyle = brColor;
+          const frontBracer = frontItemIsRight ? equipment.bracelete_direito : equipment.bracelete_esquerdo;
+          ctx.fillStyle = frontBracer ? (frontBracer.color || '#d97706') : 'rgba(15, 23, 42, 0.25)';
           ctx.fillRect(-1.3, 4.8, 2.6, 1.6);
           ctx.fillStyle = playerSkin;
           ctx.fillRect(-1.2, 6.4, 2.4, 2.4);
 
-          if (equipment.mao_direita) {
+          if (frontItemIsRight && hasRightWeapon) {
             ctx.save();
             ctx.translate(isLeft ? -1.5 : 1.5, 7.4);
             const profileWeaponAngle = (isLeft ? -0.35 : 0.35);
             ctx.rotate(profileWeaponAngle);
             drawHeldWeaponItem();
             ctx.restore();
+          } else if (!frontItemIsRight) {
+            if (hasLeftTorch) {
+              ctx.save();
+              ctx.translate(isLeft ? -1.5 : 1.5, 7.4);
+              ctx.fillStyle = '#78350f';
+              ctx.fillRect(-1.5, -12, 3, 16);
+              ctx.fillStyle = '#ea580c';
+              ctx.beginPath();
+              ctx.arc(0, -14 + Math.sin(animTimer * 12), 3.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            } else if (hasLeftShield) {
+              ctx.save();
+              ctx.translate(isLeft ? -1.5 : 1.5, 7.4);
+              ctx.fillStyle = '#78350f';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 5, 8, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+              ctx.restore();
+            }
           }
           ctx.restore();
-
-          // Lanterna ou escudo em vista lateral
-          const sideHandX = shoulderPivotX - Math.sin(armAngle) * 7.4;
-          const sideHandY = shoulderPivotY + Math.cos(armAngle) * 7.4;
-          if (lanternActive && !equipment.mao_direita) {
-            ctx.fillStyle = '#78350f';
-            ctx.fillRect(sideHandX - 1.5, sideHandY - 5.5, 3, 12);
-            ctx.fillStyle = '#ea580c';
-            ctx.beginPath();
-            ctx.arc(sideHandX, sideHandY - 7.5 + Math.sin(animTimer * 12), 3.5, 0, Math.PI * 2);
-            ctx.fill();
-          }
         }
       }
 
