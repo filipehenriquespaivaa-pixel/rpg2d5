@@ -671,6 +671,11 @@
         return;
       }
 
+      if (t.type === "wolf" && typeof CREATURES !== "undefined" && CREATURES.wolf && typeof CREATURES.wolf.onAttackPlayer === "function") {
+        CREATURES.wolf.onAttackPlayer(this, t, l, o);
+        return;
+      }
+
       this.applyMonsterHitToPlayer(t, l, o, !1);
     }
     tardigradeAttackPlayer(t, l, o = 2) {
@@ -1551,6 +1556,12 @@
             }
           }
         }
+        if (p.type === "wolf" && p.wolfAttackState && typeof CREATURES !== "undefined" && CREATURES.wolf && typeof CREATURES.wolf.updateAttack === "function") {
+          const isHandlingWolfAttack = CREATURES.wolf.updateAttack(this, p, l, t, c);
+          if (isHandlingWolfAttack) {
+            continue;
+          }
+        }
         if (p.type === "slime") {
           if (p.attached) {
             const W = this.getAnimalFireDeterrence(p, l);
@@ -1854,7 +1865,7 @@
           O = gl(p.type) && !!((p.fleeFireTimer || 0) > 0 && x && M < $ * 1.6),
           _ = K || V || O,
           NC = gl(p.type) && ((p.giveUpPursuitTimer || 0) > 0 || !z.canAttack || weatherMod.forceRetreat);
-        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : p.type === "tardigrade" ? Math.max(28, Math.round(30 * (p.scale || 1) * 0.95)) : 26,
+        const meleeAttackDist = p.isGiantScorpion ? 105 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 24 : 32) : p.type === "tardigrade" ? Math.max(28, Math.round(30 * (p.scale || 1) * 0.95)) : p.type === "wolf" ? 30 : 26,
           chaseStopDist = p.isGiantScorpion ? 78 : p.type === "scorpion" ? ((p.scale || 0.58) <= 0.65 ? 18 : 24) : p.type === "tardigrade" ? Math.max(20, Math.round(22 * (p.scale || 1) * 0.95)) : 22;
         if (weatherMod.forceRetreat) {
           // Criaturas de fogo (Dragão Ancião, Golem Magmático) recuando da chuva/neve ou criaturas assustadas por raios!
@@ -3354,6 +3365,7 @@
             (p.giveUpPursuitTimer = 0),
             (p.fleeFireTimer = 0),
             (T.totalDamage += $),
+            p.type === "wolf" && p.wolfAttackState && ((p.wolfAttackState = null), (p.attackCooldown = 0.9)),
             P)
           ) {
             ((p.attached = !1), (p.isLeaping = !1), (p.attackCooldown = 1.8));
