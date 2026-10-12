@@ -4662,8 +4662,8 @@
               M.fillRect(-1.1, 5.9, 2.2, 2.2);
               if (backItem || backIsTorch) {
                 M.save();
-                M.translate(isLeft ? 1.2 : -1.2, 7.0);
-                const backBaseRot = backIsTorch || backIsShield ? 0 : (isLeft ? 0.30 : -0.30);
+                M.translate(isLeft ? -1.2 : 1.2, 7.0);
+                const backBaseRot = backIsTorch || backIsShield ? 0 : (isLeft ? -0.30 : 0.30);
                 renderEquippedHandItem(
                   backItem,
                   backIsTorch,
