@@ -637,7 +637,8 @@
       if (
         l.isDead ||
         (l.invulnerableTimer && l.invulnerableTimer > 0) ||
-        !this.getAnimalFireDeterrence(t, l).canAttack
+        !this.getAnimalFireDeterrence(t, l).canAttack ||
+        this.getSuperiorPlayerAttacker(t, l)
       )
         return;
 
@@ -819,6 +820,65 @@
           size: 2.2 + Math.random() * 2,
         });
       }
+    }
+    // ==========================================
+    // SISTEMA DE HIERARQUIA DE ATAQUES
+    // ==========================================
+    getCreatureCombatTier(c) {
+      if (!c) return 0;
+      if (c.type === "dragon") return 100;
+      if (c.type === "tardigrade") return c.isQueen ? 95 : 80;
+      if (c.type === "golem") return 85;
+      if (c.type === "scorpion") return c.isGiantScorpion ? 80 : 45;
+      if (c.type === "wolf") return 55;
+      if (c.type === "spider") return 35;
+      if (c.type === "bat") return 25;
+      if (c.type === "slime") return 15;
+      return Math.max(10, (c.attack || 2) * 5);
+    }
+    isCreatureAttackingPlayer(c, player) {
+      if (!c || c.hp <= 0 || player.isDead) return false;
+      if (c.isUnderground !== player.isUnderground) return false;
+      const d = Math.hypot(c.x - player.x, c.y - player.y);
+      // Deve estar em alcance ativo de combate com o jogador
+      if (d > 180 * (c.scale || 1)) return false;
+
+      // Em animação ou estado ativo de ataque
+      if (c.wolfAttackState) return true;
+      if (c.isCapturingPlayer) return true;
+      if (c.attached || c.isLeaping) return true;
+      if (c.clawAttackTimer && c.clawAttackTimer > 0) return true;
+      if (c.stingerAttackTimer && c.stingerAttackTimer > 0) return true;
+      if (c.attackTimer && c.attackTimer > 0) return true;
+
+      // Em perseguição próxima agressiva ou combate corpo a corpo
+      if (d <= 95 && (c.attackCooldown > 0 || (c.aggroTimer && c.aggroTimer > 0) || d <= 48)) return true;
+
+      return false;
+    }
+    getSuperiorPlayerAttacker(c, player) {
+      if (!this.monsters || player.isDead) return null;
+      const myTier = this.getCreatureCombatTier(c);
+      let superior = null;
+      let superiorTier = myTier;
+
+      for (let i = 0; i < this.monsters.length; i++) {
+        const other = this.monsters[i];
+        if (!other || other.id === c.id || other.hp <= 0) continue;
+
+        // Mesma espécie caça junto (ex: outros lobos atacam juntos em matilha)
+        if (other.type === c.type) continue;
+
+        const otherTier = this.getCreatureCombatTier(other);
+        // Só é superior se tiver tier estritamente MAIOR que o meu
+        if (otherTier > superiorTier) {
+          if (this.isCreatureAttackingPlayer(other, player)) {
+            superiorTier = otherTier;
+            superior = other;
+          }
+        }
+      }
+      return superior;
     }
     handlePlayerDeath(t) {
       var l;
@@ -1564,6 +1624,16 @@
         }
         if (p.type === "slime") {
           if (p.attached) {
+            const superiorAttacker = this.getSuperiorPlayerAttacker(p, l);
+            if (superiorAttacker) {
+              ((p.attached = !1), (p.isLeaping = !1), (p.attackCooldown = 3));
+              const le = Math.atan2(p.y - l.y, p.x - l.x) || Math.random() * Math.PI * 2;
+              ((p.vx = Math.cos(le) * (p.speed * 1.5)),
+                (p.vy = Math.sin(le) * (p.speed * 1.5)),
+                (p.x = l.x + Math.cos(le) * 38),
+                (p.y = l.y + Math.sin(le) * 38));
+              continue;
+            }
             const W = this.getAnimalFireDeterrence(p, l);
             if (W.isDeterred) {
               ((p.attached = !1), (p.isLeaping = !1), (p.attackCooldown = 3));
@@ -1772,6 +1842,17 @@
                 color: "rgba(255, 255, 255, 0.5)",
                 size: 1.8 + Math.random() * 1.5,
               }));
+          const superiorSlime = this.getSuperiorPlayerAttacker(p, l);
+          if (superiorSlime) {
+            p.attackCooldown = Math.max(p.attackCooldown || 0, 1.5);
+            if (j < 140) {
+              const esc = Math.atan2(p.y - l.y, p.x - l.x) || Math.random() * Math.PI * 2;
+              p.vx = Math.cos(esc) * (p.speed * 1.05);
+              p.vy = Math.sin(esc) * (p.speed * 1.05);
+              p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+            }
+            continue;
+          }
           const de = this.getAnimalFireDeterrence(p, l);
           if (
             ((p.attackCooldown = Math.max(0, (p.attackCooldown || 0) - t)),
@@ -2030,27 +2111,54 @@
             }
           }
         } else if (!NC && !l.isDead && (j < ((p.aggroTimer || 0) > 0 ? 550 : (p.type === "tardigrade" ? Math.round(220 * Math.max(1, (p.scale || 1) * 0.75)) : (p.isGiantScorpion ? 260 : 150)) * wVisMult)) && j > chaseStopDist && z.canAttack) {
-          const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1) * wSpeedMult;
-          const chaseSpeed = p.speed * de;
-          const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
-          ((p.vx = Math.cos(G) * chaseSpeed),
-            (p.vy = Math.sin(G) * chaseSpeed),
-            (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
-        } else if (!NC && !l.isDead && j <= meleeAttackDist && z.canAttack)
-          ((p.vx = 0),
-            (p.vy = 0),
-            (p.facing = this.getMonsterFacingToTarget(
-              p.x,
-              p.y,
-              l.x,
-              l.y,
-              p.facing,
-            )),
-            p.attackCooldown <= 0 &&
-              (!l.invulnerableTimer || l.invulnerableTimer <= 0) &&
-              ((p.attackCooldown =
-                (creatureBehavior(p.type).attackCooldown ?? 1.25)),
-              this.monsterAttackPlayer(p, l, c)));
+          const superiorAttacker = this.getSuperiorPlayerAttacker(p, l);
+          if (superiorAttacker) {
+            // Criatura mais forte está na luta: evita entrar na luta e mantém distância respeitosa
+            if (j < 155) {
+              const avoidAng = Math.atan2(p.y - l.y, p.x - l.x) || Math.random() * Math.PI * 2;
+              p.vx = Math.cos(avoidAng) * (p.speed * 1.05);
+              p.vy = Math.sin(avoidAng) * (p.speed * 1.05);
+              p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+            } else {
+              p.vx = 0;
+              p.vy = 0;
+              p.facing = this.getMonsterFacingToTarget(p.x, p.y, l.x, l.y, p.facing);
+            }
+            p.attackCooldown = Math.max(p.attackCooldown || 0, 1.5);
+          } else {
+            const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1) * wSpeedMult;
+            const chaseSpeed = p.speed * de;
+            const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
+            ((p.vx = Math.cos(G) * chaseSpeed),
+              (p.vy = Math.sin(G) * chaseSpeed),
+              (p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing)));
+          }
+        } else if (!NC && !l.isDead && j <= meleeAttackDist && z.canAttack) {
+          const superiorAttacker = this.getSuperiorPlayerAttacker(p, l);
+          if (superiorAttacker) {
+            // Criatura mais forte está na luta: desiste do ataque e recua
+            const avoidAng = Math.atan2(p.y - l.y, p.x - l.x) || Math.random() * Math.PI * 2;
+            p.vx = Math.cos(avoidAng) * (p.speed * 1.25);
+            p.vy = Math.sin(avoidAng) * (p.speed * 1.25);
+            p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+            p.attackCooldown = Math.max(p.attackCooldown || 0, 1.8);
+          } else {
+            ((p.vx = 0),
+              (p.vy = 0),
+              (p.facing = this.getMonsterFacingToTarget(
+                p.x,
+                p.y,
+                l.x,
+                l.y,
+                p.facing,
+              )),
+              p.attackCooldown <= 0 &&
+                (!l.invulnerableTimer || l.invulnerableTimer <= 0) &&
+                ((p.attackCooldown =
+                  (creatureBehavior(p.type).attackCooldown ?? 1.25)),
+                this.monsterAttackPlayer(p, l, c)));
+          }
+        }
         else if (creatureBehavior(p.type).hunter && (!p.aggroTimer || p.aggroTimer <= 0) && !p.isQueen) {
           const hunterAI = creatureBehavior(p.type).hunter;
           const G = this.getNearestPreyForWolf(p.x, p.y, hunterAI.huntRadius * wVisMult, p.isUnderground, p);

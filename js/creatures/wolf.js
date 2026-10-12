@@ -1204,6 +1204,15 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
   const det = manager.getAnimalFireDeterrence(wolf, player);
   if (!det.canAttack) return;
 
+  // Hierarquia de predadores: se houver criatura mais forte atacando o jogador (ex: Dragão), o lobo não entra na luta
+  if (manager && typeof manager.getSuperiorPlayerAttacker === "function") {
+    const superior = manager.getSuperiorPlayerAttacker(wolf, player);
+    if (superior) {
+      wolf.attackCooldown = 2.0;
+      return;
+    }
+  }
+
   // Alterna dinamicamente entre os 3 ataques:
   // 1 = arm_hold (morde braço e abraça o player)
   // 2 = leg_pull (morde perna e puxa para trás)
@@ -1267,6 +1276,20 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
   if (wolf.hp <= 0 || player.isDead) {
     wolf.wolfAttackState = null;
     return false;
+  }
+
+  // Hierarquia de predadores: se um predador mais forte (ex: Dragão) chegar atacando o player, o lobo desiste do ataque e recua!
+  if (manager && typeof manager.getSuperiorPlayerAttacker === "function") {
+    const superior = manager.getSuperiorPlayerAttacker(wolf, player);
+    if (superior) {
+      wolf.wolfAttackState = null;
+      wolf.attackCooldown = 2.5;
+      const fleeAng = Math.atan2(wolf.y - player.y, wolf.x - player.x) || Math.random() * Math.PI * 2;
+      wolf.vx = Math.cos(fleeAng) * (wolf.speed * 1.35);
+      wolf.vy = Math.sin(fleeAng) * (wolf.speed * 1.35);
+      wolf.facing = manager.getMonsterFacing(wolf.vx, wolf.vy, wolf.facing);
+      return false;
+    }
   }
 
   // Fogo e tocha intimidam o lobo
