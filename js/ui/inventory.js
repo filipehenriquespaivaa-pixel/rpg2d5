@@ -871,12 +871,21 @@
                         const iid = (e.item.id || "").toLowerCase();
                         const isBook = iname.includes("livro") || iname.includes("tomo") || iname.includes("tratado") || iname.includes("compêndio") || iname.includes("compendio") || iname.includes("manuscrito") || iid.includes("livro");
                         const isScroll = iname.includes("pergaminho") || iid.includes("pergaminho");
-                        const btnText = isBook ? "📖 Abrir e Ler Livro" : isScroll ? "📜 Desenrolar Pergaminho" : ("Usar " + (e.slot ? "do Cinto" : ""));
+                        const isChest = !!e.item.isPlaceableChest || iname.includes("baú de madeira") || iname.includes("bau de madeira");
+                        const btnText = isBook
+                          ? "📖 Abrir e Ler Livro"
+                          : isScroll
+                            ? "📜 Desenrolar Pergaminho"
+                            : isChest
+                              ? "📦 Posicionar Baú no Mapa"
+                              : ("Usar " + (e.slot ? "do Cinto" : ""));
                         const btnClass = isBook
                           ? "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-gradient-to-r from-amber-700 via-amber-600 to-amber-500 hover:from-amber-600 hover:to-amber-400 active:scale-98 text-white text-xs font-bold transition shadow-lg shadow-amber-950/60 cursor-pointer border border-amber-400/40"
                           : isScroll
                             ? "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-gradient-to-r from-purple-700 via-purple-600 to-amber-600 hover:from-purple-600 hover:to-amber-500 active:scale-98 text-white text-xs font-bold transition shadow-lg shadow-purple-950/60 cursor-pointer border border-purple-400/40"
-                            : "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white text-xs font-bold transition shadow-lg cursor-pointer";
+                            : isChest
+                              ? "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-amber-600 hover:from-emerald-500 hover:to-amber-500 active:scale-98 text-white text-xs font-bold transition shadow-lg shadow-emerald-950/60 cursor-pointer border border-emerald-400/40"
+                              : "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white text-xs font-bold transition shadow-lg cursor-pointer";
                         return h.jsxs("button", {
                           id: "use-item-action-btn",
                           onClick: () => {
@@ -884,7 +893,7 @@
                           },
                           className: btnClass,
                           children: [
-                            !isBook && !isScroll && h.jsx(Or, { className: "h-4 w-4" }),
+                            !isBook && !isScroll && !isChest && h.jsx(Or, { className: "h-4 w-4" }),
                             btnText,
                           ],
                         });

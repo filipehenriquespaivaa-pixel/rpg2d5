@@ -358,6 +358,85 @@
       }
       return true;
     }
+    isChestPlacementValid(tx, ty) {
+      const tile = this.getTile(tx, ty);
+      if (
+        !tile ||
+        !tile.biome ||
+        !tile.biome.passable ||
+        tile.biome.hasWater ||
+        tile.isCliffWall ||
+        tile.isGreekWall ||
+        tile.isSnowCityWall ||
+        tile.isDesertCityWall ||
+        tile.isPortCityWall ||
+        tile.isSnowCityCollider ||
+        tile.isDesertCityCollider ||
+        tile.isPortCityCollider
+      ) {
+        return false;
+      }
+      if (tile.prop) {
+        const k = tile.prop.kind;
+        if (k !== "cabin_floor" && k !== "flower_patch") {
+          return false;
+        }
+      }
+      return true;
+    }
+    buildPlayerChest(tx, ty, initialItems) {
+      if (!this.isChestPlacementValid(tx, ty)) {
+        return {
+          success: false,
+          message: "⚠️ Local inválido para o baú! Escolha um piso ou terreno livre sem obstáculos.",
+        };
+      }
+      const existingTile = this.getTile(tx, ty);
+      const underlyingCabinId =
+        existingTile && existingTile.prop && existingTile.prop.kind === "cabin_floor"
+          ? existingTile.prop.cabinId
+          : null;
+      const chestId = "chest_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+      const chestProp = {
+        kind: "wooden_chest",
+        chestId,
+        cabinId: underlyingCabinId,
+        onCabinFloor: !!underlyingCabinId,
+        subType: 0,
+        offsetX: 0,
+        offsetY: 0,
+        scale: 1,
+        interactive: true,
+        opened: false,
+        storageItems: Array.isArray(initialItems) ? [...initialItems] : [],
+        maxSlots: 12,
+        namePt: "Baú de Madeira (0/12)",
+        descriptionPt:
+          "Baú de carvalho construído pelo jogador. Guarda até 12 itens com segurança. Pressione [F] para abrir!",
+      };
+      this.placeProp(tx, ty, chestProp);
+      this.invalidateTile(tx, ty);
+      return {
+        success: true,
+        chestProp,
+        message: "📦 Baú de Madeira posicionado no mapa! Pressione [F] perto dele para guardar ou retirar até 12 itens.",
+      };
+    }
+    updateWoodenChestStorage(tx, ty, newItems, isOpen) {
+      const prop = this.getPlacedProp(tx, ty) || (this.getTile(tx, ty) && this.getTile(tx, ty).prop);
+      if (!prop || prop.kind !== "wooden_chest") return false;
+      const items = Array.isArray(newItems) ? [...newItems] : [];
+      const maxSlots = prop.maxSlots || 12;
+      const updated = {
+        ...prop,
+        storageItems: items,
+        opened: isOpen !== undefined ? !!isOpen : prop.opened,
+        namePt: `Baú de Madeira (${items.length}/${maxSlots})`,
+      };
+      this.placeProp(tx, ty, updated);
+      this.invalidateTile(tx, ty);
+      return updated;
+    }
     buildCabin(pileTx, pileTy, customOriginTx, customOriginTy) {
       if (this.isUnderground) return { success: false, message: "Cabanas só podem ser construídas na superfície!" };
       const prop = this.getPlacedProp(pileTx, pileTy) || (this.getTile(pileTx, pileTy) && this.getTile(pileTx, pileTy).prop);
@@ -3357,10 +3436,12 @@
                 se.isIronBarsOpen = !!scCell.isDoorOpen;
               }
             }
-            if (scCell.prop) {
-              se.prop = scCell.prop;
-            } else {
-              se.prop = null;
+            if (!this.customPlacedProps.has(O)) {
+              if (scCell.prop) {
+                se.prop = scCell.prop;
+              } else {
+                se.prop = null;
+              }
             }
           }
         }
@@ -3387,10 +3468,12 @@
               se.isDesertCityDoor = !0;
               se.isDesertCityDoorOpen = !!dcCell.isDoorOpen;
             }
-            if (dcCell.prop) {
-              se.prop = dcCell.prop;
-            } else {
-              se.prop = null;
+            if (!this.customPlacedProps.has(O)) {
+              if (dcCell.prop) {
+                se.prop = dcCell.prop;
+              } else {
+                se.prop = null;
+              }
             }
           }
         }
@@ -3424,10 +3507,12 @@
               se.isPortCityDoor = !0;
               se.isPortCityDoorOpen = !!pcCell.isDoorOpen;
             }
-            if (pcCell.prop) {
-              se.prop = pcCell.prop;
-            } else {
-              se.prop = null;
+            if (!this.customPlacedProps.has(O)) {
+              if (pcCell.prop) {
+                se.prop = pcCell.prop;
+              } else {
+                se.prop = null;
+              }
             }
           }
         }
@@ -6485,6 +6570,20 @@
           success: !0,
           action: "unlit_corridor_torch",
           message: "",
+        };
+      }
+      if (o.prop.kind === "wooden_chest") {
+        const items = Array.isArray(o.prop.storageItems) ? o.prop.storageItems : [];
+        return {
+          success: !0,
+          action: "open_wooden_chest",
+          tx: t,
+          ty: l,
+          chestProp: o.prop,
+          storageItems: items,
+          maxSlots: o.prop.maxSlots || 12,
+          message: `📦 Baú de Madeira aberto (${items.length}/${o.prop.maxSlots || 12} slots ocupados).`,
+          reward: "",
         };
       }
       if (o.prop.kind === "cabin_door") {

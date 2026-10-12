@@ -369,8 +369,8 @@
             let sortY = de;
             if (ke.kind === "cliff_wall" || ke.kind === "cliff_ramp" || ke.kind === "cabin_floor") {
               sortY = de - f * 4.5;
-            } else if (ke.kind === "cabin_wall" || ke.kind === "cabin_door") {
-              // Desenha o piso de tábuas sob a parede/porta na camada do chão (sempre atrás dos pés do personagem)
+            } else if (ke.kind === "cabin_wall" || ke.kind === "cabin_door" || ke.onCabinFloor) {
+              // Desenha o piso de tábuas sob a parede/porta/baú na camada do chão (sempre atrás dos pés do personagem)
               if (typeof drawCabinFloor === "function") {
                 Ee.push({
                   y: de - f * 4.5,
@@ -382,17 +382,19 @@
                   },
                 });
               }
-              const wSide =
+              if (ke.kind === "cabin_wall" || ke.kind === "cabin_door") {
+                const wSide =
                 ke.kind === "cabin_door"
                   ? "south"
                   : ke.wallSide ||
                     (this.engine && typeof this.engine.getCabinWallSide === "function"
                       ? this.engine.getCabinWallSide(ne)
                       : "north");
-              if (wSide === "south" || wSide === "sw" || wSide === "se") {
-                sortY = de + f * 0.36;
-              } else if (wSide === "north") {
-                sortY = de - f * 0.36;
+                if (wSide === "south" || wSide === "sw" || wSide === "se") {
+                  sortY = de + f * 0.36;
+                } else if (wSide === "north") {
+                  sortY = de - f * 0.36;
+                }
               }
             }
             __skipWall || Ee.push({ y: sortY, draw: () => this.renderProp(ke, G, de, ne, u) });
@@ -2090,6 +2092,7 @@
                 !!m.savedCampfire.isUnderground === this.engine.isUnderground);
             break;
           case "chest":
+          case "wooden_chest":
             pg(c, f, t.opened, this.animTimer);
             break;
           case "cave_wall_25d": {

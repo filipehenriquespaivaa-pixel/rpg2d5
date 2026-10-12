@@ -118,6 +118,7 @@
       cabinMoveRepeatTimerRef = J.useRef(0),
       // Modal de cozinha: [R] com panela no fogo abre selecao de itens (6 slots)
       [cookingModalOpen, setCookingModalOpen] = J.useState(!1),
+      [activeWoodenChest, setActiveWoodenChest] = J.useState(null),
       [readerItem, setReaderItem] = J.useState(null),
       [readerOpen, setReaderOpen] = J.useState(!1),
       cookingPotRef = J.useRef(null),
@@ -1019,6 +1020,57 @@
             return;
           }
           if (
+            E.isPlaceableChest ||
+            D.includes("baú de madeira") ||
+            D.includes("bau de madeira")
+          ) {
+            const F = o.current,
+              ie = f.current;
+            if (!F || !ie) return;
+            const ge = F.tileSize,
+              re = Math.floor(ie.x / ge),
+              me = Math.floor(ie.y / ge);
+            const candidates = [
+              [re, me + 1],
+              [re + 1, me],
+              [re - 1, me],
+              [re, me - 1],
+              [re, me],
+              [re + 1, me + 1],
+              [re - 1, me + 1],
+            ];
+            let initTx = re;
+            let initTy = me + 1;
+            for (const [cx, cy] of candidates) {
+              if (F.isChestPlacementValid && F.isChestPlacementValid(cx, cy)) {
+                initTx = cx;
+                initTy = cy;
+                break;
+              }
+            }
+            const previewObj = {
+              active: !0,
+              mode: "chest",
+              chestItemId: E.id,
+              chestItemName: E.name,
+              pileTx: re,
+              pileTy: me,
+              originTx: initTx,
+              originTy: initTy,
+              width: 1,
+              height: 1,
+            };
+            cabinPlacementPreviewRef.current = previewObj;
+            if (typeof window !== "undefined") window.__cabinPlacementPreview = previewObj;
+            setCabinPlacementPreview(previewObj);
+            zo(!1);
+            m.current && m.current.playEquipItem && m.current.playEquipItem();
+            ve(
+              "🟩 Escolha o local do Baú de Madeira usando WASD/Setas e pressione [C] ou POSICIONAR BAÚ para confirmar!",
+            );
+            return;
+          }
+          if (
             D.includes("livro") ||
             D.includes("tomo") ||
             D.includes("tratado") ||
@@ -1467,6 +1519,7 @@
                 interactedProps: ge.interactedProps,
                 customPlacedProps: ge.customPlacedProps,
                 collectedGroundItems: ge.collectedGroundItems,
+                playerCabins: ge.playerCabins,
               },
             },
             me = saveGameState(re, activeSlotId);
@@ -2904,6 +2957,50 @@
               return (ce.push(ie), ce);
             }),
             m.current.playFusionSuccess(),
+            (ie.isPlaceableChest || F.id === "fuse_bau_madeira") &&
+              setTimeout(() => {
+                const world = o.current,
+                  pl = f.current;
+                if (!world || !pl) return;
+                const ts = world.tileSize,
+                  ptx = Math.floor(pl.x / ts),
+                  pty = Math.floor(pl.y / ts);
+                const cands = [
+                  [ptx, pty + 1],
+                  [ptx + 1, pty],
+                  [ptx - 1, pty],
+                  [ptx, pty - 1],
+                  [ptx, pty],
+                ];
+                let oTx = ptx,
+                  oTy = pty + 1;
+                for (const [cx, cy] of cands) {
+                  if (world.isChestPlacementValid && world.isChestPlacementValid(cx, cy)) {
+                    oTx = cx;
+                    oTy = cy;
+                    break;
+                  }
+                }
+                const prev = {
+                  active: !0,
+                  mode: "chest",
+                  chestItemId: ie.id,
+                  chestItemName: ie.name,
+                  pileTx: ptx,
+                  pileTy: pty,
+                  originTx: oTx,
+                  originTy: oTy,
+                  width: 1,
+                  height: 1,
+                };
+                cabinPlacementPreviewRef.current = prev;
+                if (typeof window !== "undefined") window.__cabinPlacementPreview = prev;
+                setCabinPlacementPreview(prev);
+                zo(!1);
+                ve(
+                  "📦 Baú de Madeira criado! Escolha o local com WASD/Setas e pressione [C] ou POSICIONAR BAÚ para colocar no mapa!",
+                );
+              }, 80),
             ve(`⚗️ Fusão Concluída: [${ie.name}] forjado com sucesso!`),
             ie
           );
@@ -3861,12 +3958,25 @@
                   : ve(
                       "💾 Ponto de Salve Registrado! Esta fogueira é seu novo ponto de retorno com HP e Vigor restaurados.",
                     );
+            } else if (Ke.action === "open_wooden_chest") {
+              m.current.playInventoryOpen && m.current.playInventoryOpen();
+              if (E.updateWoodenChestStorage) {
+                E.updateWoodenChestStorage(Ke.tx, Ke.ty, Ke.storageItems || [], !0);
+              }
+              setActiveWoodenChest({
+                tx: Ke.tx,
+                ty: Ke.ty,
+                maxSlots: Ke.maxSlots || 12,
+                items: Array.isArray(Ke.storageItems) ? [...Ke.storageItems] : [],
+              });
+              return;
             } else if (
               Ke.action === "toggle_gate" ||
               Ke.action === "dungeon_door" ||
               Ke.action === "greek_door" ||
               Ke.action === "snow_city_door" ||
-              Ke.action === "desert_city_door"
+              Ke.action === "desert_city_door" ||
+              Ke.action === "cabin_door"
             ) {
               m.current.playInventoryOpen && m.current.playInventoryOpen();
               return;
@@ -4333,11 +4443,17 @@
         return true;
       }, []),
       cancelCabinPlacementPreview = J.useCallback(() => {
-        if (!cabinPlacementPreviewRef.current) return false;
+        const cur = cabinPlacementPreviewRef.current;
+        if (!cur) return false;
+        const wasChest = cur.mode === "chest";
         cabinPlacementPreviewRef.current = null;
         if (typeof window !== "undefined") window.__cabinPlacementPreview = null;
         setCabinPlacementPreview(null);
-        ve("❌ Posicionamento da cabana cancelado.");
+        ve(
+          wasChest
+            ? "❌ Posicionamento do Baú de Madeira cancelado (o baú permanece na sua mochila)."
+            : "❌ Posicionamento da cabana cancelado.",
+        );
         return true;
       }, [ve]),
       Bo = J.useCallback((E, D) => {
@@ -4420,9 +4536,54 @@
         const world = o.current;
         if (!world) return false;
 
-        // 2º clique / confirmação: se já estiver no modo de posicionamento verde, confirma e cria a cabana!
+        // 2º clique / confirmação: se já estiver no modo de posicionamento verde, confirma e cria a cabana ou o baú!
         const activePreview = cabinPlacementPreviewRef.current;
         if (activePreview && activePreview.active) {
+          if (activePreview.mode === "chest") {
+            const res = world.buildPlayerChest
+              ? world.buildPlayerChest(activePreview.originTx, activePreview.originTy, [])
+              : null;
+            if (res && res.success) {
+              cabinPlacementPreviewRef.current = null;
+              if (typeof window !== "undefined") window.__cabinPlacementPreview = null;
+              setCabinPlacementPreview(null);
+              ra((bp) => {
+                let idx = bp.findIndex((it) => it.id === activePreview.chestItemId);
+                if (idx === -1) {
+                  idx = bp.findIndex(
+                    (it) =>
+                      it.isPlaceableChest ||
+                      (it.name || "").toLowerCase().includes("baú de madeira") ||
+                      (it.name || "").toLowerCase().includes("bau de madeira"),
+                  );
+                }
+                if (idx === -1) return bp;
+                const target = bp[idx];
+                if ((target.stackCount || 1) > 1) {
+                  const next = [...bp];
+                  next[idx] = { ...target, stackCount: target.stackCount - 1 };
+                  return next;
+                }
+                return bp.filter((_, i) => i !== idx);
+              });
+              m.current && m.current.playWoodChop && m.current.playWoodChop();
+              m.current && m.current.playChestChime && m.current.playChestChime();
+              c.current &&
+                typeof c.current.addFloatingText === "function" &&
+                c.current.addFloatingText(
+                  (activePreview.originTx + 0.5) * world.tileSize,
+                  activePreview.originTy * world.tileSize,
+                  "📦 BAÚ POSICIONADO!",
+                  "#fbbf24",
+                );
+              ve(res.message);
+              return true;
+            } else {
+              m.current && m.current.playFusionFail && m.current.playFusionFail();
+              ve(res ? res.message : "⚠️ Local bloqueado! Mova o quadrado verde para um piso ou terreno livre.");
+              return true;
+            }
+          }
           const result = world.buildCabin(
             activePreview.pileTx,
             activePreview.pileTy,
@@ -5987,6 +6148,365 @@
                           }),
                         ] }),
                         h.jsx("div", { className: "text-[9px] text-slate-500 text-center", children: "Cada combinação de ingredientes pode dar um resultado diferente após ~45s no fogo." }),
+                      ],
+                    }),
+                  ],
+                }),
+              });
+            })(),
+          activeWoodenChest &&
+            (() => {
+              const chestTx = activeWoodenChest.tx;
+              const chestTy = activeWoodenChest.ty;
+              const maxChestSlots = activeWoodenChest.maxSlots || 12;
+              const chestItems = Array.isArray(activeWoodenChest.items) ? activeWoodenChest.items : [];
+              const maxBackpackSlots = ot(Da.current.mochila);
+
+              const closeChestModal = () => {
+                if (o.current && o.current.updateWoodenChestStorage) {
+                  o.current.updateWoodenChestStorage(chestTx, chestTy, chestItems, !1);
+                }
+                m.current && m.current.playInventoryClose && m.current.playInventoryClose();
+                setActiveWoodenChest(null);
+              };
+
+              const handleStoreInChest = (bpItem, storeAll = false) => {
+                if (!bpItem) return;
+                const isStackable =
+                  bpItem.stackCount !== undefined ||
+                  bpItem.categoryType === "material" ||
+                  bpItem.categoryType === "consumable";
+                const existingIdx = isStackable
+                  ? chestItems.findIndex(
+                      (ci) =>
+                        ci.name.trim().toLowerCase() === bpItem.name.trim().toLowerCase() &&
+                        ci.rarity === bpItem.rarity,
+                    )
+                  : -1;
+                if (existingIdx === -1 && chestItems.length >= maxChestSlots) {
+                  m.current && m.current.playFusionFail && m.current.playFusionFail();
+                  ve(`⚠️ O Baú de Madeira está cheio (${maxChestSlots}/${maxChestSlots} slots)!`);
+                  return;
+                }
+                const qtyToMove = storeAll ? (bpItem.stackCount || 1) : 1;
+                const nextChestItems = [...chestItems];
+                if (existingIdx >= 0) {
+                  nextChestItems[existingIdx] = {
+                    ...nextChestItems[existingIdx],
+                    stackCount: (nextChestItems[existingIdx].stackCount || 1) + qtyToMove,
+                  };
+                } else {
+                  nextChestItems.push({
+                    ...bpItem,
+                    stackCount: qtyToMove,
+                  });
+                }
+                ra((prevBp) => {
+                  const idx = prevBp.findIndex((i) => i.id === bpItem.id);
+                  if (idx === -1) return prevBp;
+                  const curStack = prevBp[idx].stackCount || 1;
+                  if (curStack > qtyToMove) {
+                    const copy = [...prevBp];
+                    copy[idx] = { ...prevBp[idx], stackCount: curStack - qtyToMove };
+                    return copy;
+                  }
+                  return prevBp.filter((_, i) => i !== idx);
+                });
+                if (o.current && o.current.updateWoodenChestStorage) {
+                  o.current.updateWoodenChestStorage(chestTx, chestTy, nextChestItems, !0);
+                }
+                setActiveWoodenChest({
+                  ...activeWoodenChest,
+                  items: nextChestItems,
+                });
+                m.current && m.current.playItemPickup && m.current.playItemPickup();
+              };
+
+              const handleTakeFromChest = (chItem, chIdx, takeAll = false) => {
+                if (!chItem) return;
+                const isStackable =
+                  chItem.stackCount !== undefined ||
+                  chItem.categoryType === "material" ||
+                  chItem.categoryType === "consumable";
+                const existingBpIdx = isStackable
+                  ? Ve.findIndex(
+                      (bi) =>
+                        bi.name.trim().toLowerCase() === chItem.name.trim().toLowerCase() &&
+                        bi.rarity === chItem.rarity,
+                    )
+                  : -1;
+                if (existingBpIdx === -1 && Ve.length >= maxBackpackSlots) {
+                  m.current && m.current.playFusionFail && m.current.playFusionFail();
+                  ve(`⚠️ Sua mochila está cheia (${Ve.length}/${maxBackpackSlots} slots)!`);
+                  return;
+                }
+                const qtyToTake = takeAll ? (chItem.stackCount || 1) : 1;
+                const nextChestItems = [...chestItems];
+                const curStack = chItem.stackCount || 1;
+                if (curStack > qtyToTake) {
+                  nextChestItems[chIdx] = { ...chItem, stackCount: curStack - qtyToTake };
+                } else {
+                  nextChestItems.splice(chIdx, 1);
+                }
+                ra((prevBp) => {
+                  const bpMatchIdx = isStackable
+                    ? prevBp.findIndex(
+                        (bi) =>
+                          bi.name.trim().toLowerCase() === chItem.name.trim().toLowerCase() &&
+                          bi.rarity === chItem.rarity,
+                      )
+                    : -1;
+                  if (bpMatchIdx >= 0) {
+                    const copy = [...prevBp];
+                    copy[bpMatchIdx] = {
+                      ...copy[bpMatchIdx],
+                      stackCount: (copy[bpMatchIdx].stackCount || 1) + qtyToTake,
+                    };
+                    return copy;
+                  }
+                  return [
+                    ...prevBp,
+                    {
+                      ...chItem,
+                      id: `item_chest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                      stackCount: qtyToTake,
+                    },
+                  ];
+                });
+                if (o.current && o.current.updateWoodenChestStorage) {
+                  o.current.updateWoodenChestStorage(chestTx, chestTy, nextChestItems, !0);
+                }
+                setActiveWoodenChest({
+                  ...activeWoodenChest,
+                  items: nextChestItems,
+                });
+                m.current && m.current.playItemPickup && m.current.playItemPickup();
+              };
+
+              return h.jsx("div", {
+                className:
+                  "fixed inset-0 z-[75] flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4",
+                onClick: closeChestModal,
+                children: h.jsxs("div", {
+                  className:
+                    "w-full max-w-3xl rounded-2xl border border-amber-500/40 bg-slate-950/95 p-4 shadow-2xl flex flex-col gap-4",
+                  onClick: (ev) => ev.stopPropagation(),
+                  children: [
+                    h.jsxs("div", {
+                      className:
+                        "flex items-center justify-between border-b border-amber-500/20 pb-3",
+                      children: [
+                        h.jsxs("div", {
+                          className: "flex items-center gap-2.5",
+                          children: [
+                            h.jsx("span", {
+                              className: "text-2xl",
+                              children: "📦",
+                            }),
+                            h.jsxs("div", {
+                              children: [
+                                h.jsx("h3", {
+                                  className:
+                                    "text-sm sm:text-base font-extrabold text-amber-200 tracking-wide",
+                                  children: "Baú de Madeira",
+                                }),
+                                h.jsxs("p", {
+                                  className: "text-[11px] text-slate-400",
+                                  children: [
+                                    "Armazenamento seguro • ",
+                                    chestItems.length,
+                                    "/",
+                                    maxChestSlots,
+                                    " slots ocupados",
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        h.jsx("button", {
+                          type: "button",
+                          onClick: closeChestModal,
+                          className:
+                            "px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition cursor-pointer",
+                          children: "✖ Fechar [Esc]",
+                        }),
+                      ],
+                    }),
+                    h.jsxs("div", {
+                      className: "grid grid-cols-1 md:grid-cols-2 gap-4",
+                      children: [
+                        // LADO ESQUERDO: 12 SLOTS DO BAÚ
+                        h.jsxs("div", {
+                          className:
+                            "flex flex-col gap-2 rounded-xl border border-amber-700/40 bg-amber-950/20 p-3",
+                          children: [
+                            h.jsxs("div", {
+                              className:
+                                "flex items-center justify-between text-xs font-bold text-amber-300 uppercase tracking-wider",
+                              children: [
+                                h.jsx("span", { children: "📦 Interior do Baú (12 Slots)" }),
+                                h.jsxs("span", {
+                                  className: "text-[11px] font-mono text-amber-400",
+                                  children: [chestItems.length, "/", maxChestSlots],
+                                }),
+                              ],
+                            }),
+                            h.jsx("div", {
+                              className: "grid grid-cols-4 gap-2",
+                              children: Array.from({ length: maxChestSlots }).map((_, idx) => {
+                                const it = chestItems[idx];
+                                return it
+                                  ? h.jsxs(
+                                      "div",
+                                      {
+                                        className:
+                                          "relative group h-20 rounded-xl border border-amber-500/50 bg-slate-900/90 hover:border-amber-400 p-1.5 flex flex-col items-center justify-between text-center transition",
+                                        children: [
+                                          h.jsx(ItemIcon, { item: it, size: 28 }),
+                                          h.jsx("span", {
+                                            className:
+                                              "text-[10px] font-semibold text-amber-100 truncate w-full leading-tight",
+                                            title: it.name,
+                                            children: it.name,
+                                          }),
+                                          (it.stackCount || 1) > 1 &&
+                                            h.jsxs("span", {
+                                              className:
+                                                "absolute top-1 right-1 px-1.5 py-0.2 rounded-full bg-amber-600/90 text-[9px] font-bold text-white",
+                                              children: ["x", it.stackCount],
+                                            }),
+                                          h.jsxs("div", {
+                                            className: "flex items-center gap-1 w-full mt-0.5",
+                                            children: [
+                                              h.jsx("button", {
+                                                type: "button",
+                                                onClick: () => handleTakeFromChest(it, idx, false),
+                                                className:
+                                                  "flex-1 py-0.5 rounded bg-emerald-700/90 hover:bg-emerald-600 text-[9px] font-bold text-white cursor-pointer",
+                                                title: "Retirar 1 unidade para a mochila",
+                                                children: "Pegar 1",
+                                              }),
+                                              (it.stackCount || 1) > 1 &&
+                                                h.jsx("button", {
+                                                  type: "button",
+                                                  onClick: () => handleTakeFromChest(it, idx, true),
+                                                  className:
+                                                    "flex-1 py-0.5 rounded bg-amber-700/90 hover:bg-amber-600 text-[9px] font-bold text-white cursor-pointer",
+                                                  title: "Retirar tudo para a mochila",
+                                                  children: "Tudo",
+                                                }),
+                                            ],
+                                          }),
+                                        ],
+                                      },
+                                      it.id || `chest_slot_${idx}`,
+                                    )
+                                  : h.jsxs(
+                                      "div",
+                                      {
+                                        className:
+                                          "h-20 rounded-xl border border-dashed border-slate-700/60 bg-slate-900/40 flex flex-col items-center justify-center text-slate-600",
+                                        children: [
+                                          h.jsx("span", {
+                                            className: "text-sm leading-none",
+                                            children: "📦",
+                                          }),
+                                          h.jsxs("span", {
+                                            className: "text-[9px] mt-1",
+                                            children: ["Slot ", idx + 1],
+                                          }),
+                                        ],
+                                      },
+                                      `empty_chest_${idx}`,
+                                    );
+                              }),
+                            }),
+                          ],
+                        }),
+                        // LADO DIREITO: MOCHILA DO JOGADOR
+                        h.jsxs("div", {
+                          className:
+                            "flex flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3",
+                          children: [
+                            h.jsxs("div", {
+                              className:
+                                "flex items-center justify-between text-xs font-bold text-slate-200 uppercase tracking-wider",
+                              children: [
+                                h.jsx("span", { children: "🎒 Sua Mochila — Clique para guardar" }),
+                                h.jsxs("span", {
+                                  className: "text-[11px] font-mono text-slate-400",
+                                  children: [Ve.length, "/", maxBackpackSlots],
+                                }),
+                              ],
+                            }),
+                            h.jsx("div", {
+                              className:
+                                "max-h-64 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 pr-1",
+                              children:
+                                Ve.length === 0
+                                  ? h.jsx("div", {
+                                      className:
+                                        "col-span-2 text-slate-500 text-xs py-8 text-center",
+                                      children: "Sua mochila está vazia.",
+                                    })
+                                  : Ve.map((it) =>
+                                      h.jsxs(
+                                        "div",
+                                        {
+                                          className:
+                                            "flex items-center justify-between gap-2 rounded-xl border border-slate-700/70 bg-slate-900/90 hover:border-amber-500/50 p-2 transition",
+                                          children: [
+                                            h.jsxs("div", {
+                                              className: "flex items-center gap-2 min-w-0",
+                                              children: [
+                                                h.jsx(ItemIcon, { item: it, size: 28 }),
+                                                h.jsxs("div", {
+                                                  className: "min-w-0",
+                                                  children: [
+                                                    h.jsx("div", {
+                                                      className:
+                                                        "text-[11px] font-bold text-slate-100 truncate",
+                                                      children: it.name,
+                                                    }),
+                                                    h.jsxs("div", {
+                                                      className: "text-[9px] text-slate-400",
+                                                      children: ["Qtd: x", it.stackCount || 1],
+                                                    }),
+                                                  ],
+                                                }),
+                                              ],
+                                            }),
+                                            h.jsxs("div", {
+                                              className: "flex items-center gap-1 shrink-0",
+                                              children: [
+                                                h.jsx("button", {
+                                                  type: "button",
+                                                  onClick: () => handleStoreInChest(it, false),
+                                                  className:
+                                                    "px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-[10px] font-bold text-slate-950 cursor-pointer",
+                                                  title: "Guardar 1 unidade no baú",
+                                                  children: "+1",
+                                                }),
+                                                (it.stackCount || 1) > 1 &&
+                                                  h.jsx("button", {
+                                                    type: "button",
+                                                    onClick: () => handleStoreInChest(it, true),
+                                                    className:
+                                                      "px-2 py-1 rounded-lg bg-amber-700 hover:bg-amber-600 text-[10px] font-bold text-white cursor-pointer",
+                                                    title: "Guardar toda a pilha no baú",
+                                                    children: "Tudo",
+                                                  }),
+                                              ],
+                                            }),
+                                          ],
+                                        },
+                                        it.id || it.name,
+                                      ),
+                                    ),
+                            }),
+                          ],
+                        }),
                       ],
                     }),
                   ],

@@ -2393,6 +2393,20 @@
       value: 130,
       stackCount: 4,
     },
+    {
+      id: "dev_bau_madeira",
+      name: "Baú de Madeira",
+      devCategory: "recursos",
+      categoryType: "consumable",
+      isEquippable: false,
+      isPlaceableChest: true,
+      rarity: "incomum",
+      description: "Baú resistente de carvalho construído com toras. Permite escolher onde posicionar no mapa e guardar até 12 itens.",
+      icon: "📦",
+      color: "#d97706",
+      value: 60,
+      stackCount: 1,
+    },
   ];
 
   window.DEV_ITEMS_CATALOG = DEV_ITEMS_CATALOG;

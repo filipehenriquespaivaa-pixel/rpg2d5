@@ -2122,19 +2122,28 @@
                                 : "flex flex-col items-center justify-center w-11 h-11 rounded-xl border-2 font-bold shadow-xl backdrop-blur-sm active:scale-90 transition-transform bg-gradient-to-br from-amber-600 via-yellow-600 to-amber-700 border-amber-300 text-white shadow-amber-950/70 animate-bounce",
                             title:
                               cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
-                                ? "Confirmar local e construir Cabana (Tecla C ou Enter)"
+                                ? cabinPlacementPreviewProp.mode === "chest"
+                                  ? "Confirmar local e posicionar Baú de Madeira (Tecla C ou Enter)"
+                                  : "Confirmar local e construir Cabana (Tecla C ou Enter)"
                                 : "Escolher local para construir Cabana (5 Troncos) - Tecla C",
                             children: [
                               h.jsx("span", {
                                 className: "text-sm leading-none",
-                                children: cabinPlacementPreviewProp && cabinPlacementPreviewProp.active ? "✅" : "🛖",
+                                children:
+                                  cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
+                                    ? cabinPlacementPreviewProp.mode === "chest"
+                                      ? "📦"
+                                      : "✅"
+                                    : "🛖",
                               }),
                               h.jsx("span", {
                                 className:
                                   "text-[7.5px] font-black tracking-wider uppercase leading-none mt-0.5 font-mono",
                                 children:
                                   cabinPlacementPreviewProp && cabinPlacementPreviewProp.active
-                                    ? "CONFIRMAR"
+                                    ? cabinPlacementPreviewProp.mode === "chest"
+                                      ? "CRIAR BAÚ"
+                                      : "CONFIRMAR"
                                     : "CABANA",
                               }),
                             ],

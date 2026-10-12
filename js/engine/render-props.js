@@ -10297,18 +10297,23 @@
   function drawCabinPlacementPreview(ctx, tileSize, animTimer = 0, engine = null) {
     const preview = typeof window !== "undefined" ? window.__cabinPlacementPreview : null;
     if (!preview || !preview.active) return;
-    if (engine && engine.isUnderground) return;
+    const isChestMode = preview.mode === "chest";
+    if (!isChestMode && engine && engine.isUnderground) return;
 
     const originTx = preview.originTx;
     const originTy = preview.originTy;
-    const width = preview.width || 4;
-    const height = preview.height || 4;
+    const width = isChestMode ? 1 : (preview.width || 4);
+    const height = isChestMode ? 1 : (preview.height || 4);
     const doorTx = originTx + 1;
     const doorTy = originTy + 3;
 
-    const isValid = engine && typeof engine.isCabinPlacementValid === "function"
-      ? engine.isCabinPlacementValid(originTx, originTy, width, height)
-      : true;
+    const isValid = isChestMode
+      ? (engine && typeof engine.isChestPlacementValid === "function"
+          ? engine.isChestPlacementValid(originTx, originTy)
+          : true)
+      : (engine && typeof engine.isCabinPlacementValid === "function"
+          ? engine.isCabinPlacementValid(originTx, originTy, width, height)
+          : true);
 
     const pulse = (Math.sin(animTimer * 6) + 1) * 0.5;
     const leftPx = originTx * tileSize;
@@ -10318,6 +10323,60 @@
     const wallThick = tileSize * (10 / 36); // Menos de 1/3 de um bloco
 
     ctx.save();
+
+    if (isChestMode) {
+      ctx.fillStyle = isValid
+        ? `rgba(134, 239, 172, ${0.22 + pulse * 0.12})`
+        : `rgba(252, 165, 165, ${0.24 + pulse * 0.12})`;
+      ctx.fillRect(leftPx, topPx, tileSize, tileSize);
+
+      ctx.strokeStyle = isValid
+        ? `rgba(74, 222, 128, ${0.88 + pulse * 0.12})`
+        : `rgba(248, 113, 113, ${0.88 + pulse * 0.12})`;
+      ctx.lineWidth = 2.2;
+      ctx.strokeRect(leftPx + 1.5, topPx + 1.5, tileSize - 3, tileSize - 3);
+
+      const cx = leftPx + tileSize / 2;
+      const cy = topPx + tileSize / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.globalAlpha = 0.85;
+      pg(ctx, tileSize, false, animTimer || 0);
+      ctx.restore();
+
+      const badgeW = 186;
+      const badgeH = 20;
+      const badgeX = cx - badgeW / 2;
+      const badgeY = topPx - 24 - Math.sin((animTimer || 0) * 4) * 2;
+
+      ctx.fillStyle = "rgba(9, 13, 22, 0.88)";
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+      } else {
+        ctx.rect(badgeX, badgeY, badgeW, badgeH);
+      }
+      ctx.fill();
+
+      ctx.strokeStyle = isValid ? "#34d399" : "#f87171";
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+
+      ctx.font = "bold 9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = isValid ? "#6ee7b7" : "#fca5a5";
+      ctx.fillText(
+        isValid
+          ? "📦 WASD MOVER • [C] / POSICIONAR BAÚ"
+          : "⚠️ LOCAL BLOQUEADO — MOVA COM WASD",
+        cx,
+        badgeY + badgeH / 2 + 0.5,
+      );
+
+      ctx.restore();
+      return;
+    }
 
     // Fundo translúcido da área total da cabana
     ctx.fillStyle = isValid

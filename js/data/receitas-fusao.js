@@ -861,12 +861,12 @@
         category: "construcao",
         categoryLabel: "Construção no Mapa",
         ingredient1Name: "Tronco de Madeira",
-        ingredient2Name: "Galho de Madeira ou Tronco",
+        ingredient2Name: "Galho de Madeira",
         description:
           "Monta diretamente no solo uma fogueira duradoura de lenha maciça! Muito mais resistente e de brasas fortes. Acenda com 2 Pederneiras.",
         match: (e, t) =>
-          (et(e, "tronco") && (et(t, "galho") || et(t, "tronco"))) ||
-          (et(t, "tronco") && (et(e, "galho") || et(e, "tronco"))),
+          (et(e, "tronco", "wood_log") && et(t, "galho")) ||
+          (et(t, "tronco", "wood_log") && et(e, "galho")),
         results: [
           {
             id: "choice_tronco_fogueira",
@@ -1944,6 +1944,34 @@
           color: "#22c55e",
           stackCount: 2,
           value: 45,
+        }),
+      },
+      {
+        id: "fuse_bau_madeira",
+        name: "Baú de Madeira",
+        category: "utilitario",
+        categoryLabel: "Construção & Armazenamento",
+        ingredient1Name: "Tronco de Madeira",
+        ingredient2Name: "Tronco de Madeira",
+        description:
+          "Entalhe e una dois troncos robustos na forja para construir um Baú de Madeira (12 slots de armazenamento). Ao criar, escolha o local no mapa usando o sistema de posicionamento verde igual ao da cabana!",
+        match: (e, t, l) =>
+          !l &&
+          et(e, "tronco", "wood_log", "tora") &&
+          et(t, "tronco", "wood_log", "tora"),
+        createResult: () => ({
+          id: `item_bau_madeira_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+          name: "Baú de Madeira",
+          categoryType: "consumable",
+          isEquippable: !1,
+          isPlaceableChest: !0,
+          rarity: "incomum",
+          stackCount: 1,
+          value: 60,
+          icon: "📦",
+          color: "#d97706",
+          description:
+            "Baú resistente de carvalho com ferragens. Escolha onde posicionar no mapa para guardar até 12 itens com segurança (pressione [F] perto dele para abrir).",
         }),
       },
     ],
