@@ -4376,9 +4376,9 @@
               this.drawWeaponItem(z),
               M.restore());
           } else {
-            const V = 4 + o,
+            const V = -4 + o,
               O = -12 - l + u,
-              _ = 4 - g * 2 + o,
+              _ = -4 - g * 2 + o,
               se = -12 - Math.sin(g * Math.PI) * 4 - l + u;
             ((M.strokeStyle = skin),
               (M.lineWidth = 3.4),
@@ -4396,7 +4396,7 @@
                 M.stroke()),
               M.save(),
               M.translate(_, se));
-            const ue = 0.8 - g * 1.8;
+            const ue = -(0.8 - g * 1.8);
             (M.rotate(ue),
               (M.fillStyle = skin),
               M.beginPath(),
@@ -4408,7 +4408,7 @@
           if (S) this.drawHeldTorch(t, l);
           else if ($) this.drawHeldShield(t, l, o, p);
           else if (isPebble(p)) {
-            const V = (t === "left" ? -8 : t === "right" ? -5 : -8) + o,
+            const V = (t === "left" ? -8 : t === "right" ? -5 : (t === "up" ? 8 : -8)) + o,
               O = -8 - l + u;
             M.save();
             M.translate(V, O);
@@ -4419,7 +4419,7 @@
             this.drawWeaponItem(p);
             M.restore();
           } else {
-            const V = (t === "left" ? 4 : t === "right" ? -4 : -6) + o,
+            const V = (t === "left" ? 4 : t === "right" ? -4 : (t === "up" ? 6 : -6)) + o,
               O = -8 - l + u;
             ((M.fillStyle = skin),
               M.beginPath(),
@@ -4478,15 +4478,16 @@
 
         if ((t === "down" || t === "up") && passPhase === "back") return; if (t === "down" || t === "up") {
           // VISTA FRONTAL / TRASEIRA: Ombros ancorados ao corpo com rotação real no salto + balanço de itens nas duas mãos
-          const swingL = walkNorm * (isRun ? 1.0 : 0.65),
+          const isUp = t === "up",
+            swingL = walkNorm * (isRun ? 1.0 : 0.65),
             swingR = -walkNorm * (isRun ? 1.0 : 0.65),
             shoulderTopY = -15.2 - l + u,
-            shoulderLX = -7.1 + o,
-            shoulderRX = 7.1 + o;
+            shoulderLX = (isUp ? 7.1 : -7.1) + o,
+            shoulderRX = (isUp ? -7.1 : 7.1) + o;
 
           // Ângulos de abertura e impulso dos braços durante o salto nas 4 direções
-          let armRotL = swingL * 0.16,
-            armRotR = -swingR * 0.16,
+          let armRotL = (isUp ? -1 : 1) * swingL * 0.16,
+            armRotR = (isUp ? -1 : 1) * -swingR * 0.16,
             armExtendL = swingL,
             armExtendR = swingR,
             shoulderLiftL = 0,
@@ -4497,36 +4498,52 @@
               isBackwardDodge = (t === "down" && dDir === "up") || (t === "up" && dDir === "down");
             if (isForwardDodge) {
               // Salto frontal: braços lançados para trás/lados no impulso + chicoteiam à frente na aterrissagem
-              armRotL = 0.72 * dSin - 0.25 * dWave;
-              armRotR = -0.72 * dSin + 0.25 * dWave;
+              armRotL = (isUp ? -1 : 1) * (0.72 * dSin - 0.25 * dWave);
+              armRotR = (isUp ? -1 : 1) * (-0.72 * dSin + 0.25 * dWave);
               armExtendL = -1.6 * dSin + 0.8 * dWave;
               armExtendR = -1.6 * dSin + 0.8 * dWave;
               shoulderLiftL = -1.2 * dSin;
               shoulderLiftR = -1.2 * dSin;
             } else if (isBackwardDodge) {
               // Backstep (salto p/ trás): braços abrem alto para equilíbrio aéreo e guarda frontal
-              armRotL = 0.95 * dSin + 0.22 * dWave;
-              armRotR = -0.95 * dSin - 0.22 * dWave;
+              armRotL = (isUp ? -1 : 1) * (0.95 * dSin + 0.22 * dWave);
+              armRotR = (isUp ? -1 : 1) * (-0.95 * dSin - 0.22 * dWave);
               armExtendL = -2.0 * dSin;
               armExtendR = -2.0 * dSin;
               shoulderLiftL = -1.8 * dSin;
               shoulderLiftR = -1.8 * dSin;
             } else if (dDir === "left") {
-              // Esquiva lateral p/ esquerda: braço esquerdo abre guiando o salto, direito contrabalança
-              armRotL = 0.92 * dSin + 0.20 * dWave;
-              armRotR = -0.58 * dSin + 0.28 * dWave;
-              armExtendL = -1.4 * dSin;
-              armExtendR = -1.0 * dSin;
-              shoulderLiftL = -1.5 * dSin;
-              shoulderLiftR = -0.9 * dSin;
+              if (isUp) {
+                armRotR = -0.92 * dSin - 0.20 * dWave;
+                armRotL = 0.58 * dSin - 0.28 * dWave;
+                armExtendR = -1.4 * dSin;
+                armExtendL = -1.0 * dSin;
+                shoulderLiftR = -1.5 * dSin;
+                shoulderLiftL = -0.9 * dSin;
+              } else {
+                armRotL = 0.92 * dSin + 0.20 * dWave;
+                armRotR = -0.58 * dSin + 0.28 * dWave;
+                armExtendL = -1.4 * dSin;
+                armExtendR = -1.0 * dSin;
+                shoulderLiftL = -1.5 * dSin;
+                shoulderLiftR = -0.9 * dSin;
+              }
             } else if (dDir === "right") {
-              // Esquiva lateral p/ direita: braço direito abre guiando o salto, esquerdo contrabalança
-              armRotL = 0.58 * dSin - 0.28 * dWave;
-              armRotR = -0.92 * dSin - 0.20 * dWave;
-              armExtendL = -1.0 * dSin;
-              armExtendR = -1.4 * dSin;
-              shoulderLiftL = -0.9 * dSin;
-              shoulderLiftR = -1.5 * dSin;
+              if (isUp) {
+                armRotR = -0.58 * dSin + 0.28 * dWave;
+                armRotL = 0.92 * dSin + 0.20 * dWave;
+                armExtendR = -1.0 * dSin;
+                armExtendL = -1.4 * dSin;
+                shoulderLiftR = -0.9 * dSin;
+                shoulderLiftL = -1.5 * dSin;
+              } else {
+                armRotL = 0.58 * dSin - 0.28 * dWave;
+                armRotR = -0.92 * dSin - 0.20 * dWave;
+                armExtendL = -1.0 * dSin;
+                armExtendR = -1.4 * dSin;
+                shoulderLiftL = -0.9 * dSin;
+                shoulderLiftR = -1.5 * dSin;
+              }
             }
           }
 
@@ -4546,8 +4563,8 @@
             M.save();
             M.translate(0, armLenL + 1.3);
             const leftItemRot =
-              (isLeftTorch || $ ? 0 : (t === "up" ? 0.18 : -0.24)) +
-              (isDodgingArm ? (0.42 * dSin + 0.22 * dWave + dDX * 0.25 * dSin) : -swingL * 0.08);
+              (isLeftTorch || $ ? 0 : (isUp ? 0.24 : -0.24)) +
+              (isDodgingArm ? ((isUp ? -1 : 1) * 0.42 * dSin + 0.22 * dWave + dDX * 0.25 * dSin) : (isUp ? 1 : -1) * -swingL * 0.08);
             renderEquippedHandItem(p, isLeftTorch, $, t, leftItemRot, false);
             M.restore();
           }
@@ -4569,9 +4586,9 @@
             M.save();
             M.translate(0, armLenR + 1.3);
             const rightItemRot =
-              (isRightTorch || isRightShield ? 0 : (t === "up" ? -0.18 : 0.28)) +
-              swingR * 0.08 +
-              (isDodgingArm ? (-0.45 * dSin - 0.25 * dWave + dDX * 0.32 * dSin) : 0);
+              (isRightTorch || isRightShield ? 0 : (isUp ? -0.24 : 0.28)) +
+              (isUp ? -1 : 1) * swingR * 0.08 +
+              (isDodgingArm ? ((isUp ? 1 : -1) * -0.45 * dSin - 0.25 * dWave + dDX * 0.32 * dSin) : 0);
             renderEquippedHandItem(j, isRightTorch, isRightShield, t, rightItemRot, false);
             M.restore();
           }
@@ -4970,7 +4987,7 @@
         if (overrideX === undefined) {
           if (t === "left") g = -6.5 + o;
           else if (t === "right") g = -4.5 + o;
-          else if (t === "up") g = -8.6 + o;
+          else if (t === "up") g = 8.6 + o;
         }
         m.save();
         m.translate(g, y);
@@ -5007,9 +5024,9 @@
             m = -7.2 - l + swingOffset;
             c = -0.15;
           } else if (t === "up") {
-            u = -8.6;
+            u = 8.6;
             m = -10.5 - l + swingOffset;
-            c = -0.12;
+            c = 0.12;
           } else {
             u = -8.6;
             m = -7.2 - l + swingOffset;
