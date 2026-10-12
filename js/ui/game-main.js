@@ -744,11 +744,6 @@
               namePt: newCount > 1 ? `Pilha de Troncos (${newCount})` : "Tronco de Madeira",
               descriptionPt: buildLogDescription(newCount),
             });
-            ve(
-              qtyToPlace > 1
-                ? `🪵 +${qtyToPlace} troncos adicionados à pilha no chão! (${newCount} troncos empilhados próximo a você)`
-                : `🪵 Mais um tronco adicionado à pilha no chão! (${newCount} troncos empilhados próximo a você)`,
-            );
           } else {
             const newCount = qtyToPlace;
             world.placeProp(targetTx, targetTy, {
@@ -762,25 +757,10 @@
               namePt: newCount > 1 ? `Pilha de Troncos (${newCount})` : "Tronco de Madeira",
               descriptionPt: buildLogDescription(newCount),
             });
-            ve(
-              newCount > 1
-                ? `🪵 Pilha com ${newCount} troncos colocada no solo próximo a você! ${newCount >= 5 ? "Pressione [C] para construir uma cabana ou [F] para recolher." : "Pressione [F] quando quiser recolher."}`
-                : "🪵 Tronco de madeira colocado no solo próximo a você! Pressione [F] quando quiser recolhê-lo.",
-            );
           }
-          c.current &&
-            typeof c.current.addFloatingText === "function" &&
-            c.current.addFloatingText(
-              targetTx * tileSize + tileSize / 2,
-              targetTy * tileSize + tileSize / 2 - 10,
-              qtyToPlace > 1 ? `🪵 ${qtyToPlace}x Troncos no Chão` : "🪵 Tronco no Chão",
-              "#d97706",
-              false,
-              0.9,
-            );
           m.current && m.current.playWoodChop && m.current.playWoodChop();
         },
-        [ve],
+        [],
       );
       window.__placeWoodLog = handlePlaceWoodLog;
       const bn = J.useCallback(
@@ -1065,9 +1045,6 @@
             setCabinPlacementPreview(previewObj);
             zo(!1);
             m.current && m.current.playEquipItem && m.current.playEquipItem();
-            ve(
-              "🟩 Escolha o local do Baú de Madeira usando WASD/Setas e pressione [C] ou POSICIONAR BAÚ para confirmar!",
-            );
             return;
           }
           if (
@@ -1447,9 +1424,8 @@
       ),
       Oo = J.useCallback(() => {
         ((Oa.current = { x: 0, y: 0 }),
-          Et(!1),
-          ve("Câmera centralizada no personagem!"));
-      }, [ve]),
+          Et(!1));
+      }, []),
       nr = J.useCallback(() => {
         if (!ma.current) {
           ve("⚠️ Você precisa estar na beira do lago ou rio para pescar!");
@@ -2997,9 +2973,6 @@
                 if (typeof window !== "undefined") window.__cabinPlacementPreview = prev;
                 setCabinPlacementPreview(prev);
                 zo(!1);
-                ve(
-                  "📦 Baú de Madeira criado! Escolha o local com WASD/Setas e pressione [C] ou POSICIONAR BAÚ para colocar no mapa!",
-                );
               }, 80),
             ve(`⚗️ Fusão Concluída: [${ie.name}] forjado com sucesso!`),
             ie
@@ -4541,17 +4514,11 @@
       cancelCabinPlacementPreview = J.useCallback(() => {
         const cur = cabinPlacementPreviewRef.current;
         if (!cur) return false;
-        const wasChest = cur.mode === "chest";
         cabinPlacementPreviewRef.current = null;
         if (typeof window !== "undefined") window.__cabinPlacementPreview = null;
         setCabinPlacementPreview(null);
-        ve(
-          wasChest
-            ? "❌ Posicionamento do Baú de Madeira cancelado (o baú permanece na sua mochila)."
-            : "❌ Posicionamento da cabana cancelado.",
-        );
         return true;
-      }, [ve]),
+      }, []),
       Bo = J.useCallback((E, D) => {
         if (cabinPlacementPreviewRef.current && cabinPlacementPreviewRef.current.active) {
           y.current[E] = D;
@@ -4664,15 +4631,6 @@
               });
               m.current && m.current.playWoodChop && m.current.playWoodChop();
               m.current && m.current.playChestChime && m.current.playChestChime();
-              c.current &&
-                typeof c.current.addFloatingText === "function" &&
-                c.current.addFloatingText(
-                  (activePreview.originTx + 0.5) * world.tileSize,
-                  activePreview.originTy * world.tileSize,
-                  "📦 BAÚ POSICIONADO!",
-                  "#fbbf24",
-                );
-              ve(res.message);
               return true;
             } else {
               m.current && m.current.playFusionFail && m.current.playFusionFail();

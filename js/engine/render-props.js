@@ -9967,8 +9967,9 @@
     ctx.save();
     ctx.translate(-half, -half);
 
-    const thick = 10 * s; // Menos de 1/3 de um bloco nas paredes laterais/frontal (10px de 36px)
-    const northThick = thick * 2; // Parede do fundo (norte) com o dobro da altura (20px de 36px)
+    const thick = 10 * s; // Paredes laterais (leste/oeste: 10px de 36px)
+    const southThick = thick * 2; // Parede da frente (sul: dobro da altura, 20px de 36px)
+    const northThick = thick * 3; // Parede do fundo (norte: 50% mais alta que antes, 30px de 36px)
     const side = (nb && nb.wallSide) || "north";
 
     const drawHorizSegment = (x, y, w, h, numLogs = 2) => {
@@ -10052,20 +10053,20 @@
     if (side === "east" || side === "ne" || side === "se") {
       drawVertSegment(ts - thick, 0, thick, ts);
     }
-    // Parede Norte / Fundo (borda superior externa — dobro da altura: 20px)
+    // Parede Norte / Fundo (borda superior externa — 50% mais alta que antes: 30px com 6 toras)
     if (side === "north" || side === "nw" || side === "ne") {
-      drawHorizSegment(0, 0, ts, northThick, 4);
+      drawHorizSegment(0, 0, ts, northThick, 6);
     }
-    // Parede Sul (borda inferior externa — incluindo a parede ao lado da porta!)
+    // Parede Sul / Frente (borda inferior externa — dobro da altura: 20px com 4 toras)
     if (side === "south" || side === "sw" || side === "se") {
-      drawHorizSegment(0, ts - thick, ts, thick, 2);
+      drawHorizSegment(0, ts - southThick, ts, southThick, 4);
     }
 
     // Pilar de encaixe apenas nas 4 quinas externas da cabana
     if (side === "nw" || side === "ne" || side === "sw" || side === "se") {
       const px = (side === "nw" || side === "sw") ? 0 : ts - thick;
-      const py = (side === "nw" || side === "ne") ? 0 : ts - thick;
-      const ph = (side === "nw" || side === "ne") ? northThick : thick;
+      const py = (side === "nw" || side === "ne") ? 0 : ts - southThick;
+      const ph = (side === "nw" || side === "ne") ? northThick : southThick;
       ctx.fillStyle = "#5c2808";
       ctx.fillRect(px + 1 * s, py + 1 * s, thick - 2 * s, ph - 2 * s);
       ctx.strokeStyle = "#271206";
@@ -10117,16 +10118,17 @@
     ctx.save();
 
     const half = ts / 2;
-    const thick = 10 * s; // Alinhado com a parede sul fina (< 1/3 do bloco)
+    const thick = 10 * s; // Paredes laterais (10px)
+    const southThick = 20 * s; // Parede da frente (sul: dobro da altura, 20px)
 
-    // Continuação da parede sul nas laterais da porta
+    // Continuação da parede sul nas laterais da porta (altura dobrada para 20px)
     ctx.fillStyle = "#5c2808";
-    ctx.fillRect(-half, half - thick, 5 * s, thick);
-    ctx.fillRect(half - 5 * s, half - thick, 5 * s, thick);
+    ctx.fillRect(-half, half - southThick, 5 * s, southThick);
+    ctx.fillRect(half - 5 * s, half - southThick, 5 * s, southThick);
     ctx.strokeStyle = "#271206";
     ctx.lineWidth = 1 * s;
-    ctx.strokeRect(-half, half - thick, 5 * s, thick);
-    ctx.strokeRect(half - 5 * s, half - thick, 5 * s, thick);
+    ctx.strokeRect(-half, half - southThick, 5 * s, southThick);
+    ctx.strokeRect(half - 5 * s, half - southThick, 5 * s, southThick);
 
     // Soleira de madeira maciça na borda sul
     ctx.fillStyle = "#271206";
@@ -10134,11 +10136,11 @@
     ctx.fillStyle = "#451a03";
     ctx.fillRect(-13 * s, 15 * s, 26 * s, 3 * s);
 
-    // Batente externo de toras alinhado com a parede fina
+    // Batente externo de toras alinhado com a parede frontal (altura de 20px)
     const frameW = 26 * s;
-    const frameH = 18 * s;
-    const topY = 0;
-    const baseY = 18 * s;
+    const frameH = 20 * s;
+    const topY = half - southThick;
+    const baseY = half;
 
     ctx.fillStyle = "#3d1904";
     ctx.fillRect(-frameW / 2, topY, frameW, frameH);
@@ -10148,7 +10150,7 @@
 
     // Vão interno da porta
     const innerW = 20 * s;
-    const innerH = 15 * s;
+    const innerH = 17 * s;
     const innerTopY = topY + 2 * s;
 
     if (opened) {
@@ -10219,8 +10221,8 @@
       const roofLeftPx = c.originTx * tileSize - overhang;
       const roofRightPx = (c.originTx + c.width) * tileSize + overhang;
       const roofTopPx = c.originTy * tileSize - 16;
-      // Termina a cobertura logo acima da parede sul fina (10px) para que a porta e parede frontal fiquem 100% visíveis!
-      const roofBottomPx = (c.originTy + c.height) * tileSize - (tileSize * (10 / 36));
+      // Termina a cobertura logo acima da parede sul / frontal (20px) para que a porta e parede frontal fiquem 100% visíveis!
+      const roofBottomPx = (c.originTy + c.height) * tileSize - (tileSize * (20 / 36));
       const roofW = roofRightPx - roofLeftPx;
       const roofH = roofBottomPx - roofTopPx;
 
@@ -10324,7 +10326,9 @@
     const topPx = originTy * tileSize;
     const totalW = width * tileSize;
     const totalH = height * tileSize;
-    const wallThick = tileSize * (10 / 36); // Menos de 1/3 de um bloco
+    const wallThick = tileSize * (10 / 36); // Paredes laterais (10px)
+    const southWallThick = wallThick * 2; // Parede da frente (20px)
+    const northWallThick = wallThick * 3; // Parede do fundo (30px)
 
     ctx.save();
 
@@ -10405,23 +10409,23 @@
     ctx.fillStyle = isValid
       ? `rgba(22, 163, 74, ${0.52 + pulse * 0.15})`
       : `rgba(220, 38, 38, ${0.52 + pulse * 0.15})`;
-    // Parede Norte
-    ctx.fillRect(leftPx, topPx, totalW, wallThick);
+    // Parede Norte (fundo)
+    ctx.fillRect(leftPx, topPx, totalW, northWallThick);
     // Parede Oeste
     ctx.fillRect(leftPx, topPx, wallThick, totalH);
     // Parede Leste
     ctx.fillRect(leftPx + totalW - wallThick, topPx, wallThick, totalH);
-    // Parede Sul (com abertura para a porta)
+    // Parede Sul (frente, com abertura para a porta)
     const doorLeftPx = doorTx * tileSize;
     const doorRightPx = (doorTx + 1) * tileSize;
-    ctx.fillRect(leftPx, topPx + totalH - wallThick, doorLeftPx - leftPx, wallThick);
-    ctx.fillRect(doorRightPx, topPx + totalH - wallThick, (leftPx + totalW) - doorRightPx, wallThick);
+    ctx.fillRect(leftPx, topPx + totalH - southWallThick, doorLeftPx - leftPx, southWallThick);
+    ctx.fillRect(doorRightPx, topPx + totalH - southWallThick, (leftPx + totalW) - doorRightPx, southWallThick);
 
     // Destaque da Porta na parede sul
     ctx.fillStyle = isValid
       ? `rgba(74, 222, 128, ${0.6 + pulse * 0.2})`
       : `rgba(248, 113, 113, ${0.6 + pulse * 0.2})`;
-    ctx.fillRect(doorLeftPx + 3, topPx + totalH - wallThick - 2, tileSize - 6, wallThick + 2);
+    ctx.fillRect(doorLeftPx + 3, topPx + totalH - southWallThick - 2, tileSize - 6, southWallThick + 2);
 
     // Borda externa brilhante da área da cabana
     ctx.strokeStyle = isValid

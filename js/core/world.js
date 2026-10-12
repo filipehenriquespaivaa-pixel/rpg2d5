@@ -7143,30 +7143,31 @@
       const k = t.prop.kind;
       if (k !== "cabin_wall" && k !== "cabin_door") return null;
       const ts = this.tileSize;
-      const thick = ts * (10 / 36); // Menos de 1/3 de um bloco (10px em 36px)
+      const thick = ts * (10 / 36); // Paredes laterais (leste/oeste: 10px em 36px)
+      const southThick = thick * 2; // Parede da frente (sul / porta) com o dobro da altura: 20px em 36px
+      const northThick = thick * 3; // Parede do fundo (norte) 50% mais alta que antes (20px * 1.5 = 30px em 36px)
       const x0 = t.tx * ts;
       const y0 = t.ty * ts;
 
       if (k === "cabin_door") {
-        // Porta fechada tem colisor fino na borda sul (mesma espessura da parede sul); aberta permite passagem no meio
+        // Porta fechada tem colisor na borda sul (mesma espessura da parede da frente/sul); aberta permite passagem no meio
         if (t.prop.opened) {
           const postW = ts * (5 / 36);
           return [
-            { x0, y0: y0 + ts - thick, x1: x0 + postW, y1: y0 + ts },
-            { x0: x0 + ts - postW, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts },
+            { x0, y0: y0 + ts - southThick, x1: x0 + postW, y1: y0 + ts },
+            { x0: x0 + ts - postW, y0: y0 + ts - southThick, x1: x0 + ts, y1: y0 + ts },
           ];
         }
-        return [{ x0, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts }];
+        return [{ x0, y0: y0 + ts - southThick, x1: x0 + ts, y1: y0 + ts }];
       }
 
       const side = this.getCabinWallSide(t);
-      const northThick = thick * 2; // Parede do fundo (norte) com o dobro da altura (20px em 36px)
       const rects = [];
       if (side === "north" || side === "nw" || side === "ne") {
         rects.push({ x0, y0, x1: x0 + ts, y1: y0 + northThick });
       }
       if (side === "south" || side === "sw" || side === "se") {
-        rects.push({ x0, y0: y0 + ts - thick, x1: x0 + ts, y1: y0 + ts });
+        rects.push({ x0, y0: y0 + ts - southThick, x1: x0 + ts, y1: y0 + ts });
       }
       if (side === "west" || side === "nw" || side === "sw") {
         rects.push({ x0, y0, x1: x0 + thick, y1: y0 + ts });
