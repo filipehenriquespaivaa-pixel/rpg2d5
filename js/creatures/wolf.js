@@ -74,24 +74,24 @@ function drawLupineBushyTail(e, ox, oy, o, pal, angle, wag, lengthMult) {
   e.fillStyle = pal.shade;
   e.beginPath();
   e.moveTo(0, -1.2 * o);
-  e.bezierCurveTo(L * 0.35, -2.5 * o, L * 0.75, -1.8 * o, L, 0.5 * o);
-  e.lineTo(L * 0.85, 3.2 * o);
-  e.lineTo(L * 0.6, 4.2 * o);
-  e.lineTo(L * 0.35, 3.6 * o);
-  e.lineTo(0, 2.2 * o);
+  e.bezierCurveTo(L * 0.35, -2.8 * o, L * 0.75, -2.0 * o, L, -0.2 * o);
+  e.lineTo(L * 0.85, 2.6 * o);
+  e.lineTo(L * 0.6, 3.8 * o);
+  e.lineTo(L * 0.35, 3.2 * o);
+  e.lineTo(0, 2.0 * o);
   e.closePath();
   e.fill();
 
   e.fillStyle = pal.base;
   e.beginPath();
   e.moveTo(0, -1.8 * o);
-  e.bezierCurveTo(L * 0.35, -3.2 * o, L * 0.75, -2.5 * o, L, 0);
-  e.lineTo(L + 1.8 * o, 0.8 * o);
-  e.lineTo(L * 0.82, 2.8 * o);
-  e.lineTo(L * 0.74, 1.8 * o);
-  e.lineTo(L * 0.55, 3.8 * o);
-  e.lineTo(L * 0.45, 2.2 * o);
-  e.lineTo(L * 0.25, 3.2 * o);
+  e.bezierCurveTo(L * 0.35, -3.8 * o, L * 0.75, -2.8 * o, L, -0.6 * o);
+  e.lineTo(L + 2.0 * o, -0.2 * o);
+  e.lineTo(L * 0.82, 2.2 * o);
+  e.lineTo(L * 0.74, 1.2 * o);
+  e.lineTo(L * 0.55, 3.4 * o);
+  e.lineTo(L * 0.45, 1.8 * o);
+  e.lineTo(L * 0.25, 2.8 * o);
   e.lineTo(0, 1.6 * o);
   e.closePath();
   e.fill();
@@ -100,19 +100,19 @@ function drawLupineBushyTail(e, ox, oy, o, pal, angle, wag, lengthMult) {
     e.fillStyle = pal.dorsal;
     e.beginPath();
     e.moveTo(0, -1.8 * o);
-    e.bezierCurveTo(L * 0.35, -3.2 * o, L * 0.7, -2.2 * o, L * 0.88, -0.6 * o);
-    e.lineTo(L * 0.7, 0.2 * o);
-    e.bezierCurveTo(L * 0.45, -0.8 * o, L * 0.2, -0.6 * o, 0, -0.2 * o);
+    e.bezierCurveTo(L * 0.35, -3.8 * o, L * 0.7, -2.6 * o, L * 0.88, -1.0 * o);
+    e.lineTo(L * 0.7, -0.4 * o);
+    e.bezierCurveTo(L * 0.45, -1.6 * o, L * 0.2, -1.0 * o, 0, -0.3 * o);
     e.closePath();
     e.fill();
   }
 
   e.fillStyle = pal.light;
   e.beginPath();
-  e.moveTo(L * 0.72, -0.8 * o);
-  e.lineTo(L + 1.8 * o, 0.8 * o);
-  e.lineTo(L * 0.75, 2.2 * o);
-  e.lineTo(L * 0.8, 0.8 * o);
+  e.moveTo(L * 0.72, -1.4 * o);
+  e.lineTo(L + 2.0 * o, -0.2 * o);
+  e.lineTo(L * 0.75, 1.8 * o);
+  e.lineTo(L * 0.8, 0.4 * o);
   e.closePath();
   e.fill();
 
@@ -375,7 +375,7 @@ CREATURES.wolf = {
         drawLupinePaw(e, -5 * o, 5.8 * o, o, pal, true);
 
         // Cauda espessa balançando atrás
-        drawLupineBushyTail(e, -8 * o, 0 * o, o, pal, Math.PI * 0.4, tailWag * 0.08, 1.15);
+        drawLupineBushyTail(e, -8 * o, 0 * o, o, pal, Math.PI * 0.82, tailWag * 0.08, 1.15);
 
         // Tronco empinado verticalmente abraçando o jogador
         e.fillStyle = pal.base;
@@ -579,8 +579,8 @@ CREATURES.wolf = {
         e.fill();
         drawLupinePaw(e, -13 * o, 2.5 * o, o, pal, true);
 
-        // Cauda espessa esticada baixa e tensa
-        drawLupineBushyTail(e, -11 * o, -2 * o, o, pal, Math.PI * 0.95, -0.15, 1.2);
+        // Cauda espessa esticada tensa
+        drawLupineBushyTail(e, -11 * o, -2 * o, o, pal, Math.PI * 1.05, -0.15, 1.25);
 
         // Corpo esticado baixo rente ao chão, puxando com toda força
         e.fillStyle = pal.base;
@@ -740,7 +740,7 @@ CREATURES.wolf = {
         drawLupinePaw(e, 7 * o, 0.8 * o, o, pal, true);
 
         // Cauda espessa voando horizontalmente no bote
-        drawLupineBushyTail(e, -9 * o, -8 * o - lungeHop, o, pal, Math.PI * 0.9, -0.2, 1.25);
+        drawLupineBushyTail(e, -9 * o, -8 * o - lungeHop, o, pal, Math.PI * 1.04, -0.15, 1.25);
 
         // Tronco musculoso no bote
         e.fillStyle = pal.base;
@@ -948,8 +948,8 @@ CREATURES.wolf = {
         e.fill();
         drawLupinePaw(e, 3.5 * o, 1.2 * o, o, pal, true);
 
-        // Cauda baixa e tensa
-        drawLupineBushyTail(e, -9 * o, -8 * o + lowStance, o, pal, Math.PI * 0.65, 0.1, 1.1);
+        // Cauda empinada e tensa
+        drawLupineBushyTail(e, -9 * o, -8 * o + lowStance, o, pal, Math.PI * 0.98, 0.1, 1.15);
 
         // Corpo abaixado e recuando firme
         e.fillStyle = pal.base;
@@ -1147,7 +1147,7 @@ CREATURES.wolf = {
         drawLupinePaw(e, 5.5 * o + legSwing, 1.2 * o, o, pal, true);
 
         // Cauda empinada e esvoaçante
-        drawLupineBushyTail(e, -9 * o, -8 * o + sprintHop, o, pal, Math.PI * 0.82, -0.25, 1.2);
+        drawLupineBushyTail(e, -9 * o, -8 * o + sprintHop, o, pal, Math.PI * 1.05, -0.25, 1.25);
 
         // Tronco em arrancada veloz
         e.fillStyle = pal.base;
@@ -1357,8 +1357,8 @@ CREATURES.wolf = {
       e.fill();
       drawLupinePaw(e, 5.5 * o + legStrideFrontFar, 1.2 * o, o, pal, true);
 
-      // Cauda espessa e felpuda
-      const tailAngle = isMoving ? Math.PI * 0.85 : Math.PI * 0.72;
+      // Cauda espessa e felpuda (porte altivo e dominante)
+      const tailAngle = isMoving ? Math.PI * 1.02 : Math.PI * 1.10;
       drawLupineBushyTail(e, -9 * o, -8 * o + breathBounce, o, pal, tailAngle, tailWag * 0.08, isMoving ? 1.2 : 1.05);
 
       // Tronco atlético, cintura e peito profundo
@@ -1670,7 +1670,7 @@ CREATURES.wolf = {
       e.ellipse(0, 4.5 * t, 10.5 * t, 3.8 * t, 0, 0, Math.PI * 2);
       e.fill();
 
-      drawLupineBushyTail(e, -5 * t, 0, t, pal, Math.PI * 0.7, 0, 1.05);
+      drawLupineBushyTail(e, -5 * t, 0, t, pal, Math.PI * 1.08, 0, 1.1);
 
       e.fillStyle = pal.shade;
       e.fillRect(-3.5 * t, 1 * t, 2.2 * t, 4 * t);
