@@ -195,14 +195,15 @@ function drawLupineEye(e, ex, ey, o, pal, squint) {
 CREATURES.wolf = {
   id: "wolf",
   // Nascimento no mundo (valores do spawn)
-  spawn: { name: "Lobo dos Bosques", color: "#475569", accentColor: "#f59e0b", hp: 68, attack: 8, speed: 1.05, scale: 0.95 },
+  spawn: { name: "Lobo dos Bosques", color: "#475569", accentColor: "#f59e0b", hp: 68, attack: 8, speed: 1.05, scale: 0.95, dodgeChance: 0.20 },
   spawnVariants: {
-    snow: { name: "Lobo das Neves", color: "#94a3b8", accentColor: "#38bdf8", hp: 76, attack: 9, speed: 1.1, scale: 1 },
+    snow: { name: "Lobo das Neves", color: "#94a3b8", accentColor: "#38bdf8", hp: 76, attack: 9, speed: 1.1, scale: 1, dodgeChance: 0.20 },
   },
   // Comportamento: predador (as presas fogem dele); particulas ao morrer
   behavior: {
     prey: false,
     predator: true,
+    dodgeChance: 0.20,
     deathParticles: 12,
     // Nome da ameaca mostrado/guardado nas presas (threatName)
     threatName: "lobo",
@@ -232,9 +233,9 @@ CREATURES.wolf = {
           icon: "🐺",
           badgeColor: "text-slate-300 border-slate-500/40 bg-slate-900/60",
           description:
-            "Predador canino ágil das estepes e bosques nevados. Rende pele espessa, carne, ossos, entranhas e dentes afiados.",
+            "Predador canino ágil das estepes e bosques nevados. Possui 20% de chance de esquiva ao ser atacado, saltando 2 passos para trás e desengajando do combate. Rende pele espessa, carne, ossos, entranhas e dentes afiados.",
           exclusiveNote:
-            "Item Exclusivo: Dente de Lobo (material para armas perfurantes e talismãs).",
+            "Habilidade Especial: Esquiva Ágil (20% de chance de esquiva + recuo de 2 passos). Item Exclusivo: Dente de Lobo.",
         },
   // Como reconhecer um item/carcaca desta criatura (t = nome, l = id, o = icone, tudo minusculo)
   detect: (t, l, o) => t.includes("lobo") || t.includes("wolf") || l.includes("wolf") || l.includes("lobo") || o === "creature_wolf",

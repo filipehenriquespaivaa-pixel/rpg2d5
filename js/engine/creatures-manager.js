@@ -3548,6 +3548,7 @@
         wanderTimer: 1,
         targetAngle: Math.random() * Math.PI * 2,
         facing: ["down", "left", "right", "up"][Math.floor(Math.random() * 4)],
+        dodgeChance: (typeof CREATURES !== "undefined" && CREATURES[v]?.spawn?.dodgeChance !== void 0 ? CREATURES[v].spawn.dodgeChance : (v === "wolf" ? 0.20 : 0)),
       };
       this.monsters.push(z);
     }
@@ -3805,6 +3806,66 @@
           }
         }
         if (isHit) {
+          // Chance de esquiva do lobo de 20%: ele sai do bote/agarre e se afasta 2 passos do alvo
+          const wolfDodgeChance = p.dodgeChance !== void 0 ? p.dodgeChance : (p.type === "wolf" ? 0.20 : 0);
+          if (wolfDodgeChance > 0 && Math.random() < wolfDodgeChance) {
+            // Se estiver em bote ou mordendo/segurando, sai imediatamente
+            if (p.wolfAttackState) {
+              p.wolfAttackState = null;
+              p.attackCooldown = 0.8;
+            }
+            // Se afasta 2 passos (2 tiles de 36px = 72px) na direção oposta ao alvo (t)
+            const escapeAng = Math.atan2(p.y - t.y, p.x - t.x) || (Math.random() * Math.PI * 2);
+            const dodgeDist = 72;
+            const kx = Math.cos(escapeAng) * dodgeDist;
+            const ky = Math.sin(escapeAng) * dodgeDist;
+            const startX = p.x;
+            const startY = p.y;
+            if (this.engine && typeof this.engine.moveWithSlide === "function") {
+              const _sl = this.engine.moveWithSlide(p.x, p.y, kx, ky, !1);
+              p.x = _sl.x;
+              p.y = _sl.y;
+            } else {
+              p.x += kx;
+              p.y += ky;
+            }
+            p.vx = Math.cos(escapeAng) * (p.speed * 2.0);
+            p.vy = Math.sin(escapeAng) * (p.speed * 2.0);
+            p.facing = p.x < t.x ? "right" : "left";
+            p.isMoving = !0;
+            p.aggroTimer = 9.5;
+            p.giveUpPursuitTimer = 0;
+            p.fleeFireTimer = 0;
+
+            // Rastro de poeira da esquiva ágil
+            for (let d = 0; d < 6; d++) {
+              const prog = d / 5;
+              this.slimeParticles.push({
+                x: startX + (p.x - startX) * prog + (Math.random() - 0.5) * 8,
+                y: startY + (p.y - startY) * prog + (Math.random() - 0.5) * 6,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: -Math.random() * 1.5,
+                life: 0.35,
+                maxLife: 0.35,
+                type: "dust",
+                color: "#e2e8f0",
+                size: 2.2 + Math.random() * 1.5,
+              });
+            }
+
+            this.floatingTexts.push({
+              id: `dodge_${this.nextId++}`,
+              x: p.x,
+              y: p.y - 18,
+              text: "💨 Esquivou!",
+              color: "#38bdf8",
+              isCrit: !0,
+              life: 1.0,
+            });
+
+            this.audio?.playPunchWhoosh?.();
+            continue;
+          }
           T.hitCount++;
           const A = Math.random() < 0.22,
             x = Math.floor(Math.random() * 3) - 1,
