@@ -762,7 +762,8 @@
       }
       t.inCombatTimer = 4.0;
       this.dismissInferiorAttackers(t, l);
-      const extraDmg = isStinger ? 2.5 : 0;
+      const isNeckBite = (t.type === "wolf" && t.wolfAttackState === "arm_hold");
+      const extraDmg = isStinger ? 2.5 : (isNeckBite ? 9.5 : 0);
       const m = t.attack + (Math.random() * 2.5 - 1.2) + extraDmg,
         c = Math.max(1, Math.round(m - o * 0.45));
       ((l.hp = Math.max(0, (l.hp ?? 100) - c)),
@@ -772,16 +773,20 @@
           (l.attackTimer = 0),
           (l.isAiming = !1)
         ),
+        isNeckBite && (
+          (l.bleedTimer = 3.05),
+          (l.bleedTickTimer = 1.0)
+        ),
         this.floatingTexts.push({
           id: `dmg_${this.nextId++}`,
           x: impactX + (Math.random() - 0.5) * 10,
           y: impactY - 20,
-          text: `-${c}`,
-          color: "#ef4444",
-          isCrit: isStinger && !t.isGiantScorpion,
-          life: 0.85,
+          text: isNeckBite ? `-${c} 🐺 Mordida no Pescoço` : `-${c}`,
+          color: isNeckBite ? "#f43f5e" : "#ef4444",
+          isCrit: (isStinger && !t.isGiantScorpion) || isNeckBite,
+          life: isNeckBite ? 1.05 : 0.85,
         }));
-      const particleCount = isStinger ? 6 : 4;
+      const particleCount = isStinger ? 6 : (isNeckBite ? 7 : 4);
       for (let g = 0; g < particleCount; g++) {
         const y = Math.random() * Math.PI * 2;
         const spd = isStinger ? 3.5 : 4;
@@ -1011,6 +1016,8 @@
         (t.hp = t.maxHp ?? 100),
         (t.poisonTimer = 0),
         (t.poisonTickTimer = 0),
+        (t.bleedTimer = 0),
+        (t.bleedTickTimer = 0),
         (t.paralyzedTimer = 0),
         (t.capturedByScorpionId = null),
         (t.attachedSlimes = 0),
@@ -2666,6 +2673,45 @@
             color: "#4ade80",
             size: 1.8,
           });
+      }
+      // Efeito de Sangramento no jogador (mordida do lobo no pescoço: 2 de dano/s por 3 segundos)
+      if (
+        l.bleedTimer &&
+        l.bleedTimer > 0 &&
+        !l.isDead
+      ) {
+        l.bleedTimer = Math.max(0, l.bleedTimer - t);
+        l.bleedTickTimer = (l.bleedTickTimer || 1) - t;
+        if (l.bleedTickTimer <= 0) {
+          l.bleedTickTimer = 1;
+          const bleedDmg = 2;
+          l.hp = Math.max(0, (l.hp ?? 100) - bleedDmg);
+          var audioBleed = this.audio;
+          audioBleed?.playPlayerHurt?.();
+          this.floatingTexts.push({
+            id: `bleed_${this.nextId++}`,
+            x: l.x,
+            y: l.y - 18,
+            text: `-${bleedDmg} 🩸 Sangramento`,
+            color: "#ef4444",
+            isCrit: !1,
+            life: 0.9,
+          });
+          for (let p = 0; p < 4; p++) {
+            this.slimeParticles.push({
+              x: l.x + (Math.random() - 0.5) * 10,
+              y: l.y - 10 + Math.random() * 6,
+              vx: (Math.random() - 0.5) * 3,
+              vy: 2 + Math.random() * 3,
+              life: 0.45,
+              maxLife: 0.45,
+              type: "blood",
+              color: "#dc2626",
+              size: 1.8,
+            });
+          }
+          if (l.hp <= 0 && !l.isDead) this.handlePlayerDeath(l);
+        }
       }
       ((this.spawnCooldown -= t),
         this.spawnCooldown <= 0 &&

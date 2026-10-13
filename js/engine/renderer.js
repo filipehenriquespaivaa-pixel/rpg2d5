@@ -3412,6 +3412,7 @@
           c.restore(),
           (this._dodgeState = null));
         const _e = !!(t.poisonTimer && t.poisonTimer > 0),
+          isBleeding = !!(t.bleedTimer && t.bleedTimer > 0),
           xe = t.attachedSlimes || 0;
         if (_e) {
           const ga = Math.sin(this.animTimer * 6) * 0.15 + 0.25;
@@ -3430,6 +3431,23 @@
               c.fill());
           }
         }
+        if (isBleeding) {
+          const bAlpha = Math.sin(this.animTimer * 8) * 0.12 + 0.22;
+          c.fillStyle = `rgba(220, 38, 38, ${bAlpha})`;
+          c.beginPath();
+          c.ellipse(0, -8, 13, 17, 0, 0, Math.PI * 2);
+          c.fill();
+          for (let we = 0; we < 3; we++) {
+            const dropProg = (this.animTimer * 3.5 + we * 1.1) % 1.2;
+            const dropX = Math.sin(this.animTimer * 1.8 + we * 2.3) * 6;
+            const dropY = -6 + dropProg * 16;
+            const dropA = Math.max(0, 1 - dropProg / 1.2);
+            c.fillStyle = `rgba(239, 68, 68, ${dropA})`;
+            c.beginPath();
+            c.arc(dropX, dropY, 1.4, 0, Math.PI * 2);
+            c.fill();
+          }
+        }
         const Ue = t.hp ?? 100,
           $a = t.maxHp ?? 100,
           Ie = t.stamina ?? 100,
@@ -3437,21 +3455,27 @@
           He = !!t.sprinting,
           Sa = !!t.isExhausted,
           oa = He || Sa || Ie < ee - 2;
-        if (Ue < $a || _e || xe > 0 || oa) {
+        if (Ue < $a || _e || isBleeding || xe > 0 || oa) {
           // Posicionamento acima da cabeça e do chapéu/capacete (sem sobrepor a cabeça)
           const headTopY = Te - (p ? 13.5 : 8.5);
           let je = Math.round(headTopY - 7);
-          if (Ue < $a || _e || xe > 0) {
+          if (Ue < $a || _e || isBleeding || xe > 0) {
             ((c.fillStyle = "rgba(15, 23, 42, 0.85)"),
               c.fillRect(-28 / 2 - 1, je - 1, 30, 3.5 + 2));
             const Be = Math.max(0, Math.min(1, Ue / $a));
-            ((c.fillStyle = _e ? "#4ade80" : Be > 0.4 ? "#22c55e" : "#ef4444"),
+            ((c.fillStyle = isBleeding ? "#ef4444" : _e ? "#4ade80" : Be > 0.4 ? "#22c55e" : "#ef4444"),
               c.fillRect(-28 / 2, je, 28 * Be, 3.5),
-              _e &&
-                ((c.fillStyle = "#4ade80"),
+              isBleeding ? (
+                (c.fillStyle = "#ef4444"),
+                (c.font = "bold 8px sans-serif"),
+                (c.textAlign = "center"),
+                c.fillText("🩸", -28 / 2 - 5, je + 3.5)
+              ) : _e && (
+                (c.fillStyle = "#4ade80"),
                 (c.font = "bold 8px monospace"),
                 (c.textAlign = "center"),
-                c.fillText("☠", -28 / 2 - 5, je + 3.5)),
+                c.fillText("☠", -28 / 2 - 5, je + 3.5)
+              ),
               xe > 0 &&
                 ((c.fillStyle = "#38bdf8"),
                 (c.font = "bold 7px sans-serif"),

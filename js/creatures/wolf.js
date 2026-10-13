@@ -195,9 +195,9 @@ function drawLupineEye(e, ex, ey, o, pal, squint) {
 CREATURES.wolf = {
   id: "wolf",
   // Nascimento no mundo (valores do spawn)
-  spawn: { name: "Lobo dos Bosques", color: "#475569", accentColor: "#f59e0b", hp: 24, attack: 6, speed: 1.05, scale: 0.95 },
+  spawn: { name: "Lobo dos Bosques", color: "#475569", accentColor: "#f59e0b", hp: 68, attack: 8, speed: 1.05, scale: 0.95 },
   spawnVariants: {
-    snow: { name: "Lobo das Neves", color: "#94a3b8", accentColor: "#38bdf8", hp: 25, attack: 6, speed: 1.1, scale: 1 },
+    snow: { name: "Lobo das Neves", color: "#94a3b8", accentColor: "#38bdf8", hp: 76, attack: 9, speed: 1.1, scale: 1 },
   },
   // Comportamento: predador (as presas fogem dele); particulas ao morrer
   behavior: {
@@ -1932,6 +1932,9 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
     wolf._playerY = player.y;
 
     manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, player.x, player.y - 18);
+    // Efeito de sangramento por mordida no pescoço: 2 de dano por segundo durante 3 segundos (3 ticks)
+    player.bleedTimer = 3.05;
+    player.bleedTickTimer = 1.0;
   } else if (attackChoice === 2) {
     // 2. Lobo morde perna e puxa para trás
     wolf.wolfAttackState = "leg_pull";
@@ -2035,6 +2038,9 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
     if (wolf.wolfDamageTick <= 0) {
       wolf.wolfDamageTick = 0.5;
       manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, player.x, player.y - 18);
+      // Renova o sangramento a cada dentada profunda no pescoço
+      player.bleedTimer = 3.05;
+      player.bleedTickTimer = 1.0;
     }
 
     if (wolf.wolfAttackTimer <= 0) {
