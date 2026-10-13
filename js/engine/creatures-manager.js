@@ -3809,42 +3809,42 @@
           // Chance de esquiva do lobo de 20%: ele sai do bote/agarre e se afasta 2 passos do alvo
           const wolfDodgeChance = p.dodgeChance !== void 0 ? p.dodgeChance : (p.type === "wolf" ? 0.20 : 0);
           if (wolfDodgeChance > 0 && Math.random() < wolfDodgeChance) {
-            // Se estiver em bote ou mordendo/segurando, sai imediatamente
+            // Se estiver em bote ou mordendo/segurando o alvo, solta imediatamente
             if (p.wolfAttackState) {
               p.wolfAttackState = null;
-              p.attackCooldown = 0.8;
             }
-            // Se afasta 2 passos (2 tiles de 36px = 72px) na direção oposta ao alvo (t)
-            const escapeAng = Math.atan2(p.y - t.y, p.x - t.x) || (Math.random() * Math.PI * 2);
-            const dodgeDist = 72;
-            const kx = Math.cos(escapeAng) * dodgeDist;
-            const ky = Math.sin(escapeAng) * dodgeDist;
-            const startX = p.x;
-            const startY = p.y;
-            if (this.engine && typeof this.engine.moveWithSlide === "function") {
-              const _sl = this.engine.moveWithSlide(p.x, p.y, kx, ky, !1);
-              p.x = _sl.x;
-              p.y = _sl.y;
-            } else {
-              p.x += kx;
-              p.y += ky;
-            }
-            p.vx = Math.cos(escapeAng) * (p.speed * 2.0);
-            p.vy = Math.sin(escapeAng) * (p.speed * 2.0);
-            p.facing = p.x < t.x ? "right" : "left";
+
+            // O lobo pode esquivar em qualquer direção (360 graus)
+            const dodgeAng = Math.random() * Math.PI * 2;
+            const dodgeDist = 72; // 2 passos (2 tiles de 36px = 72px)
+            const dodgeDuration = 0.38; // Duração rápida e dinâmica do salto
+
+            // Vira imediatamente em direção ao local da esquiva!
+            p.facing = Math.cos(dodgeAng) < 0 ? "left" : "right";
+            p.targetAngle = dodgeAng;
+            p.dodgeAngle = dodgeAng;
+            p.dodgeDist = dodgeDist;
+            p.dodgeSpeed = dodgeDist / dodgeDuration; // ~189.5 px/s
+
+            // Ativa o estado de salto (dodge_leap): o lobo se desloca suavemente frame a frame no loop, sem teleportar
+            p.wolfAttackState = "dodge_leap";
+            p.wolfAttackDuration = dodgeDuration;
+            p.wolfAttackTimer = dodgeDuration;
+
+            p.vx = Math.cos(dodgeAng) * p.dodgeSpeed;
+            p.vy = Math.sin(dodgeAng) * p.dodgeSpeed;
             p.isMoving = !0;
             p.aggroTimer = 9.5;
             p.giveUpPursuitTimer = 0;
             p.fleeFireTimer = 0;
 
-            // Rastro de poeira da esquiva ágil
+            // Poeira de impulsão do salto sob as patas
             for (let d = 0; d < 6; d++) {
-              const prog = d / 5;
               this.slimeParticles.push({
-                x: startX + (p.x - startX) * prog + (Math.random() - 0.5) * 8,
-                y: startY + (p.y - startY) * prog + (Math.random() - 0.5) * 6,
-                vx: (Math.random() - 0.5) * 1.5,
-                vy: -Math.random() * 1.5,
+                x: p.x + (Math.random() - 0.5) * 10,
+                y: p.y + 4 + (Math.random() - 0.5) * 4,
+                vx: -Math.cos(dodgeAng) * (1.2 + Math.random() * 1.6) + (Math.random() - 0.5) * 1.0,
+                vy: -Math.sin(dodgeAng) * (1.2 + Math.random() * 1.6) - Math.random() * 1.2,
                 life: 0.35,
                 maxLife: 0.35,
                 type: "dust",

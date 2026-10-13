@@ -347,6 +347,219 @@ CREATURES.wolf = {
       const pal = getWolfPalette(t, l);
 
       // ==========================================
+      // 0. ESQUIVA ÁGIL: SALTO LUPINO NO AR (DODGE LEAP)
+      // ==========================================
+      if (t.wolfAttackState === "dodge_leap") {
+        e.save();
+        const u = t.facing === "left" ? -1 : 1;
+        e.scale(u, 1);
+        const dur = t.wolfAttackDuration || 0.38;
+        const prog = Math.min(1, Math.max(0, 1 - (t.wolfAttackTimer || 0) / dur));
+        // Arco parabólico do salto: eleva o lobo no ar até 14px * scale no ápice
+        const jumpElevation = Math.sin(prog * Math.PI) * 14 * o;
+        // Inclinação aerodinâmica do salto: sobe na arrancada, nivela no ápice e mira as patas na descida
+        const leapTilt = (prog - 0.5) * 0.28;
+
+        // Sombra realista no chão (permanece no solo projetada sob o lobo, diminuindo e suavizando no ápice do salto)
+        const shadowScale = Math.max(0.62, 1 - (jumpElevation / (18 * o)));
+        e.fillStyle = "rgba(15, 23, 42, " + (0.35 * shadowScale) + ")";
+        e.beginPath();
+        e.ellipse(0, 4.5 * o, 13 * o * shadowScale, 3.8 * o * shadowScale, 0, 0, Math.PI * 2);
+        e.fill();
+
+        // Eleva e inclina o corpo do lobo no ar na direção do salto
+        e.translate(0, -jumpElevation);
+        e.rotate(leapTilt);
+
+        // Pata traseira de trás (estendida para trás em propulsão elástica)
+        e.fillStyle = pal.shade;
+        e.beginPath();
+        e.moveTo(-6 * o, -6 * o);
+        e.lineTo(-12 * o, -1 * o);
+        e.lineTo(-13 * o, 1 * o);
+        e.lineTo(-9 * o, 0 * o);
+        e.lineTo(-4 * o, -6 * o);
+        e.closePath();
+        e.fill();
+        drawLupinePaw(e, -12 * o, 0.5 * o, o, pal, true);
+
+        // Pata dianteira de trás (estendida para a frente cortando o ar)
+        e.fillStyle = pal.shade;
+        e.beginPath();
+        e.moveTo(5 * o, -7 * o);
+        e.lineTo(9 * o, -2 * o);
+        e.lineTo(11 * o, -1 * o);
+        e.lineTo(8 * o, 1 * o);
+        e.lineTo(3 * o, -7 * o);
+        e.closePath();
+        e.fill();
+        drawLupinePaw(e, 10 * o, -0.5 * o, o, pal, true);
+
+        // Cauda espessa esvoaçante alinhada com a aerodinâmica do salto
+        drawLupineBushyTail(e, -10 * o, -7 * o, o, pal, Math.PI * 1.02, 0, 1.2);
+
+        // Tronco musculoso alongado em pleno salto
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(-10 * o, -9 * o);
+        e.quadraticCurveTo(-2 * o, -13 * o, 5 * o, -12 * o);
+        e.lineTo(8 * o, -9 * o);
+        e.quadraticCurveTo(8.5 * o, -4 * o, 4.5 * o, -2.5 * o);
+        e.quadraticCurveTo(-3 * o, -3.5 * o, -9 * o, -6 * o);
+        e.closePath();
+        e.fill();
+
+        // Faixa dorsal escura
+        if (pal.dorsal !== pal.base) {
+          e.fillStyle = pal.dorsal;
+          e.beginPath();
+          e.moveTo(-10 * o, -9 * o);
+          e.quadraticCurveTo(-2 * o, -13 * o, 5 * o, -12 * o);
+          e.lineTo(8 * o, -9 * o);
+          e.lineTo(4 * o, -8.5 * o);
+          e.quadraticCurveTo(-3 * o, -9 * o, -9.5 * o, -7.5 * o);
+          e.closePath();
+          e.fill();
+        }
+
+        // Peito claro e juba eriçada
+        if (!l) {
+          e.fillStyle = pal.chest;
+          e.beginPath();
+          e.moveTo(2 * o, -8.5 * o);
+          e.quadraticCurveTo(7 * o, -5 * o, 5 * o, -2.5 * o);
+          e.quadraticCurveTo(1 * o, -3.5 * o, -2 * o, -5 * o);
+          e.closePath();
+          e.fill();
+
+          e.fillStyle = pal.light;
+          e.beginPath();
+          e.moveTo(6 * o, -9 * o);
+          e.lineTo(9.5 * o, -6 * o);
+          e.lineTo(7.5 * o, -3.5 * o);
+          e.lineTo(10.2 * o, -1.8 * o);
+          e.lineTo(6.5 * o, -1 * o);
+          e.closePath();
+          e.fill();
+        }
+
+        // Pata traseira da frente (esticada para trás)
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(-5 * o, -9 * o);
+        e.quadraticCurveTo(-10 * o, -4 * o, -11 * o, 0.5 * o);
+        e.lineTo(-12.5 * o, 1.8 * o);
+        e.lineTo(-9.5 * o, 1.5 * o);
+        e.lineTo(-4 * o, -4 * o);
+        e.closePath();
+        e.fill();
+        drawLupinePaw(e, -11.5 * o, 1.2 * o, o, pal, false);
+
+        // Pata dianteira da frente (esticada para a frente, preparando a aterrissagem)
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(4 * o, -9 * o);
+        e.lineTo(9.5 * o, -1 * o);
+        e.lineTo(11.5 * o, 1 * o);
+        e.lineTo(8.5 * o, 1.5 * o);
+        e.lineTo(4.5 * o, -3 * o);
+        e.closePath();
+        e.fill();
+        drawLupinePaw(e, 10.5 * o, 0.8 * o, o, pal, false);
+
+        // Cabeça e focinho em foco de esquiva
+        const headX = 8 * o;
+        const headY = -11.5 * o;
+
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(3 * o, -11.5 * o);
+        e.lineTo(headX + 2 * o, headY - 3.8 * o);
+        e.lineTo(headX + 5 * o, headY);
+        e.lineTo(5 * o, -6.5 * o);
+        e.closePath();
+        e.fill();
+
+        e.beginPath();
+        e.ellipse(headX + 1.6 * o, headY - 1 * o, 4.4 * o, 3.8 * o, 0.1, 0, Math.PI * 2);
+        e.fill();
+
+        // Bochechas felpudas
+        e.beginPath();
+        e.moveTo(headX - 0.5 * o, headY + 1 * o);
+        e.lineTo(headX - 3.5 * o, headY + 3.2 * o);
+        e.lineTo(headX + 0.5 * o, headY + 3.2 * o);
+        e.closePath();
+        e.fill();
+
+        // Orelhas aerodinâmicas (inclinadas ligeiramente para trás pela velocidade do salto)
+        e.fillStyle = pal.shade;
+        e.beginPath();
+        e.moveTo(headX - 1 * o, headY - 3 * o);
+        e.lineTo(headX - 2 * o, headY - 8.2 * o);
+        e.lineTo(headX + 1.8 * o, headY - 3.5 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(headX + 0.5 * o, headY - 3.5 * o);
+        e.lineTo(headX + 0.8 * o, headY - 9 * o);
+        e.lineTo(headX + 4.2 * o, headY - 3.8 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = pal.earInner;
+        e.beginPath();
+        e.moveTo(headX + 1.2 * o, headY - 4 * o);
+        e.lineTo(headX + 1.5 * o, headY - 7.8 * o);
+        e.lineTo(headX + 3.4 * o, headY - 4.2 * o);
+        e.closePath();
+        e.fill();
+
+        // Focinho determinado
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(headX + 2.8 * o, headY - 2.4 * o);
+        e.lineTo(headX + 8.5 * o, headY - 1.2 * o);
+        e.lineTo(headX + 8.5 * o, headY + 0.8 * o);
+        e.lineTo(headX + 3.8 * o, headY + 2.2 * o);
+        e.closePath();
+        e.fill();
+
+        e.fillStyle = pal.nose;
+        e.beginPath();
+        if (typeof e.roundRect === "function") {
+          e.roundRect(headX + 8.0 * o, headY - 1.6 * o, 1.8 * o, 1.8 * o, 0.45 * o);
+        } else {
+          e.rect(headX + 8.0 * o, headY - 1.6 * o, 1.8 * o, 1.8 * o);
+        }
+        e.fill();
+
+        // Mandíbula
+        e.fillStyle = l ? "#ffffff" : pal.chest;
+        e.beginPath();
+        e.moveTo(headX + 3.8 * o, headY + 1.2 * o);
+        e.lineTo(headX + 8.0 * o, headY + 1.0 * o);
+        e.lineTo(headX + 7.2 * o, headY + 2.2 * o);
+        e.lineTo(headX + 3.5 * o, headY + 2.4 * o);
+        e.closePath();
+        e.fill();
+
+        // Olho focado e penetrante
+        drawLupineEye(e, headX + 3.8 * o, headY - 1.6 * o, o, pal, false);
+
+        if (!l && pal.isSnow) {
+          const z = (t.animTimer * 2.8) % Math.PI;
+          e.fillStyle = "rgba(224, 242, 254, 0.38)";
+          e.beginPath();
+          e.arc(headX + 10 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
+          e.fill();
+        }
+
+        e.restore();
+        return;
+      }
+
+      // ==========================================
       // 1. LOBO ABRAÇA O PERSONAGEM E MIRA A BOCA NO PESCOÇO DO PLAYER
       // ==========================================
       if (t.wolfAttackState === "arm_hold") {
@@ -1981,6 +2194,49 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
   if (wolf.hp <= 0 || player.isDead) {
     wolf.wolfAttackState = null;
     return false;
+  }
+
+  // 0. Salto de esquiva ágil (dodge_leap): o lobo vira em direção ao local da esquiva e salta dinamicamente
+  if (wolf.wolfAttackState === "dodge_leap") {
+    const dur = wolf.wolfAttackDuration || 0.38;
+    wolf.wolfAttackTimer = Math.max(0, (wolf.wolfAttackTimer || 0) - dt);
+
+    const dodgeAng = wolf.dodgeAngle !== void 0 ? wolf.dodgeAngle : (Math.atan2(wolf.vy, wolf.vx) || 0);
+    const speed = wolf.dodgeSpeed || (72 / dur);
+    const stepX = Math.cos(dodgeAng) * speed * dt;
+    const stepY = Math.sin(dodgeAng) * speed * dt;
+
+    // Mantém-se virado rigorosamente em direção ao local da esquiva durante todo o salto!
+    wolf.facing = Math.cos(dodgeAng) < 0 ? "left" : "right";
+    wolf.targetAngle = dodgeAng;
+
+    if (manager.engine && typeof manager.engine.moveWithSlide === "function") {
+      const _m = manager.engine.moveWithSlide(wolf.x, wolf.y, stepX, stepY, false);
+      wolf.x = _m.x;
+      wolf.y = _m.y;
+    } else {
+      wolf.x += stepX;
+      wolf.y += stepY;
+    }
+
+    wolf.vx = Math.cos(dodgeAng) * speed * 0.4;
+    wolf.vy = Math.sin(dodgeAng) * speed * 0.4;
+    wolf.isMoving = true;
+
+    // Rastro sutil de poeira levantado durante o voo do salto
+    if (Math.random() < dt * 10) {
+      spawnSubtleWolfDust(manager, wolf.x + (Math.random() - 0.5) * 6, wolf.y + 3);
+    }
+
+    // Aterrissagem suave do salto ao expirar o tempo
+    if (wolf.wolfAttackTimer <= 0) {
+      wolf.wolfAttackState = null;
+      wolf.attackCooldown = 0.55;
+      for (let i = 0; i < 3; i++) {
+        spawnSubtleWolfDust(manager, wolf.x + (Math.random() - 0.5) * 8, wolf.y + 4);
+      }
+    }
+    return true;
   }
 
   // Hierarquia de predadores: se um predador mais forte (ex: Dragão) chegar atacando o player, o lobo desiste do ataque e vai embora!
