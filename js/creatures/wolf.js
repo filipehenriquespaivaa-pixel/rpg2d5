@@ -503,278 +503,665 @@ CREATURES.wolf = {
       // 3. MORDE, SOLTA E AFASTA PARA AVANÇAR NOVAMENTE
       // ==========================================
       if (t.wolfAttackState === "quick_bite") {
-        // Bote frontal rápido mordendo
+        // Bote frontal rápido cravando mordida com as 4 patas e anatomia completa do lobo
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
         const m = l ? "#ffffff" : t.color,
           c = l ? "#e2e8f0" : "#475569",
+          f = l ? "#ffffff" : "#cbd5e1",
           g = l ? "#ffffff" : "#e2e8f0";
 
-        const lungeProgress = 1 - (t.wolfAttackTimer || 0) / (t.wolfAttackDuration || 0.25);
-        const lungeHop = Math.sin(lungeProgress * Math.PI) * 4 * o;
+        const lungeProg = 1 - (t.wolfAttackTimer || 0) / (t.wolfAttackDuration || 0.35);
+        const lungeHop = Math.sin(lungeProg * Math.PI) * 2.8 * o;
+        const snap = Math.sin(lungeProg * Math.PI);
 
-        // Patas traseiras impulsionando para trás
+        // 1. Pata traseira de trás (sombreada, apoiando o impulso do salto)
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(-8 * o, -4 * o - lungeHop);
-        e.lineTo(-14 * o, 1 * o);
-        e.lineTo(-11 * o, 1 * o);
-        e.lineTo(-5 * o, -3 * o - lungeHop);
+        e.moveTo(-6 * o, -6 * o - lungeHop);
+        e.lineTo(-10 * o, 0 * o - lungeHop * 0.4);
+        e.lineTo(-9 * o, 2 * o);
+        e.lineTo(-6 * o, 2 * o);
+        e.lineTo(-4 * o, -6 * o - lungeHop);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(-14 * o, 0.5 * o, 3.5 * o, 1 * o);
+        e.fillRect(-9 * o, 1.5 * o, 3.2 * o, 0.9 * o);
 
-        // Tronco no ar
-        e.fillStyle = m;
+        // 2. Pata dianteira de trás (sombreada, esticada no salto)
+        e.fillStyle = c;
+        e.beginPath();
+        e.moveTo(5 * o, -7 * o - lungeHop);
+        e.lineTo(7 * o, -1 * o - lungeHop * 0.4);
+        e.lineTo(8 * o, 2 * o);
+        e.lineTo(5 * o, 2 * o);
+        e.lineTo(3 * o, -7 * o - lungeHop);
+        e.closePath();
+        e.fill();
+        e.fillStyle = "#0f172a";
+        e.fillRect(5 * o, 1.5 * o, 3.2 * o, 0.9 * o);
+
+        // 3. Rabo peludo clássico de lobo esticado com ponta clara
+        e.strokeStyle = m;
+        e.lineWidth = 3.6 * o;
+        e.lineCap = "round";
         e.beginPath();
         e.moveTo(-9 * o, -8 * o - lungeHop);
-        e.quadraticCurveTo(-2 * o, -12 * o - lungeHop, 5 * o, -9 * o - lungeHop);
-        e.lineTo(7 * o, -6 * o - lungeHop);
-        e.quadraticCurveTo(5 * o, -1 * o - lungeHop, -4 * o, -2 * o - lungeHop);
-        e.lineTo(-8 * o, -5 * o - lungeHop);
+        e.quadraticCurveTo(-14 * o, -12 * o - lungeHop, -14 * o, -5 * o - lungeHop);
+        e.stroke();
+        e.strokeStyle = f;
+        e.lineWidth = 2.2 * o;
+        e.beginPath();
+        e.moveTo(-14 * o, -8 * o - lungeHop);
+        e.lineTo(-13.5 * o, -5 * o - lungeHop);
+        e.stroke();
+
+        // 4. Tronco ágil e musculoso no bote
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(-9 * o, -10 * o - lungeHop);
+        e.quadraticCurveTo(-2 * o, -13 * o - lungeHop, 4 * o, -12 * o - lungeHop);
+        e.lineTo(7 * o, -10 * o - lungeHop);
+        e.quadraticCurveTo(8 * o, -4 * o - lungeHop, 4 * o, -2 * o - lungeHop);
+        e.quadraticCurveTo(-3 * o, -4 * o - lungeHop, -8 * o, -6 * o - lungeHop);
         e.closePath();
         e.fill();
 
-        // Patas dianteiras estendidas no ar para frente
+        // 5. Barriga clara e juba do peito tradicional de lobo
+        if (!l) {
+          e.fillStyle = g;
+          e.beginPath();
+          e.moveTo(2 * o, -9 * o - lungeHop);
+          e.quadraticCurveTo(7 * o, -5 * o - lungeHop, 5 * o, -2 * o - lungeHop);
+          e.quadraticCurveTo(1 * o, -3 * o - lungeHop, -2 * o, -5 * o - lungeHop);
+          e.closePath();
+          e.fill();
+
+          // Pelagem pontiaguda no peito
+          e.fillStyle = f;
+          e.beginPath();
+          e.moveTo(6 * o, -9 * o - lungeHop);
+          e.lineTo(9.2 * o, -6 * o - lungeHop);
+          e.lineTo(7.2 * o, -4 * o - lungeHop);
+          e.lineTo(9.8 * o, -2 * o - lungeHop);
+          e.lineTo(6.2 * o, -1 * o - lungeHop);
+          e.closePath();
+          e.fill();
+        }
+
+        // 6. Pata traseira da frente (primeiro plano, musculosa)
         e.fillStyle = m;
         e.beginPath();
-        e.moveTo(3 * o, -6 * o - lungeHop);
-        e.lineTo(11 * o, -2 * o - lungeHop);
-        e.lineTo(10 * o, 0 * o - lungeHop);
-        e.lineTo(1 * o, -4 * o - lungeHop);
+        e.moveTo(-5 * o, -10 * o - lungeHop);
+        e.quadraticCurveTo(-9 * o, -5 * o - lungeHop, -8 * o, 0 * o - lungeHop * 0.4);
+        e.lineTo(-7 * o, 3 * o);
+        e.lineTo(-4 * o, 3 * o);
+        e.lineTo(-4.5 * o, 0 * o - lungeHop * 0.4);
+        e.quadraticCurveTo(-3 * o, -6 * o - lungeHop, -3 * o, -8 * o - lungeHop);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(10 * o, -1.5 * o - lungeHop, 3 * o, 1.2 * o);
+        e.fillRect(-7 * o, 2.5 * o, 3.2 * o, 0.9 * o);
 
-        // Cabeça com mandíbula estalando
-        const snap = Math.sin(lungeProgress * Math.PI);
-        const headX = (9 + lungeProgress * 3) * o;
-        const headY = (-10 - lungeHop) * o;
-
+        // 7. Pata dianteira da frente (estendida para frente)
         e.fillStyle = m;
         e.beginPath();
-        e.ellipse(headX + 1 * o, headY, 4.2 * o, 3.8 * o, 0.1, 0, Math.PI * 2);
+        e.moveTo(4 * o, -10 * o - lungeHop);
+        e.lineTo(8 * o, 0 * o - lungeHop * 0.4);
+        e.lineTo(8.5 * o, 3 * o);
+        e.lineTo(5.5 * o, 3 * o);
+        e.lineTo(5 * o, 0 * o - lungeHop * 0.4);
+        e.lineTo(1.5 * o, -8 * o - lungeHop);
+        e.closePath();
         e.fill();
+        e.fillStyle = "#0f172a";
+        e.fillRect(5.5 * o, 2.5 * o, 3.2 * o, 0.9 * o);
 
-        const mouthOpen = (1 - snap) * 3 * o;
+        // 8. Cabeça e focinho projetados para a dentada rápida
+        const headX = (7 + snap * 3.5) * o;
+        const headY = (-12 - lungeHop) * o;
+
+        // Pescoço ligando tronco à cabeça
+        e.fillStyle = m;
         e.beginPath();
-        e.moveTo(headX + 2 * o, headY - 2 * o - mouthOpen * 0.5);
-        e.lineTo(headX + 9 * o, headY - 1 * o - mouthOpen);
-        e.lineTo(headX + 8.5 * o, headY + 1 * o - mouthOpen);
-        e.lineTo(headX + 3 * o, headY + 1.5 * o);
+        e.moveTo(3 * o, -12 * o - lungeHop);
+        e.lineTo(headX + 2 * o, headY - 4 * o);
+        e.lineTo(headX + 5 * o, headY);
+        e.lineTo(5 * o, -7 * o - lungeHop);
         e.closePath();
         e.fill();
 
-        e.fillStyle = "#0f172a";
+        // Crânio proporcional do lobo
         e.beginPath();
-        e.roundRect(headX + 8.2 * o, headY - 1.5 * o - mouthOpen, 1.6 * o, 1.7 * o, 0.4 * o);
+        e.ellipse(headX + 1.5 * o, headY - 1 * o, 4.2 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
         e.fill();
 
+        // Orelhas empinadas de lobo em ataque (com interior rosado)
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(headX + 3 * o, headY + 1.5 * o);
-        e.lineTo(headX + 8 * o, headY + 2 * o + mouthOpen);
-        e.lineTo(headX + 7.5 * o, headY + 3.8 * o + mouthOpen);
-        e.lineTo(headX + 2 * o, headY + 3 * o);
+        e.moveTo(headX - 0.5 * o, headY - 3.5 * o);
+        e.lineTo(headX + 0.5 * o, headY - 8.5 * o);
+        e.lineTo(headX + 2.8 * o, headY - 3.8 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(headX + 1.2 * o, headY - 3.8 * o);
+        e.lineTo(headX + 2.8 * o, headY - 9.2 * o);
+        e.lineTo(headX + 5 * o, headY - 4 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = l ? "#ffffff" : "#f43f5e";
+        e.beginPath();
+        e.moveTo(headX + 2.1 * o, headY - 4.4 * o);
+        e.lineTo(headX + 3.1 * o, headY - 8.2 * o);
+        e.lineTo(headX + 4.2 * o, headY - 4.6 * o);
         e.closePath();
         e.fill();
 
-        // Presas
+        // Boca abrindo e estalando em mordida
+        const mouthGap = (1 - snap) * 2.8 * o;
+        // Mandíbula superior
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(headX + 3 * o, headY - 2.5 * o);
+        e.lineTo(headX + 8.5 * o, headY - 1 * o - mouthGap * 0.3);
+        e.lineTo(headX + 8.5 * o, headY + 1.2 * o - mouthGap * 0.3);
+        e.lineTo(headX + 4 * o, headY + 2.5 * o);
+        e.closePath();
+        e.fill();
+
+        // Nariz preto de lobo
+        e.fillStyle = "#0f172a";
+        e.beginPath();
+        e.roundRect(headX + 8 * o, headY - 1.5 * o - mouthGap * 0.3, 1.6 * o, 1.8 * o, 0.4 * o);
+        e.fill();
+
+        // Mandíbula inferior com queixo claro
+        e.fillStyle = l ? "#ffffff" : g;
+        e.beginPath();
+        e.moveTo(headX + 4 * o, headY + 1.5 * o);
+        e.lineTo(headX + 7.8 * o, headY + 1.2 * o + mouthGap * 0.7);
+        e.lineTo(headX + 7 * o, headY + 2.5 * o + mouthGap * 0.7);
+        e.lineTo(headX + 3.5 * o, headY + 2.8 * o);
+        e.closePath();
+        e.fill();
+
+        // Presas superiores e inferiores
         e.fillStyle = "#ffffff";
         e.beginPath();
-        e.moveTo(headX + 6.8 * o, headY + 0.8 * o - mouthOpen);
-        e.lineTo(headX + 7.4 * o, headY + 2.8 * o - mouthOpen * 0.5);
-        e.lineTo(headX + 8.0 * o, headY + 0.8 * o - mouthOpen);
+        e.moveTo(headX + 6.8 * o, headY + 1.2 * o - mouthGap * 0.3);
+        e.lineTo(headX + 7.4 * o, headY + 2.7 * o);
+        e.lineTo(headX + 7.9 * o, headY + 1.2 * o - mouthGap * 0.3);
         e.closePath();
         e.fill();
         e.beginPath();
-        e.moveTo(headX + 6.0 * o, headY + 2.4 * o + mouthOpen);
-        e.lineTo(headX + 6.6 * o, headY + 0.5 * o + mouthOpen * 0.5);
-        e.lineTo(headX + 7.2 * o, headY + 2.4 * o + mouthOpen);
+        e.moveTo(headX + 6.0 * o, headY + 1.5 * o + mouthGap * 0.7);
+        e.lineTo(headX + 6.6 * o, headY + 0.3 * o);
+        e.lineTo(headX + 7.2 * o, headY + 1.5 * o + mouthGap * 0.7);
         e.closePath();
         e.fill();
 
+        // Olho predador idêntico ao lobo autêntico
+        e.fillStyle = "#0f172a";
+        e.beginPath();
+        e.ellipse(headX + 4.2 * o, headY - 1.6 * o, 1.8 * o, 1.2 * o, 0.1, 0, Math.PI * 2);
+        e.fill();
         e.fillStyle = l ? "#ef4444" : t.accentColor;
         e.beginPath();
-        e.arc(headX + 3.7 * o, headY - 1.2 * o, 1.2 * o, 0, Math.PI * 2);
+        e.arc(headX + 4.4 * o, headY - 1.6 * o, 1.1 * o, 0, Math.PI * 2);
         e.fill();
+        e.fillStyle = "#0f172a";
+        e.beginPath();
+        e.ellipse(headX + 4.6 * o, headY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
+        e.fill();
+        e.fillStyle = "#ffffff";
+        e.beginPath();
+        e.arc(headX + 4.2 * o, headY - 2 * o, 0.4 * o, 0, Math.PI * 2);
+        e.fill();
+
+        if (!l && t.accentColor === "#38bdf8") {
+          const z = (t.animTimer * 2.8) % Math.PI;
+          e.fillStyle = "rgba(224, 242, 254, 0.35)";
+          e.beginPath();
+          e.arc(headX + 10 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
+          e.fill();
+        }
 
         e.restore();
         return;
       }
 
       if (t.wolfAttackState === "quick_retreat") {
-        // Solta e afasta derrapando para trás em alerta defensivo
+        // Solta e afasta em postura defensiva alerta, olhando fixamente para o jogador com as 4 patas autênticas
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
         const m = l ? "#ffffff" : t.color,
-          c = l ? "#e2e8f0" : "#475569";
+          c = l ? "#e2e8f0" : "#475569",
+          f = l ? "#ffffff" : "#cbd5e1",
+          g = l ? "#ffffff" : "#e2e8f0";
 
-        const skidProgress = 1 - (t.wolfAttackTimer || 0) / (t.wolfAttackDuration || 0.45);
-        const skidVib = Math.sin(skidProgress * 25) * 1.2 * o;
+        const lowStance = 1.6 * o;
 
-        // Patas dianteiras deslizando para trás no solo
+        // 1. Pata traseira de trás (sombreada, amortecendo o recuo)
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(2 * o, -5 * o);
-        e.lineTo(6 * o, 2 * o);
-        e.lineTo(9 * o, 2.5 * o);
-        e.lineTo(4 * o, -4 * o);
+        e.moveTo(-6 * o, -6 * o + lowStance);
+        e.lineTo(-9 * o, -1 * o + lowStance);
+        e.lineTo(-8 * o, 2 * o);
+        e.lineTo(-5 * o, 2 * o);
+        e.lineTo(-4 * o, -6 * o + lowStance);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(6 * o, 2 * o, 3.8 * o, 1.2 * o);
+        e.fillRect(-8 * o, 1.5 * o, 3.2 * o, 0.9 * o);
 
-        // Patas traseiras amortecendo
-        e.fillStyle = m;
+        // 2. Pata dianteira de trás (sombreada, apoiada no solo)
+        e.fillStyle = c;
         e.beginPath();
-        e.moveTo(-6 * o, -6 * o);
-        e.lineTo(-9 * o, 1.5 * o);
-        e.lineTo(-6 * o, 1.5 * o);
-        e.lineTo(-3 * o, -5 * o);
+        e.moveTo(5 * o, -7 * o + lowStance);
+        e.lineTo(4 * o, -1 * o + lowStance);
+        e.lineTo(5 * o, 2 * o);
+        e.lineTo(2 * o, 2 * o);
+        e.lineTo(3 * o, -7 * o + lowStance);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(-9 * o, 1 * o, 3.5 * o, 1.2 * o);
+        e.fillRect(2 * o, 1.5 * o, 3.2 * o, 0.9 * o);
 
-        // Corpo abaixado e recuando
+        // 3. Rabo de lobo tenso acompanhando o recuo
+        e.strokeStyle = m;
+        e.lineWidth = 3.6 * o;
+        e.lineCap = "round";
+        e.beginPath();
+        e.moveTo(-9 * o, -8 * o + lowStance);
+        e.quadraticCurveTo(-14 * o, -9 * o + lowStance, -13 * o, -2 * o + lowStance);
+        e.stroke();
+        e.strokeStyle = f;
+        e.lineWidth = 2.2 * o;
+        e.beginPath();
+        e.moveTo(-14 * o, -5 * o + lowStance);
+        e.lineTo(-13 * o, -2 * o + lowStance);
+        e.stroke();
+
+        // 4. Corpo abaixado e recuando firme com anatomia correta
         e.fillStyle = m;
         e.beginPath();
-        e.moveTo(-9 * o, -9 * o + skidVib);
-        e.quadraticCurveTo(-3 * o, -11 * o + skidVib, 4 * o, -10 * o + skidVib);
-        e.lineTo(6 * o, -7 * o + skidVib);
-        e.quadraticCurveTo(5 * o, -3 * o + skidVib, -5 * o, -4 * o + skidVib);
-        e.lineTo(-8 * o, -7 * o + skidVib);
+        e.moveTo(-9 * o, -10 * o + lowStance);
+        e.quadraticCurveTo(-2 * o, -13 * o + lowStance, 4 * o, -12 * o + lowStance);
+        e.lineTo(7 * o, -10 * o + lowStance);
+        e.quadraticCurveTo(8 * o, -4 * o + lowStance, 4 * o, -2 * o + lowStance);
+        e.quadraticCurveTo(-3 * o, -4 * o + lowStance, -8 * o, -6 * o + lowStance);
         e.closePath();
         e.fill();
 
-        // Cabeça com rosnado e orelhas coladas
-        const headX = 6 * o;
-        const headY = -10 * o + skidVib;
+        // 5. Pelagem ventral clara e juba do peito eriçada em alerta
+        if (!l) {
+          e.fillStyle = g;
+          e.beginPath();
+          e.moveTo(2 * o, -9 * o + lowStance);
+          e.quadraticCurveTo(7 * o, -5 * o + lowStance, 5 * o, -2 * o + lowStance);
+          e.quadraticCurveTo(1 * o, -3 * o + lowStance, -2 * o, -5 * o + lowStance);
+          e.closePath();
+          e.fill();
 
+          e.fillStyle = f;
+          e.beginPath();
+          e.moveTo(6 * o, -9 * o + lowStance);
+          e.lineTo(9.2 * o, -6 * o + lowStance);
+          e.lineTo(7.2 * o, -4 * o + lowStance);
+          e.lineTo(9.8 * o, -2 * o + lowStance);
+          e.lineTo(6.2 * o, -1 * o + lowStance);
+          e.closePath();
+          e.fill();
+        }
+
+        // 6. Pata traseira da frente (primeiro plano, flexionada)
+        e.fillStyle = m;
         e.beginPath();
-        e.ellipse(headX + 1 * o, headY, 4.2 * o, 3.6 * o, 0.1, 0, Math.PI * 2);
+        e.moveTo(-5 * o, -10 * o + lowStance);
+        e.quadraticCurveTo(-9 * o, -5 * o + lowStance, -7 * o, 0 * o + lowStance);
+        e.lineTo(-6 * o, 3 * o);
+        e.lineTo(-3 * o, 3 * o);
+        e.lineTo(-3.5 * o, 0 * o + lowStance);
+        e.quadraticCurveTo(-3 * o, -6 * o + lowStance, -3 * o, -8 * o + lowStance);
+        e.closePath();
+        e.fill();
+        e.fillStyle = "#0f172a";
+        e.fillRect(-6 * o, 2.5 * o, 3.2 * o, 0.9 * o);
+
+        // 7. Pata dianteira da frente (primeiro plano, fincada no chão derrapando)
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(4 * o, -10 * o + lowStance);
+        e.lineTo(5 * o, 0 * o + lowStance);
+        e.lineTo(5.5 * o, 3 * o);
+        e.lineTo(2.5 * o, 3 * o);
+        e.lineTo(2 * o, 0 * o + lowStance);
+        e.lineTo(1.5 * o, -8 * o + lowStance);
+        e.closePath();
+        e.fill();
+        e.fillStyle = "#0f172a";
+        e.fillRect(2.5 * o, 2.5 * o, 3.2 * o, 0.9 * o);
+
+        // 8. Cabeça baixa com rosnado fixo no jogador
+        const headX = 6.8 * o;
+        const headY = -12 * o + lowStance;
+
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(3 * o, -12 * o + lowStance);
+        e.lineTo(headX + 2 * o, headY - 4 * o);
+        e.lineTo(headX + 5 * o, headY);
+        e.lineTo(5 * o, -7 * o + lowStance);
+        e.closePath();
         e.fill();
 
         e.beginPath();
-        e.moveTo(headX + 2 * o, headY - 2 * o);
+        e.ellipse(headX + 1.5 * o, headY - 1 * o, 4.2 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
+        e.fill();
+
+        // Orelhas empinadas e agressivas voltadas para a ameaça (autênticas de lobo)
+        e.fillStyle = c;
+        e.beginPath();
+        e.moveTo(headX - 0.5 * o, headY - 3.5 * o);
+        e.lineTo(headX + 0.2 * o, headY - 8.2 * o);
+        e.lineTo(headX + 2.5 * o, headY - 3.8 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(headX + 1.0 * o, headY - 3.8 * o);
+        e.lineTo(headX + 2.2 * o, headY - 8.8 * o);
+        e.lineTo(headX + 4.6 * o, headY - 4 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = l ? "#ffffff" : "#f43f5e";
+        e.beginPath();
+        e.moveTo(headX + 1.8 * o, headY - 4.4 * o);
+        e.lineTo(headX + 2.5 * o, headY - 7.8 * o);
+        e.lineTo(headX + 3.8 * o, headY - 4.6 * o);
+        e.closePath();
+        e.fill();
+
+        // Focinho cerrado e rosnando com dentes aparentes
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(headX + 3 * o, headY - 2.5 * o);
         e.lineTo(headX + 8.5 * o, headY - 1 * o);
-        e.lineTo(headX + 8.5 * o, headY + 1 * o);
-        e.lineTo(headX + 3 * o, headY + 2 * o);
+        e.lineTo(headX + 8.5 * o, headY + 1.2 * o);
+        e.lineTo(headX + 4 * o, headY + 2.5 * o);
         e.closePath();
         e.fill();
 
         e.fillStyle = "#0f172a";
         e.beginPath();
-        e.roundRect(headX + 8 * o, headY - 1.5 * o, 1.6 * o, 1.6 * o, 0.4 * o);
+        e.roundRect(headX + 8 * o, headY - 1.5 * o, 1.6 * o, 1.8 * o, 0.4 * o);
         e.fill();
 
-        // Dentes à mostra
+        e.fillStyle = l ? "#ffffff" : g;
+        e.beginPath();
+        e.moveTo(headX + 4 * o, headY + 1.5 * o);
+        e.lineTo(headX + 7.8 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7 * o, headY + 2.5 * o);
+        e.lineTo(headX + 3.5 * o, headY + 2.8 * o);
+        e.closePath();
+        e.fill();
+
+        // Presas afiadas à mostra no rosnado
         e.fillStyle = "#ffffff";
         e.beginPath();
-        e.moveTo(headX + 5.5 * o, headY + 0.8 * o);
-        e.lineTo(headX + 6.2 * o, headY + 2.2 * o);
-        e.lineTo(headX + 6.9 * o, headY + 0.8 * o);
+        e.moveTo(headX + 6.8 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7.4 * o, headY + 2.7 * o);
+        e.lineTo(headX + 7.9 * o, headY + 1.2 * o);
         e.closePath();
         e.fill();
 
-        // Orelhas coladas para trás
-        e.fillStyle = c;
+        // Olhos fulminantes e expressivos com brilho
+        e.fillStyle = "#0f172a";
         e.beginPath();
-        e.moveTo(headX - 1 * o, headY - 2 * o);
-        e.lineTo(headX - 6 * o, headY - 4 * o);
-        e.lineTo(headX - 1 * o, headY - 4 * o);
-        e.closePath();
+        e.ellipse(headX + 4.2 * o, headY - 1.6 * o, 1.8 * o, 1.2 * o, 0.1, 0, Math.PI * 2);
         e.fill();
-
         e.fillStyle = l ? "#ef4444" : t.accentColor;
         e.beginPath();
-        e.arc(headX + 3.7 * o, headY - 1.4 * o, 1.1 * o, 0, Math.PI * 2);
+        e.arc(headX + 4.4 * o, headY - 1.6 * o, 1.1 * o, 0, Math.PI * 2);
         e.fill();
+        e.fillStyle = "#0f172a";
+        e.beginPath();
+        e.ellipse(headX + 4.6 * o, headY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
+        e.fill();
+        e.fillStyle = "#ffffff";
+        e.beginPath();
+        e.arc(headX + 4.2 * o, headY - 2 * o, 0.4 * o, 0, Math.PI * 2);
+        e.fill();
+
+        if (!l && t.accentColor === "#38bdf8") {
+          const z = (t.animTimer * 2.8) % Math.PI;
+          e.fillStyle = "rgba(224, 242, 254, 0.35)";
+          e.beginPath();
+          e.arc(headX + 10 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
+          e.fill();
+        }
 
         e.restore();
         return;
       }
 
       if (t.wolfAttackState === "advance_again") {
-        // Avanço rápido com bote renovado
+        // Avanço rápido com galope predatório, todas as 4 patas e anatomia autêntica
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
         const m = l ? "#ffffff" : t.color,
-          c = l ? "#e2e8f0" : "#475569";
+          c = l ? "#e2e8f0" : "#475569",
+          f = l ? "#ffffff" : "#cbd5e1",
+          g = l ? "#ffffff" : "#e2e8f0";
 
-        const advProg = 1 - (t.wolfAttackTimer || 0) / (t.wolfAttackDuration || 0.5);
-        const sprintHop = Math.sin(advProg * Math.PI * 2) * 2.5 * o;
+        const advProg = 1 - (t.wolfAttackTimer || 0) / (t.wolfAttackDuration || 0.45);
+        const sprintHop = Math.sin(advProg * Math.PI * 2) * 1.8 * o;
+        const legSwing = Math.sin(advProg * Math.PI * 2) * 3.5 * o;
 
-        // Pernas galopando com força
+        // 1. Pata traseira de trás (galope)
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(-6 * o, -5 * o + sprintHop);
-        e.lineTo(-11 * o, 2 * o + sprintHop);
-        e.lineTo(-8 * o, 2 * o + sprintHop);
-        e.lineTo(-3 * o, -4 * o + sprintHop);
-        e.closePath();
-        e.fill();
-
-        // Patas dianteiras estendendo para frente
-        e.fillStyle = m;
-        e.beginPath();
-        e.moveTo(3 * o, -7 * o + sprintHop);
-        e.lineTo(8 * o, 1 * o + sprintHop);
-        e.lineTo(10 * o, 1 * o + sprintHop);
-        e.lineTo(5 * o, -6 * o + sprintHop);
+        e.moveTo(-6 * o, -6 * o + sprintHop);
+        e.lineTo(-8 * o - legSwing, -1 * o + sprintHop);
+        e.lineTo(-7 * o - legSwing, 2 * o);
+        e.lineTo(-4 * o - legSwing, 2 * o);
+        e.lineTo(-4 * o, -6 * o + sprintHop);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(8 * o, 0.5 * o + sprintHop, 3.2 * o, 1.2 * o);
+        e.fillRect(-7 * o - legSwing, 1.5 * o, 3.2 * o, 0.9 * o);
 
-        // Tronco em arrancada
+        // 2. Pata dianteira de trás (galope)
+        e.fillStyle = c;
+        e.beginPath();
+        e.moveTo(5 * o, -7 * o + sprintHop);
+        e.lineTo(6 * o + legSwing, -1 * o + sprintHop);
+        e.lineTo(7 * o + legSwing, 2 * o);
+        e.lineTo(4 * o + legSwing, 2 * o);
+        e.lineTo(3 * o, -7 * o + sprintHop);
+        e.closePath();
+        e.fill();
+        e.fillStyle = "#0f172a";
+        e.fillRect(4 * o + legSwing, 1.5 * o, 3.2 * o, 0.9 * o);
+
+        // 3. Rabo empinado voando na corrida com ponta branca
+        e.strokeStyle = m;
+        e.lineWidth = 3.6 * o;
+        e.lineCap = "round";
+        e.beginPath();
+        e.moveTo(-9 * o, -8 * o + sprintHop);
+        e.quadraticCurveTo(-14 * o, -12 * o + sprintHop, -14 * o, -5 * o + sprintHop);
+        e.stroke();
+        e.strokeStyle = f;
+        e.lineWidth = 2.2 * o;
+        e.beginPath();
+        e.moveTo(-14 * o, -8 * o + sprintHop);
+        e.lineTo(-13.5 * o, -5 * o + sprintHop);
+        e.stroke();
+
+        // 4. Tronco em arrancada veloz
         e.fillStyle = m;
         e.beginPath();
-        e.moveTo(-8 * o, -9 * o + sprintHop);
-        e.quadraticCurveTo(-1 * o, -13 * o + sprintHop, 5 * o, -11 * o + sprintHop);
-        e.lineTo(7 * o, -8 * o + sprintHop);
-        e.quadraticCurveTo(6 * o, -3 * o + sprintHop, -4 * o, -4 * o + sprintHop);
+        e.moveTo(-9 * o, -10 * o + sprintHop);
+        e.quadraticCurveTo(-2 * o, -13 * o + sprintHop, 4 * o, -12 * o + sprintHop);
+        e.lineTo(7 * o, -10 * o + sprintHop);
+        e.quadraticCurveTo(8 * o, -4 * o + sprintHop, 4 * o, -2 * o + sprintHop);
+        e.quadraticCurveTo(-3 * o, -4 * o + sprintHop, -8 * o, -6 * o + sprintHop);
         e.closePath();
         e.fill();
 
-        const headX = 8 * o;
-        const headY = -11 * o + sprintHop;
+        // 5. Pelagem ventral e do peito
+        if (!l) {
+          e.fillStyle = g;
+          e.beginPath();
+          e.moveTo(2 * o, -9 * o + sprintHop);
+          e.quadraticCurveTo(7 * o, -5 * o + sprintHop, 5 * o, -2 * o + sprintHop);
+          e.quadraticCurveTo(1 * o, -3 * o + sprintHop, -2 * o, -5 * o + sprintHop);
+          e.closePath();
+          e.fill();
 
+          e.fillStyle = f;
+          e.beginPath();
+          e.moveTo(6 * o, -9 * o + sprintHop);
+          e.lineTo(9.2 * o, -6 * o + sprintHop);
+          e.lineTo(7.2 * o, -4 * o + sprintHop);
+          e.lineTo(9.8 * o, -2 * o + sprintHop);
+          e.lineTo(6.2 * o, -1 * o + sprintHop);
+          e.closePath();
+          e.fill();
+        }
+
+        // 6. Pata traseira da frente (primeiro plano)
+        e.fillStyle = m;
         e.beginPath();
-        e.ellipse(headX + 1 * o, headY, 4.2 * o, 3.6 * o, 0.1, 0, Math.PI * 2);
+        e.moveTo(-5 * o, -10 * o + sprintHop);
+        e.quadraticCurveTo(-9 * o, -5 * o + sprintHop, -7 * o - legSwing * 0.7, 0 * o + sprintHop);
+        e.lineTo(-6 * o - legSwing * 0.7, 3 * o);
+        e.lineTo(-3 * o - legSwing * 0.7, 3 * o);
+        e.lineTo(-3.5 * o - legSwing * 0.7, 0 * o + sprintHop);
+        e.quadraticCurveTo(-3 * o, -6 * o + sprintHop, -3 * o, -8 * o + sprintHop);
+        e.closePath();
+        e.fill();
+        e.fillStyle = "#0f172a";
+        e.fillRect(-6 * o - legSwing * 0.7, 2.5 * o, 3.2 * o, 0.9 * o);
+
+        // 7. Pata dianteira da frente (primeiro plano)
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(4 * o, -10 * o + sprintHop);
+        e.lineTo(6 * o + legSwing * 0.7, 0 * o + sprintHop);
+        e.lineTo(6.5 * o + legSwing * 0.7, 3 * o);
+        e.lineTo(3.5 * o + legSwing * 0.7, 3 * o);
+        e.lineTo(3 * o + legSwing * 0.7, 0 * o + sprintHop);
+        e.lineTo(1.5 * o, -8 * o + sprintHop);
+        e.closePath();
+        e.fill();
+        e.fillStyle = "#0f172a";
+        e.fillRect(3.5 * o + legSwing * 0.7, 2.5 * o, 3.2 * o, 0.9 * o);
+
+        // 8. Cabeça e focinho projetados para frente
+        const headX = (7.5 + Math.sin(advProg * Math.PI) * 1.5) * o;
+        const headY = -12 * o + sprintHop;
+
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(3 * o, -12 * o + sprintHop);
+        e.lineTo(headX + 2 * o, headY - 4 * o);
+        e.lineTo(headX + 5 * o, headY);
+        e.lineTo(5 * o, -7 * o + sprintHop);
+        e.closePath();
         e.fill();
 
         e.beginPath();
-        e.moveTo(headX + 2 * o, headY - 2 * o);
-        e.lineTo(headX + 9 * o, headY - 1 * o);
-        e.lineTo(headX + 8.5 * o, headY + 1 * o);
-        e.lineTo(headX + 3 * o, headY + 2 * o);
+        e.ellipse(headX + 1.5 * o, headY - 1 * o, 4.2 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
+        e.fill();
+
+        // Orelhas de lobo alertas apontadas para frente
+        e.fillStyle = c;
+        e.beginPath();
+        e.moveTo(headX - 0.5 * o, headY - 3.5 * o);
+        e.lineTo(headX + 0.5 * o, headY - 8.5 * o);
+        e.lineTo(headX + 2.8 * o, headY - 3.8 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(headX + 1.2 * o, headY - 3.8 * o);
+        e.lineTo(headX + 2.8 * o, headY - 9.2 * o);
+        e.lineTo(headX + 5 * o, headY - 4 * o);
+        e.closePath();
+        e.fill();
+        e.fillStyle = l ? "#ffffff" : "#f43f5e";
+        e.beginPath();
+        e.moveTo(headX + 2.1 * o, headY - 4.4 * o);
+        e.lineTo(headX + 3.1 * o, headY - 8.2 * o);
+        e.lineTo(headX + 4.2 * o, headY - 4.6 * o);
+        e.closePath();
+        e.fill();
+
+        // Focinho com boca entreaberta
+        e.fillStyle = m;
+        e.beginPath();
+        e.moveTo(headX + 3 * o, headY - 2.5 * o);
+        e.lineTo(headX + 8.5 * o, headY - 1 * o);
+        e.lineTo(headX + 8.5 * o, headY + 1.2 * o);
+        e.lineTo(headX + 4 * o, headY + 2.5 * o);
         e.closePath();
         e.fill();
 
         e.fillStyle = "#0f172a";
         e.beginPath();
-        e.roundRect(headX + 8 * o, headY - 1.5 * o, 1.6 * o, 1.6 * o, 0.4 * o);
+        e.roundRect(headX + 8 * o, headY - 1.5 * o, 1.6 * o, 1.8 * o, 0.4 * o);
         e.fill();
 
+        e.fillStyle = l ? "#ffffff" : g;
+        e.beginPath();
+        e.moveTo(headX + 4 * o, headY + 1.5 * o);
+        e.lineTo(headX + 7.8 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7 * o, headY + 2.5 * o);
+        e.lineTo(headX + 3.5 * o, headY + 2.8 * o);
+        e.closePath();
+        e.fill();
+
+        // Presas
         e.fillStyle = "#ffffff";
         e.beginPath();
-        e.moveTo(headX + 6.5 * o, headY + 0.8 * o);
-        e.lineTo(headX + 7.2 * o, headY + 2.5 * o);
-        e.lineTo(headX + 7.8 * o, headY + 0.8 * o);
+        e.moveTo(headX + 6.8 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7.4 * o, headY + 2.6 * o);
+        e.lineTo(headX + 7.9 * o, headY + 1.2 * o);
         e.closePath();
         e.fill();
 
+        // Olho
+        e.fillStyle = "#0f172a";
+        e.beginPath();
+        e.ellipse(headX + 4.2 * o, headY - 1.6 * o, 1.8 * o, 1.2 * o, 0.1, 0, Math.PI * 2);
+        e.fill();
         e.fillStyle = l ? "#ef4444" : t.accentColor;
         e.beginPath();
-        e.arc(headX + 3.7 * o, headY - 1.2 * o, 1.2 * o, 0, Math.PI * 2);
+        e.arc(headX + 4.4 * o, headY - 1.6 * o, 1.1 * o, 0, Math.PI * 2);
         e.fill();
+        e.fillStyle = "#0f172a";
+        e.beginPath();
+        e.ellipse(headX + 4.6 * o, headY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
+        e.fill();
+        e.fillStyle = "#ffffff";
+        e.beginPath();
+        e.arc(headX + 4.2 * o, headY - 2 * o, 0.4 * o, 0, Math.PI * 2);
+        e.fill();
+
+        if (!l && t.accentColor === "#38bdf8") {
+          const z = (t.animTimer * 2.8) % Math.PI;
+          e.fillStyle = "rgba(224, 242, 254, 0.35)";
+          e.beginPath();
+          e.arc(headX + 10 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
+          e.fill();
+        }
 
         e.restore();
         return;
@@ -1290,14 +1677,15 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
   } else {
     // 3. Morde e solta e afasta para avançar novamente
     wolf.wolfAttackState = "quick_bite";
-    wolf.wolfAttackDuration = 0.25;
+    wolf.wolfAttackDuration = 0.35;
     wolf.wolfAttackTimer = wolf.wolfAttackDuration;
-    wolf.attackCooldown = 1.5;
+    wolf.attackCooldown = 1.6;
 
+    // O lobo sempre encara diretamente o jogador no ataque
+    wolf.facing = player.x < wolf.x ? "left" : "right";
     const ang = Math.atan2(player.y - wolf.y, player.x - wolf.x);
     wolf.vx = Math.cos(ang) * (wolf.speed * 2.2);
     wolf.vy = Math.sin(ang) * (wolf.speed * 2.2);
-    wolf.facing = manager.getMonsterFacing(wolf.vx, wolf.vy, wolf.facing);
 
     manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, player.x, player.y);
   }
@@ -1421,37 +1809,52 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
 
   // 3. Morde e solta
   if (wolf.wolfAttackState === "quick_bite") {
+    wolf.facing = player.x < wolf.x ? "left" : "right";
+    if (manager.engine && typeof manager.engine.moveWithSlide === "function") {
+      const _m = manager.engine.moveWithSlide(wolf.x, wolf.y, (wolf.vx || 0) * dt * 45, (wolf.vy || 0) * dt * 45, false);
+      wolf.x = _m.x;
+      wolf.y = _m.y;
+      wolf.isMoving = true;
+    }
     if (wolf.wolfAttackTimer <= 0) {
-      // Afasta rapidamente para trás
+      // Afasta rapidamente para trás mantendo olhar fixo no jogador
       wolf.wolfAttackState = "quick_retreat";
-      wolf.wolfAttackDuration = 0.45;
+      wolf.wolfAttackDuration = 0.48;
       wolf.wolfAttackTimer = wolf.wolfAttackDuration;
-      const retreatAng = Math.atan2(wolf.y - player.y, wolf.x - player.x) || Math.random() * Math.PI * 2;
-      wolf.retreatVx = Math.cos(retreatAng) * (wolf.speed * 2.8);
-      wolf.retreatVy = Math.sin(retreatAng) * (wolf.speed * 2.8);
+      const retreatAng = Math.atan2(wolf.y - player.y, wolf.x - player.x) || (player.x < wolf.x ? 0 : Math.PI);
+      wolf.retreatVx = Math.cos(retreatAng) * (wolf.speed * 2.5);
+      wolf.retreatVy = Math.sin(retreatAng) * (wolf.speed * 2.5);
+      wolf.facing = player.x < wolf.x ? "left" : "right";
     }
     return true;
   }
 
-  // 3b. Afasta-se rapidamente
+  // 3b. Afasta-se rapidamente mantendo postura defensiva focada no player
   if (wolf.wolfAttackState === "quick_retreat") {
     wolf.vx = wolf.retreatVx || 0;
     wolf.vy = wolf.retreatVy || 0;
-    wolf.x += wolf.vx * dt * 55;
-    wolf.y += wolf.vy * dt * 55;
+    // Sempre encarar o jogador no recuo para não inverter o sprite
+    wolf.facing = player.x < wolf.x ? "left" : "right";
 
-    // Mantém o olhar fixo no jogador enquanto recua
-    wolf.facing = manager.getMonsterFacingToTarget(wolf.x, wolf.y, player.x, player.y, wolf.facing);
+    if (manager.engine && typeof manager.engine.moveWithSlide === "function") {
+      const _m = manager.engine.moveWithSlide(wolf.x, wolf.y, wolf.vx * dt * 50, wolf.vy * dt * 50, false);
+      wolf.x = _m.x;
+      wolf.y = _m.y;
+      wolf.isMoving = true;
+    } else {
+      wolf.x += wolf.vx * dt * 50;
+      wolf.y += wolf.vy * dt * 50;
+    }
 
-    // Poeira de derrapagem reduzida em 95%
+    // Poeira sutil de frenagem
     if (Math.random() < dt * 0.3) {
       spawnSubtleWolfDust(manager, wolf.x, wolf.y + 3);
     }
 
     if (wolf.wolfAttackTimer <= 0) {
-      // Avança novamente!
+      // Avança novamente para o segundo bote!
       wolf.wolfAttackState = "advance_again";
-      wolf.wolfAttackDuration = 0.5;
+      wolf.wolfAttackDuration = 0.45;
       wolf.wolfAttackTimer = wolf.wolfAttackDuration;
     }
     return true;
@@ -1460,12 +1863,20 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
   // 3c. Avança novamente com bote
   if (wolf.wolfAttackState === "advance_again") {
     const advanceAng = Math.atan2(player.y - wolf.y, player.x - wolf.x);
-    const advSpeed = wolf.speed * 2.3;
+    const advSpeed = wolf.speed * 2.2;
     wolf.vx = Math.cos(advanceAng) * advSpeed;
     wolf.vy = Math.sin(advanceAng) * advSpeed;
-    wolf.facing = manager.getMonsterFacing(wolf.vx, wolf.vy, wolf.facing);
-    wolf.x += wolf.vx * dt * 50;
-    wolf.y += wolf.vy * dt * 50;
+    wolf.facing = player.x < wolf.x ? "left" : "right";
+
+    if (manager.engine && typeof manager.engine.moveWithSlide === "function") {
+      const _m = manager.engine.moveWithSlide(wolf.x, wolf.y, wolf.vx * dt * 50, wolf.vy * dt * 50, false);
+      wolf.x = _m.x;
+      wolf.y = _m.y;
+      wolf.isMoving = true;
+    } else {
+      wolf.x += wolf.vx * dt * 50;
+      wolf.y += wolf.vy * dt * 50;
+    }
 
     const distToPlayer = Math.hypot(player.x - wolf.x, player.y - wolf.y);
     if (distToPlayer <= 26) {
