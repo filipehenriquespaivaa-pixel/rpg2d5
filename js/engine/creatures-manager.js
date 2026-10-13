@@ -3853,16 +3853,6 @@
               });
             }
 
-            this.floatingTexts.push({
-              id: `dodge_${this.nextId++}`,
-              x: p.x,
-              y: p.y - 18,
-              text: "💨 Esquivou!",
-              color: "#38bdf8",
-              isCrit: !0,
-              life: 1.0,
-            });
-
             this.audio?.playPunchWhoosh?.();
             continue;
           }
