@@ -8,6 +8,190 @@
  * (creatures-manager.js): cacar presas num raio, perseguir, atacar e vagar quando nao ha presa.
  */
 "use strict";
+
+// ==========================================
+// RENDERIZADOR APRIMORADO DO LOBO (ANATOMIA E PELAGEM)
+// ==========================================
+function getWolfPalette(t, l) {
+  const isSnow = (t.accentColor === "#38bdf8") || (t.name && t.name.toLowerCase().includes("neve"));
+  if (l) {
+    return {
+      base: "#ffffff",
+      shade: "#e2e8f0",
+      dorsal: "#cbd5e1",
+      light: "#ffffff",
+      chest: "#ffffff",
+      earInner: "#ffffff",
+      nose: "#94a3b8",
+      claws: "#64748b",
+      eyeIris: "#ef4444",
+      eyeGlow: "rgba(239, 68, 68, 0.4)",
+      pupil: "#0f172a",
+      fangs: "#ffffff",
+      isSnow: isSnow,
+    };
+  }
+  if (isSnow) {
+    return {
+      base: t.color || "#94a3b8",
+      shade: "#64748b",
+      dorsal: "#475569",
+      light: "#f8fafc",
+      chest: "#f1f5f9",
+      earInner: "#cbd5e1",
+      nose: "#0f172a",
+      claws: "#020617",
+      eyeIris: t.accentColor || "#38bdf8",
+      eyeGlow: "rgba(56, 189, 248, 0.55)",
+      pupil: "#020617",
+      fangs: "#f8fafc",
+      isSnow: true,
+    };
+  }
+  return {
+    base: t.color || "#475569",
+    shade: "#334155",
+    dorsal: "#1e293b",
+    light: "#cbd5e1",
+    chest: "#e2e8f0",
+    earInner: "#fda4af",
+    nose: "#0f172a",
+    claws: "#020617",
+    eyeIris: t.accentColor || "#f59e0b",
+    eyeGlow: "rgba(245, 158, 11, 0.5)",
+    pupil: "#020617",
+    fangs: "#ffffff",
+    isSnow: false,
+  };
+}
+
+function drawLupineBushyTail(e, ox, oy, o, pal, angle, wag, lengthMult) {
+  e.save();
+  e.translate(ox, oy);
+  e.rotate(angle + wag);
+  const L = 14 * (lengthMult || 1) * o;
+
+  e.fillStyle = pal.shade;
+  e.beginPath();
+  e.moveTo(0, -1.2 * o);
+  e.bezierCurveTo(L * 0.35, -2.5 * o, L * 0.75, -1.8 * o, L, 0.5 * o);
+  e.lineTo(L * 0.85, 3.2 * o);
+  e.lineTo(L * 0.6, 4.2 * o);
+  e.lineTo(L * 0.35, 3.6 * o);
+  e.lineTo(0, 2.2 * o);
+  e.closePath();
+  e.fill();
+
+  e.fillStyle = pal.base;
+  e.beginPath();
+  e.moveTo(0, -1.8 * o);
+  e.bezierCurveTo(L * 0.35, -3.2 * o, L * 0.75, -2.5 * o, L, 0);
+  e.lineTo(L + 1.8 * o, 0.8 * o);
+  e.lineTo(L * 0.82, 2.8 * o);
+  e.lineTo(L * 0.74, 1.8 * o);
+  e.lineTo(L * 0.55, 3.8 * o);
+  e.lineTo(L * 0.45, 2.2 * o);
+  e.lineTo(L * 0.25, 3.2 * o);
+  e.lineTo(0, 1.6 * o);
+  e.closePath();
+  e.fill();
+
+  if (pal.dorsal !== pal.base) {
+    e.fillStyle = pal.dorsal;
+    e.beginPath();
+    e.moveTo(0, -1.8 * o);
+    e.bezierCurveTo(L * 0.35, -3.2 * o, L * 0.7, -2.2 * o, L * 0.88, -0.6 * o);
+    e.lineTo(L * 0.7, 0.2 * o);
+    e.bezierCurveTo(L * 0.45, -0.8 * o, L * 0.2, -0.6 * o, 0, -0.2 * o);
+    e.closePath();
+    e.fill();
+  }
+
+  e.fillStyle = pal.light;
+  e.beginPath();
+  e.moveTo(L * 0.72, -0.8 * o);
+  e.lineTo(L + 1.8 * o, 0.8 * o);
+  e.lineTo(L * 0.75, 2.2 * o);
+  e.lineTo(L * 0.8, 0.8 * o);
+  e.closePath();
+  e.fill();
+
+  e.restore();
+}
+
+function drawLupinePaw(e, px, py, o, pal, isFar) {
+  const col = isFar ? pal.shade : pal.base;
+  e.fillStyle = col;
+  e.beginPath();
+  e.ellipse(px + 0.6 * o, py + 1.8 * o, 2.4 * o, 1.4 * o, 0, 0, Math.PI * 2);
+  e.fill();
+
+  e.fillStyle = pal.nose;
+  e.beginPath();
+  e.ellipse(px + 0.4 * o, py + 2.2 * o, 1.8 * o, 0.8 * o, 0, 0, Math.PI * 2);
+  e.fill();
+
+  e.fillStyle = pal.claws;
+  e.beginPath();
+  e.moveTo(px + 1.8 * o, py + 1.4 * o);
+  e.lineTo(px + 3.2 * o, py + 2.4 * o);
+  e.lineTo(px + 1.8 * o, py + 2.6 * o);
+  e.closePath();
+  e.fill();
+  e.beginPath();
+  e.moveTo(px + 1.4 * o, py + 2.0 * o);
+  e.lineTo(px + 2.8 * o, py + 2.9 * o);
+  e.lineTo(px + 1.2 * o, py + 3.0 * o);
+  e.closePath();
+  e.fill();
+  e.beginPath();
+  e.moveTo(px - 0.6 * o, py + 2.2 * o);
+  e.lineTo(px + 0.6 * o, py + 3.1 * o);
+  e.lineTo(px - 0.4 * o, py + 2.9 * o);
+  e.closePath();
+  e.fill();
+
+  if (!pal.isHitFlash && pal.claws !== "#ffffff") {
+    e.fillStyle = "rgba(255, 255, 255, 0.45)";
+    e.fillRect(px + 2.8 * o, py + 2.2 * o, 0.6 * o, 0.6 * o);
+  }
+}
+
+function drawLupineEye(e, ex, ey, o, pal, squint) {
+  const sq = squint ? 0.6 : 1.0;
+  e.fillStyle = "#020617";
+  e.beginPath();
+  e.ellipse(ex, ey, 2.0 * o, 1.4 * o * sq, 0.12, 0, Math.PI * 2);
+  e.fill();
+
+  e.fillStyle = pal.eyeGlow;
+  e.beginPath();
+  e.arc(ex + 0.2 * o, ey, 1.6 * o, 0, Math.PI * 2);
+  e.fill();
+
+  e.fillStyle = pal.eyeIris;
+  e.beginPath();
+  e.arc(ex + 0.2 * o, ey, 1.2 * o * sq, 0, Math.PI * 2);
+  e.fill();
+
+  e.fillStyle = pal.pupil;
+  e.beginPath();
+  e.ellipse(ex + 0.4 * o, ey, 0.45 * o, 1.0 * o * sq, 0.05, 0, Math.PI * 2);
+  e.fill();
+
+  e.fillStyle = "#ffffff";
+  e.beginPath();
+  e.arc(ex - 0.2 * o, ey - 0.4 * o * sq, 0.42 * o, 0, Math.PI * 2);
+  e.fill();
+
+  e.strokeStyle = pal.dorsal;
+  e.lineWidth = 1.0 * o;
+  e.lineCap = "round";
+  e.beginPath();
+  e.moveTo(ex - 1.6 * o, ey - 1.4 * o);
+  e.lineTo(ex + 1.8 * o, ey - 1.1 * o);
+  e.stroke();
+}
 CREATURES.wolf = {
   id: "wolf",
   // Nascimento no mundo (valores do spawn)
@@ -155,9 +339,12 @@ CREATURES.wolf = {
             },
           },
         ],
-  // Desenho no Canvas (codigo movido sem alteracoes dos arquivos de engine)
+  // Desenho no Canvas (Aparência aprimorada: anatomia lupina realista, cauda espessa, juba, bochechas felpudas, patas com garras e olhos amendoados penetrantes)
   draw: {
+    // Corpo vivo no mundo (padrão e combate)
     body: function (e, t, o, l) {
+      const pal = getWolfPalette(t, l);
+
       // ==========================================
       // 1. LOBO ABRAÇA O PERSONAGEM E MIRA A BOCA NO PESCOÇO DO PLAYER
       // ==========================================
@@ -165,78 +352,106 @@ CREATURES.wolf = {
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
-        const m = l ? "#ffffff" : t.color,
-          c = l ? "#e2e8f0" : "#475569",
-          f = l ? "#ffffff" : "#cbd5e1",
-          g = l ? "#ffffff" : "#e2e8f0";
-
         const thrash = Math.sin((t.wolfAttackTimer || 0) * 26) * 1.8 * o;
         const gnaw = Math.sin((t.wolfAttackTimer || 0) * 32) * 1.2 * o;
+        const tailWag = Math.sin((t.wolfAttackTimer || 0) * 18) * 3.2 * o;
 
-        // Patas traseiras plantadas no chão sustentando o peso
-        e.fillStyle = c;
+        // Sombra no chão
+        e.fillStyle = "rgba(15, 23, 42, 0.4)";
         e.beginPath();
-        e.moveTo(-8 * o, 1 * o);
-        e.lineTo(-5 * o, 7 * o);
-        e.lineTo(-1 * o, 7 * o);
-        e.lineTo(-3 * o, 1 * o);
-        e.closePath();
+        e.ellipse(-3 * o, 7.5 * o, 8 * o, 2.8 * o, 0, 0, Math.PI * 2);
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-5 * o, 6.2 * o, 4 * o, 1.2 * o);
 
-        // Rabo tenso balançando atrás
-        const tailWag = Math.sin((t.wolfAttackTimer || 0) * 16) * 2.5 * o;
-        e.strokeStyle = m;
-        e.lineWidth = 3.6 * o;
-        e.lineCap = "round";
-        e.beginPath();
-        e.moveTo(-8 * o, 0 * o);
-        e.quadraticCurveTo(-14 * o, 4 * o + tailWag, -13 * o, 10 * o + tailWag);
-        e.stroke();
-
-        // Tronco empinado verticalmente abraçando o jogador
-        e.fillStyle = m;
+        // Pata traseira de trás (sombra)
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(-7 * o, 0 * o);
-        e.quadraticCurveTo(-6 * o, -8 * o, -1 * o, -16 * o);
-        e.lineTo(4 * o, -16 * o);
-        e.quadraticCurveTo(7 * o, -8 * o, 1 * o, 3 * o);
-        e.lineTo(-4 * o, 3 * o);
+        e.lineTo(-9 * o, 4 * o);
+        e.lineTo(-6 * o, 7.5 * o);
+        e.lineTo(-3 * o, 7.5 * o);
+        e.lineTo(-4 * o, 2 * o);
+        e.closePath();
+        e.fill();
+        drawLupinePaw(e, -5 * o, 5.8 * o, o, pal, true);
+
+        // Cauda espessa balançando atrás
+        drawLupineBushyTail(e, -8 * o, 0 * o, o, pal, Math.PI * 0.4, tailWag * 0.08, 1.15);
+
+        // Tronco empinado verticalmente abraçando o jogador
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(-8 * o, 0 * o);
+        e.quadraticCurveTo(-7 * o, -8 * o, -2 * o, -16 * o);
+        e.lineTo(4.5 * o, -16 * o);
+        e.quadraticCurveTo(8 * o, -8 * o, 1 * o, 3 * o);
+        e.lineTo(-5 * o, 3 * o);
         e.closePath();
         e.fill();
 
-        if (!l) {
-          e.fillStyle = g;
+        // Manto dorsal escuro ao longo da espinha dorsal arqueada
+        if (pal.dorsal !== pal.base) {
+          e.fillStyle = pal.dorsal;
           e.beginPath();
-          e.moveTo(-1 * o, -15 * o);
-          e.quadraticCurveTo(5 * o, -11 * o, 4 * o, -3 * o);
-          e.quadraticCurveTo(0 * o, -4 * o, -2 * o, -8 * o);
+          e.moveTo(-8 * o, 0 * o);
+          e.quadraticCurveTo(-7 * o, -8 * o, -2 * o, -16 * o);
+          e.lineTo(0.5 * o, -16 * o);
+          e.quadraticCurveTo(-4 * o, -8 * o, -5 * o, 2 * o);
           e.closePath();
           e.fill();
         }
 
-        // Pata dianteira traseira/fundo (passa por trás do ombro e nuca do jogador mantendo o agarre)
-        e.fillStyle = c;
+        // Peito claro com mechas de pelos
+        if (!l) {
+          e.fillStyle = pal.chest;
+          e.beginPath();
+          e.moveTo(-0.5 * o, -15 * o);
+          e.quadraticCurveTo(5.5 * o, -11 * o, 4.5 * o, -3 * o);
+          e.quadraticCurveTo(0.5 * o, -4 * o, -1.5 * o, -8 * o);
+          e.closePath();
+          e.fill();
+
+          e.fillStyle = pal.light;
+          e.beginPath();
+          e.moveTo(1 * o, -14 * o);
+          e.lineTo(5.5 * o, -12 * o);
+          e.lineTo(3.5 * o, -9 * o);
+          e.lineTo(6.5 * o, -6 * o);
+          e.lineTo(3 * o, -4 * o);
+          e.closePath();
+          e.fill();
+        }
+
+        // Pata traseira da frente
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(-4 * o, 1 * o);
+        e.lineTo(-7 * o, 4.5 * o);
+        e.lineTo(-4 * o, 7.8 * o);
+        e.lineTo(-1 * o, 7.8 * o);
+        e.lineTo(-1.5 * o, 2 * o);
+        e.closePath();
+        e.fill();
+        drawLupinePaw(e, -3 * o, 6.2 * o, o, pal, false);
+
+        // Membro dianteiro traseiro
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(1 * o, -13 * o);
         e.lineTo(8.5 * o, -11.5 * o);
-        e.lineTo(10.8 * o, -9.0 * o);
+        e.lineTo(11.2 * o, -9.0 * o);
         e.lineTo(8.5 * o, -7.5 * o);
         e.lineTo(0.5 * o, -10.0 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(8.8 * o, -9.5 * o, 2.6 * o, 1.5 * o);
+        drawLupinePaw(e, 8.8 * o, -10.8 * o, o, pal, true);
 
-        // Cabeça e boca miradas diretamente no pescoço do player (pescoço do player fica em Y ~ -16.2 * o, X ~ 9.5-10 * o)
+        // Cabeça e boca miradas diretamente no pescoço
         const neckTargetX = 9.8 * o;
         const neckTargetY = -16.2 * o;
         const headBaseX = 3.8 * o + thrash;
         const headBaseY = -15.4 * o + gnaw;
 
-        // Pescoço do lobo esticado para cima e para frente conectando ao pescoço do jogador
-        e.fillStyle = m;
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(0 * o, -13 * o);
         e.lineTo(headBaseX - 0.5 * o, headBaseY - 1.5 * o);
@@ -245,12 +460,22 @@ CREATURES.wolf = {
         e.closePath();
         e.fill();
 
-        // Crânio do lobo elevado em direção à garganta
         e.beginPath();
-        e.ellipse(headBaseX + 0.8 * o, headBaseY - 1.0 * o, 4.4 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
+        e.ellipse(headBaseX + 0.8 * o, headBaseY - 1.0 * o, 4.5 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
         e.fill();
 
-        // Focinho e Mandíbula Superior apontados diretamente para o pescoço do jogador (morde por cima do pescoço)
+        // Bochechas pontiagudas
+        e.fillStyle = pal.base;
+        e.beginPath();
+        e.moveTo(headBaseX - 1.5 * o, headBaseY + 1 * o);
+        e.lineTo(headBaseX - 4.5 * o, headBaseY + 2.8 * o);
+        e.lineTo(headBaseX - 1 * o, headBaseY + 3.2 * o);
+        e.lineTo(headBaseX - 3.8 * o, headBaseY + 5 * o);
+        e.lineTo(headBaseX + 1 * o, headBaseY + 4 * o);
+        e.closePath();
+        e.fill();
+
+        // Focinho e Mandíbula Superior
         e.beginPath();
         e.moveTo(headBaseX + 1.5 * o, headBaseY - 2.5 * o);
         e.lineTo(neckTargetX + 0.8 * o, neckTargetY - 1.4 * o);
@@ -259,14 +484,14 @@ CREATURES.wolf = {
         e.closePath();
         e.fill();
 
-        // Nariz na ponta do focinho encostado no pescoço
-        e.fillStyle = "#0f172a";
+        // Trufa do nariz
+        e.fillStyle = pal.nose;
         e.beginPath();
-        e.roundRect(neckTargetX - 0.2 * o, neckTargetY - 2.2 * o, 1.7 * o, 1.6 * o, 0.35 * o);
+        e.roundRect(neckTargetX - 0.2 * o, neckTargetY - 2.2 * o, 1.8 * o, 1.7 * o, 0.45 * o);
         e.fill();
 
-        // Mandíbula Inferior aberta cravando por baixo no pescoço do jogador
-        e.fillStyle = c;
+        // Mandíbula Inferior
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(headBaseX + 1.8 * o, headBaseY + 1.4 * o);
         e.lineTo(neckTargetX - 0.2 * o, neckTargetY + 0.5 * o);
@@ -275,62 +500,54 @@ CREATURES.wolf = {
         e.closePath();
         e.fill();
 
-        // Presas / Dentes afiados cravados diretamente no pescoço do player
-        e.fillStyle = "#ffffff";
-        // Presas superiores mordendo de cima para baixo no pescoço
+        // Presas superiores e inferiores
+        e.fillStyle = pal.fangs;
         e.beginPath();
-        e.moveTo(neckTargetX - 1.2 * o, neckTargetY - 0.5 * o);
-        e.lineTo(neckTargetX - 0.6 * o, neckTargetY + 1.1 * o);
-        e.lineTo(neckTargetX + 0.0 * o, neckTargetY - 0.5 * o);
+        e.moveTo(neckTargetX - 1.4 * o, neckTargetY - 0.5 * o);
+        e.lineTo(neckTargetX - 0.7 * o, neckTargetY + 1.3 * o);
+        e.lineTo(neckTargetX - 0.1 * o, neckTargetY - 0.5 * o);
         e.closePath();
         e.fill();
-        // Presas inferiores cravando de baixo para cima no pescoço
         e.beginPath();
-        e.moveTo(neckTargetX - 2.0 * o, neckTargetY + 1.0 * o);
-        e.lineTo(neckTargetX - 1.4 * o, neckTargetY - 0.6 * o);
-        e.lineTo(neckTargetX - 0.8 * o, neckTargetY + 1.0 * o);
+        e.moveTo(neckTargetX - 2.2 * o, neckTargetY + 1.1 * o);
+        e.lineTo(neckTargetX - 1.5 * o, neckTargetY - 0.7 * o);
+        e.lineTo(neckTargetX - 0.9 * o, neckTargetY + 1.1 * o);
         e.closePath();
         e.fill();
 
-        // Gotas de sangue no ponto exato da mordida no pescoço
         if (!l) {
           e.fillStyle = "#ef4444";
           e.beginPath();
-          e.arc(neckTargetX - 0.6 * o, neckTargetY + 0.3 * o, 1.2 * o, 0, Math.PI * 2);
-          e.arc(neckTargetX + 0.2 * o, neckTargetY + 1.6 * o, 0.8 * o, 0, Math.PI * 2);
-          e.arc(neckTargetX - 1.5 * o, neckTargetY + 1.2 * o, 0.7 * o, 0, Math.PI * 2);
+          e.arc(neckTargetX - 0.6 * o, neckTargetY + 0.3 * o, 1.3 * o, 0, Math.PI * 2);
+          e.arc(neckTargetX + 0.2 * o, neckTargetY + 1.6 * o, 0.85 * o, 0, Math.PI * 2);
+          e.arc(neckTargetX - 1.5 * o, neckTargetY + 1.2 * o, 0.75 * o, 0, Math.PI * 2);
           e.fill();
         }
 
-        // Orelhas para trás em fúria predatória
-        e.fillStyle = c;
+        // Orelhas coladas para trás
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(headBaseX - 2 * o, headBaseY - 2.2 * o);
-        e.lineTo(headBaseX - 6.2 * o, headBaseY - 5.5 * o);
+        e.lineTo(headBaseX - 6.5 * o, headBaseY - 5.8 * o);
         e.lineTo(headBaseX - 1 * o, headBaseY - 4.2 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = m;
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(headBaseX - 1 * o, headBaseY - 3.2 * o);
-        e.lineTo(headBaseX - 5.2 * o, headBaseY - 6.8 * o);
+        e.lineTo(headBaseX - 5.5 * o, headBaseY - 7.2 * o);
         e.lineTo(headBaseX + 1 * o, headBaseY - 4.2 * o);
         e.closePath();
         e.fill();
+        e.fillStyle = pal.earInner;
+        e.beginPath();
+        e.moveTo(headBaseX - 1.2 * o, headBaseY - 3.6 * o);
+        e.lineTo(headBaseX - 4.6 * o, headBaseY - 6.4 * o);
+        e.lineTo(headBaseX + 0.2 * o, headBaseY - 4.3 * o);
+        e.closePath();
+        e.fill();
 
-        // Olhos brilhando agressivos mirando o pescoço
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headBaseX + 3.4 * o, headBaseY - 1.6 * o, 1.8 * o, 1.2 * o, 0.15, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = l ? "#ef4444" : t.accentColor;
-        e.beginPath();
-        e.arc(headBaseX + 3.6 * o, headBaseY - 1.6 * o, 1.2 * o, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headBaseX + 3.8 * o, headBaseY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
-        e.fill();
+        drawLupineEye(e, headBaseX + 3.6 * o, headBaseY - 1.6 * o, o, pal, true);
 
         e.restore();
         return;
@@ -343,57 +560,61 @@ CREATURES.wolf = {
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
-        const m = l ? "#ffffff" : t.color,
-          c = l ? "#e2e8f0" : "#475569",
-          f = l ? "#ffffff" : "#cbd5e1",
-          g = l ? "#ffffff" : "#e2e8f0";
-
-        // Tensão do puxão: sacudidas violentas puxando para trás
         const tugJerks = Math.sin((t.wolfAttackTimer || 0) * 24) * 2.5 * o;
 
-        // Patas traseiras fincadas bem para trás no solo, dobradas sob tensão
-        e.fillStyle = c;
+        // Sombra alongada sob o lobo em tração
+        e.fillStyle = "rgba(15, 23, 42, 0.4)";
         e.beginPath();
-        e.moveTo(-10 * o, -1 * o);
-        e.lineTo(-14 * o, 4 * o);
-        e.lineTo(-10 * o, 4 * o);
+        e.ellipse(-2 * o, 4.5 * o, 13 * o, 3.2 * o, 0, 0, Math.PI * 2);
+        e.fill();
+
+        // Patas traseiras fincadas bem para trás no solo com garras cravadas
+        e.fillStyle = pal.shade;
+        e.beginPath();
+        e.moveTo(-10 * o, -2 * o);
+        e.lineTo(-14.5 * o, 4 * o);
+        e.lineTo(-10 * o, 4.2 * o);
         e.lineTo(-7 * o, 0 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-14 * o, 3.2 * o, 4.5 * o, 1.2 * o);
+        drawLupinePaw(e, -13 * o, 2.5 * o, o, pal, true);
 
-        // Rabo tenso esticado baixo
-        e.strokeStyle = m;
-        e.lineWidth = 3.6 * o;
-        e.lineCap = "round";
-        e.beginPath();
-        e.moveTo(-10 * o, -2 * o);
-        e.quadraticCurveTo(-15 * o, 1 * o, -17 * o, -1 * o);
-        e.stroke();
+        // Cauda espessa esticada baixa e tensa
+        drawLupineBushyTail(e, -11 * o, -2 * o, o, pal, Math.PI * 0.95, -0.15, 1.2);
 
-        // Corpo esticado baixo rente ao chão, puxando com toda força para trás
-        e.fillStyle = m;
+        // Corpo esticado baixo rente ao chão, puxando com toda força
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(-11 * o, -4 * o);
-        e.quadraticCurveTo(-4 * o, -7 * o, 3 * o, -5 * o);
-        e.lineTo(5 * o, -1 * o);
-        e.quadraticCurveTo(-2 * o, 2 * o, -8 * o, 1 * o);
+        e.quadraticCurveTo(-4 * o, -7.5 * o, 3 * o, -5.5 * o);
+        e.lineTo(5.5 * o, -1 * o);
+        e.quadraticCurveTo(-2 * o, 2 * o, -8.5 * o, 1 * o);
         e.closePath();
         e.fill();
 
+        if (pal.dorsal !== pal.base) {
+          e.fillStyle = pal.dorsal;
+          e.beginPath();
+          e.moveTo(-11 * o, -4 * o);
+          e.quadraticCurveTo(-4 * o, -7.5 * o, 3 * o, -5.5 * o);
+          e.lineTo(2 * o, -3.5 * o);
+          e.quadraticCurveTo(-4 * o, -4.5 * o, -9 * o, -2 * o);
+          e.closePath();
+          e.fill();
+        }
+
         if (!l) {
-          e.fillStyle = g;
+          e.fillStyle = pal.chest;
           e.beginPath();
           e.moveTo(0 * o, -4 * o);
-          e.quadraticCurveTo(4 * o, -2 * o, 3 * o, 1 * o);
+          e.quadraticCurveTo(4.5 * o, -2 * o, 3.5 * o, 1 * o);
           e.quadraticCurveTo(-1 * o, 1 * o, -3 * o, -2 * o);
           e.closePath();
           e.fill();
         }
 
-        // Patas dianteiras estendidas para frente cravadas no chão resistindo ao puxão
-        e.fillStyle = c;
+        // Patas dianteiras fincadas no chão resistindo ao puxão
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(1 * o, -2 * o);
         e.lineTo(5 * o, 3 * o);
@@ -401,85 +622,77 @@ CREATURES.wolf = {
         e.lineTo(4 * o, 0 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(5 * o, 2.8 * o, 3.5 * o, 1.2 * o);
+        drawLupinePaw(e, 6 * o, 2.2 * o, o, pal, false);
 
-        // Cabeça baixa no nível da perna/tornozelo, puxando para trás
         const headX = (6 - Math.abs(tugJerks)) * o;
         const headY = (0 + tugJerks * 0.2) * o;
 
         // Pescoço esticado
-        e.fillStyle = m;
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(2 * o, -5 * o);
         e.lineTo(headX, headY - 3 * o);
-        e.lineTo(headX + 2 * o, headY + 2 * o);
+        e.lineTo(headX + 2.5 * o, headY + 2 * o);
         e.lineTo(4 * o, -1 * o);
         e.closePath();
         e.fill();
 
         // Cabeça
         e.beginPath();
-        e.ellipse(headX + 1 * o, headY - 1 * o, 4.2 * o, 3.6 * o, 0.1, 0, Math.PI * 2);
+        e.ellipse(headX + 1 * o, headY - 1 * o, 4.4 * o, 3.8 * o, 0.1, 0, Math.PI * 2);
         e.fill();
 
-        // Focinho superior cravado na perna
+        // Bochechas
+        e.beginPath();
+        e.moveTo(headX - 1 * o, headY + 1 * o);
+        e.lineTo(headX - 3.5 * o, headY + 3 * o);
+        e.lineTo(headX, headY + 3.2 * o);
+        e.closePath();
+        e.fill();
+
+        // Focinho cravado na perna
         e.beginPath();
         e.moveTo(headX + 2 * o, headY - 2.5 * o);
-        e.lineTo(headX + 9 * o, headY - 1.5 * o);
-        e.lineTo(headX + 8.5 * o, headY + 0.5 * o);
+        e.lineTo(headX + 9.2 * o, headY - 1.5 * o);
+        e.lineTo(headX + 8.8 * o, headY + 0.5 * o);
         e.lineTo(headX + 3 * o, headY + 0.8 * o);
         e.closePath();
         e.fill();
 
-        e.fillStyle = "#0f172a";
+        e.fillStyle = pal.nose;
         e.beginPath();
-        e.roundRect(headX + 8.2 * o, headY - 2 * o, 1.6 * o, 1.7 * o, 0.4 * o);
+        e.roundRect(headX + 8.4 * o, headY - 2 * o, 1.8 * o, 1.8 * o, 0.45 * o);
         e.fill();
 
-        // Mandíbula inferior cravada por baixo da perna
-        e.fillStyle = c;
+        // Mandíbula inferior cravada
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(headX + 2 * o, headY + 1.2 * o);
-        e.lineTo(headX + 8 * o, headY + 1.5 * o);
-        e.lineTo(headX + 7.5 * o, headY + 3.2 * o);
+        e.lineTo(headX + 8.2 * o, headY + 1.5 * o);
+        e.lineTo(headX + 7.8 * o, headY + 3.4 * o);
         e.lineTo(headX + 2 * o, headY + 2.8 * o);
         e.closePath();
         e.fill();
 
-        // Dentes / Presas travadas na perna
-        e.fillStyle = "#ffffff";
+        // Dentes e presas travadas
+        e.fillStyle = pal.fangs;
         e.beginPath();
-        e.moveTo(headX + 6.8 * o, headY + 0.3 * o);
-        e.lineTo(headX + 7.4 * o, headY + 2.2 * o);
-        e.lineTo(headX + 7.9 * o, headY + 0.3 * o);
-        e.closePath();
-        e.fill();
-        e.beginPath();
-        e.moveTo(headX + 6.0 * o, headY + 2.4 * o);
-        e.lineTo(headX + 6.5 * o, headY + 1.0 * o);
-        e.lineTo(headX + 7.1 * o, headY + 2.4 * o);
+        e.moveTo(headX + 7.0 * o, headY + 0.3 * o);
+        e.lineTo(headX + 7.6 * o, headY + 2.4 * o);
+        e.lineTo(headX + 8.1 * o, headY + 0.3 * o);
         e.closePath();
         e.fill();
 
-        // Orelhas coladas nas costas pela força do puxão
-        e.fillStyle = m;
+        // Orelhas coladas nas costas
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(headX - 1 * o, headY - 2 * o);
-        e.lineTo(headX - 5 * o, headY - 3.5 * o);
-        e.lineTo(headX, headY - 3.5 * o);
+        e.lineTo(headX - 5.5 * o, headY - 4 * o);
+        e.lineTo(headX, headY - 3.8 * o);
         e.closePath();
         e.fill();
 
-        // Olhos fixos com raiva
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headX + 3.2 * o, headY - 1.5 * o, 1.7 * o, 1.1 * o, 0.1, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = l ? "#ef4444" : t.accentColor;
-        e.beginPath();
-        e.arc(headX + 3.4 * o, headY - 1.5 * o, 1.1 * o, 0, Math.PI * 2);
-        e.fill();
+        drawLupineEye(e, headX + 3.4 * o, headY - 1.5 * o, o, pal, true);
 
         e.restore();
         return;
@@ -489,74 +702,72 @@ CREATURES.wolf = {
       // 3. MORDE, SOLTA E AFASTA PARA AVANÇAR NOVAMENTE
       // ==========================================
       if (t.wolfAttackState === "quick_bite") {
-        // Bote frontal rápido cravando mordida com as 4 patas e anatomia completa do lobo
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
-        const m = l ? "#ffffff" : t.color,
-          c = l ? "#e2e8f0" : "#475569",
-          f = l ? "#ffffff" : "#cbd5e1",
-          g = l ? "#ffffff" : "#e2e8f0";
-
         const lungeProg = 1 - (t.wolfAttackTimer || 0) / (t.wolfAttackDuration || 0.35);
-        const lungeHop = Math.sin(lungeProg * Math.PI) * 2.8 * o;
+        const lungeHop = Math.sin(lungeProg * Math.PI) * 3.2 * o;
         const snap = Math.sin(lungeProg * Math.PI);
 
-        // 1. Pata traseira de trás (sombreada, apoiando o impulso do salto)
-        e.fillStyle = c;
+        // Sombra sob o salto
+        e.fillStyle = "rgba(15, 23, 42, 0.28)";
+        e.beginPath();
+        e.ellipse(2 * o, 3.8 * o, 13 * o, 3.0 * o, 0, 0, Math.PI * 2);
+        e.fill();
+
+        // Pata traseira de trás esticada no salto
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(-6 * o, -6 * o - lungeHop);
-        e.lineTo(-10 * o, 0 * o - lungeHop * 0.4);
-        e.lineTo(-9 * o, 2 * o);
-        e.lineTo(-6 * o, 2 * o);
+        e.lineTo(-10.5 * o, 0 * o - lungeHop * 0.4);
+        e.lineTo(-8.5 * o, 2 * o);
+        e.lineTo(-5.5 * o, 2 * o);
         e.lineTo(-4 * o, -6 * o - lungeHop);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-9 * o, 1.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, -9 * o, 0.8 * o, o, pal, true);
 
-        // 2. Pata dianteira de trás (sombreada, esticada no salto)
-        e.fillStyle = c;
+        // Pata dianteira de trás estendida
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(5 * o, -7 * o - lungeHop);
-        e.lineTo(7 * o, -1 * o - lungeHop * 0.4);
-        e.lineTo(8 * o, 2 * o);
-        e.lineTo(5 * o, 2 * o);
+        e.lineTo(7.5 * o, -1 * o - lungeHop * 0.4);
+        e.lineTo(8.5 * o, 2 * o);
+        e.lineTo(5.5 * o, 2 * o);
         e.lineTo(3 * o, -7 * o - lungeHop);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(5 * o, 1.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, 7 * o, 0.8 * o, o, pal, true);
 
-        // 3. Rabo peludo clássico de lobo esticado com ponta clara
-        e.strokeStyle = m;
-        e.lineWidth = 3.6 * o;
-        e.lineCap = "round";
-        e.beginPath();
-        e.moveTo(-9 * o, -8 * o - lungeHop);
-        e.quadraticCurveTo(-14 * o, -12 * o - lungeHop, -14 * o, -5 * o - lungeHop);
-        e.stroke();
-        e.strokeStyle = f;
-        e.lineWidth = 2.2 * o;
-        e.beginPath();
-        e.moveTo(-14 * o, -8 * o - lungeHop);
-        e.lineTo(-13.5 * o, -5 * o - lungeHop);
-        e.stroke();
+        // Cauda espessa voando horizontalmente no bote
+        drawLupineBushyTail(e, -9 * o, -8 * o - lungeHop, o, pal, Math.PI * 0.9, -0.2, 1.25);
 
-        // 4. Tronco ágil e musculoso no bote
-        e.fillStyle = m;
+        // Tronco musculoso no bote
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(-9 * o, -10 * o - lungeHop);
-        e.quadraticCurveTo(-2 * o, -13 * o - lungeHop, 4 * o, -12 * o - lungeHop);
-        e.lineTo(7 * o, -10 * o - lungeHop);
-        e.quadraticCurveTo(8 * o, -4 * o - lungeHop, 4 * o, -2 * o - lungeHop);
+        e.quadraticCurveTo(-2 * o, -13.5 * o - lungeHop, 4.5 * o, -12.5 * o - lungeHop);
+        e.lineTo(7.5 * o, -10 * o - lungeHop);
+        e.quadraticCurveTo(8.5 * o, -4 * o - lungeHop, 4.5 * o, -2 * o - lungeHop);
         e.quadraticCurveTo(-3 * o, -4 * o - lungeHop, -8 * o, -6 * o - lungeHop);
         e.closePath();
         e.fill();
 
-        // 5. Barriga clara e juba do peito tradicional de lobo
+        if (pal.dorsal !== pal.base) {
+          e.fillStyle = pal.dorsal;
+          e.beginPath();
+          e.moveTo(-9 * o, -10 * o - lungeHop);
+          e.quadraticCurveTo(-2 * o, -13.5 * o - lungeHop, 4.5 * o, -12.5 * o - lungeHop);
+          e.lineTo(7.5 * o, -10 * o - lungeHop);
+          e.lineTo(4 * o, -9 * o - lungeHop);
+          e.quadraticCurveTo(-3 * o, -9 * o - lungeHop, -8.5 * o, -7.5 * o - lungeHop);
+          e.closePath();
+          e.fill();
+        }
+
+        // Peito claro e juba eriçada
         if (!l) {
-          e.fillStyle = g;
+          e.fillStyle = pal.chest;
           e.beginPath();
           e.moveTo(2 * o, -9 * o - lungeHop);
           e.quadraticCurveTo(7 * o, -5 * o - lungeHop, 5 * o, -2 * o - lungeHop);
@@ -564,154 +775,137 @@ CREATURES.wolf = {
           e.closePath();
           e.fill();
 
-          // Pelagem pontiaguda no peito
-          e.fillStyle = f;
+          e.fillStyle = pal.light;
           e.beginPath();
-          e.moveTo(6 * o, -9 * o - lungeHop);
-          e.lineTo(9.2 * o, -6 * o - lungeHop);
-          e.lineTo(7.2 * o, -4 * o - lungeHop);
-          e.lineTo(9.8 * o, -2 * o - lungeHop);
-          e.lineTo(6.2 * o, -1 * o - lungeHop);
+          e.moveTo(6 * o, -9.5 * o - lungeHop);
+          e.lineTo(9.5 * o, -6.5 * o - lungeHop);
+          e.lineTo(7.5 * o, -4 * o - lungeHop);
+          e.lineTo(10.2 * o, -2 * o - lungeHop);
+          e.lineTo(6.5 * o, -1 * o - lungeHop);
           e.closePath();
           e.fill();
         }
 
-        // 6. Pata traseira da frente (primeiro plano, musculosa)
-        e.fillStyle = m;
+        // Pata traseira dianteira
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(-5 * o, -10 * o - lungeHop);
-        e.quadraticCurveTo(-9 * o, -5 * o - lungeHop, -8 * o, 0 * o - lungeHop * 0.4);
-        e.lineTo(-7 * o, 3 * o);
-        e.lineTo(-4 * o, 3 * o);
-        e.lineTo(-4.5 * o, 0 * o - lungeHop * 0.4);
-        e.quadraticCurveTo(-3 * o, -6 * o - lungeHop, -3 * o, -8 * o - lungeHop);
+        e.quadraticCurveTo(-9.5 * o, -5 * o - lungeHop, -8 * o, 0 * o - lungeHop * 0.4);
+        e.lineTo(-6.5 * o, 3 * o);
+        e.lineTo(-3.5 * o, 3 * o);
+        e.lineTo(-4 * o, 0 * o - lungeHop * 0.4);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-7 * o, 2.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, -6.5 * o, 1.8 * o, o, pal, false);
 
-        // 7. Pata dianteira da frente (estendida para frente)
-        e.fillStyle = m;
+        // Pata dianteira dianteira estendida
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(4 * o, -10 * o - lungeHop);
-        e.lineTo(8 * o, 0 * o - lungeHop * 0.4);
-        e.lineTo(8.5 * o, 3 * o);
-        e.lineTo(5.5 * o, 3 * o);
-        e.lineTo(5 * o, 0 * o - lungeHop * 0.4);
-        e.lineTo(1.5 * o, -8 * o - lungeHop);
+        e.lineTo(8.5 * o, 0 * o - lungeHop * 0.4);
+        e.lineTo(9.5 * o, 3 * o);
+        e.lineTo(6.5 * o, 3 * o);
+        e.lineTo(5.5 * o, 0 * o - lungeHop * 0.4);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(5.5 * o, 2.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, 8 * o, 1.8 * o, o, pal, false);
 
-        // 8. Cabeça e focinho projetados para a dentada rápida
-        const headX = (7 + snap * 3.5) * o;
+        const headX = (7 + snap * 3.8) * o;
         const headY = (-12 - lungeHop) * o;
 
-        // Pescoço ligando tronco à cabeça
-        e.fillStyle = m;
+        // Pescoço e crânio
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(3 * o, -12 * o - lungeHop);
-        e.lineTo(headX + 2 * o, headY - 4 * o);
-        e.lineTo(headX + 5 * o, headY);
+        e.lineTo(headX + 2.2 * o, headY - 4.2 * o);
+        e.lineTo(headX + 5.5 * o, headY);
         e.lineTo(5 * o, -7 * o - lungeHop);
         e.closePath();
         e.fill();
 
-        // Crânio proporcional do lobo
         e.beginPath();
-        e.ellipse(headX + 1.5 * o, headY - 1 * o, 4.2 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
+        e.ellipse(headX + 1.6 * o, headY - 1 * o, 4.4 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
         e.fill();
 
-        // Orelhas empinadas de lobo em ataque (com interior rosado)
-        e.fillStyle = c;
+        // Bochechas
+        e.beginPath();
+        e.moveTo(headX - 0.5 * o, headY + 1 * o);
+        e.lineTo(headX - 3.5 * o, headY + 3.5 * o);
+        e.lineTo(headX + 0.5 * o, headY + 3.5 * o);
+        e.closePath();
+        e.fill();
+
+        // Orelhas
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(headX - 0.5 * o, headY - 3.5 * o);
-        e.lineTo(headX + 0.5 * o, headY - 8.5 * o);
+        e.lineTo(headX + 0.5 * o, headY - 9 * o);
         e.lineTo(headX + 2.8 * o, headY - 3.8 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = m;
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(headX + 1.2 * o, headY - 3.8 * o);
-        e.lineTo(headX + 2.8 * o, headY - 9.2 * o);
-        e.lineTo(headX + 5 * o, headY - 4 * o);
+        e.lineTo(headX + 3.0 * o, headY - 9.8 * o);
+        e.lineTo(headX + 5.2 * o, headY - 4 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = l ? "#ffffff" : "#f43f5e";
+        e.fillStyle = pal.earInner;
         e.beginPath();
         e.moveTo(headX + 2.1 * o, headY - 4.4 * o);
-        e.lineTo(headX + 3.1 * o, headY - 8.2 * o);
-        e.lineTo(headX + 4.2 * o, headY - 4.6 * o);
+        e.lineTo(headX + 3.2 * o, headY - 8.6 * o);
+        e.lineTo(headX + 4.4 * o, headY - 4.6 * o);
         e.closePath();
         e.fill();
 
-        // Boca abrindo e estalando em mordida
-        const mouthGap = (1 - snap) * 2.8 * o;
-        // Mandíbula superior
-        e.fillStyle = m;
+        // Focinho com boca entreaberta
+        const mouthGap = (1 - snap) * 3.0 * o;
+        e.fillStyle = pal.base;
         e.beginPath();
-        e.moveTo(headX + 3 * o, headY - 2.5 * o);
-        e.lineTo(headX + 8.5 * o, headY - 1 * o - mouthGap * 0.3);
-        e.lineTo(headX + 8.5 * o, headY + 1.2 * o - mouthGap * 0.3);
-        e.lineTo(headX + 4 * o, headY + 2.5 * o);
+        e.moveTo(headX + 3 * o, headY - 2.6 * o);
+        e.lineTo(headX + 8.8 * o, headY - 1 * o - mouthGap * 0.3);
+        e.lineTo(headX + 8.8 * o, headY + 1.2 * o - mouthGap * 0.3);
+        e.lineTo(headX + 4 * o, headY + 2.6 * o);
         e.closePath();
         e.fill();
 
-        // Nariz preto de lobo
-        e.fillStyle = "#0f172a";
+        e.fillStyle = pal.nose;
         e.beginPath();
-        e.roundRect(headX + 8 * o, headY - 1.5 * o - mouthGap * 0.3, 1.6 * o, 1.8 * o, 0.4 * o);
+        e.roundRect(headX + 8.2 * o, headY - 1.6 * o - mouthGap * 0.3, 1.8 * o, 1.9 * o, 0.45 * o);
         e.fill();
 
-        // Mandíbula inferior com queixo claro
-        e.fillStyle = l ? "#ffffff" : g;
+        // Mandíbula inferior
+        e.fillStyle = l ? "#ffffff" : pal.chest;
         e.beginPath();
         e.moveTo(headX + 4 * o, headY + 1.5 * o);
-        e.lineTo(headX + 7.8 * o, headY + 1.2 * o + mouthGap * 0.7);
-        e.lineTo(headX + 7 * o, headY + 2.5 * o + mouthGap * 0.7);
-        e.lineTo(headX + 3.5 * o, headY + 2.8 * o);
+        e.lineTo(headX + 8.2 * o, headY + 1.2 * o + mouthGap * 0.7);
+        e.lineTo(headX + 7.4 * o, headY + 2.8 * o + mouthGap * 0.7);
+        e.lineTo(headX + 3.5 * o, headY + 2.9 * o);
         e.closePath();
         e.fill();
 
         // Presas superiores e inferiores
-        e.fillStyle = "#ffffff";
+        e.fillStyle = pal.fangs;
         e.beginPath();
         e.moveTo(headX + 6.8 * o, headY + 1.2 * o - mouthGap * 0.3);
-        e.lineTo(headX + 7.4 * o, headY + 2.7 * o);
-        e.lineTo(headX + 7.9 * o, headY + 1.2 * o - mouthGap * 0.3);
+        e.lineTo(headX + 7.5 * o, headY + 2.8 * o);
+        e.lineTo(headX + 8.0 * o, headY + 1.2 * o - mouthGap * 0.3);
         e.closePath();
         e.fill();
         e.beginPath();
         e.moveTo(headX + 6.0 * o, headY + 1.5 * o + mouthGap * 0.7);
-        e.lineTo(headX + 6.6 * o, headY + 0.3 * o);
+        e.lineTo(headX + 6.6 * o, headY + 0.2 * o);
         e.lineTo(headX + 7.2 * o, headY + 1.5 * o + mouthGap * 0.7);
         e.closePath();
         e.fill();
 
-        // Olho predador idêntico ao lobo autêntico
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headX + 4.2 * o, headY - 1.6 * o, 1.8 * o, 1.2 * o, 0.1, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = l ? "#ef4444" : t.accentColor;
-        e.beginPath();
-        e.arc(headX + 4.4 * o, headY - 1.6 * o, 1.1 * o, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headX + 4.6 * o, headY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#ffffff";
-        e.beginPath();
-        e.arc(headX + 4.2 * o, headY - 2 * o, 0.4 * o, 0, Math.PI * 2);
-        e.fill();
+        drawLupineEye(e, headX + 4.2 * o, headY - 1.6 * o, o, pal, false);
 
-        if (!l && t.accentColor === "#38bdf8") {
+        if (!l && pal.isSnow) {
           const z = (t.animTimer * 2.8) % Math.PI;
-          e.fillStyle = "rgba(224, 242, 254, 0.35)";
+          e.fillStyle = "rgba(224, 242, 254, 0.38)";
           e.beginPath();
-          e.arc(headX + 10 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
+          e.arc(headX + 10.5 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
           e.fill();
         }
 
@@ -720,32 +914,30 @@ CREATURES.wolf = {
       }
 
       if (t.wolfAttackState === "quick_retreat") {
-        // Solta e afasta em postura defensiva alerta, olhando fixamente para o jogador com as 4 patas autênticas
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
-        const m = l ? "#ffffff" : t.color,
-          c = l ? "#e2e8f0" : "#475569",
-          f = l ? "#ffffff" : "#cbd5e1",
-          g = l ? "#ffffff" : "#e2e8f0";
+        const lowStance = 1.8 * o;
 
-        const lowStance = 1.6 * o;
+        e.fillStyle = "rgba(15, 23, 42, 0.35)";
+        e.beginPath();
+        e.ellipse(0, 4.5 * o, 12 * o, 3.5 * o, 0, 0, Math.PI * 2);
+        e.fill();
 
-        // 1. Pata traseira de trás (sombreada, amortecendo o recuo)
-        e.fillStyle = c;
+        // Pata traseira de trás amortecendo o recuo
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(-6 * o, -6 * o + lowStance);
-        e.lineTo(-9 * o, -1 * o + lowStance);
-        e.lineTo(-8 * o, 2 * o);
+        e.lineTo(-9.5 * o, -1 * o + lowStance);
+        e.lineTo(-8.5 * o, 2 * o);
         e.lineTo(-5 * o, 2 * o);
         e.lineTo(-4 * o, -6 * o + lowStance);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-8 * o, 1.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, -8 * o, 1.2 * o, o, pal, true);
 
-        // 2. Pata dianteira de trás (sombreada, apoiada no solo)
-        e.fillStyle = c;
+        // Pata dianteira de trás
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(5 * o, -7 * o + lowStance);
         e.lineTo(4 * o, -1 * o + lowStance);
@@ -754,38 +946,36 @@ CREATURES.wolf = {
         e.lineTo(3 * o, -7 * o + lowStance);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(2 * o, 1.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, 3.5 * o, 1.2 * o, o, pal, true);
 
-        // 3. Rabo de lobo tenso acompanhando o recuo
-        e.strokeStyle = m;
-        e.lineWidth = 3.6 * o;
-        e.lineCap = "round";
-        e.beginPath();
-        e.moveTo(-9 * o, -8 * o + lowStance);
-        e.quadraticCurveTo(-14 * o, -9 * o + lowStance, -13 * o, -2 * o + lowStance);
-        e.stroke();
-        e.strokeStyle = f;
-        e.lineWidth = 2.2 * o;
-        e.beginPath();
-        e.moveTo(-14 * o, -5 * o + lowStance);
-        e.lineTo(-13 * o, -2 * o + lowStance);
-        e.stroke();
+        // Cauda baixa e tensa
+        drawLupineBushyTail(e, -9 * o, -8 * o + lowStance, o, pal, Math.PI * 0.65, 0.1, 1.1);
 
-        // 4. Corpo abaixado e recuando firme com anatomia correta
-        e.fillStyle = m;
+        // Corpo abaixado e recuando firme
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(-9 * o, -10 * o + lowStance);
-        e.quadraticCurveTo(-2 * o, -13 * o + lowStance, 4 * o, -12 * o + lowStance);
-        e.lineTo(7 * o, -10 * o + lowStance);
-        e.quadraticCurveTo(8 * o, -4 * o + lowStance, 4 * o, -2 * o + lowStance);
+        e.quadraticCurveTo(-2 * o, -13.5 * o + lowStance, 4.5 * o, -12.5 * o + lowStance);
+        e.lineTo(7.5 * o, -10 * o + lowStance);
+        e.quadraticCurveTo(8.5 * o, -4 * o + lowStance, 4.5 * o, -2 * o + lowStance);
         e.quadraticCurveTo(-3 * o, -4 * o + lowStance, -8 * o, -6 * o + lowStance);
         e.closePath();
         e.fill();
 
-        // 5. Pelagem ventral clara e juba do peito eriçada em alerta
+        if (pal.dorsal !== pal.base) {
+          e.fillStyle = pal.dorsal;
+          e.beginPath();
+          e.moveTo(-9 * o, -10 * o + lowStance);
+          e.quadraticCurveTo(-2 * o, -13.5 * o + lowStance, 4.5 * o, -12.5 * o + lowStance);
+          e.lineTo(7.5 * o, -10 * o + lowStance);
+          e.lineTo(4 * o, -9 * o + lowStance);
+          e.quadraticCurveTo(-3 * o, -9 * o + lowStance, -8.5 * o, -7.5 * o + lowStance);
+          e.closePath();
+          e.fill();
+        }
+
         if (!l) {
-          e.fillStyle = g;
+          e.fillStyle = pal.chest;
           e.beginPath();
           e.moveTo(2 * o, -9 * o + lowStance);
           e.quadraticCurveTo(7 * o, -5 * o + lowStance, 5 * o, -2 * o + lowStance);
@@ -793,141 +983,129 @@ CREATURES.wolf = {
           e.closePath();
           e.fill();
 
-          e.fillStyle = f;
+          e.fillStyle = pal.light;
           e.beginPath();
-          e.moveTo(6 * o, -9 * o + lowStance);
-          e.lineTo(9.2 * o, -6 * o + lowStance);
-          e.lineTo(7.2 * o, -4 * o + lowStance);
-          e.lineTo(9.8 * o, -2 * o + lowStance);
-          e.lineTo(6.2 * o, -1 * o + lowStance);
+          e.moveTo(6 * o, -9.5 * o + lowStance);
+          e.lineTo(9.5 * o, -6.5 * o + lowStance);
+          e.lineTo(7.5 * o, -4 * o + lowStance);
+          e.lineTo(10.2 * o, -2 * o + lowStance);
+          e.lineTo(6.5 * o, -1 * o + lowStance);
           e.closePath();
           e.fill();
         }
 
-        // 6. Pata traseira da frente (primeiro plano, flexionada)
-        e.fillStyle = m;
+        // Pata traseira dianteira
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(-5 * o, -10 * o + lowStance);
-        e.quadraticCurveTo(-9 * o, -5 * o + lowStance, -7 * o, 0 * o + lowStance);
-        e.lineTo(-6 * o, 3 * o);
-        e.lineTo(-3 * o, 3 * o);
+        e.quadraticCurveTo(-9.5 * o, -5 * o + lowStance, -7 * o, 0 * o + lowStance);
+        e.lineTo(-5.5 * o, 3 * o);
+        e.lineTo(-2.5 * o, 3 * o);
         e.lineTo(-3.5 * o, 0 * o + lowStance);
-        e.quadraticCurveTo(-3 * o, -6 * o + lowStance, -3 * o, -8 * o + lowStance);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-6 * o, 2.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, -5 * o, 1.8 * o, o, pal, false);
 
-        // 7. Pata dianteira da frente (primeiro plano, fincada no chão derrapando)
-        e.fillStyle = m;
+        // Pata dianteira dianteira
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(4 * o, -10 * o + lowStance);
-        e.lineTo(5 * o, 0 * o + lowStance);
-        e.lineTo(5.5 * o, 3 * o);
-        e.lineTo(2.5 * o, 3 * o);
+        e.lineTo(5.5 * o, 0 * o + lowStance);
+        e.lineTo(6 * o, 3 * o);
+        e.lineTo(3 * o, 3 * o);
         e.lineTo(2 * o, 0 * o + lowStance);
-        e.lineTo(1.5 * o, -8 * o + lowStance);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(2.5 * o, 2.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, 4.5 * o, 1.8 * o, o, pal, false);
 
-        // 8. Cabeça baixa com rosnado fixo no jogador
         const headX = 6.8 * o;
         const headY = -12 * o + lowStance;
 
-        e.fillStyle = m;
+        // Cabeça baixa com rosnado
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(3 * o, -12 * o + lowStance);
-        e.lineTo(headX + 2 * o, headY - 4 * o);
-        e.lineTo(headX + 5 * o, headY);
+        e.lineTo(headX + 2.2 * o, headY - 4 * o);
+        e.lineTo(headX + 5.5 * o, headY);
         e.lineTo(5 * o, -7 * o + lowStance);
         e.closePath();
         e.fill();
 
         e.beginPath();
-        e.ellipse(headX + 1.5 * o, headY - 1 * o, 4.2 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
+        e.ellipse(headX + 1.6 * o, headY - 1 * o, 4.4 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
         e.fill();
 
-        // Orelhas empinadas e agressivas voltadas para a ameaça (autênticas de lobo)
-        e.fillStyle = c;
+        // Bochechas
+        e.beginPath();
+        e.moveTo(headX - 0.5 * o, headY + 1 * o);
+        e.lineTo(headX - 3.5 * o, headY + 3.5 * o);
+        e.lineTo(headX + 0.5 * o, headY + 3.5 * o);
+        e.closePath();
+        e.fill();
+
+        // Orelhas alertas
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(headX - 0.5 * o, headY - 3.5 * o);
-        e.lineTo(headX + 0.2 * o, headY - 8.2 * o);
+        e.lineTo(headX + 0.3 * o, headY - 8.8 * o);
         e.lineTo(headX + 2.5 * o, headY - 3.8 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = m;
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(headX + 1.0 * o, headY - 3.8 * o);
-        e.lineTo(headX + 2.2 * o, headY - 8.8 * o);
-        e.lineTo(headX + 4.6 * o, headY - 4 * o);
+        e.lineTo(headX + 2.4 * o, headY - 9.4 * o);
+        e.lineTo(headX + 4.8 * o, headY - 4 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = l ? "#ffffff" : "#f43f5e";
+        e.fillStyle = pal.earInner;
         e.beginPath();
         e.moveTo(headX + 1.8 * o, headY - 4.4 * o);
-        e.lineTo(headX + 2.5 * o, headY - 7.8 * o);
-        e.lineTo(headX + 3.8 * o, headY - 4.6 * o);
+        e.lineTo(headX + 2.7 * o, headY - 8.2 * o);
+        e.lineTo(headX + 4.0 * o, headY - 4.6 * o);
         e.closePath();
         e.fill();
 
-        // Focinho cerrado e rosnando com dentes aparentes
-        e.fillStyle = m;
+        // Focinho rosnando
+        e.fillStyle = pal.base;
         e.beginPath();
-        e.moveTo(headX + 3 * o, headY - 2.5 * o);
-        e.lineTo(headX + 8.5 * o, headY - 1 * o);
-        e.lineTo(headX + 8.5 * o, headY + 1.2 * o);
-        e.lineTo(headX + 4 * o, headY + 2.5 * o);
+        e.moveTo(headX + 3 * o, headY - 2.6 * o);
+        e.lineTo(headX + 8.8 * o, headY - 1 * o);
+        e.lineTo(headX + 8.8 * o, headY + 1.2 * o);
+        e.lineTo(headX + 4 * o, headY + 2.6 * o);
         e.closePath();
         e.fill();
 
-        e.fillStyle = "#0f172a";
+        e.fillStyle = pal.nose;
         e.beginPath();
-        e.roundRect(headX + 8 * o, headY - 1.5 * o, 1.6 * o, 1.8 * o, 0.4 * o);
+        e.roundRect(headX + 8.2 * o, headY - 1.6 * o, 1.8 * o, 1.9 * o, 0.45 * o);
         e.fill();
 
-        e.fillStyle = l ? "#ffffff" : g;
+        e.fillStyle = l ? "#ffffff" : pal.chest;
         e.beginPath();
         e.moveTo(headX + 4 * o, headY + 1.5 * o);
-        e.lineTo(headX + 7.8 * o, headY + 1.2 * o);
-        e.lineTo(headX + 7 * o, headY + 2.5 * o);
-        e.lineTo(headX + 3.5 * o, headY + 2.8 * o);
+        e.lineTo(headX + 8.0 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7.2 * o, headY + 2.6 * o);
+        e.lineTo(headX + 3.5 * o, headY + 2.9 * o);
         e.closePath();
         e.fill();
 
-        // Presas afiadas à mostra no rosnado
-        e.fillStyle = "#ffffff";
+        // Presas expostas
+        e.fillStyle = pal.fangs;
         e.beginPath();
         e.moveTo(headX + 6.8 * o, headY + 1.2 * o);
-        e.lineTo(headX + 7.4 * o, headY + 2.7 * o);
-        e.lineTo(headX + 7.9 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7.5 * o, headY + 2.8 * o);
+        e.lineTo(headX + 8.0 * o, headY + 1.2 * o);
         e.closePath();
         e.fill();
 
-        // Olhos fulminantes e expressivos com brilho
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headX + 4.2 * o, headY - 1.6 * o, 1.8 * o, 1.2 * o, 0.1, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = l ? "#ef4444" : t.accentColor;
-        e.beginPath();
-        e.arc(headX + 4.4 * o, headY - 1.6 * o, 1.1 * o, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headX + 4.6 * o, headY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#ffffff";
-        e.beginPath();
-        e.arc(headX + 4.2 * o, headY - 2 * o, 0.4 * o, 0, Math.PI * 2);
-        e.fill();
+        drawLupineEye(e, headX + 4.2 * o, headY - 1.6 * o, o, pal, false);
 
-        if (!l && t.accentColor === "#38bdf8") {
+        if (!l && pal.isSnow) {
           const z = (t.animTimer * 2.8) % Math.PI;
-          e.fillStyle = "rgba(224, 242, 254, 0.35)";
+          e.fillStyle = "rgba(224, 242, 254, 0.38)";
           e.beginPath();
-          e.arc(headX + 10 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
+          e.arc(headX + 10.5 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
           e.fill();
         }
 
@@ -936,74 +1114,66 @@ CREATURES.wolf = {
       }
 
       if (t.wolfAttackState === "advance_again") {
-        // Avanço rápido com galope predatório, todas as 4 patas e anatomia autêntica
         e.save();
         const u = t.facing === "left" ? -1 : 1;
         e.scale(u, 1);
-        const m = l ? "#ffffff" : t.color,
-          c = l ? "#e2e8f0" : "#475569",
-          f = l ? "#ffffff" : "#cbd5e1",
-          g = l ? "#ffffff" : "#e2e8f0";
-
         const advProg = 1 - (t.wolfAttackTimer || 0) / (t.wolfAttackDuration || 0.45);
-        const sprintHop = Math.sin(advProg * Math.PI * 2) * 1.8 * o;
-        const legSwing = Math.sin(advProg * Math.PI * 2) * 3.5 * o;
+        const sprintHop = Math.sin(advProg * Math.PI * 2) * 2.0 * o;
+        const legSwing = Math.sin(advProg * Math.PI * 2) * 3.8 * o;
 
-        // 1. Pata traseira de trás (galope)
-        e.fillStyle = c;
+        e.fillStyle = "rgba(15, 23, 42, 0.35)";
+        e.beginPath();
+        e.ellipse(0, 4.5 * o, 13 * o, 3.5 * o, 0, 0, Math.PI * 2);
+        e.fill();
+
+        // Patas do fundo em galope
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(-6 * o, -6 * o + sprintHop);
         e.lineTo(-8 * o - legSwing, -1 * o + sprintHop);
-        e.lineTo(-7 * o - legSwing, 2 * o);
-        e.lineTo(-4 * o - legSwing, 2 * o);
-        e.lineTo(-4 * o, -6 * o + sprintHop);
+        e.lineTo(-6.5 * o - legSwing, 2 * o);
+        e.lineTo(-3.5 * o - legSwing, 2 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-7 * o - legSwing, 1.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, -6 * o - legSwing, 1.2 * o, o, pal, true);
 
-        // 2. Pata dianteira de trás (galope)
-        e.fillStyle = c;
         e.beginPath();
         e.moveTo(5 * o, -7 * o + sprintHop);
         e.lineTo(6 * o + legSwing, -1 * o + sprintHop);
-        e.lineTo(7 * o + legSwing, 2 * o);
-        e.lineTo(4 * o + legSwing, 2 * o);
-        e.lineTo(3 * o, -7 * o + sprintHop);
+        e.lineTo(7.5 * o + legSwing, 2 * o);
+        e.lineTo(4.5 * o + legSwing, 2 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(4 * o + legSwing, 1.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, 5.5 * o + legSwing, 1.2 * o, o, pal, true);
 
-        // 3. Rabo empinado voando na corrida com ponta branca
-        e.strokeStyle = m;
-        e.lineWidth = 3.6 * o;
-        e.lineCap = "round";
-        e.beginPath();
-        e.moveTo(-9 * o, -8 * o + sprintHop);
-        e.quadraticCurveTo(-14 * o, -12 * o + sprintHop, -14 * o, -5 * o + sprintHop);
-        e.stroke();
-        e.strokeStyle = f;
-        e.lineWidth = 2.2 * o;
-        e.beginPath();
-        e.moveTo(-14 * o, -8 * o + sprintHop);
-        e.lineTo(-13.5 * o, -5 * o + sprintHop);
-        e.stroke();
+        // Cauda empinada e esvoaçante
+        drawLupineBushyTail(e, -9 * o, -8 * o + sprintHop, o, pal, Math.PI * 0.82, -0.25, 1.2);
 
-        // 4. Tronco em arrancada veloz
-        e.fillStyle = m;
+        // Tronco em arrancada veloz
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(-9 * o, -10 * o + sprintHop);
-        e.quadraticCurveTo(-2 * o, -13 * o + sprintHop, 4 * o, -12 * o + sprintHop);
-        e.lineTo(7 * o, -10 * o + sprintHop);
-        e.quadraticCurveTo(8 * o, -4 * o + sprintHop, 4 * o, -2 * o + sprintHop);
+        e.quadraticCurveTo(-2 * o, -13.5 * o + sprintHop, 4.5 * o, -12.5 * o + sprintHop);
+        e.lineTo(7.5 * o, -10 * o + sprintHop);
+        e.quadraticCurveTo(8.5 * o, -4 * o + sprintHop, 4.5 * o, -2 * o + sprintHop);
         e.quadraticCurveTo(-3 * o, -4 * o + sprintHop, -8 * o, -6 * o + sprintHop);
         e.closePath();
         e.fill();
 
-        // 5. Pelagem ventral e do peito
+        if (pal.dorsal !== pal.base) {
+          e.fillStyle = pal.dorsal;
+          e.beginPath();
+          e.moveTo(-9 * o, -10 * o + sprintHop);
+          e.quadraticCurveTo(-2 * o, -13.5 * o + sprintHop, 4.5 * o, -12.5 * o + sprintHop);
+          e.lineTo(7.5 * o, -10 * o + sprintHop);
+          e.lineTo(4 * o, -9 * o + sprintHop);
+          e.quadraticCurveTo(-3 * o, -9 * o + sprintHop, -8.5 * o, -7.5 * o + sprintHop);
+          e.closePath();
+          e.fill();
+        }
+
         if (!l) {
-          e.fillStyle = g;
+          e.fillStyle = pal.chest;
           e.beginPath();
           e.moveTo(2 * o, -9 * o + sprintHop);
           e.quadraticCurveTo(7 * o, -5 * o + sprintHop, 5 * o, -2 * o + sprintHop);
@@ -1011,141 +1181,123 @@ CREATURES.wolf = {
           e.closePath();
           e.fill();
 
-          e.fillStyle = f;
+          e.fillStyle = pal.light;
           e.beginPath();
-          e.moveTo(6 * o, -9 * o + sprintHop);
-          e.lineTo(9.2 * o, -6 * o + sprintHop);
-          e.lineTo(7.2 * o, -4 * o + sprintHop);
-          e.lineTo(9.8 * o, -2 * o + sprintHop);
-          e.lineTo(6.2 * o, -1 * o + sprintHop);
+          e.moveTo(6 * o, -9.5 * o + sprintHop);
+          e.lineTo(9.5 * o, -6.5 * o + sprintHop);
+          e.lineTo(7.5 * o, -4 * o + sprintHop);
+          e.lineTo(10.2 * o, -2 * o + sprintHop);
+          e.lineTo(6.5 * o, -1 * o + sprintHop);
           e.closePath();
           e.fill();
         }
 
-        // 6. Pata traseira da frente (primeiro plano)
-        e.fillStyle = m;
+        // Patas do primeiro plano
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(-5 * o, -10 * o + sprintHop);
-        e.quadraticCurveTo(-9 * o, -5 * o + sprintHop, -7 * o - legSwing * 0.7, 0 * o + sprintHop);
-        e.lineTo(-6 * o - legSwing * 0.7, 3 * o);
-        e.lineTo(-3 * o - legSwing * 0.7, 3 * o);
-        e.lineTo(-3.5 * o - legSwing * 0.7, 0 * o + sprintHop);
-        e.quadraticCurveTo(-3 * o, -6 * o + sprintHop, -3 * o, -8 * o + sprintHop);
+        e.quadraticCurveTo(-9.5 * o, -5 * o + sprintHop, -7 * o - legSwing * 0.7, 0 * o + sprintHop);
+        e.lineTo(-5.5 * o - legSwing * 0.7, 3 * o);
+        e.lineTo(-2.5 * o - legSwing * 0.7, 3 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(-6 * o - legSwing * 0.7, 2.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, -5 * o - legSwing * 0.7, 1.8 * o, o, pal, false);
 
-        // 7. Pata dianteira da frente (primeiro plano)
-        e.fillStyle = m;
         e.beginPath();
         e.moveTo(4 * o, -10 * o + sprintHop);
-        e.lineTo(6 * o + legSwing * 0.7, 0 * o + sprintHop);
-        e.lineTo(6.5 * o + legSwing * 0.7, 3 * o);
-        e.lineTo(3.5 * o + legSwing * 0.7, 3 * o);
-        e.lineTo(3 * o + legSwing * 0.7, 0 * o + sprintHop);
-        e.lineTo(1.5 * o, -8 * o + sprintHop);
+        e.lineTo(6.5 * o + legSwing * 0.7, 0 * o + sprintHop);
+        e.lineTo(7.5 * o + legSwing * 0.7, 3 * o);
+        e.lineTo(4.5 * o + legSwing * 0.7, 3 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(3.5 * o + legSwing * 0.7, 2.5 * o, 3.2 * o, 0.9 * o);
+        drawLupinePaw(e, 5.5 * o + legSwing * 0.7, 1.8 * o, o, pal, false);
 
-        // 8. Cabeça e focinho projetados para frente
         const headX = (7.5 + Math.sin(advProg * Math.PI) * 1.5) * o;
         const headY = -12 * o + sprintHop;
 
-        e.fillStyle = m;
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(3 * o, -12 * o + sprintHop);
-        e.lineTo(headX + 2 * o, headY - 4 * o);
-        e.lineTo(headX + 5 * o, headY);
+        e.lineTo(headX + 2.2 * o, headY - 4 * o);
+        e.lineTo(headX + 5.5 * o, headY);
         e.lineTo(5 * o, -7 * o + sprintHop);
         e.closePath();
         e.fill();
 
         e.beginPath();
-        e.ellipse(headX + 1.5 * o, headY - 1 * o, 4.2 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
+        e.ellipse(headX + 1.6 * o, headY - 1 * o, 4.4 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
         e.fill();
 
-        // Orelhas de lobo alertas apontadas para frente
-        e.fillStyle = c;
+        // Bochechas
+        e.beginPath();
+        e.moveTo(headX - 0.5 * o, headY + 1 * o);
+        e.lineTo(headX - 3.5 * o, headY + 3.5 * o);
+        e.lineTo(headX + 0.5 * o, headY + 3.5 * o);
+        e.closePath();
+        e.fill();
+
+        // Orelhas
+        e.fillStyle = pal.shade;
         e.beginPath();
         e.moveTo(headX - 0.5 * o, headY - 3.5 * o);
-        e.lineTo(headX + 0.5 * o, headY - 8.5 * o);
+        e.lineTo(headX + 0.5 * o, headY - 9 * o);
         e.lineTo(headX + 2.8 * o, headY - 3.8 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = m;
+        e.fillStyle = pal.base;
         e.beginPath();
         e.moveTo(headX + 1.2 * o, headY - 3.8 * o);
-        e.lineTo(headX + 2.8 * o, headY - 9.2 * o);
-        e.lineTo(headX + 5 * o, headY - 4 * o);
+        e.lineTo(headX + 3.0 * o, headY - 9.8 * o);
+        e.lineTo(headX + 5.2 * o, headY - 4 * o);
         e.closePath();
         e.fill();
-        e.fillStyle = l ? "#ffffff" : "#f43f5e";
+        e.fillStyle = pal.earInner;
         e.beginPath();
         e.moveTo(headX + 2.1 * o, headY - 4.4 * o);
-        e.lineTo(headX + 3.1 * o, headY - 8.2 * o);
-        e.lineTo(headX + 4.2 * o, headY - 4.6 * o);
+        e.lineTo(headX + 3.2 * o, headY - 8.6 * o);
+        e.lineTo(headX + 4.4 * o, headY - 4.6 * o);
         e.closePath();
         e.fill();
 
-        // Focinho com boca entreaberta
-        e.fillStyle = m;
+        // Focinho
+        e.fillStyle = pal.base;
         e.beginPath();
-        e.moveTo(headX + 3 * o, headY - 2.5 * o);
-        e.lineTo(headX + 8.5 * o, headY - 1 * o);
-        e.lineTo(headX + 8.5 * o, headY + 1.2 * o);
-        e.lineTo(headX + 4 * o, headY + 2.5 * o);
+        e.moveTo(headX + 3 * o, headY - 2.6 * o);
+        e.lineTo(headX + 8.8 * o, headY - 1 * o);
+        e.lineTo(headX + 8.8 * o, headY + 1.2 * o);
+        e.lineTo(headX + 4 * o, headY + 2.6 * o);
         e.closePath();
         e.fill();
 
-        e.fillStyle = "#0f172a";
+        e.fillStyle = pal.nose;
         e.beginPath();
-        e.roundRect(headX + 8 * o, headY - 1.5 * o, 1.6 * o, 1.8 * o, 0.4 * o);
+        e.roundRect(headX + 8.2 * o, headY - 1.6 * o, 1.8 * o, 1.9 * o, 0.45 * o);
         e.fill();
 
-        e.fillStyle = l ? "#ffffff" : g;
+        e.fillStyle = l ? "#ffffff" : pal.chest;
         e.beginPath();
         e.moveTo(headX + 4 * o, headY + 1.5 * o);
-        e.lineTo(headX + 7.8 * o, headY + 1.2 * o);
-        e.lineTo(headX + 7 * o, headY + 2.5 * o);
-        e.lineTo(headX + 3.5 * o, headY + 2.8 * o);
+        e.lineTo(headX + 8.0 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7.2 * o, headY + 2.6 * o);
+        e.lineTo(headX + 3.5 * o, headY + 2.9 * o);
         e.closePath();
         e.fill();
 
-        // Presas
-        e.fillStyle = "#ffffff";
+        e.fillStyle = pal.fangs;
         e.beginPath();
         e.moveTo(headX + 6.8 * o, headY + 1.2 * o);
-        e.lineTo(headX + 7.4 * o, headY + 2.6 * o);
-        e.lineTo(headX + 7.9 * o, headY + 1.2 * o);
+        e.lineTo(headX + 7.5 * o, headY + 2.8 * o);
+        e.lineTo(headX + 8.0 * o, headY + 1.2 * o);
         e.closePath();
         e.fill();
 
-        // Olho
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headX + 4.2 * o, headY - 1.6 * o, 1.8 * o, 1.2 * o, 0.1, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = l ? "#ef4444" : t.accentColor;
-        e.beginPath();
-        e.arc(headX + 4.4 * o, headY - 1.6 * o, 1.1 * o, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#0f172a";
-        e.beginPath();
-        e.ellipse(headX + 4.6 * o, headY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
-        e.fill();
-        e.fillStyle = "#ffffff";
-        e.beginPath();
-        e.arc(headX + 4.2 * o, headY - 2 * o, 0.4 * o, 0, Math.PI * 2);
-        e.fill();
+        drawLupineEye(e, headX + 4.2 * o, headY - 1.6 * o, o, pal, false);
 
-        if (!l && t.accentColor === "#38bdf8") {
+        if (!l && pal.isSnow) {
           const z = (t.animTimer * 2.8) % Math.PI;
-          e.fillStyle = "rgba(224, 242, 254, 0.35)";
+          e.fillStyle = "rgba(224, 242, 254, 0.38)";
           e.beginPath();
-          e.arc(headX + 10 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
+          e.arc(headX + 10.5 * o + Math.cos(z) * 2 * o, headY - 0.5 * o - Math.sin(z) * 1.5 * o, (1.2 + z * 0.8) * o, 0, Math.PI * 2);
           e.fill();
         }
 
@@ -1159,428 +1311,484 @@ CREATURES.wolf = {
       e.save();
       const u = t.facing === "left" ? -1 : 1;
       e.scale(u, 1);
-      const m = l ? "#ffffff" : t.color,
-        c = l ? "#e2e8f0" : "#475569",
-        f = l ? "#ffffff" : "#cbd5e1",
-        g = l ? "#ffffff" : "#e2e8f0",
-        w = t.vx * t.vx + t.vy * t.vy > 0.04,
-        v = w ? t.animTimer * 9 : t.animTimer * 2.2,
-        T = w
-          ? Math.sin(v * 2) * 1.5 * o
-          : Math.sin(t.animTimer * 2.5) * 0.6 * o,
-        S = Math.sin(t.animTimer * 3) * 0.4 * o,
-        p = w ? Math.sin(v) * 4.2 * o : 0,
-        j = w ? Math.sin(v + Math.PI) * 4.2 * o : 0,
-        P = w ? Math.sin(v + Math.PI * 0.7) * 4.2 * o : 0,
-        A = w ? Math.sin(v + Math.PI * 1.7) * 4.2 * o : 0;
-      ((e.fillStyle = c),
-        e.beginPath(),
-        e.moveTo(-6 * o, -6 * o + T),
-        e.lineTo(-8 * o + A, -1 * o + T),
-        e.lineTo(-7 * o + A, 2 * o),
-        e.lineTo(-4 * o + A, 2 * o),
-        e.lineTo(-4 * o, -6 * o + T),
-        e.closePath(),
-        e.fill(),
-        e.beginPath(),
-        e.moveTo(5 * o, -7 * o + T),
-        e.lineTo(6 * o + j, -1 * o + T),
-        e.lineTo(7 * o + j, 2 * o),
-        e.lineTo(4 * o + j, 2 * o),
-        e.lineTo(3 * o, -7 * o + T),
-        e.closePath(),
-        e.fill());
-      const x = Math.sin(v * 1.2) * 2.5 * o;
-      ((e.strokeStyle = m),
-        (e.lineWidth = 3.6 * o),
-        (e.lineCap = "round"),
-        e.beginPath(),
-        e.moveTo(-9 * o, -8 * o + T),
-        e.quadraticCurveTo(-14 * o, -11 * o + x, -13 * o, -4 * o + x),
-        e.stroke(),
-        (e.strokeStyle = f),
-        (e.lineWidth = 2.2 * o),
-        e.beginPath(),
-        e.moveTo(-14 * o, -7 * o + x),
-        e.lineTo(-13 * o, -4 * o + x),
-        e.stroke(),
-        (e.fillStyle = m),
-        e.beginPath(),
-        e.moveTo(-9 * o, -10 * o + T),
-        e.quadraticCurveTo(-2 * o, -13 * o + T, 4 * o, -12 * o + T),
-        e.lineTo(7 * o, -10 * o + T),
-        e.quadraticCurveTo(8 * o, -4 * o + T + S, 4 * o, -2 * o + T + S),
-        e.quadraticCurveTo(-3 * o, -4 * o + T, -8 * o, -6 * o + T),
-        e.closePath(),
-        e.fill(),
-        l ||
-          ((e.fillStyle = g),
-          e.beginPath(),
-          e.moveTo(2 * o, -9 * o + T),
-          e.quadraticCurveTo(7 * o, -5 * o + T, 5 * o, -2 * o + T + S),
-          e.quadraticCurveTo(1 * o, -3 * o + T, -2 * o, -5 * o + T),
-          e.closePath(),
-          e.fill(),
-          (e.fillStyle = f),
-          e.beginPath(),
-          e.moveTo(6 * o, -9 * o + T),
-          e.lineTo(9.2 * o, -6 * o + T),
-          e.lineTo(7.2 * o, -4 * o + T),
-          e.lineTo(9.8 * o, -2 * o + T),
-          e.lineTo(6.2 * o, -1 * o + T),
-          e.closePath(),
-          e.fill()),
-        (e.fillStyle = m),
-        e.beginPath(),
-        e.moveTo(-5 * o, -10 * o + T),
-        e.quadraticCurveTo(-9 * o, -5 * o + T, -7 * o + P, 0 * o + T),
-        e.lineTo(-6 * o + P, 3 * o),
-        e.lineTo(-3 * o + P, 3 * o),
-        e.lineTo(-3.5 * o + P, 0 * o + T),
-        e.quadraticCurveTo(-3 * o, -6 * o + T, -3 * o, -8 * o + T),
-        e.closePath(),
-        e.fill(),
-        e.beginPath(),
-        e.moveTo(4 * o, -10 * o + T),
-        e.lineTo(6 * o + p, 0 * o + T),
-        e.lineTo(6.5 * o + p, 3 * o),
-        e.lineTo(3.5 * o + p, 3 * o),
-        e.lineTo(3 * o + p, 0 * o + T),
-        e.lineTo(1.5 * o, -8 * o + T),
-        e.closePath(),
-        e.fill(),
-        (e.fillStyle = "#0f172a"),
-        e.fillRect(-6 * o + P, 2.5 * o, 3.2 * o, 0.9 * o),
-        e.fillRect(3.5 * o + p, 2.5 * o, 3.2 * o, 0.9 * o));
-      const M = 7 * o,
-        $ = -12 * o + T;
-      if (
-        ((e.fillStyle = m),
-        e.beginPath(),
-        e.moveTo(3 * o, -12 * o + T),
-        e.lineTo(M + 2 * o, $ - 4 * o),
-        e.lineTo(M + 5 * o, $),
-        e.lineTo(5 * o, -7 * o + T),
-        e.closePath(),
-        e.fill(),
-        e.beginPath(),
-        e.ellipse(
-          M + 1.5 * o,
-          $ - 1 * o,
-          4.2 * o,
-          3.8 * o,
-          0.15,
-          0,
-          Math.PI * 2,
-        ),
-        e.fill(),
-        e.beginPath(),
-        e.moveTo(M + 3 * o, $ - 2.5 * o),
-        e.lineTo(M + 8.5 * o, $ - 1 * o),
-        e.lineTo(M + 8.5 * o, $ + 1.2 * o),
-        e.lineTo(M + 4 * o, $ + 2.5 * o),
-        e.closePath(),
-        e.fill(),
-        (e.fillStyle = l ? "#ffffff" : g),
-        e.beginPath(),
-        e.moveTo(M + 4 * o, $ + 1.5 * o),
-        e.lineTo(M + 7.8 * o, $ + 1.2 * o),
-        e.lineTo(M + 7 * o, $ + 2.5 * o),
-        e.lineTo(M + 3.5 * o, $ + 2.8 * o),
-        e.closePath(),
-        e.fill(),
-        (e.fillStyle = "#0f172a"),
-        e.beginPath(),
-        e.roundRect(M + 8 * o, $ - 1.5 * o, 1.6 * o, 1.8 * o, 0.4 * o),
-        e.fill(),
-        (e.fillStyle = "#ffffff"),
-        e.beginPath(),
-        e.moveTo(M + 6.8 * o, $ + 1.2 * o),
-        e.lineTo(M + 7.4 * o, $ + 2.6 * o),
-        e.lineTo(M + 7.9 * o, $ + 1.2 * o),
-        e.closePath(),
-        e.fill(),
-        (e.fillStyle = c),
-        e.beginPath(),
-        e.moveTo(M - 0.5 * o, $ - 3.5 * o),
-        e.lineTo(M + 0.5 * o, $ - 8.5 * o),
-        e.lineTo(M + 2.8 * o, $ - 3.8 * o),
-        e.closePath(),
-        e.fill(),
-        (e.fillStyle = m),
-        e.beginPath(),
-        e.moveTo(M + 1.2 * o, $ - 3.8 * o),
-        e.lineTo(M + 2.8 * o, $ - 9.2 * o),
-        e.lineTo(M + 5 * o, $ - 4 * o),
-        e.closePath(),
-        e.fill(),
-        (e.fillStyle = l ? "#ffffff" : "#f43f5e"),
-        e.beginPath(),
-        e.moveTo(M + 2.1 * o, $ - 4.4 * o),
-        e.lineTo(M + 3.1 * o, $ - 8.2 * o),
-        e.lineTo(M + 4.2 * o, $ - 4.6 * o),
-        e.closePath(),
-        e.fill(),
-        (e.fillStyle = "#0f172a"),
-        e.beginPath(),
-        e.ellipse(
-          M + 4.2 * o,
-          $ - 1.6 * o,
-          1.8 * o,
-          1.2 * o,
-          0.1,
-          0,
-          Math.PI * 2,
-        ),
-        e.fill(),
-        (e.fillStyle = l ? "#ef4444" : t.accentColor),
-        e.beginPath(),
-        e.arc(M + 4.4 * o, $ - 1.6 * o, 1.1 * o, 0, Math.PI * 2),
-        e.fill(),
-        (e.fillStyle = "#0f172a"),
-        e.beginPath(),
-        e.ellipse(
-          M + 4.6 * o,
-          $ - 1.6 * o,
-          0.45 * o,
-          0.9 * o,
-          0,
-          0,
-          Math.PI * 2,
-        ),
-        e.fill(),
-        (e.fillStyle = "#ffffff"),
-        e.beginPath(),
-        e.arc(M + 4.2 * o, $ - 2 * o, 0.4 * o, 0, Math.PI * 2),
-        e.fill(),
-        !l && t.accentColor === "#38bdf8")
-      ) {
-        const z = (t.animTimer * 2.8) % Math.PI;
-        ((e.fillStyle = "rgba(224, 242, 254, 0.35)"),
-          e.beginPath(),
-          e.arc(
-            M + 10 * o + Math.cos(z) * 2 * o,
-            $ - 0.5 * o - Math.sin(z) * 1.5 * o,
-            (1.2 + z * 0.8) * o,
-            0,
-            Math.PI * 2,
-          ),
-          e.fill());
+      const isMoving = (t.vx * t.vx + t.vy * t.vy) > 0.04;
+      const speedMult = isMoving ? 9 : 2.2;
+      const animSpeed = t.animTimer * speedMult;
+
+      const breathBounce = isMoving
+        ? Math.sin(animSpeed * 2) * 1.5 * o
+        : Math.sin(t.animTimer * 2.5) * 0.65 * o;
+      const chestExpand = Math.sin(t.animTimer * 2.8) * 0.45 * o;
+      const tailWag = isMoving
+        ? Math.sin(animSpeed * 1.2) * 2.8 * o
+        : Math.sin(t.animTimer * 1.6) * 1.2 * o;
+
+      const legStrideRearNear = isMoving ? Math.sin(animSpeed + Math.PI * 0.7) * 4.6 * o : 0;
+      const legStrideRearFar = isMoving ? Math.sin(animSpeed + Math.PI * 1.7) * 4.6 * o : 0;
+      const legStrideFrontNear = isMoving ? Math.sin(animSpeed) * 4.6 * o : 0;
+      const legStrideFrontFar = isMoving ? Math.sin(animSpeed + Math.PI) * 4.6 * o : 0;
+
+      // Sombra realista no chão projetada sob o lobo
+      e.fillStyle = "rgba(15, 23, 42, 0.35)";
+      e.beginPath();
+      e.ellipse(0, 4.8 * o, (isMoving ? 13 : 11.5) * o, 3.8 * o, 0, 0, Math.PI * 2);
+      e.fill();
+
+      // Membros do fundo (pata traseira e dianteira distantes)
+      e.fillStyle = pal.shade;
+      e.beginPath();
+      e.moveTo(-6 * o, -6 * o + breathBounce);
+      e.quadraticCurveTo(-9 * o, -2 * o + breathBounce, -8 * o + legStrideRearFar, 1 * o);
+      e.lineTo(-5 * o + legStrideRearFar, 2.5 * o);
+      e.lineTo(-3.5 * o + legStrideRearFar, 0.5 * o);
+      e.lineTo(-4 * o, -6 * o + breathBounce);
+      e.closePath();
+      e.fill();
+      drawLupinePaw(e, -6 * o + legStrideRearFar, 1.2 * o, o, pal, true);
+
+      e.fillStyle = pal.shade;
+      e.beginPath();
+      e.moveTo(5 * o, -7 * o + breathBounce);
+      e.quadraticCurveTo(6 * o + legStrideFrontFar, -2 * o + breathBounce, 6 * o + legStrideFrontFar, 1.5 * o);
+      e.lineTo(8 * o + legStrideFrontFar, 2.5 * o);
+      e.lineTo(4 * o + legStrideFrontFar, 0.5 * o);
+      e.lineTo(3 * o, -7 * o + breathBounce);
+      e.closePath();
+      e.fill();
+      drawLupinePaw(e, 5.5 * o + legStrideFrontFar, 1.2 * o, o, pal, true);
+
+      // Cauda espessa e felpuda
+      const tailAngle = isMoving ? Math.PI * 0.85 : Math.PI * 0.72;
+      drawLupineBushyTail(e, -9 * o, -8 * o + breathBounce, o, pal, tailAngle, tailWag * 0.08, isMoving ? 1.2 : 1.05);
+
+      // Tronco atlético, cintura e peito profundo
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(-9 * o, -10 * o + breathBounce);
+      e.quadraticCurveTo(-3 * o, -13.5 * o + breathBounce, 4.5 * o, -12.5 * o + breathBounce);
+      e.lineTo(7.5 * o, -10 * o + breathBounce);
+      e.quadraticCurveTo(8.5 * o, -4 * o + breathBounce + chestExpand, 4.5 * o, -1.8 * o + breathBounce + chestExpand);
+      e.quadraticCurveTo(-2.5 * o, -3.8 * o + breathBounce, -8 * o, -5.5 * o + breathBounce);
+      e.closePath();
+      e.fill();
+
+      // Manto dorsal escuro ao longo do lombo/espinha
+      if (pal.dorsal !== pal.base) {
+        e.fillStyle = pal.dorsal;
+        e.beginPath();
+        e.moveTo(-9 * o, -10 * o + breathBounce);
+        e.quadraticCurveTo(-3 * o, -13.5 * o + breathBounce, 4.5 * o, -12.5 * o + breathBounce);
+        e.lineTo(7.5 * o, -10 * o + breathBounce);
+        e.lineTo(4 * o, -9 * o + breathBounce);
+        e.quadraticCurveTo(-3 * o, -9 * o + breathBounce, -8.5 * o, -7.5 * o + breathBounce);
+        e.closePath();
+        e.fill();
       }
+
+      // Pelagem ventral clara e peitoral
+      if (!l) {
+        e.fillStyle = pal.chest;
+        e.beginPath();
+        e.moveTo(2 * o, -9 * o + breathBounce);
+        e.quadraticCurveTo(7.5 * o, -5 * o + breathBounce, 5 * o, -1.8 * o + breathBounce + chestExpand);
+        e.quadraticCurveTo(1 * o, -2.8 * o + breathBounce, -2 * o, -4.8 * o + breathBounce);
+        e.closePath();
+        e.fill();
+
+        // Gola/juba de pelos pontiagudos no peito
+        e.fillStyle = pal.light;
+        e.beginPath();
+        e.moveTo(6 * o, -9.5 * o + breathBounce);
+        e.lineTo(9.6 * o, -6.5 * o + breathBounce);
+        e.lineTo(7.5 * o, -4.2 * o + breathBounce);
+        e.lineTo(10.2 * o, -2.2 * o + breathBounce);
+        e.lineTo(6.5 * o, -1.0 * o + breathBounce);
+        e.closePath();
+        e.fill();
+      }
+
+      // Pata traseira dianteira
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(-5 * o, -10 * o + breathBounce);
+      e.quadraticCurveTo(-9.5 * o, -5 * o + breathBounce, -7.5 * o + legStrideRearNear, 0 * o + breathBounce);
+      e.lineTo(-5.5 * o + legStrideRearNear, 3.2 * o);
+      e.lineTo(-2.8 * o + legStrideRearNear, 3.2 * o);
+      e.lineTo(-3.2 * o + legStrideRearNear, 0 * o + breathBounce);
+      e.quadraticCurveTo(-3 * o, -6 * o + breathBounce, -3 * o, -8 * o + breathBounce);
+      e.closePath();
+      e.fill();
+      drawLupinePaw(e, -4.5 * o + legStrideRearNear, 1.8 * o, o, pal, false);
+
+      // Pata dianteira dianteira
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(4 * o, -10 * o + breathBounce);
+      e.lineTo(6.5 * o + legStrideFrontNear, 0 * o + breathBounce);
+      e.lineTo(7.5 * o + legStrideFrontNear, 3.2 * o);
+      e.lineTo(4.2 * o + legStrideFrontNear, 3.2 * o);
+      e.lineTo(3.8 * o + legStrideFrontNear, 0 * o + breathBounce);
+      e.lineTo(1.5 * o, -8 * o + breathBounce);
+      e.closePath();
+      e.fill();
+      if (!l) {
+        e.fillStyle = pal.light;
+        e.beginPath();
+        e.moveTo(3.5 * o + legStrideFrontNear, -0.5 * o + breathBounce);
+        e.lineTo(1.8 * o + legStrideFrontNear, 1.2 * o + breathBounce);
+        e.lineTo(3.8 * o + legStrideFrontNear, 1.8 * o + breathBounce);
+        e.closePath();
+        e.fill();
+      }
+      drawLupinePaw(e, 5.8 * o + legStrideFrontNear, 1.8 * o, o, pal, false);
+
+      // Cabeça, focinho, bochechas e orelhas
+      const headX = 7 * o;
+      const headY = -12 * o + breathBounce;
+
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(3 * o, -12 * o + breathBounce);
+      e.lineTo(headX + 2.2 * o, headY - 4.2 * o);
+      e.lineTo(headX + 5.5 * o, headY + 0.5 * o);
+      e.lineTo(5 * o, -6.8 * o + breathBounce);
+      e.closePath();
+      e.fill();
+
+      e.beginPath();
+      e.ellipse(headX + 1.6 * o, headY - 1 * o, 4.4 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
+      e.fill();
+
+      // Bochechas felpudas pontiagudas
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(headX - 0.5 * o, headY + 1 * o);
+      e.lineTo(headX - 3.2 * o, headY + 3.2 * o);
+      e.lineTo(headX + 0.5 * o, headY + 3.2 * o);
+      e.lineTo(headX - 2.5 * o, headY + 5.5 * o);
+      e.lineTo(headX + 2.5 * o, headY + 4.2 * o);
+      e.closePath();
+      e.fill();
+
+      // Orelha de trás
+      e.fillStyle = pal.shade;
+      e.beginPath();
+      e.moveTo(headX - 0.6 * o, headY - 3.5 * o);
+      e.lineTo(headX + 0.5 * o, headY - 9.0 * o);
+      e.lineTo(headX + 2.8 * o, headY - 3.8 * o);
+      e.closePath();
+      e.fill();
+
+      // Orelha da frente
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(headX + 1.2 * o, headY - 3.8 * o);
+      e.lineTo(headX + 2.8 * o, headY - 9.8 * o);
+      e.lineTo(headX + 5.2 * o, headY - 4 * o);
+      e.closePath();
+      e.fill();
+      if (pal.dorsal !== pal.base) {
+        e.strokeStyle = pal.dorsal;
+        e.lineWidth = 1.0 * o;
+        e.beginPath();
+        e.moveTo(headX + 1.2 * o, headY - 3.8 * o);
+        e.lineTo(headX + 2.8 * o, headY - 9.8 * o);
+        e.lineTo(headX + 5.2 * o, headY - 4 * o);
+        e.stroke();
+      }
+      e.fillStyle = pal.earInner;
+      e.beginPath();
+      e.moveTo(headX + 2.1 * o, headY - 4.4 * o);
+      e.lineTo(headX + 3.1 * o, headY - 8.6 * o);
+      e.lineTo(headX + 4.4 * o, headY - 4.6 * o);
+      e.closePath();
+      e.fill();
+
+      // Focinho lupino
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(headX + 3 * o, headY - 2.6 * o);
+      e.lineTo(headX + 8.8 * o, headY - 1 * o);
+      e.lineTo(headX + 8.8 * o, headY + 1.2 * o);
+      e.lineTo(headX + 4 * o, headY + 2.6 * o);
+      e.closePath();
+      e.fill();
+
+      if (pal.dorsal !== pal.base) {
+        e.fillStyle = pal.dorsal;
+        e.beginPath();
+        e.moveTo(headX + 3 * o, headY - 2.6 * o);
+        e.lineTo(headX + 8.8 * o, headY - 1 * o);
+        e.lineTo(headX + 8.0 * o, headY - 0.2 * o);
+        e.lineTo(headX + 3.5 * o, headY - 1.2 * o);
+        e.closePath();
+        e.fill();
+      }
+
+      e.fillStyle = l ? "#ffffff" : pal.chest;
+      e.beginPath();
+      e.moveTo(headX + 4 * o, headY + 1.5 * o);
+      e.lineTo(headX + 8.0 * o, headY + 1.2 * o);
+      e.lineTo(headX + 7.2 * o, headY + 2.6 * o);
+      e.lineTo(headX + 3.5 * o, headY + 2.9 * o);
+      e.closePath();
+      e.fill();
+
+      // Trufa canina realista
+      e.fillStyle = pal.nose;
+      e.beginPath();
+      e.roundRect(headX + 8.2 * o, headY - 1.5 * o, 1.8 * o, 1.9 * o, 0.45 * o);
+      e.fill();
+      if (!l) {
+        e.fillStyle = "#020617";
+        e.beginPath();
+        e.arc(headX + 9.0 * o, headY - 0.4 * o, 0.45 * o, 0, Math.PI * 2);
+        e.fill();
+      }
+
+      // Presas afiadas
+      e.fillStyle = pal.fangs;
+      e.beginPath();
+      e.moveTo(headX + 6.8 * o, headY + 1.2 * o);
+      e.lineTo(headX + 7.4 * o, headY + 2.7 * o);
+      e.lineTo(headX + 7.9 * o, headY + 1.2 * o);
+      e.closePath();
+      e.fill();
+
+      drawLupineEye(e, headX + 4.2 * o, headY - 1.6 * o, o, pal, false);
+
+      // Lobo das Neves: hálito gelado
+      if (!l && pal.isSnow) {
+        const z = (t.animTimer * 2.6) % Math.PI;
+        e.fillStyle = "rgba(224, 242, 254, 0.38)";
+        e.beginPath();
+        e.arc(headX + 10.5 * o + Math.cos(z) * 2.2 * o, headY - 0.4 * o - Math.sin(z) * 1.6 * o, (1.2 + z * 0.9) * o, 0, Math.PI * 2);
+        e.fill();
+        e.fillStyle = "rgba(186, 230, 253, 0.22)";
+        e.beginPath();
+        e.arc(headX + 12.0 * o + Math.cos(z) * 3.0 * o, headY - 0.8 * o - Math.sin(z) * 2.2 * o, (1.6 + z * 1.1) * o, 0, Math.PI * 2);
+        e.fill();
+      }
+
       e.restore();
     },
-    // Carcaca no chao (antigo ramo wolf de Ag)
+    // Carcaça no chão
     carcass: function (e, t, o, u) {
-        const m = t.color,
-          c = "#334155",
-          f = "#e2e8f0";
-        ((e.fillStyle = `rgba(15, 23, 42, ${0.4 * u})`),
-          e.beginPath(),
-          e.ellipse(2 * o, 4 * o, 14 * o, 5 * o, 0, 0, Math.PI * 2),
-          e.fill(),
-          (e.strokeStyle = m),
-          (e.lineWidth = 3.2 * o),
-          (e.lineCap = "round"),
-          e.beginPath(),
-          e.moveTo(-9 * o, 1 * o),
-          e.quadraticCurveTo(-14 * o, 3 * o, -12 * o, 7 * o),
-          e.stroke(),
-          (e.fillStyle = c),
-          e.fillRect(-6 * o, 2 * o, 2.5 * o, 4 * o),
-          e.fillRect(3.5 * o, 2 * o, 2.5 * o, 4 * o),
-          (e.fillStyle = "#0f172a"),
-          e.fillRect(-6 * o, 5.5 * o, 2.5 * o, 0.8 * o),
-          e.fillRect(3.5 * o, 5.5 * o, 2.5 * o, 0.8 * o),
-          (e.fillStyle = m),
-          e.beginPath(),
-          e.ellipse(0, 0, 11 * o, 5.5 * o, 0.05, 0, Math.PI * 2),
-          e.fill(),
-          (e.fillStyle = f),
-          e.beginPath(),
-          e.ellipse(2 * o, 1.5 * o, 7 * o, 2.8 * o, 0.05, 0, Math.PI * 2),
-          e.fill(),
-          (e.fillStyle = m),
-          e.beginPath(),
-          e.ellipse(8 * o, 1 * o, 5.5 * o, 4 * o, 0.12, 0, Math.PI * 2),
-          e.fill(),
-          e.beginPath(),
-          e.moveTo(9 * o, -0.5 * o),
-          e.lineTo(14 * o, 1.5 * o),
-          e.lineTo(13.5 * o, 3.8 * o),
-          e.lineTo(8 * o, 3.8 * o),
-          e.closePath(),
-          e.fill(),
-          (e.fillStyle = "#0f172a"),
-          e.fillRect(13.2 * o, 1 * o, 1.4 * o, 1.6 * o),
-          (e.fillStyle = "#ffffff"),
-          e.beginPath(),
-          e.moveTo(11.8 * o, 3.6 * o),
-          e.lineTo(12.4 * o, 4.6 * o),
-          e.lineTo(12.8 * o, 3.6 * o),
-          e.closePath(),
-          e.fill(),
-          (e.fillStyle = m),
-          e.beginPath(),
-          e.moveTo(6 * o, -2 * o),
-          e.lineTo(8.5 * o, -5 * o),
-          e.lineTo(10.5 * o, -1 * o),
-          e.closePath(),
-          e.fill(),
-          (e.fillStyle = "#f43f5e"),
-          e.beginPath(),
-          e.moveTo(7 * o, -2 * o),
-          e.lineTo(8.5 * o, -4.2 * o),
-          e.lineTo(9.8 * o, -1.2 * o),
-          e.closePath(),
-          e.fill(),
-          (e.strokeStyle = `rgba(15, 23, 42, ${u})`),
-          (e.lineWidth = 1.4 * o),
-          e.beginPath(),
-          e.moveTo(8.2 * o, -0.5 * o),
-          e.lineTo(10.2 * o, 1.5 * o),
-          e.moveTo(10.2 * o, -0.5 * o),
-          e.lineTo(8.2 * o, 1.5 * o),
-          e.stroke());
+      const pal = getWolfPalette(t, false);
+      e.fillStyle = "rgba(15, 23, 42, " + (0.4 * u) + ")";
+      e.beginPath();
+      e.ellipse(2 * o, 4.5 * o, 15 * o, 5.2 * o, 0, 0, Math.PI * 2);
+      e.fill();
+
+      drawLupineBushyTail(e, -8 * o, 1 * o, o, pal, Math.PI * 0.35, 0, 1.1);
+
+      e.fillStyle = pal.shade;
+      e.fillRect(-6 * o, 2 * o, 2.8 * o, 4.5 * o);
+      e.fillRect(3.5 * o, 2 * o, 2.8 * o, 4.5 * o);
+      drawLupinePaw(e, -5 * o, 4.2 * o, o, pal, true);
+      drawLupinePaw(e, 4.5 * o, 4.2 * o, o, pal, true);
+
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.ellipse(0, 0, 11.5 * o, 5.8 * o, 0.05, 0, Math.PI * 2);
+      e.fill();
+
+      if (pal.dorsal !== pal.base) {
+        e.fillStyle = pal.dorsal;
+        e.beginPath();
+        e.ellipse(-1 * o, -2 * o, 10 * o, 3.2 * o, 0.05, 0, Math.PI * 2);
+        e.fill();
+      }
+
+      e.fillStyle = pal.chest;
+      e.beginPath();
+      e.ellipse(2 * o, 1.6 * o, 7 * o, 2.8 * o, 0.05, 0, Math.PI * 2);
+      e.fill();
+
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.ellipse(8.5 * o, 1 * o, 5.8 * o, 4.2 * o, 0.12, 0, Math.PI * 2);
+      e.fill();
+
+      e.beginPath();
+      e.moveTo(7 * o, 3 * o);
+      e.lineTo(5 * o, 5 * o);
+      e.lineTo(8 * o, 4.5 * o);
+      e.closePath();
+      e.fill();
+
+      e.beginPath();
+      e.moveTo(9 * o, -0.5 * o);
+      e.lineTo(14.5 * o, 1.5 * o);
+      e.lineTo(14 * o, 3.8 * o);
+      e.lineTo(8 * o, 3.8 * o);
+      e.closePath();
+      e.fill();
+
+      e.fillStyle = pal.nose;
+      e.beginPath();
+      e.roundRect(13.6 * o, 0.8 * o, 1.6 * o, 1.8 * o, 0.4 * o);
+      e.fill();
+
+      e.fillStyle = pal.fangs;
+      e.beginPath();
+      e.moveTo(12.2 * o, 3.6 * o);
+      e.lineTo(12.8 * o, 4.8 * o);
+      e.lineTo(13.3 * o, 3.6 * o);
+      e.closePath();
+      e.fill();
+
+      e.fillStyle = pal.shade;
+      e.beginPath();
+      e.moveTo(6 * o, -2 * o);
+      e.lineTo(8.5 * o, -5.5 * o);
+      e.lineTo(10.5 * o, -1 * o);
+      e.closePath();
+      e.fill();
+      e.fillStyle = pal.earInner;
+      e.beginPath();
+      e.moveTo(7 * o, -2 * o);
+      e.lineTo(8.5 * o, -4.5 * o);
+      e.lineTo(9.8 * o, -1.2 * o);
+      e.closePath();
+      e.fill();
+
+      e.strokeStyle = "rgba(15, 23, 42, " + u + ")";
+      e.lineWidth = 1.4 * o;
+      e.beginPath();
+      e.moveTo(8.5 * o, -0.5 * o);
+      e.lineTo(10.5 * o, 1.5 * o);
+      e.moveTo(10.5 * o, -0.5 * o);
+      e.lineTo(8.5 * o, 1.5 * o);
+      e.stroke();
     },
-    // Icone (antigo db)
+    // Ícone do lobo (inventário e compêndio)
     icon: function (e, t, l) {
-    const o = l.color || "#475569",
-      u = "#334155",
-      m = "#e2e8f0",
-      c = "#cbd5e1";
-    ((e.fillStyle = "rgba(15, 23, 42, 0.35)"),
-      e.beginPath(),
-      e.ellipse(0, 4.5 * t, 10 * t, 3.5 * t, 0, 0, Math.PI * 2),
-      e.fill(),
-      (e.strokeStyle = o),
-      (e.lineWidth = 3.2 * t),
-      (e.lineCap = "round"),
-      e.beginPath(),
-      e.moveTo(-5 * t, 0),
-      e.quadraticCurveTo(-9 * t, -4 * t, -7.5 * t, -7 * t),
-      e.stroke(),
-      (e.strokeStyle = c),
-      (e.lineWidth = 2 * t),
-      e.beginPath(),
-      e.moveTo(-8.5 * t, -5 * t),
-      e.lineTo(-7.5 * t, -7 * t),
-      e.stroke(),
-      (e.fillStyle = u),
-      e.fillRect(-3.5 * t, 1 * t, 2 * t, 4 * t),
-      e.fillRect(4 * t, 1 * t, 2 * t, 4 * t),
-      (e.fillStyle = o),
-      e.fillRect(-5 * t, 1 * t, 2.2 * t, 4.5 * t),
-      e.fillRect(2.2 * t, 1 * t, 2.2 * t, 4.5 * t),
-      (e.fillStyle = "#0f172a"),
-      e.fillRect(-5 * t, 5 * t, 2.2 * t, 0.8 * t),
-      e.fillRect(2.2 * t, 5 * t, 2.2 * t, 0.8 * t),
-      (e.fillStyle = o),
-      e.beginPath(),
-      e.moveTo(-5.5 * t, -1 * t),
-      e.quadraticCurveTo(-1 * t, -3.8 * t, 3.5 * t, -3 * t),
-      e.quadraticCurveTo(5 * t, 0, 2.5 * t, 2 * t),
-      e.quadraticCurveTo(-1 * t, 1 * t, -5 * t, 1.5 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = m),
-      e.beginPath(),
-      e.ellipse(1 * t, 0.5 * t, 3.5 * t, 1.8 * t, 0.1, 0, Math.PI * 2),
-      e.fill(),
-      (e.fillStyle = c),
-      e.beginPath(),
-      e.moveTo(3 * t, -2.5 * t),
-      e.lineTo(5.5 * t, -0.5 * t),
-      e.lineTo(4 * t, 0.8 * t),
-      e.lineTo(5.8 * t, 1.8 * t),
-      e.lineTo(3.2 * t, 2.2 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = o),
-      e.beginPath(),
-      e.ellipse(4.5 * t, -2.5 * t, 3.8 * t, 3.2 * t, 0.2, 0, Math.PI * 2),
-      e.fill(),
-      e.beginPath(),
-      e.moveTo(4 * t, -3 * t),
-      e.lineTo(8.5 * t, -1.8 * t),
-      e.lineTo(8 * t, 0.6 * t),
-      e.lineTo(4 * t, 0.5 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = m),
-      e.beginPath(),
-      e.moveTo(4.5 * t, 0),
-      e.lineTo(7.5 * t, 0.2 * t),
-      e.lineTo(7 * t, 1.1 * t),
-      e.lineTo(4.5 * t, 1 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = "#0f172a"),
-      e.beginPath(),
-      e.roundRect(8 * t, -2.2 * t, 1.4 * t, 1.6 * t, 0.3 * t),
-      e.fill(),
-      (e.fillStyle = "#ffffff"),
-      e.beginPath(),
-      e.moveTo(6.8 * t, 0.2 * t),
-      e.lineTo(7.3 * t, 1.4 * t),
-      e.lineTo(7.7 * t, 0.2 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = u),
-      e.beginPath(),
-      e.moveTo(2 * t, -4.5 * t),
-      e.lineTo(2.5 * t, -8.5 * t),
-      e.lineTo(4.2 * t, -4.5 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = o),
-      e.beginPath(),
-      e.moveTo(3.2 * t, -4.5 * t),
-      e.lineTo(4.2 * t, -8.8 * t),
-      e.lineTo(5.8 * t, -4.5 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = "#f43f5e"),
-      e.beginPath(),
-      e.moveTo(3.8 * t, -5 * t),
-      e.lineTo(4.3 * t, -7.8 * t),
-      e.lineTo(5.2 * t, -5 * t),
-      e.closePath(),
-      e.fill(),
-      (e.fillStyle = "#0f172a"),
-      e.beginPath(),
-      e.ellipse(4.8 * t, -3.2 * t, 1.4 * t, 1.1 * t, 0.1, 0, Math.PI * 2),
-      e.fill(),
-      (e.fillStyle = "#fbbf24"),
-      e.beginPath(),
-      e.arc(5 * t, -3.2 * t, 1 * t, 0, Math.PI * 2),
-      e.fill(),
-      (e.fillStyle = "#0f172a"),
-      e.beginPath(),
-      e.ellipse(5.2 * t, -3.2 * t, 0.4 * t, 0.8 * t, 0, 0, Math.PI * 2),
-      e.fill(),
-      (e.fillStyle = "#ffffff"),
-      e.beginPath(),
-      e.arc(4.8 * t, -3.5 * t, 0.35 * t, 0, Math.PI * 2),
-      e.fill());
+      const pal = getWolfPalette(l, false);
+      e.fillStyle = "rgba(15, 23, 42, 0.35)";
+      e.beginPath();
+      e.ellipse(0, 4.5 * t, 10.5 * t, 3.8 * t, 0, 0, Math.PI * 2);
+      e.fill();
+
+      drawLupineBushyTail(e, -5 * t, 0, t, pal, Math.PI * 0.7, 0, 1.05);
+
+      e.fillStyle = pal.shade;
+      e.fillRect(-3.5 * t, 1 * t, 2.2 * t, 4 * t);
+      e.fillRect(4 * t, 1 * t, 2.2 * t, 4 * t);
+      e.fillStyle = pal.base;
+      e.fillRect(-5 * t, 1 * t, 2.4 * t, 4.5 * t);
+      e.fillRect(2.2 * t, 1 * t, 2.4 * t, 4.5 * t);
+      drawLupinePaw(e, -4.2 * t, 3.5 * t, t, pal, false);
+      drawLupinePaw(e, 3.0 * t, 3.5 * t, t, pal, false);
+
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(-5.5 * t, -1 * t);
+      e.quadraticCurveTo(-1 * t, -4.2 * t, 3.5 * t, -3.2 * t);
+      e.quadraticCurveTo(5 * t, 0, 2.5 * t, 2.2 * t);
+      e.quadraticCurveTo(-1 * t, 1 * t, -5 * t, 1.5 * t);
+      e.closePath();
+      e.fill();
+
+      if (pal.dorsal !== pal.base) {
+        e.fillStyle = pal.dorsal;
+        e.beginPath();
+        e.moveTo(-5.5 * t, -1 * t);
+        e.quadraticCurveTo(-1 * t, -4.2 * t, 3.5 * t, -3.2 * t);
+        e.lineTo(1 * t, -2 * t);
+        e.quadraticCurveTo(-2 * t, -2.5 * t, -5 * t, 0.5 * t);
+        e.closePath();
+        e.fill();
+      }
+
+      e.fillStyle = pal.chest;
+      e.beginPath();
+      e.ellipse(1 * t, 0.5 * t, 3.5 * t, 1.8 * t, 0.1, 0, Math.PI * 2);
+      e.fill();
+
+      e.fillStyle = pal.light;
+      e.beginPath();
+      e.moveTo(3 * t, -2.5 * t);
+      e.lineTo(5.8 * t, -0.5 * t);
+      e.lineTo(4 * t, 0.8 * t);
+      e.lineTo(6.0 * t, 1.8 * t);
+      e.lineTo(3.2 * t, 2.2 * t);
+      e.closePath();
+      e.fill();
+
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.ellipse(4.5 * t, -2.5 * t, 4.0 * t, 3.4 * t, 0.2, 0, Math.PI * 2);
+      e.fill();
+
+      e.beginPath();
+      e.moveTo(2.5 * t, -1.0 * t);
+      e.lineTo(0.5 * t, 0.5 * t);
+      e.lineTo(3.0 * t, 0.5 * t);
+      e.lineTo(1.2 * t, 2.0 * t);
+      e.lineTo(4.0 * t, 1.5 * t);
+      e.closePath();
+      e.fill();
+
+      e.fillStyle = pal.shade;
+      e.beginPath();
+      e.moveTo(2 * t, -4.5 * t);
+      e.lineTo(2.5 * t, -8.8 * t);
+      e.lineTo(4.2 * t, -4.5 * t);
+      e.closePath();
+      e.fill();
+
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(3.2 * t, -4.5 * t);
+      e.lineTo(4.4 * t, -9.4 * t);
+      e.lineTo(6.0 * t, -4.5 * t);
+      e.closePath();
+      e.fill();
+      e.fillStyle = pal.earInner;
+      e.beginPath();
+      e.moveTo(3.8 * t, -5 * t);
+      e.lineTo(4.5 * t, -8.2 * t);
+      e.lineTo(5.4 * t, -5 * t);
+      e.closePath();
+      e.fill();
+
+      e.fillStyle = pal.base;
+      e.beginPath();
+      e.moveTo(4 * t, -3 * t);
+      e.lineTo(8.8 * t, -1.6 * t);
+      e.lineTo(8.2 * t, 0.6 * t);
+      e.lineTo(4 * t, 0.5 * t);
+      e.closePath();
+      e.fill();
+
+      e.fillStyle = pal.nose;
+      e.beginPath();
+      e.roundRect(8.2 * t, -2.0 * t, 1.5 * t, 1.7 * t, 0.4 * t);
+      e.fill();
+
+      e.fillStyle = pal.fangs;
+      e.beginPath();
+      e.moveTo(7.0 * t, 0.2 * t);
+      e.lineTo(7.5 * t, 1.5 * t);
+      e.lineTo(7.9 * t, 0.2 * t);
+      e.closePath();
+      e.fill();
+
+      drawLupineEye(e, 5.0 * t, -3.2 * t, t, pal, false);
     },
-    // Desenho da pata dianteira frontal NA FRENTE do personagem durante o ataque de mordida no pescoço (arm_hold)
+    // Pata dianteira sobreposta no abraço do ataque
     frontPawOverlay: function (e, t, o, l) {
       if (t.wolfAttackState !== "arm_hold") return;
       e.save();
       const u = t.facing === "left" ? -1 : 1;
       e.scale(u, 1);
-      const m = l ? "#ffffff" : t.color,
-        c = l ? "#e2e8f0" : "#475569",
-        f = l ? "#ffffff" : "#cbd5e1",
-        g = l ? "#ffffff" : "#e2e8f0";
+      const pal = getWolfPalette(t, l);
 
-      // Tremor e contração muscular da garra apertando o peito da presa
       const clawTwitch = Math.sin((t.wolfAttackTimer || 0) * 26) * 0.9 * o;
       const clawTension = Math.sin((t.wolfAttackTimer || 0) * 32) * 0.5 * o;
 
-      // Pata dianteira frontal desenhada na frente do personagem (abraça e crava no peito/tronco)
-      // 1. Sombra / musculatura profunda inferior do membro dianteiro
-      e.fillStyle = c;
+      e.fillStyle = pal.shade;
       e.beginPath();
       e.moveTo(1.2 * o, -7.0 * o);
       e.quadraticCurveTo(5.0 * o, -6.0 * o, 8.8 * o, -4.0 * o + clawTwitch);
@@ -1590,21 +1798,18 @@ CREATURES.wolf = {
       e.closePath();
       e.fill();
 
-      // 2. Musculatura e pelagem principal do membro dianteiro (sobrepondo o peito do jogador)
-      e.fillStyle = m;
+      e.fillStyle = pal.base;
       e.beginPath();
       e.moveTo(1.6 * o, -8.5 * o);
       e.quadraticCurveTo(5.2 * o, -7.2 * o, 9.2 * o, -5.2 * o + clawTwitch);
-      // Articulação do carpo (pulso canino) flexionando sobre o peito do personagem
       e.lineTo(12.4 * o + clawTension, -2.6 * o + clawTwitch);
       e.lineTo(10.6 * o + clawTension, -1.2 * o + clawTwitch);
       e.quadraticCurveTo(7.8 * o, -2.8 * o + clawTwitch, 1.4 * o, -5.5 * o);
       e.closePath();
       e.fill();
 
-      // 3. Mechas de luz/pelagem no topo do membro
       if (!l) {
-        e.fillStyle = g;
+        e.fillStyle = pal.light;
         e.beginPath();
         e.moveTo(2.5 * o, -8.0 * o);
         e.quadraticCurveTo(6.0 * o, -6.8 * o, 9.5 * o, -4.8 * o + clawTwitch);
@@ -1614,52 +1819,34 @@ CREATURES.wolf = {
         e.fill();
       }
 
-      // 4. Almofadas da pata e nós dos dedos carnívoros cravados na frente do corpo do jogador
-      e.fillStyle = "#0f172a";
+      e.fillStyle = pal.nose;
       e.beginPath();
-      e.ellipse(11.2 * o + clawTension, -2.0 * o + clawTwitch, 1.9 * o, 1.4 * o, 0.25, 0, Math.PI * 2);
+      e.ellipse(11.2 * o + clawTension, -2.0 * o + clawTwitch, 2.0 * o, 1.5 * o, 0.25, 0, Math.PI * 2);
       e.fill();
 
-      // 5. Quatro garras curvas e afiadas cravando na frente do personagem
-      e.fillStyle = "#020617";
-      // Garra 1 (superior)
-      e.beginPath();
-      e.moveTo(11.8 * o + clawTension, -3.4 * o + clawTwitch);
-      e.lineTo(13.6 * o + clawTension, -2.6 * o + clawTwitch);
-      e.lineTo(12.2 * o + clawTension, -2.2 * o + clawTwitch);
-      e.closePath();
-      e.fill();
-      // Garra 2 (central-alta)
-      e.beginPath();
-      e.moveTo(12.2 * o + clawTension, -2.4 * o + clawTwitch);
-      e.lineTo(14.2 * o + clawTension, -1.6 * o + clawTwitch);
-      e.lineTo(12.4 * o + clawTension, -1.2 * o + clawTwitch);
-      e.closePath();
-      e.fill();
-      // Garra 3 (central-baixa)
-      e.beginPath();
-      e.moveTo(12.0 * o + clawTension, -1.3 * o + clawTwitch);
-      e.lineTo(13.9 * o + clawTension, -0.6 * o + clawTwitch);
-      e.lineTo(11.9 * o + clawTension, -0.3 * o + clawTwitch);
-      e.closePath();
-      e.fill();
-      // Garra 4 (inferior)
-      e.beginPath();
-      e.moveTo(11.4 * o + clawTension, -0.4 * o + clawTwitch);
-      e.lineTo(13.1 * o + clawTension, 0.3 * o + clawTwitch);
-      e.lineTo(11.0 * o + clawTension, 0.4 * o + clawTwitch);
-      e.closePath();
-      e.fill();
-
-      // Pontas brilhantes e afiadas das garras
-      if (!l) {
-        e.fillStyle = "#f8fafc";
+      e.fillStyle = pal.claws;
+      const clawsData = [
+        [-3.4, -2.6, -2.2],
+        [-2.4, -1.6, -1.2],
+        [-1.3, -0.6, -0.3],
+        [-0.4, 0.3, 0.4]
+      ];
+      clawsData.forEach(([y1, y2, y3]) => {
         e.beginPath();
-        e.arc(13.5 * o + clawTension, -2.6 * o + clawTwitch, 0.5 * o, 0, Math.PI * 2);
-        e.arc(14.1 * o + clawTension, -1.6 * o + clawTwitch, 0.55 * o, 0, Math.PI * 2);
-        e.arc(13.8 * o + clawTension, -0.6 * o + clawTwitch, 0.5 * o, 0, Math.PI * 2);
-        e.arc(13.0 * o + clawTension, 0.3 * o + clawTwitch, 0.45 * o, 0, Math.PI * 2);
+        e.moveTo(12.0 * o + clawTension, y1 * o + clawTwitch);
+        e.lineTo(14.0 * o + clawTension, y2 * o + clawTwitch);
+        e.lineTo(12.2 * o + clawTension, y3 * o + clawTwitch);
+        e.closePath();
         e.fill();
+      });
+
+      if (!l) {
+        e.fillStyle = "#ffffff";
+        clawsData.forEach(([, y2]) => {
+          e.beginPath();
+          e.arc(13.8 * o + clawTension, y2 * o + clawTwitch, 0.5 * o, 0, Math.PI * 2);
+          e.fill();
+        });
       }
 
       e.restore();
