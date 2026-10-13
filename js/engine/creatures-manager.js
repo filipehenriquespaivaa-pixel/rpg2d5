@@ -643,16 +643,18 @@
 
       const superior = this.getSuperiorPlayerAttacker(t, l);
       if (superior) {
-        t.leavingCombatTimer = 10.0;
-        t.giveUpPursuitTimer = 14.0;
+        t.desistedAndLeaving = true;
+        t.leavingCombatTimer = 16.0;
+        t.giveUpPursuitTimer = 20.0;
         t.fleeFromCombatX = l.x;
         t.fleeFromCombatY = l.y;
         t.aggroTimer = 0;
-        t.attackCooldown = 4.0;
+        t.attackCooldown = 8.0;
         return;
       }
 
       t.inCombatTimer = 4.0;
+      this.dismissInferiorAttackers(t, l);
 
       if (t.type === "scorpion") {
         t.attackCombo = ((t.attackCombo || 0) % 3) + 1;
@@ -759,6 +761,7 @@
         l.poisonTimer = 0;
       }
       t.inCombatTimer = 4.0;
+      this.dismissInferiorAttackers(t, l);
       const extraDmg = isStinger ? 2.5 : 0;
       const m = t.attack + (Math.random() * 2.5 - 1.2) + extraDmg,
         c = Math.max(1, Math.round(m - o * 0.45));
@@ -854,7 +857,7 @@
       const isPlayerUnderground = !!(
         player.isUnderground !== undefined
           ? player.isUnderground
-          : (this.engine && this.engine.isUnderground) || this.lastIsUnderground
+          : (this.lastIsUnderground !== undefined ? this.lastIsUnderground : (this.engine && this.engine.isUnderground))
       );
       const isCreatureUnderground = !!c.isUnderground;
       if (isCreatureUnderground !== isPlayerUnderground) return false;
@@ -863,7 +866,7 @@
       if (c.leavingCombatTimer && c.leavingCombatTimer > 0) return false;
 
       const d = Math.hypot(c.x - player.x, c.y - player.y);
-      const maxCombatDist = c.type === "dragon" ? 420 : 280 * Math.max(1, (c.scale || 1) * 0.85);
+      const maxCombatDist = c.type === "dragon" ? 420 : 320 * Math.max(1, (c.scale || 1) * 0.85);
       if (d > maxCombatDist) return false;
 
       // Em animação ou estado ativo de ataque
@@ -878,12 +881,16 @@
       // Dragão atacando jogador em voo ou solo
       if (c.type === "dragon" && d <= 380) return true;
 
-      // Lobo em combate ativo, perseguição ou proximidade ao jogador
-      if (c.type === "wolf" && (d <= 190 || (c.attackCooldown > 0 && d <= 240))) return true;
+      // Lobo em combate ativo, investida, perseguição ou proximidade agressiva ao jogador
+      if (c.type === "wolf") {
+        if (c.wolfAttackState || (c.inCombatTimer && c.inCombatTimer > 0)) return true;
+        if (d <= 280) return true;
+        if ((c.attackCooldown > 0 || (c.aggroTimer && c.aggroTimer > 0)) && d <= 320) return true;
+      }
 
       // Em perseguição próxima agressiva ou combate corpo a corpo
-      const closeRange = Math.max(90, 150 * Math.max(0.8, (c.scale || 1) * 0.75));
-      if (d <= closeRange && (c.attackCooldown > 0 || (c.aggroTimer && c.aggroTimer > 0) || d <= 65)) return true;
+      const closeRange = Math.max(90, 160 * Math.max(0.8, (c.scale || 1) * 0.75));
+      if (d <= closeRange && (c.attackCooldown > 0 || (c.aggroTimer && c.aggroTimer > 0) || d <= 70)) return true;
 
       return false;
     }
@@ -910,6 +917,66 @@
         }
       }
       return superior;
+    }
+    dismissInferiorAttackers(superiorMonster, player) {
+      if (!this.monsters || !superiorMonster || !player || player.isDead) return;
+      const superiorTier = this.getCreatureCombatTier(superiorMonster);
+      let anySlimeDetached = false;
+
+      for (let i = 0; i < this.monsters.length; i++) {
+        const m = this.monsters[i];
+        if (!m || m.id === superiorMonster.id || m.hp <= 0) continue;
+        if (m.type === superiorMonster.type) continue; // Mesma espécie (ex: lobos em matilha) caça junto
+        const mTier = this.getCreatureCombatTier(m);
+        if (mTier < superiorTier) {
+          const dToPlayer = Math.hypot(m.x - player.x, m.y - player.y);
+          // Se estiver atacando, agarrado, perseguindo ou em raio de combate (<= 450px)
+          if (m.attached || m.isLeaping || (m.aggroTimer && m.aggroTimer > 0) || dToPlayer <= 450) {
+            if (m.attached) {
+              m.attached = false;
+              m.attachOffsetX = 0;
+              m.attachOffsetY = 0;
+              anySlimeDetached = true;
+              const popAng = Math.atan2(m.y - player.y, m.x - player.x) || (Math.random() * Math.PI * 2);
+              m.x = player.x + Math.cos(popAng) * 28;
+              m.y = player.y + Math.sin(popAng) * 28;
+            }
+            m.isLeaping = false;
+            m.emerging = false;
+            m.desistedAndLeaving = true;
+            m.leavingCombatTimer = 20.0;
+            m.giveUpPursuitTimer = 35.0;
+            m.fleeFromCombatX = player.x;
+            m.fleeFromCombatY = player.y;
+            m.aggroTimer = 0;
+            m.attackCooldown = Math.max(m.attackCooldown || 0, 10.0);
+            const fleeSpd = (m.speed || 1) * 2.3;
+            const fleeAng = (this.pickFleeAngle ? this.pickFleeAngle(m, player.x, player.y, 0.016, fleeSpd) : Math.atan2(m.y - player.y, m.x - player.x)) || Math.random() * Math.PI * 2;
+            m.vx = Math.cos(fleeAng) * fleeSpd;
+            m.vy = Math.sin(fleeAng) * fleeSpd;
+            m.facing = this.getMonsterFacing(m.vx, m.vy, m.facing);
+
+            // Feedback visual no jogo indicando claramente que o monstro desistiu do ataque
+            if (!m._desistTextShown) {
+              m._desistTextShown = true;
+              this.floatingTexts.push({
+                id: `flee_${this.nextId++}`,
+                x: m.x,
+                y: m.y - 18,
+                text: "Desistiu do ataque!",
+                color: "#94a3b8",
+                isCrit: false,
+                life: 1.3,
+              });
+            }
+          }
+        }
+      }
+
+      if (anySlimeDetached) {
+        player.attachedSlimes = 0;
+        player.poisonTimer = 0;
+      }
     }
     handlePlayerDeath(t) {
       var l;
@@ -1653,19 +1720,29 @@
         if (p.leavingCombatTimer && p.leavingCombatTimer > 0) {
           p.leavingCombatTimer = Math.max(0, p.leavingCombatTimer - t);
           p.aggroTimer = 0;
-          p.attackCooldown = Math.max(p.attackCooldown || 0, 4.0);
+          p.attackCooldown = Math.max(p.attackCooldown || 0, 8.0);
           if (p.wolfAttackState) p.wolfAttackState = null;
           if (p.attached) {
             p.attached = false;
+            p.attachOffsetX = 0;
+            p.attachOffsetY = 0;
             if (l.attachedSlimes) l.attachedSlimes = Math.max(0, l.attachedSlimes - 1);
             p.isLeaping = false;
           }
           const fX = p.fleeFromCombatX ?? l.x;
           const fY = p.fleeFromCombatY ?? l.y;
           const distFromFight = Math.hypot(p.x - fX, p.y - fY);
-          const fleeAng = this.pickFleeAngle(p, fX, fY, t, p.speed * 1.45);
-          p.vx = Math.cos(fleeAng) * (p.speed * 1.45);
-          p.vy = Math.sin(fleeAng) * (p.speed * 1.45);
+
+          // Ao se afastar da zona de combate, a criatura vai embora de vez (despawna do mundo)
+          if (distFromFight > 240) {
+            this.monsters.splice(S, 1);
+            continue;
+          }
+
+          const fleeSpd = (p.speed || 1) * 2.3;
+          const fleeAng = this.pickFleeAngle(p, fX, fY, t, fleeSpd);
+          p.vx = Math.cos(fleeAng) * fleeSpd;
+          p.vy = Math.sin(fleeAng) * fleeSpd;
           p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
 
           const moveStepX = p.vx * t * 60;
@@ -1674,10 +1751,6 @@
           p.x = _m.x;
           p.y = _m.y;
           p.isMoving = true;
-
-          if (distFromFight > 480) {
-            p.leavingCombatTimer = Math.min(p.leavingCombatTimer, 1.5);
-          }
           continue;
         }
         if (p.type === "wolf" && p.wolfAttackState && typeof CREATURES !== "undefined" && CREATURES.wolf && typeof CREATURES.wolf.updateAttack === "function") {
@@ -1691,19 +1764,42 @@
           if (superiorAttacker) {
             if (p.attached) {
               p.attached = !1;
+              p.attachOffsetX = 0;
+              p.attachOffsetY = 0;
               if (l.attachedSlimes) l.attachedSlimes = Math.max(0, l.attachedSlimes - 1);
+              const popAng = Math.atan2(p.y - l.y, p.x - l.x) || (Math.random() * Math.PI * 2);
+              p.x = l.x + Math.cos(popAng) * 28;
+              p.y = l.y + Math.sin(popAng) * 28;
+            }
+            if (!this.monsters.some(mOther => mOther.id !== p.id && mOther.type === "slime" && mOther.attached && mOther.hp > 0)) {
+              l.attachedSlimes = 0;
+              l.poisonTimer = 0;
             }
             p.isLeaping = !1;
             p.emerging = !1;
-            p.leavingCombatTimer = 10.0;
-            p.giveUpPursuitTimer = 14.0;
+            p.desistedAndLeaving = true;
+            p.leavingCombatTimer = 20.0;
+            p.giveUpPursuitTimer = 35.0;
             p.fleeFromCombatX = l.x;
             p.fleeFromCombatY = l.y;
             p.aggroTimer = 0;
-            p.attackCooldown = Math.max(p.attackCooldown || 0, 4.0);
-            const fleeAng = this.pickFleeAngle(p, l.x, l.y, t, p.speed * 1.55);
-            p.vx = Math.cos(fleeAng) * (p.speed * 1.55);
-            p.vy = Math.sin(fleeAng) * (p.speed * 1.55);
+            p.attackCooldown = Math.max(p.attackCooldown || 0, 10.0);
+            if (!p._desistTextShown) {
+              p._desistTextShown = true;
+              this.floatingTexts.push({
+                id: `flee_${this.nextId++}`,
+                x: p.x,
+                y: p.y - 18,
+                text: "Desistiu do ataque!",
+                color: "#94a3b8",
+                isCrit: !1,
+                life: 1.3,
+              });
+            }
+            const fleeSpd = (p.speed || 1) * 2.3;
+            const fleeAng = this.pickFleeAngle(p, l.x, l.y, t, fleeSpd);
+            p.vx = Math.cos(fleeAng) * fleeSpd;
+            p.vy = Math.sin(fleeAng) * fleeSpd;
             p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
             const moveStepX = p.vx * t * 60;
             const moveStepY = p.vy * t * 60;
@@ -1790,6 +1886,41 @@
             continue;
           }
           if (p.isLeaping) {
+            const superiorLeap = this.getSuperiorPlayerAttacker(p, l);
+            if (superiorLeap) {
+              p.isLeaping = !1;
+              p.desistedAndLeaving = true;
+              p.leavingCombatTimer = 20.0;
+              p.giveUpPursuitTimer = 35.0;
+              p.fleeFromCombatX = l.x;
+              p.fleeFromCombatY = l.y;
+              p.aggroTimer = 0;
+              p.attackCooldown = Math.max(p.attackCooldown || 0, 10.0);
+              if (!p._desistTextShown) {
+                p._desistTextShown = true;
+                this.floatingTexts.push({
+                  id: `flee_${this.nextId++}`,
+                  x: p.x,
+                  y: p.y - 18,
+                  text: "Desistiu do ataque!",
+                  color: "#94a3b8",
+                  isCrit: !1,
+                  life: 1.3,
+                });
+              }
+              const fleeSpd = (p.speed || 1) * 2.3;
+              const fleeAng = this.pickFleeAngle(p, l.x, l.y, t, fleeSpd);
+              p.vx = Math.cos(fleeAng) * fleeSpd;
+              p.vy = Math.sin(fleeAng) * fleeSpd;
+              p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
+              const moveStepX = p.vx * t * 60;
+              const moveStepY = p.vy * t * 60;
+              const _m = this.engine.moveWithSlide(p.x, p.y, moveStepX, moveStepY, false);
+              p.x = _m.x;
+              p.y = _m.y;
+              p.isMoving = true;
+              continue;
+            }
             const W = this.getAnimalFireDeterrence(p, l);
             if (W.isDeterred) {
               p.isLeaping = !1;
@@ -1827,15 +1958,28 @@
               p.isLeaping = !1;
               const superiorLanding = this.getSuperiorPlayerAttacker(p, l);
               if (superiorLanding) {
-                p.leavingCombatTimer = 10.0;
-                p.giveUpPursuitTimer = 14.0;
+                p.desistedAndLeaving = true;
+                p.leavingCombatTimer = 20.0;
+                p.giveUpPursuitTimer = 35.0;
                 p.fleeFromCombatX = l.x;
                 p.fleeFromCombatY = l.y;
                 p.aggroTimer = 0;
-                p.attackCooldown = 4.0;
-                const esc = this.pickFleeAngle(p, l.x, l.y, t, p.speed * 1.55);
-                p.vx = Math.cos(esc) * (p.speed * 1.55);
-                p.vy = Math.sin(esc) * (p.speed * 1.55);
+                p.attackCooldown = 10.0;
+                if (!p._desistTextShown) {
+                  p._desistTextShown = true;
+                  this.floatingTexts.push({
+                    id: `flee_${this.nextId++}`,
+                    x: p.x,
+                    y: p.y - 18,
+                    text: "Desistiu do ataque!",
+                    color: "#94a3b8",
+                    isCrit: !1,
+                    life: 1.3,
+                  });
+                }
+                const esc = this.pickFleeAngle(p, l.x, l.y, t, (p.speed || 1) * 2.3);
+                p.vx = Math.cos(esc) * ((p.speed || 1) * 2.3);
+                p.vy = Math.sin(esc) * ((p.speed || 1) * 2.3);
                 p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
                 const _m = this.engine.moveWithSlide(p.x, p.y, p.vx * t * 60, p.vy * t * 60, false);
                 p.x = _m.x;
@@ -1941,15 +2085,29 @@
               }));
           const superiorSlime = this.getSuperiorPlayerAttacker(p, l);
           if (superiorSlime) {
-            p.leavingCombatTimer = 10.0;
-            p.giveUpPursuitTimer = 14.0;
+            p.desistedAndLeaving = true;
+            p.leavingCombatTimer = 20.0;
+            p.giveUpPursuitTimer = 35.0;
             p.fleeFromCombatX = l.x;
             p.fleeFromCombatY = l.y;
             p.aggroTimer = 0;
-            p.attackCooldown = Math.max(p.attackCooldown || 0, 4.0);
-            const esc = this.pickFleeAngle(p, l.x, l.y, t, p.speed * 1.45);
-            p.vx = Math.cos(esc) * (p.speed * 1.45);
-            p.vy = Math.sin(esc) * (p.speed * 1.45);
+            p.attackCooldown = Math.max(p.attackCooldown || 0, 10.0);
+            if (!p._desistTextShown) {
+              p._desistTextShown = true;
+              this.floatingTexts.push({
+                id: `flee_${this.nextId++}`,
+                x: p.x,
+                y: p.y - 18,
+                text: "Desistiu do ataque!",
+                color: "#94a3b8",
+                isCrit: !1,
+                life: 1.3,
+              });
+            }
+            const fleeSpd = (p.speed || 1) * 2.3;
+            const esc = this.pickFleeAngle(p, l.x, l.y, t, fleeSpd);
+            p.vx = Math.cos(esc) * fleeSpd;
+            p.vy = Math.sin(esc) * fleeSpd;
             p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
             const moveStepX = p.vx * t * 60;
             const moveStepY = p.vy * t * 60;
@@ -2009,9 +2167,11 @@
           $ = x ? x.lightRadius * 0.5 : 0;
         if (!l.hasTorch && !(x && M < $ * 1.6)) {
           p.fleeFireTimer = 0;
-          p.giveUpPursuitTimer = 0;
+          if (!p.desistedAndLeaving) {
+            p.giveUpPursuitTimer = 0;
+            p.attackCooldown = Math.min(p.attackCooldown || 0, 0.3);
+          }
           p.fireFearTimer = 0;
-          p.attackCooldown = Math.min(p.attackCooldown || 0, 0.3);
         }
         // Escorpiões e aranhas da caverna detectam Tardígrados (seus predadores naturais) e fogem apavorados!
         let tardigradeThreat = null;
@@ -2220,16 +2380,30 @@
           const superiorAttacker = this.getSuperiorPlayerAttacker(p, l);
           if (superiorAttacker) {
             // Criatura mais forte está na luta: desiste do ataque e vai embora!
-            p.leavingCombatTimer = 10.0;
-            p.giveUpPursuitTimer = 14.0;
+            p.desistedAndLeaving = true;
+            p.leavingCombatTimer = 20.0;
+            p.giveUpPursuitTimer = 35.0;
             p.fleeFromCombatX = l.x;
             p.fleeFromCombatY = l.y;
             p.aggroTimer = 0;
-            p.attackCooldown = Math.max(p.attackCooldown || 0, 4.0);
+            p.attackCooldown = Math.max(p.attackCooldown || 0, 10.0);
             if (p.wolfAttackState) p.wolfAttackState = null;
-            const avoidAng = this.pickFleeAngle(p, l.x, l.y, t, p.speed * 1.45);
-            p.vx = Math.cos(avoidAng) * (p.speed * 1.45);
-            p.vy = Math.sin(avoidAng) * (p.speed * 1.45);
+            if (!p._desistTextShown) {
+              p._desistTextShown = true;
+              this.floatingTexts.push({
+                id: `flee_${this.nextId++}`,
+                x: p.x,
+                y: p.y - 18,
+                text: "Desistiu do ataque!",
+                color: "#94a3b8",
+                isCrit: !1,
+                life: 1.3,
+              });
+            }
+            const fleeSpd = (p.speed || 1) * 2.3;
+            const avoidAng = this.pickFleeAngle(p, l.x, l.y, t, fleeSpd);
+            p.vx = Math.cos(avoidAng) * fleeSpd;
+            p.vy = Math.sin(avoidAng) * fleeSpd;
             p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
             const moveStepX = p.vx * t * 60;
             const moveStepY = p.vy * t * 60;
@@ -2239,6 +2413,10 @@
             p.isMoving = true;
             continue;
           } else {
+            // Lobo ou predador superior avançando contra o jogador: faz criaturas fracas (como gosmas) dispersarem imediatamente!
+            if (p.type === "wolf" || this.getCreatureCombatTier(p) >= 55) {
+              this.dismissInferiorAttackers(p, l);
+            }
             const de = (p.type === "slime" && p.inWater ? 1.15 : 1) * ((p.aggroTimer || 0) > 0 ? 1.25 : 1) * wSpeedMult;
             const chaseSpeed = p.speed * de;
             const G = this.steerAroundObstacles(p, l.x, l.y, chaseSpeed, !1);
@@ -2250,16 +2428,30 @@
           const superiorAttacker = this.getSuperiorPlayerAttacker(p, l);
           if (superiorAttacker) {
             // Criatura mais forte está na luta: desiste do ataque e vai embora!
-            p.leavingCombatTimer = 10.0;
-            p.giveUpPursuitTimer = 14.0;
+            p.desistedAndLeaving = true;
+            p.leavingCombatTimer = 20.0;
+            p.giveUpPursuitTimer = 35.0;
             p.fleeFromCombatX = l.x;
             p.fleeFromCombatY = l.y;
             p.aggroTimer = 0;
-            p.attackCooldown = Math.max(p.attackCooldown || 0, 4.0);
+            p.attackCooldown = Math.max(p.attackCooldown || 0, 10.0);
             if (p.wolfAttackState) p.wolfAttackState = null;
-            const avoidAng = this.pickFleeAngle(p, l.x, l.y, t, p.speed * 1.45);
-            p.vx = Math.cos(avoidAng) * (p.speed * 1.45);
-            p.vy = Math.sin(avoidAng) * (p.speed * 1.45);
+            if (!p._desistTextShown) {
+              p._desistTextShown = true;
+              this.floatingTexts.push({
+                id: `flee_${this.nextId++}`,
+                x: p.x,
+                y: p.y - 18,
+                text: "Desistiu do ataque!",
+                color: "#94a3b8",
+                isCrit: !1,
+                life: 1.3,
+              });
+            }
+            const fleeSpd = (p.speed || 1) * 2.3;
+            const avoidAng = this.pickFleeAngle(p, l.x, l.y, t, fleeSpd);
+            p.vx = Math.cos(avoidAng) * fleeSpd;
+            p.vy = Math.sin(avoidAng) * fleeSpd;
             p.facing = this.getMonsterFacing(p.vx, p.vy, p.facing);
             const moveStepX = p.vx * t * 60;
             const moveStepY = p.vy * t * 60;
@@ -2424,7 +2616,10 @@
         l.isNearCampfire ||
         this.engine.isNearLitCampfire(l.x, l.y)
       );
-      if (g > 0 && !l.isDead && !y) {
+      const hasSuperiorFight = this.monsters.some(
+        (m) => m.hp > 0 && this.getCreatureCombatTier(m) > 15 && this.isCreatureAttackingPlayer(m, l)
+      );
+      if (g > 0 && !l.isDead && !y && !hasSuperiorFight) {
         if (((this.slimeSwarmTimer -= t), this.slimeSwarmTimer <= 0)) {
           this.slimeSwarmTimer = 2;
           const S = this.monsters.filter(

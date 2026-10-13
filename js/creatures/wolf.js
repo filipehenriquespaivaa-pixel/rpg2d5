@@ -159,7 +159,7 @@ CREATURES.wolf = {
   draw: {
     body: function (e, t, o, l) {
       // ==========================================
-      // 1. LOBO MORDE BRAÇO E SEGURA (ABRAÇA O PLAYER)
+      // 1. LOBO ABRAÇA O PERSONAGEM E MIRA A BOCA NO PESCOÇO DO PLAYER
       // ==========================================
       if (t.wolfAttackState === "arm_hold") {
         e.save();
@@ -195,13 +195,13 @@ CREATURES.wolf = {
         e.quadraticCurveTo(-14 * o, 4 * o + tailWag, -13 * o, 10 * o + tailWag);
         e.stroke();
 
-        // Tronco empinado verticalmente abraçando o torso/braço do jogador
+        // Tronco empinado verticalmente abraçando o jogador
         e.fillStyle = m;
         e.beginPath();
         e.moveTo(-7 * o, 0 * o);
-        e.quadraticCurveTo(-6 * o, -8 * o, 0 * o, -14 * o);
-        e.lineTo(5 * o, -14 * o);
-        e.quadraticCurveTo(7 * o, -6 * o, 1 * o, 3 * o);
+        e.quadraticCurveTo(-6 * o, -8 * o, -1 * o, -16 * o);
+        e.lineTo(4 * o, -16 * o);
+        e.quadraticCurveTo(7 * o, -8 * o, 1 * o, 3 * o);
         e.lineTo(-4 * o, 3 * o);
         e.closePath();
         e.fill();
@@ -209,127 +209,141 @@ CREATURES.wolf = {
         if (!l) {
           e.fillStyle = g;
           e.beginPath();
-          e.moveTo(0 * o, -13 * o);
-          e.quadraticCurveTo(5 * o, -9 * o, 4 * o, -3 * o);
+          e.moveTo(-1 * o, -15 * o);
+          e.quadraticCurveTo(5 * o, -11 * o, 4 * o, -3 * o);
           e.quadraticCurveTo(0 * o, -4 * o, -2 * o, -8 * o);
           e.closePath();
           e.fill();
         }
 
         // Patas dianteiras estendidas para frente ABRAÇANDO o player (faz o abraço)
-        // Pata dianteira inferior (envolve a cintura/tronco)
+        // Pata dianteira inferior (envolve a cintura/tronco do jogador)
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(2 * o, -6 * o);
-        e.lineTo(10 * o, -5 * o);
-        e.lineTo(13 * o, -2 * o);
-        e.lineTo(11 * o, -1 * o);
-        e.lineTo(1 * o, -3 * o);
+        e.moveTo(1 * o, -5 * o);
+        e.lineTo(8 * o, -4 * o);
+        e.lineTo(10.2 * o, -1.8 * o);
+        e.lineTo(8.2 * o, -0.8 * o);
+        e.lineTo(0.5 * o, -3 * o);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(11 * o, -3 * o, 2.8 * o, 1.5 * o);
+        e.fillRect(8.5 * o, -2.5 * o, 2.5 * o, 1.4 * o);
 
-        // Pata dianteira superior (envolve o ombro/braço do jogador)
+        // Pata dianteira superior (envolve o ombro/peito do jogador abraçando firme)
         e.fillStyle = m;
         e.beginPath();
-        e.moveTo(3 * o, -12 * o);
-        e.lineTo(12 * o, -11 * o);
-        e.lineTo(15 * o, -7 * o);
-        e.lineTo(12.5 * o, -5 * o);
-        e.lineTo(2 * o, -9 * o);
+        e.moveTo(1 * o, -12 * o);
+        e.lineTo(8.5 * o, -11 * o);
+        e.lineTo(10.5 * o, -8.5 * o);
+        e.lineTo(8.5 * o, -7.0 * o);
+        e.lineTo(0.5 * o, -9.5 * o);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(13 * o, -7.5 * o, 2.5 * o, 1.5 * o);
+        e.fillRect(8.8 * o, -9.0 * o, 2.4 * o, 1.4 * o);
 
-        // Cabeça cravada na altura do braço com sacudidas de mordida
-        const headBaseX = 6 * o + thrash;
-        const headBaseY = -15 * o + gnaw;
+        // Cabeça e boca miradas diretamente no pescoço do player (pescoço do player fica em Y ~ -16.2 * o, X ~ 9.5-10 * o)
+        const neckTargetX = 9.8 * o;
+        const neckTargetY = -16.2 * o;
+        const headBaseX = 3.8 * o + thrash;
+        const headBaseY = -15.4 * o + gnaw;
 
-        // Pescoço
+        // Pescoço do lobo esticado para cima e para frente conectando ao pescoço do jogador
         e.fillStyle = m;
         e.beginPath();
-        e.moveTo(2 * o, -13 * o);
-        e.lineTo(headBaseX, headBaseY);
-        e.lineTo(headBaseX + 4 * o, headBaseY + 3 * o);
-        e.lineTo(4 * o, -9 * o);
+        e.moveTo(0 * o, -13 * o);
+        e.lineTo(headBaseX - 0.5 * o, headBaseY - 1.5 * o);
+        e.lineTo(headBaseX + 3.2 * o, headBaseY + 2.5 * o);
+        e.lineTo(2.5 * o, -10 * o);
         e.closePath();
         e.fill();
 
-        // Crânio do lobo
+        // Crânio do lobo elevado em direção à garganta
         e.beginPath();
-        e.ellipse(headBaseX + 1 * o, headBaseY - 1 * o, 4.5 * o, 4 * o, 0.25, 0, Math.PI * 2);
+        e.ellipse(headBaseX + 0.8 * o, headBaseY - 1.0 * o, 4.4 * o, 3.8 * o, 0.15, 0, Math.PI * 2);
         e.fill();
 
-        // Focinho e Mandíbula Superior
+        // Focinho e Mandíbula Superior apontados diretamente para o pescoço do jogador (morde por cima do pescoço)
         e.beginPath();
-        e.moveTo(headBaseX + 2 * o, headBaseY - 2.5 * o);
-        e.lineTo(headBaseX + 9 * o, headBaseY - 1.5 * o);
-        e.lineTo(headBaseX + 8.5 * o, headBaseY + 0.5 * o);
-        e.lineTo(headBaseX + 3 * o, headBaseY + 1 * o);
+        e.moveTo(headBaseX + 1.5 * o, headBaseY - 2.5 * o);
+        e.lineTo(neckTargetX + 0.8 * o, neckTargetY - 1.4 * o);
+        e.lineTo(neckTargetX + 0.3 * o, neckTargetY - 0.2 * o);
+        e.lineTo(headBaseX + 2.4 * o, headBaseY + 0.8 * o);
         e.closePath();
         e.fill();
 
-        // Nariz
+        // Nariz na ponta do focinho encostado no pescoço
         e.fillStyle = "#0f172a";
         e.beginPath();
-        e.roundRect(headBaseX + 8.2 * o, headBaseY - 2 * o, 1.8 * o, 1.8 * o, 0.4 * o);
+        e.roundRect(neckTargetX - 0.2 * o, neckTargetY - 2.2 * o, 1.7 * o, 1.6 * o, 0.35 * o);
         e.fill();
 
-        // Mandíbula Inferior (aberta e cravando de baixo para cima no braço)
+        // Mandíbula Inferior aberta cravando por baixo no pescoço do jogador
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(headBaseX + 3 * o, headBaseY + 2 * o);
-        e.lineTo(headBaseX + 8 * o, headBaseY + 2.5 * o);
-        e.lineTo(headBaseX + 7.5 * o, headBaseY + 4 * o);
-        e.lineTo(headBaseX + 2 * o, headBaseY + 3.5 * o);
+        e.moveTo(headBaseX + 1.8 * o, headBaseY + 1.4 * o);
+        e.lineTo(neckTargetX - 0.2 * o, neckTargetY + 0.5 * o);
+        e.lineTo(neckTargetX - 0.6 * o, neckTargetY + 2.0 * o);
+        e.lineTo(headBaseX + 1.2 * o, headBaseY + 3.0 * o);
         e.closePath();
         e.fill();
 
-        // Dentes / Presas pontiagudas cravadas no braço
+        // Presas / Dentes afiados cravados diretamente no pescoço do player
         e.fillStyle = "#ffffff";
+        // Presas superiores mordendo de cima para baixo no pescoço
         e.beginPath();
-        e.moveTo(headBaseX + 6.8 * o, headBaseY + 0.3 * o);
-        e.lineTo(headBaseX + 7.4 * o, headBaseY + 2.2 * o);
-        e.lineTo(headBaseX + 7.9 * o, headBaseY + 0.3 * o);
+        e.moveTo(neckTargetX - 1.2 * o, neckTargetY - 0.5 * o);
+        e.lineTo(neckTargetX - 0.6 * o, neckTargetY + 1.1 * o);
+        e.lineTo(neckTargetX + 0.0 * o, neckTargetY - 0.5 * o);
         e.closePath();
         e.fill();
+        // Presas inferiores cravando de baixo para cima no pescoço
         e.beginPath();
-        e.moveTo(headBaseX + 6.0 * o, headBaseY + 2.6 * o);
-        e.lineTo(headBaseX + 6.5 * o, headBaseY + 1.0 * o);
-        e.lineTo(headBaseX + 7.1 * o, headBaseY + 2.6 * o);
+        e.moveTo(neckTargetX - 2.0 * o, neckTargetY + 1.0 * o);
+        e.lineTo(neckTargetX - 1.4 * o, neckTargetY - 0.6 * o);
+        e.lineTo(neckTargetX - 0.8 * o, neckTargetY + 1.0 * o);
         e.closePath();
         e.fill();
 
-        // Orelhas para trás em fúria
+        // Gotas de sangue no ponto exato da mordida no pescoço
+        if (!l) {
+          e.fillStyle = "#ef4444";
+          e.beginPath();
+          e.arc(neckTargetX - 0.6 * o, neckTargetY + 0.3 * o, 1.2 * o, 0, Math.PI * 2);
+          e.arc(neckTargetX + 0.2 * o, neckTargetY + 1.6 * o, 0.8 * o, 0, Math.PI * 2);
+          e.arc(neckTargetX - 1.5 * o, neckTargetY + 1.2 * o, 0.7 * o, 0, Math.PI * 2);
+          e.fill();
+        }
+
+        // Orelhas para trás em fúria predatória
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(headBaseX - 2 * o, headBaseY - 2 * o);
-        e.lineTo(headBaseX - 6 * o, headBaseY - 5 * o);
-        e.lineTo(headBaseX - 1 * o, headBaseY - 4 * o);
+        e.moveTo(headBaseX - 2 * o, headBaseY - 2.2 * o);
+        e.lineTo(headBaseX - 6.2 * o, headBaseY - 5.5 * o);
+        e.lineTo(headBaseX - 1 * o, headBaseY - 4.2 * o);
         e.closePath();
         e.fill();
         e.fillStyle = m;
         e.beginPath();
-        e.moveTo(headBaseX - 1 * o, headBaseY - 3 * o);
-        e.lineTo(headBaseX - 5 * o, headBaseY - 6.5 * o);
-        e.lineTo(headBaseX + 1 * o, headBaseY - 4 * o);
+        e.moveTo(headBaseX - 1 * o, headBaseY - 3.2 * o);
+        e.lineTo(headBaseX - 5.2 * o, headBaseY - 6.8 * o);
+        e.lineTo(headBaseX + 1 * o, headBaseY - 4.2 * o);
         e.closePath();
         e.fill();
 
-        // Olhos brilhando agressivos
+        // Olhos brilhando agressivos mirando o pescoço
         e.fillStyle = "#0f172a";
         e.beginPath();
-        e.ellipse(headBaseX + 3.5 * o, headBaseY - 1.5 * o, 1.8 * o, 1.2 * o, 0.1, 0, Math.PI * 2);
+        e.ellipse(headBaseX + 3.4 * o, headBaseY - 1.6 * o, 1.8 * o, 1.2 * o, 0.15, 0, Math.PI * 2);
         e.fill();
         e.fillStyle = l ? "#ef4444" : t.accentColor;
         e.beginPath();
-        e.arc(headBaseX + 3.7 * o, headBaseY - 1.5 * o, 1.2 * o, 0, Math.PI * 2);
+        e.arc(headBaseX + 3.6 * o, headBaseY - 1.6 * o, 1.2 * o, 0, Math.PI * 2);
         e.fill();
         e.fillStyle = "#0f172a";
         e.beginPath();
-        e.ellipse(headBaseX + 3.9 * o, headBaseY - 1.5 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
+        e.ellipse(headBaseX + 3.8 * o, headBaseY - 1.6 * o, 0.45 * o, 0.9 * o, 0, 0, Math.PI * 2);
         e.fill();
 
         e.restore();
@@ -1230,15 +1244,18 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
   }
 
   // Alterna dinamicamente entre os 3 ataques:
-  // 1 = arm_hold (morde braço e abraça o player)
+  // 1 = arm_hold (abraça o player e mira a boca no pescoço)
   // 2 = leg_pull (morde perna e puxa para trás)
   // 3 = quick_bite_retreat (morde, solta e afasta para avançar novamente)
   wolf.inCombatTimer = 4.0;
+  if (manager && typeof manager.dismissInferiorAttackers === "function") {
+    manager.dismissInferiorAttackers(wolf, player);
+  }
   wolf.wolfAttackCombo = ((wolf.wolfAttackCombo || 0) % 3) + 1;
   const attackChoice = wolf.wolfAttackCombo;
 
   if (attackChoice === 1) {
-    // 1. Lobo morde braço e segura (abraça o player)
+    // 1. Lobo abraça o player e crava a boca com presas no pescoço
     wolf.wolfAttackState = "arm_hold";
     wolf.wolfAttackDuration = 1.35;
     wolf.wolfAttackTimer = wolf.wolfAttackDuration;
@@ -1252,7 +1269,7 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
     wolf.vx = 0;
     wolf.vy = 0;
 
-    manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, wolf.x, wolf.y - 12);
+    manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, player.x, player.y - 18);
   } else if (attackChoice === 2) {
     // 2. Lobo morde perna e puxa para trás
     wolf.wolfAttackState = "leg_pull";
@@ -1289,6 +1306,9 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
 CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
   if (!wolf.wolfAttackState) return false;
   wolf.inCombatTimer = 4.0;
+  if (manager && typeof manager.dismissInferiorAttackers === "function") {
+    manager.dismissInferiorAttackers(wolf, player);
+  }
 
   // Se o lobo ou player estiverem mortos, encerra o ataque
   if (wolf.hp <= 0 || player.isDead) {
@@ -1331,7 +1351,7 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
 
   wolf.wolfAttackTimer = Math.max(0, (wolf.wolfAttackTimer || 0) - dt);
 
-  // 1. Morde braço e abraça o player
+  // 1. Lobo abraça o player e crava a boca no pescoço
   if (wolf.wolfAttackState === "arm_hold") {
     const side = wolf.facing === "left" ? 10 : -10;
     wolf.x = player.x + side * (wolf.scale || 1);
@@ -1345,11 +1365,11 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
       player.y += (Math.random() - 0.5) * 4 * dt;
     }
 
-    // Dentadas periódicas enquanto segura
+    // Dentadas periódicas enquanto crava as presas no pescoço do jogador
     wolf.wolfDamageTick = (wolf.wolfDamageTick || 0) - dt;
     if (wolf.wolfDamageTick <= 0) {
       wolf.wolfDamageTick = 0.5;
-      manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, wolf.x, wolf.y - 12);
+      manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, player.x, player.y - 18);
     }
 
     if (wolf.wolfAttackTimer <= 0) {
