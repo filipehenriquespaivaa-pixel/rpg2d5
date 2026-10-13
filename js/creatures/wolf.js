@@ -216,32 +216,18 @@ CREATURES.wolf = {
           e.fill();
         }
 
-        // Patas dianteiras estendidas para frente ABRAÇANDO o player (faz o abraço)
-        // Pata dianteira inferior (envolve a cintura/tronco do jogador)
+        // Pata dianteira traseira/fundo (passa por trás do ombro e nuca do jogador mantendo o agarre)
         e.fillStyle = c;
         e.beginPath();
-        e.moveTo(1 * o, -5 * o);
-        e.lineTo(8 * o, -4 * o);
-        e.lineTo(10.2 * o, -1.8 * o);
-        e.lineTo(8.2 * o, -0.8 * o);
-        e.lineTo(0.5 * o, -3 * o);
+        e.moveTo(1 * o, -13 * o);
+        e.lineTo(8.5 * o, -11.5 * o);
+        e.lineTo(10.8 * o, -9.0 * o);
+        e.lineTo(8.5 * o, -7.5 * o);
+        e.lineTo(0.5 * o, -10.0 * o);
         e.closePath();
         e.fill();
         e.fillStyle = "#0f172a";
-        e.fillRect(8.5 * o, -2.5 * o, 2.5 * o, 1.4 * o);
-
-        // Pata dianteira superior (envolve o ombro/peito do jogador abraçando firme)
-        e.fillStyle = m;
-        e.beginPath();
-        e.moveTo(1 * o, -12 * o);
-        e.lineTo(8.5 * o, -11 * o);
-        e.lineTo(10.5 * o, -8.5 * o);
-        e.lineTo(8.5 * o, -7.0 * o);
-        e.lineTo(0.5 * o, -9.5 * o);
-        e.closePath();
-        e.fill();
-        e.fillStyle = "#0f172a";
-        e.fillRect(8.8 * o, -9.0 * o, 2.4 * o, 1.4 * o);
+        e.fillRect(8.8 * o, -9.5 * o, 2.6 * o, 1.5 * o);
 
         // Cabeça e boca miradas diretamente no pescoço do player (pescoço do player fica em Y ~ -16.2 * o, X ~ 9.5-10 * o)
         const neckTargetX = 9.8 * o;
@@ -1576,7 +1562,107 @@ CREATURES.wolf = {
       e.beginPath(),
       e.arc(4.8 * t, -3.5 * t, 0.35 * t, 0, Math.PI * 2),
       e.fill());
-  
+    },
+    // Desenho da pata dianteira frontal NA FRENTE do personagem durante o ataque de mordida no pescoço (arm_hold)
+    frontPawOverlay: function (e, t, o, l) {
+      if (t.wolfAttackState !== "arm_hold") return;
+      e.save();
+      const u = t.facing === "left" ? -1 : 1;
+      e.scale(u, 1);
+      const m = l ? "#ffffff" : t.color,
+        c = l ? "#e2e8f0" : "#475569",
+        f = l ? "#ffffff" : "#cbd5e1",
+        g = l ? "#ffffff" : "#e2e8f0";
+
+      // Tremor e contração muscular da garra apertando o peito da presa
+      const clawTwitch = Math.sin((t.wolfAttackTimer || 0) * 26) * 0.9 * o;
+      const clawTension = Math.sin((t.wolfAttackTimer || 0) * 32) * 0.5 * o;
+
+      // Pata dianteira frontal desenhada na frente do personagem (abraça e crava no peito/tronco)
+      // 1. Sombra / musculatura profunda inferior do membro dianteiro
+      e.fillStyle = c;
+      e.beginPath();
+      e.moveTo(1.2 * o, -7.0 * o);
+      e.quadraticCurveTo(5.0 * o, -6.0 * o, 8.8 * o, -4.0 * o + clawTwitch);
+      e.lineTo(11.8 * o + clawTension, -1.8 * o + clawTwitch);
+      e.lineTo(8.8 * o, -0.6 * o + clawTwitch);
+      e.quadraticCurveTo(4.5 * o, -2.5 * o, 0.8 * o, -4.0 * o);
+      e.closePath();
+      e.fill();
+
+      // 2. Musculatura e pelagem principal do membro dianteiro (sobrepondo o peito do jogador)
+      e.fillStyle = m;
+      e.beginPath();
+      e.moveTo(1.6 * o, -8.5 * o);
+      e.quadraticCurveTo(5.2 * o, -7.2 * o, 9.2 * o, -5.2 * o + clawTwitch);
+      // Articulação do carpo (pulso canino) flexionando sobre o peito do personagem
+      e.lineTo(12.4 * o + clawTension, -2.6 * o + clawTwitch);
+      e.lineTo(10.6 * o + clawTension, -1.2 * o + clawTwitch);
+      e.quadraticCurveTo(7.8 * o, -2.8 * o + clawTwitch, 1.4 * o, -5.5 * o);
+      e.closePath();
+      e.fill();
+
+      // 3. Mechas de luz/pelagem no topo do membro
+      if (!l) {
+        e.fillStyle = g;
+        e.beginPath();
+        e.moveTo(2.5 * o, -8.0 * o);
+        e.quadraticCurveTo(6.0 * o, -6.8 * o, 9.5 * o, -4.8 * o + clawTwitch);
+        e.lineTo(8.8 * o, -3.8 * o + clawTwitch);
+        e.quadraticCurveTo(5.5 * o, -5.8 * o, 2.2 * o, -6.8 * o);
+        e.closePath();
+        e.fill();
+      }
+
+      // 4. Almofadas da pata e nós dos dedos carnívoros cravados na frente do corpo do jogador
+      e.fillStyle = "#0f172a";
+      e.beginPath();
+      e.ellipse(11.2 * o + clawTension, -2.0 * o + clawTwitch, 1.9 * o, 1.4 * o, 0.25, 0, Math.PI * 2);
+      e.fill();
+
+      // 5. Quatro garras curvas e afiadas cravando na frente do personagem
+      e.fillStyle = "#020617";
+      // Garra 1 (superior)
+      e.beginPath();
+      e.moveTo(11.8 * o + clawTension, -3.4 * o + clawTwitch);
+      e.lineTo(13.6 * o + clawTension, -2.6 * o + clawTwitch);
+      e.lineTo(12.2 * o + clawTension, -2.2 * o + clawTwitch);
+      e.closePath();
+      e.fill();
+      // Garra 2 (central-alta)
+      e.beginPath();
+      e.moveTo(12.2 * o + clawTension, -2.4 * o + clawTwitch);
+      e.lineTo(14.2 * o + clawTension, -1.6 * o + clawTwitch);
+      e.lineTo(12.4 * o + clawTension, -1.2 * o + clawTwitch);
+      e.closePath();
+      e.fill();
+      // Garra 3 (central-baixa)
+      e.beginPath();
+      e.moveTo(12.0 * o + clawTension, -1.3 * o + clawTwitch);
+      e.lineTo(13.9 * o + clawTension, -0.6 * o + clawTwitch);
+      e.lineTo(11.9 * o + clawTension, -0.3 * o + clawTwitch);
+      e.closePath();
+      e.fill();
+      // Garra 4 (inferior)
+      e.beginPath();
+      e.moveTo(11.4 * o + clawTension, -0.4 * o + clawTwitch);
+      e.lineTo(13.1 * o + clawTension, 0.3 * o + clawTwitch);
+      e.lineTo(11.0 * o + clawTension, 0.4 * o + clawTwitch);
+      e.closePath();
+      e.fill();
+
+      // Pontas brilhantes e afiadas das garras
+      if (!l) {
+        e.fillStyle = "#f8fafc";
+        e.beginPath();
+        e.arc(13.5 * o + clawTension, -2.6 * o + clawTwitch, 0.5 * o, 0, Math.PI * 2);
+        e.arc(14.1 * o + clawTension, -1.6 * o + clawTwitch, 0.55 * o, 0, Math.PI * 2);
+        e.arc(13.8 * o + clawTension, -0.6 * o + clawTwitch, 0.5 * o, 0, Math.PI * 2);
+        e.arc(13.0 * o + clawTension, 0.3 * o + clawTwitch, 0.45 * o, 0, Math.PI * 2);
+        e.fill();
+      }
+
+      e.restore();
     },
   },
 };
@@ -1655,6 +1741,8 @@ CREATURES.wolf.onAttackPlayer = function (manager, wolf, player, playerDef) {
     wolf.y = player.y - 2 * (wolf.scale || 1);
     wolf.vx = 0;
     wolf.vy = 0;
+    wolf._playerX = player.x;
+    wolf._playerY = player.y;
 
     manager.applyMonsterHitToPlayer(wolf, player, playerDef, false, player.x, player.y - 18);
   } else if (attackChoice === 2) {
@@ -1746,6 +1834,8 @@ CREATURES.wolf.updateAttack = function (manager, wolf, player, dt, playerDef) {
     wolf.y = player.y - 2 * (wolf.scale || 1);
     wolf.vx = 0;
     wolf.vy = 0;
+    wolf._playerX = player.x;
+    wolf._playerY = player.y;
 
     // Reduz movimentação do jogador pelo peso do lobo agarrado
     if (player.isMoving) {

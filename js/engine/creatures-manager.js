@@ -3988,11 +3988,33 @@
           continue;
         }
         const pad = Math.max(60, (f.scale || 1) * 28);
-        f.x < l - pad ||
-          f.x > o + pad ||
-          f.y < u - pad ||
-          f.y > m + pad ||
+        if (
+          f.x >= l - pad &&
+          f.x <= o + pad &&
+          f.y >= u - pad &&
+          f.y <= m + pad
+        ) {
           c.push({ y: f.y, draw: () => Eg(t, f) });
+          if (
+            f.type === "wolf" &&
+            f.wolfAttackState === "arm_hold" &&
+            typeof CREATURES !== "undefined" &&
+            CREATURES.wolf &&
+            CREATURES.wolf.draw &&
+            typeof CREATURES.wolf.draw.frontPawOverlay === "function"
+          ) {
+            const pawSortY = (f._playerY !== undefined ? f._playerY : (this.lastPlayerY !== undefined ? this.lastPlayerY : f.y)) + 0.6;
+            c.push({
+              y: pawSortY,
+              draw: () => {
+                t.save();
+                t.translate(f.x, f.y);
+                CREATURES.wolf.draw.frontPawOverlay(t, f, f.scale || 1, f.hitFlashTimer > 0);
+                t.restore();
+              },
+            });
+          }
+        }
       }
       for (const f of this.carcasses) {
         const pad = Math.max(60, (f.scale || 1) * 28);
